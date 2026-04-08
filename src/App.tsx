@@ -614,7 +614,7 @@ function RiskPage({ risk }: { risk: ApiRisk }) {
       </Panel>
 
       <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {blocks.map(([label, value, tone], idx) => (
+        {blocks.map(([label, value, tone]) => (
           <Panel
             key={label}
             tone={tone}
