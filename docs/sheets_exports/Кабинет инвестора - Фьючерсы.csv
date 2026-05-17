@@ -1,0 +1,5 @@
+asset,direction,leverage,ticker,entryPrice,positionValue,margin,currentPrice,pnl,currentValue,status,comment,liqPrice,exchange,category,risk
+GOLD LONG,Лонг,2,GOLD-PERP,4 377,"14,86","7,86",4 527,"0,5","8,37",Открыто,"Фьючерс на золото x2, первая позиция",2 238,Hyperliquid,Фьючерсы,Низкий
+BTC SHORT  HL х2,Шорт,2,BTC-PERP,71 018,"27,44","15,39",78 252,"-2,8","12,60",Открыто,"Хеджирующий шорт BTC x2, первая позиция",105 222,Hyperliquid,Фьючерсы,Умеренный
+BTC SHORT HL х3,Шорт,3,BTC-PERP,77 422,"44,15","15,71",76 076,"0,75","16,46",Открыто,"BTC short x3, второй кошелек",101 942,Hyperliquid,Фьючерсы,Средний
+,,,,,,"$23,3",,"-$2,28","20,97",,,,,,

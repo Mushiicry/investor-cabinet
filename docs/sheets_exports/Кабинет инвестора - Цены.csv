@@ -1,0 +1,13 @@
+Актив,Ticker,Цена,Обновление,Источник,API,Автообновление,Заметка,Приоритет,Тип актива
+BTC,BTC,"78 251,50",18.05.2026,Hyperliquid,BTC,On,Main asset,High,spot
+ETH,ETH,"2 187,45",18.05.2026,Hyperliquid,ETH,On,Core alt,High,spot
+TON,TON,"1,94",18.05.2026,Hyperliquid,TON,On,Speculative,Medium,spot
+SOL,SOL,"86,61",18.05.2026,Hyperliquid,SOL,On,Speculative,Medium,spot
+BNB,BNB,"654,12",18.05.2026,Hyperliquid,BNB,On,Speculative,Medium,spot
+TIA,TIA,"0,39",18.05.2026,Hyperliquid,TIA,On,Speculative,Low,spot
+APEX,APEX,"0,28",18.05.2026,Hyperliquid,APEX,On,Speculative,Low,spot
+MNT,MNT,"0,64",18.05.2026,Hyperliquid,MNT,On,Speculative,Low,spot
+USDT,USDT,"1,00",29.03.2026,Manual,USDT,Off,Stable reserve,Low,spot
+USDC,USDC,"1,00",29.03.2026,Manual,USDC,Off,Stable reserve,Low,spot
+GOLD LONG,GOLD-PERP,"4 527,05",18.05.2026,Hyperliquid,PAXG,On,Speculative,High,perp
+BTC SHORT,BTC-PERP,"78 251,50",18.05.2026,Hyperliquid,BTC,On,Speculative,High,perp
