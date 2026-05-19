@@ -323,6 +323,36 @@ completed
 
 ---
 
+# PATCH 2.2
+
+Extract Portfolio Calculations.
+
+Type:
+code organization
+
+Goal:
+move pure portfolio calculations out of `src/App.tsx` without changing runtime behavior.
+
+Files changed:
+- `src/lib/portfolioCalculations.ts`
+- `src/App.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- created `src/lib/portfolioCalculations.ts`
+- moved pure portfolio calculations out of `src/App.tsx`
+- formulas, rounding, category order and risk thresholds were not changed
+- `buildPortfolioState` behavior was not changed
+- UI, JSX, CSS and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:
