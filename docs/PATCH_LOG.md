@@ -111,6 +111,33 @@ completed
 
 ---
 
+# PATCH 1.5
+
+Production API Fix.
+
+Type:
+deployment routing
+
+Purpose:
+make production `/api/investor` work on Vercel and return live Apps Script data.
+
+Files changed:
+- `vercel.json`
+- `docs/PATCH_LOG.md`
+
+Details:
+- added Vercel rewrite for `/api/investor`
+- destination matches the current Apps Script `/exec` URL used by the Vite local proxy
+- no UI, Google Sheets, Apps Script, Fear & Greed, helpers or refactor changes
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:

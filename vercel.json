@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/investor",
+      "destination": "https://script.google.com/macros/s/AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA/exec"
+    }
+  ]
+}
