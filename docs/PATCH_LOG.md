@@ -231,6 +231,35 @@ completed
 
 ---
 
+# PATCH 1.9
+
+Investor Data Hook.
+
+Type:
+code organization
+
+Goal:
+move investor data state/effect from `src/App.tsx` into `src/hooks/useInvestorData.ts` without changing runtime behavior.
+
+Files changed:
+- `src/hooks/useInvestorData.ts`
+- `src/App.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- created `useInvestorData(fallbackData)`
+- moved investor data `useState`, `useEffect`, `fetchInvestorData()`, `json?.success` check, merge logic, interval and cleanup into the hook
+- kept fallbackData construction, raw data, calculations and Fear & Greed behavior in `src/App.tsx`
+- kept UI, JSX, CSS and API contract unchanged
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:
