@@ -475,6 +475,38 @@ completed
 
 ---
 
+# PATCH 3.3
+
+Typography & Cosmic Focal Element.
+
+Type:
+visual polish
+
+Goal:
+improve typographic expressiveness, large-number readability, long asset names, PnL visibility and add one cosmic focal element.
+
+Files changed:
+- `src/App.css`
+- `src/App.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- connected `Space Grotesk`
+- strengthened typographic hierarchy
+- improved rendering for long asset names such as `BTC SHORT`
+- strengthened PnL readability
+- added a CSS-only cosmic focal element in the lower-left corner
+- business logic, data, API and calculations were not changed
+- layout geometry was not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:

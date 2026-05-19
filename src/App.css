@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -5799,6 +5800,216 @@ body {
     text-shadow:
       0 10px 28px rgba(0, 0, 0, 0.46),
       0 0 18px rgba(93, 201, 255, 0.055);
+  }
+}
+
+/* ===== PATCH 3.3 - TYPOGRAPHY & COSMIC FOCAL ELEMENT ===== */
+body,
+.cyber-scene {
+  font-family: "Space Grotesk", Inter, system-ui, sans-serif !important;
+}
+
+.space-wormhole {
+  position: absolute;
+  left: -13rem;
+  bottom: -14rem;
+  width: 38rem;
+  height: 38rem;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.42;
+  filter: blur(0.45px) saturate(1.16);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(2, 5, 14, 0.98) 0 8%, rgba(15, 19, 36, 0.82) 10%, transparent 17%),
+    conic-gradient(
+      from 32deg,
+      transparent 0deg,
+      rgba(78, 214, 255, 0.28) 38deg,
+      rgba(168, 85, 247, 0.3) 82deg,
+      rgba(255, 105, 180, 0.18) 122deg,
+      transparent 166deg,
+      rgba(87, 220, 255, 0.18) 212deg,
+      rgba(154, 98, 255, 0.24) 268deg,
+      transparent 330deg
+    ),
+    radial-gradient(circle at 50% 50%, rgba(83, 221, 255, 0.24), rgba(111, 67, 255, 0.14) 32%, rgba(255, 91, 157, 0.08) 52%, transparent 68%);
+  box-shadow:
+    0 0 90px rgba(109, 94, 255, 0.2),
+    0 0 150px rgba(72, 214, 255, 0.12);
+  transform-origin: 50% 50%;
+  animation: spaceWormholeSpin 38s linear infinite, spaceWormholePulse 24s ease-in-out infinite;
+}
+
+.space-wormhole::before,
+.space-wormhole::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.space-wormhole::before {
+  inset: 5rem;
+  opacity: 0.8;
+  background:
+    repeating-conic-gradient(
+      from -20deg,
+      rgba(255, 255, 255, 0.16) 0deg 1deg,
+      transparent 1deg 12deg
+    ),
+    radial-gradient(circle at center, transparent 0 26%, rgba(96, 218, 255, 0.2) 32%, transparent 58%);
+  filter: blur(1.2px);
+  animation: spaceWormholeCounterSpin 31s linear infinite;
+}
+
+.space-wormhole::after {
+  inset: -5rem;
+  opacity: 0.46;
+  background:
+    radial-gradient(circle at 31% 38%, rgba(255, 255, 255, 0.9) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 72% 30%, rgba(135, 209, 255, 0.75) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 63% 74%, rgba(235, 176, 255, 0.75) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 44% 82%, rgba(255, 117, 170, 0.55) 0 1px, transparent 1.6px);
+}
+
+.section-title,
+.section-title-main,
+.portfolio-title,
+.fear-greed-value,
+.mini-value,
+.mini-value-hero,
+.mini-value-asset {
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08),
+    0 16px 36px rgba(0, 0, 0, 0.54),
+    0 0 30px rgba(123, 213, 255, 0.12);
+}
+
+.section-kicker,
+.mini-label,
+.allocation-value {
+  color: rgba(215, 227, 246, 0.9);
+  text-shadow: 0 7px 22px rgba(0, 0, 0, 0.36);
+}
+
+.overview-main-grid .portfolio-link-card .mini-panel {
+  overflow: hidden;
+}
+
+.overview-main-grid .portfolio-link-card .mini-value-asset {
+  max-width: 100%;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  font-size: clamp(2.85rem, 3.2vw, 4.05rem);
+  line-height: 0.96;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.overview-main-grid .portfolio-link-card .mini-sub {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.82rem;
+  color: rgba(244, 248, 255, 0.95);
+  font-size: 1.12rem;
+  line-height: 1.22;
+  font-weight: 700;
+  text-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.48),
+    0 0 20px rgba(125, 211, 252, 0.08);
+}
+
+.mini-sub-pnl-row {
+  color: #67ff9d;
+  font-weight: 900;
+  text-shadow:
+    0 0 18px rgba(103, 255, 157, 0.28),
+    0 10px 26px rgba(0, 0, 0, 0.42);
+}
+
+.mini-sub-green,
+.portfolio-pnl-positive {
+  color: #63ff9b;
+  text-shadow:
+    0 0 20px rgba(99, 255, 155, 0.32),
+    0 10px 26px rgba(0, 0, 0, 0.44);
+}
+
+.mini-sub-red,
+.portfolio-pnl-negative {
+  color: #ff5f7d;
+  text-shadow:
+    0 0 20px rgba(255, 95, 125, 0.32),
+    0 10px 26px rgba(0, 0, 0, 0.44);
+}
+
+.portfolio-pnl-cell {
+  text-shadow: 0 9px 24px rgba(0, 0, 0, 0.42);
+}
+
+.allocation-name,
+.allocation-share {
+  color: #ffffff;
+  text-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.46),
+    0 0 18px rgba(126, 218, 255, 0.08);
+}
+
+.fear-greed-value {
+  color: #ffffff;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1),
+    0 18px 42px rgba(0, 0, 0, 0.54),
+    0 0 38px rgba(255, 226, 89, 0.11);
+}
+
+@keyframes spaceWormholeSpin {
+  0% { transform: rotate(0deg) scale(1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes spaceWormholeCounterSpin {
+  0% { transform: rotate(0deg) scale(1); }
+  100% { transform: rotate(-360deg) scale(1); }
+}
+
+@keyframes spaceWormholePulse {
+  0%, 100% { opacity: 0.34; filter: blur(0.5px) saturate(1.08); }
+  50% { opacity: 0.48; filter: blur(1.1px) saturate(1.22); }
+}
+
+@media (max-width: 1280px) {
+  .overview-main-grid .portfolio-link-card .mini-value-asset {
+    font-size: clamp(2.55rem, 7.4vw, 3.75rem);
+  }
+}
+
+@media (max-width: 768px) {
+  .space-wormhole {
+    left: -16rem;
+    bottom: -16rem;
+    width: 32rem;
+    height: 32rem;
+    opacity: 0.26;
+    filter: blur(1px) saturate(1.04);
+  }
+
+  .overview-main-grid .portfolio-link-card .mini-value-asset {
+    font-size: clamp(2.35rem, 12vw, 3.4rem);
+  }
+
+  .overview-main-grid .portfolio-link-card .mini-sub {
+    font-size: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .space-wormhole,
+  .space-wormhole::before {
+    animation: none;
   }
 }
 

@@ -1184,6 +1184,7 @@ export default function App() {
       <div className="scene-orb orb-yellow" />
       <div className="scene-plane plane-left" />
       <div className="scene-plane plane-right" />
+      <div className="space-wormhole" />
 
       <div
         style={{
