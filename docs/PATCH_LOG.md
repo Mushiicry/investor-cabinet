@@ -168,6 +168,69 @@ completed
 
 ---
 
+# PATCH 1.7
+
+API Layer Separation.
+
+Type:
+code organization
+
+Goal:
+move API fetch/parsing boundaries out of `src/App.tsx` without changing runtime behavior.
+
+Files changed:
+- `src/api/investor.ts`
+- `src/api/fearGreed.ts`
+- `src/App.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- added `fetchInvestorData()` returning raw `/api/investor` JSON
+- added `fetchFearGreedValue()` returning `number | null`
+- kept investor merge logic, state updates, intervals, fallback data and Fear & Greed behavior in `src/App.tsx`
+- did not touch UI, JSX, CSS, `vite.config.ts`, `vercel.json`, calculations or page components
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 1.8
+
+Constants Separation.
+
+Type:
+code organization
+
+Goal:
+move static configuration constants out of `src/App.tsx` and API modules without changing runtime behavior.
+
+Files changed:
+- `src/config/constants.ts`
+- `src/App.tsx`
+- `src/api/investor.ts`
+- `src/api/fearGreed.ts`
+- `docs/PATCH_LOG.md`
+
+Details:
+- extracted test login constants
+- extracted market cycle date constants as `new Date(...)`
+- extracted API URL constants
+- extracted refresh interval constants without changing values
+- kept UI, JSX, API behavior, state, fetch semantics, fallback data, calculations and login behavior unchanged
+- did not touch `App.css`, `vite.config.ts` or `vercel.json`
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:

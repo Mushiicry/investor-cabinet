@@ -9,6 +9,17 @@ import apexLogo from "./assets/coins/apex.png";
 import mntLogo from "./assets/coins/mnt.png";
 import tiaLogo from "./assets/coins/tia.png";
 import usdtLogo from "./assets/coins/usdt.png";
+import { fetchFearGreedValue } from "./api/fearGreed";
+import { fetchInvestorData } from "./api/investor";
+import {
+  BUY_WINDOW_END,
+  BUY_WINDOW_START,
+  FEAR_GREED_REFRESH_INTERVAL_MS,
+  INVESTOR_REFRESH_INTERVAL_MS,
+  NEXT_HALVING,
+  TEST_LOGIN,
+  TEST_PASSWORD,
+} from "./config/constants";
 import { currency, percent, percentDirect } from "./lib/formatters";
 import {
   assetGlyph,
@@ -36,15 +47,6 @@ import type {
   ScenarioCard,
 } from "./types/portfolio";
 import "./App.css";
-
-const API_URL = "/api/investor";
-const FEAR_GREED_API_URL = "https://api.alternative.me/fng/?limit=1";
-
-const TEST_LOGIN = "mushi";
-const TEST_PASSWORD = "invest2026";
-const BUY_WINDOW_START = new Date("2026-10-10T00:00:00");
-const BUY_WINDOW_END = new Date("2026-12-15T23:59:59");
-const NEXT_HALVING = new Date("2028-02-20T00:00:00");
 
 const rawPositions: PositionInput[] = [
   { asset: "BTC", category: "Крипта", quantity: 0.0004367, avgEntry: 68200, currentPrice: 69759.6, status: "Накапливать" },
@@ -1375,15 +1377,9 @@ export default function App() {
 
     const loadFearGreedData = async () => {
       try {
-        const res = await fetch(FEAR_GREED_API_URL, {
-          method: "GET",
-          cache: "no-store",
-        });
+        const value = await fetchFearGreedValue();
 
-        const json = await res.json();
-        const value = Number(json?.data?.[0]?.value);
-
-        if (!isMounted || !Number.isFinite(value)) return;
+        if (!isMounted || value === null) return;
 
         const normalizedValue = Math.min(Math.max(Math.round(value), 0), 100);
         setFearGreedData(buildFearGreedData(normalizedValue));
@@ -1393,7 +1389,7 @@ export default function App() {
     };
 
     loadFearGreedData();
-    const interval = setInterval(loadFearGreedData, 10 * 60 * 1000);
+    const interval = setInterval(loadFearGreedData, FEAR_GREED_REFRESH_INTERVAL_MS);
 
     return () => {
       isMounted = false;
@@ -1406,12 +1402,7 @@ export default function App() {
 
     const loadInvestorData = async () => {
       try {
-        const res = await fetch(API_URL, {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        const json = await res.json();
+        const json = await fetchInvestorData();
 
         if (!isMounted || !json?.success) return;
 
@@ -1465,7 +1456,7 @@ export default function App() {
     };
 
     loadInvestorData();
-    const interval = setInterval(loadInvestorData, 10000);
+    const interval = setInterval(loadInvestorData, INVESTOR_REFRESH_INTERVAL_MS);
 
     return () => {
       isMounted = false;
