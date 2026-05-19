@@ -292,6 +292,37 @@ completed
 
 ---
 
+# PATCH 2.1
+
+Extract Static Data.
+
+Type:
+code organization
+
+Goal:
+move static portfolio mock arrays out of `src/App.tsx` without changing runtime behavior.
+
+Files changed:
+- `src/mocks/portfolioData.ts`
+- `src/App.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- created `src/mocks/portfolioData.ts`
+- moved `rawPositions`, `decisionsData` and `scenariosData` out of `src/App.tsx`
+- array values were not changed
+- array order was not changed
+- calculations and `buildPortfolioState` stayed in `src/App.tsx`
+- UI, JSX, CSS and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:
