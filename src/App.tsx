@@ -9,6 +9,20 @@ import apexLogo from "./assets/coins/apex.png";
 import mntLogo from "./assets/coins/mnt.png";
 import tiaLogo from "./assets/coins/tia.png";
 import usdtLogo from "./assets/coins/usdt.png";
+import { currency, percent, percentDirect } from "./lib/formatters";
+import {
+  assetGlyph,
+  assetRarity,
+  buildRiskRadarGrid,
+  buildRiskRadarPolygon,
+  cardNumbers,
+  fgTone,
+  getAttackMetricClass,
+  getProfitColor,
+  getRiskColor,
+  getRiskMetricClass,
+  statusTone,
+} from "./lib/uiHelpers";
 import type {
   Category,
   CategoryAllocation,
@@ -25,16 +39,6 @@ import "./App.css";
 
 const API_URL = "/api/investor";
 const FEAR_GREED_API_URL = "https://api.alternative.me/fng/?limit=1";
-
-const currency = (n: number) =>
-  new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 1,
-  }).format(Number(n || 0));
-
-const percent = (n: number) => `${(Number(n || 0) * 100).toFixed(1)}%`;
-const percentDirect = (n: number) => `${Number(n || 0).toFixed(1)}%`;
 
 const TEST_LOGIN = "mushi";
 const TEST_PASSWORD = "invest2026";
@@ -232,27 +236,6 @@ function buildPortfolioState(positionsInput: PositionInput[], decisions: Decisio
     updatedAt: new Date().toISOString(),
   };
 }
-function fgTone(value: number): "cyan" | "yellow" | "violet" {
-  if (value < 25) return "violet";
-  if (value < 55) return "yellow";
-  return "cyan";
-}
-function getAttackMetricClass(value: number): string {
-  return value >= 6 ? "playbook-profit-high" : "playbook-profit-low";
-}
-
-function getRiskMetricClass(value: number): string {
-  return value >= 5 ? "playbook-risk-high" : "playbook-risk-low";
-}
-
-function getRiskColor(value: number): "red" | "green" {
-  return value >= 5 ? "red" : "green";
-}
-
-function getProfitColor(value: number): "red" | "green" {
-  return value >= 6 ? "green" : "red";
-}
-
 function getMoodData() {
   const now = new Date();
   const msPerDay = 1000 * 60 * 60 * 24;
@@ -800,34 +783,6 @@ function PortfolioPage({ data }: { data: PortfolioState }) {
   );
 }
 
-function buildRiskRadarPolygon(values: number[], size = 380) {
-  const cx = size / 2;
-  const cy = size / 2;
-  const radius = size * 0.37;
-  return values
-    .map((value, index) => {
-      const angle = (-90 + index * 72) * (Math.PI / 180);
-      const r = radius * (value / 100);
-      const x = cx + r * Math.cos(angle);
-      const y = cy + r * Math.sin(angle);
-      return `${x},${y}`;
-    })
-    .join(" ");
-}
-function buildRiskRadarGrid(level: number, count = 5, size = 380) {
-  const cx = size / 2;
-  const cy = size / 2;
-  const radius = size * 0.37 * level;
-  return Array.from({ length: count })
-    .map((_, index) => {
-      const angle = (-90 + index * 72) * (Math.PI / 180);
-      const x = cx + radius * Math.cos(angle);
-      const y = cy + radius * Math.sin(angle);
-      return `${x},${y}`;
-    })
-    .join(" ");
-}
-
 function RiskPage({ data }: { data: PortfolioState }) {
   const risk = data.risk;
   const portfolio = [...data.portfolio].sort((a, b) => b.share - a.share);
@@ -1081,32 +1036,6 @@ function RiskPage({ data }: { data: PortfolioState }) {
     </div>
   );
 }
-function statusTone(status: string): "cyan" | "violet" | "yellow" {
-  if (status === "Наблюдать") return "yellow";
-  if (status === "Накапливать") return "violet";
-  return "cyan";
-}
-
-type CardRarity = "legendary" | "epic" | "rare" | "common" | "defense" | "risk";
-
-function assetGlyph(asset: string): string {
-  const map: Record<string, string> = {
-    BTC: "₿",
-    ETH: "Ξ",
-    SOL: "S",
-    TON: "T",
-    BNB: "B",
-    TIA: "T",
-    APEX: "A",
-    MNT: "M",
-    "GOLD LONG": "G",
-    "BTC SHORT": "₿",
-    USDT: "$",
-  };
-  return map[asset] ?? asset[0];
-}
-
-
 const importedCoinLogos: Record<string, { src: string; mode: "cover" | "contain"; imgClass?: string }> = {
   BTC: { src: btcLogo, mode: "contain", imgClass: "coin-image-btc" },
   ETH: { src: ethLogo, mode: "contain", imgClass: "coin-image-eth" },
@@ -1170,33 +1099,6 @@ function CryptoLogo({ asset, className = "" }: { asset: string; className?: stri
       <span className="crypto-logo-fallback">{assetGlyph(asset)}</span>
     </div>
   );
-}
-
-
-function assetRarity(asset: string): CardRarity {
-  if (asset === "BTC") return "legendary";
-  if (asset === "ETH") return "epic";
-  if (asset === "SOL" || asset === "BNB") return "rare";
-  if (asset === "GOLD LONG" || asset === "USDT") return "defense";
-  if (asset === "BTC SHORT" || asset === "APEX") return "risk";
-  return "common";
-}
-
-function cardNumbers(asset: string): { attack: number; risk: number; className: string; title: string } {
-  const map: Record<string, { attack: number; risk: number; className: string; title: string }> = {
-    BTC: { attack: 9, risk: 2, className: "boss", title: "Легендарная карта цикла" },
-    ETH: { attack: 8, risk: 3, className: "epic", title: "Эпическая карта ядра" },
-    SOL: { attack: 8, risk: 6, className: "rare", title: "Редкая карта импульса" },
-    TON: { attack: 6, risk: 5, className: "common", title: "Тактическая карта" },
-    BNB: { attack: 6, risk: 4, className: "rare", title: "Редкая карта устойчивости" },
-    TIA: { attack: 7, risk: 7, className: "common", title: "Спекулятивная карта" },
-    APEX: { attack: 9, risk: 9, className: "risk", title: "Опасная карта" },
-    MNT: { attack: 7, risk: 7, className: "common", title: "Спекулятивная карта" },
-    "GOLD LONG": { attack: 3, risk: 1, className: "defense", title: "Защитная карта" },
-    "BTC SHORT": { attack: 8, risk: 8, className: "risk", title: "Шорт-карта" },
-    USDT: { attack: 2, risk: 1, className: "defense", title: "Резервная карта" },
-  };
-  return map[asset] ?? { attack: 5, risk: 5, className: "common", title: "Карточка актива" };
 }
 
 function DecisionsScenariosPage({ data }: { data: PortfolioState }) {

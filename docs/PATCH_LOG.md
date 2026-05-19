@@ -138,6 +138,36 @@ completed
 
 ---
 
+# PATCH 1.6
+
+Extract Helpers / Formatters.
+
+Type:
+code organization
+
+Goal:
+move pure helper and formatter functions out of `src/App.tsx` without changing runtime behavior.
+
+Files changed:
+- `src/lib/formatters.ts`
+- `src/lib/uiHelpers.ts`
+- `src/App.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- extracted currency and percent formatters
+- extracted pure UI helper functions
+- kept JSX, UI, CSS, API behavior, state, fetch, fallback data and calculations unchanged
+- did not touch `vercel.json` or `vite.config.ts`
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:
