@@ -64,6 +64,30 @@ completed
 
 ---
 
+# PATCH 1.3
+
+Architecture Baseline.
+
+Type:
+documentation
+
+Goal:
+freeze the current working architecture before future refactoring.
+
+Changes:
+- added `docs/ARCHITECTURE_BASELINE.md`
+- documented current React/Vite, Google Sheets, Apps Script, Vercel and Fear & Greed architecture
+- documented current data flows
+- documented known limitations and safe patch rules
+
+Build:
+not required, code was not changed
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:
