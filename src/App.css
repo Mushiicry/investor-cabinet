@@ -5371,5 +5371,208 @@ select {
   }
 }
 
+/* ===== PATCH 3.1 - ATMOSPHERE LAYER ===== */
+body {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(71, 218, 255, 0.16), transparent 28rem),
+    radial-gradient(circle at 84% 4%, rgba(150, 92, 255, 0.14), transparent 30rem),
+    radial-gradient(circle at 52% 96%, rgba(255, 214, 89, 0.055), transparent 36rem),
+    linear-gradient(180deg, #050916 0%, #020510 54%, #01030a 100%);
+}
+
+.cyber-scene {
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% -12%, rgba(88, 214, 255, 0.13), transparent 32rem),
+    radial-gradient(circle at 86% 16%, rgba(126, 86, 255, 0.12), transparent 34rem),
+    radial-gradient(circle at 16% 76%, rgba(14, 165, 233, 0.08), transparent 38rem),
+    linear-gradient(180deg, rgba(7, 12, 27, 0.9), rgba(2, 5, 15, 0.99)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(91, 214, 255, 0.03) 0,
+      rgba(91, 214, 255, 0.03) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+}
+
+.cyber-scene::before,
+.cyber-scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cyber-scene::before {
+  z-index: 0;
+  opacity: 0.34;
+  background:
+    radial-gradient(circle, rgba(236, 248, 255, 0.6) 0 1px, transparent 1.5px) 8% 12% / 9.5rem 9.5rem,
+    radial-gradient(circle, rgba(144, 210, 255, 0.45) 0 1px, transparent 1.4px) 72% 18% / 13rem 13rem,
+    radial-gradient(circle, rgba(206, 183, 255, 0.42) 0 1px, transparent 1.4px) 32% 68% / 11rem 11rem,
+    linear-gradient(115deg, transparent 0%, rgba(114, 203, 255, 0.045) 34%, transparent 62%);
+  animation: cosmicStarDrift 28s ease-in-out infinite;
+}
+
+.cyber-scene::after {
+  z-index: 0;
+  opacity: 0.74;
+  background:
+    radial-gradient(ellipse at center, transparent 0%, transparent 48%, rgba(0, 0, 0, 0.46) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 22%, rgba(0, 0, 0, 0.18));
+}
+
+.cyber-scene > :not(.scene-orb):not(.scene-plane) {
+  position: relative;
+  z-index: 1;
+}
+
+.scene-orb,
+.scene-plane {
+  pointer-events: none;
+  will-change: transform, opacity, filter;
+}
+
+.scene-orb {
+  opacity: 0.42;
+  filter: blur(52px) saturate(1.15);
+  animation: atmosphereOrbDrift 26s ease-in-out infinite, atmosphereBlurBreath 18s ease-in-out infinite;
+}
+
+.orb-cyan {
+  background:
+    radial-gradient(circle at 45% 42%, rgba(99, 216, 255, 0.28), rgba(45, 155, 255, 0.11) 42%, transparent 72%);
+  animation-delay: 0s, -3s;
+}
+
+.orb-violet {
+  background:
+    radial-gradient(circle at 54% 44%, rgba(168, 123, 255, 0.25), rgba(98, 64, 255, 0.12) 44%, transparent 74%);
+  animation-delay: -7s, -9s;
+}
+
+.orb-yellow {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 219, 112, 0.16), rgba(255, 161, 71, 0.07) 46%, transparent 76%);
+  animation-delay: -13s, -5s;
+}
+
+.scene-plane {
+  opacity: 0.34;
+  filter: blur(48px) saturate(1.08);
+  animation: atmospherePlaneDrift 30s ease-in-out infinite, atmospherePlanePulse 22s ease-in-out infinite;
+}
+
+.plane-left {
+  background:
+    linear-gradient(120deg, rgba(67, 214, 255, 0.1), rgba(73, 112, 255, 0.045), transparent 72%);
+  animation-delay: -4s, -10s;
+}
+
+.plane-right {
+  background:
+    linear-gradient(120deg, rgba(151, 98, 255, 0.12), rgba(55, 189, 255, 0.045), transparent 74%);
+  animation-delay: -11s, -2s;
+}
+
+.cyber-panel {
+  border-color: rgba(185, 220, 255, 0.095);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(91, 214, 255, 0.075), transparent 35%),
+    radial-gradient(circle at 96% 8%, rgba(168, 85, 247, 0.055), transparent 38%),
+    linear-gradient(180deg, rgba(14, 22, 42, 0.91), rgba(5, 10, 23, 0.965)),
+    linear-gradient(135deg, rgba(91, 214, 255, 0.06), transparent 45%, rgba(168, 85, 247, 0.055));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.065),
+    inset 0 -1px 0 rgba(125, 211, 252, 0.025),
+    0 22px 72px rgba(0, 0, 0, 0.43),
+    0 0 54px rgba(88, 166, 255, 0.055),
+    0 0 0 1px rgba(255, 255, 255, 0.018);
+}
+
+.cyber-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.46;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.075), transparent 22%, transparent 72%, rgba(136, 198, 255, 0.035)),
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.055), transparent 38%);
+}
+
+.cyber-panel-cyan::before,
+.cyber-panel-violet::before,
+.cyber-panel-yellow::before {
+  opacity: 0.82;
+  animation: atmospherePanelGlow 18s ease-in-out infinite;
+}
+
+.cyber-panel-cyan { --panel-glow: rgba(76, 225, 255, 0.15); }
+.cyber-panel-violet { --panel-glow: rgba(160, 111, 255, 0.15); }
+.cyber-panel-yellow { --panel-glow: rgba(255, 214, 89, 0.12); }
+
+.cyber-hover-panel:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.075),
+    0 26px 78px rgba(0, 0, 0, 0.48),
+    0 0 62px rgba(96, 190, 255, 0.075),
+    0 0 0 1px rgba(255, 255, 255, 0.035);
+}
+
+@keyframes cosmicStarDrift {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.28; }
+  50% { transform: translate3d(-1.2rem, 0.8rem, 0); opacity: 0.38; }
+}
+
+@keyframes atmosphereOrbDrift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(1.3rem, -1rem, 0) scale(1.04); }
+}
+
+@keyframes atmosphereBlurBreath {
+  0%, 100% { filter: blur(50px) saturate(1.12); opacity: 0.38; }
+  50% { filter: blur(58px) saturate(1.22); opacity: 0.5; }
+}
+
+@keyframes atmospherePlaneDrift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(-1rem, 1.1rem, 0) rotate(1.5deg); }
+}
+
+@keyframes atmospherePlanePulse {
+  0%, 100% { opacity: 0.28; filter: blur(46px) saturate(1.06); }
+  50% { opacity: 0.39; filter: blur(54px) saturate(1.16); }
+}
+
+@keyframes atmospherePanelGlow {
+  0%, 100% { opacity: 0.68; }
+  50% { opacity: 0.9; }
+}
+
+@media (max-width: 768px) {
+  .cyber-scene::before {
+    opacity: 0.22;
+  }
+
+  .scene-orb,
+  .scene-plane {
+    opacity: 0.28;
+    filter: blur(42px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cyber-scene::before,
+  .scene-orb,
+  .scene-plane,
+  .cyber-panel-cyan::before,
+  .cyber-panel-violet::before,
+  .cyber-panel-yellow::before {
+    animation: none;
+  }
+}
+
 
 .fear-greed-source{margin-top:10px;font-size:12px;line-height:1.4;color:#94a3b8;opacity:.9}

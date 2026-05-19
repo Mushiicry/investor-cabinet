@@ -416,6 +416,36 @@ completed
 
 ---
 
+# PATCH 3.1
+
+Atmosphere Layer.
+
+Type:
+visual polish
+
+Goal:
+strengthen the premium cinematic fintech sci-fi atmosphere without changing layout, JSX or behavior.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- strengthened cosmic background through CSS
+- added and improved ambient glow layers
+- enhanced `scene-orb` and `scene-plane` effects
+- added subtle long-cycle animations
+- UI, JSX, layout, data and API behavior were not changed
+- `src/App.tsx` was not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:
