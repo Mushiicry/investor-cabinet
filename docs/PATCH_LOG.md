@@ -260,6 +260,38 @@ completed
 
 ---
 
+# PATCH 2.0
+
+Extract Fear & Greed Hook.
+
+Type:
+code organization
+
+Goal:
+move Fear & Greed state/effect from `src/App.tsx` into `src/hooks/useFearGreed.ts` without changing runtime behavior.
+
+Files changed:
+- `src/hooks/useFearGreed.ts`
+- `src/App.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- created `useFearGreed()`
+- moved Fear & Greed fallback object, label thresholds, state, effect, fetch call, interval and cleanup into the hook
+- preserved fallback value `14`
+- preserved label thresholds
+- kept Gauge UI unchanged
+- did not touch investor data hook
+- kept UI, JSX, CSS and API contract unchanged
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:

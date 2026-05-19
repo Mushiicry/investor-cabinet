@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import GaugeComponent from "react-gauge-component";
 import btcLogo from "./assets/coins/btc.png";
 import ethLogo from "./assets/coins/eth.png";
@@ -9,15 +9,14 @@ import apexLogo from "./assets/coins/apex.png";
 import mntLogo from "./assets/coins/mnt.png";
 import tiaLogo from "./assets/coins/tia.png";
 import usdtLogo from "./assets/coins/usdt.png";
-import { fetchFearGreedValue } from "./api/fearGreed";
 import {
   BUY_WINDOW_END,
   BUY_WINDOW_START,
-  FEAR_GREED_REFRESH_INTERVAL_MS,
   NEXT_HALVING,
   TEST_LOGIN,
   TEST_PASSWORD,
 } from "./config/constants";
+import { useFearGreed } from "./hooks/useFearGreed";
 import { useInvestorData } from "./hooks/useInvestorData";
 import { currency, percent, percentDirect } from "./lib/formatters";
 import {
@@ -88,32 +87,6 @@ const scenariosData: ScenarioCard[] = [
   { asset: "BTC SHORT", base: "Тактический шорт на локальном перегреве.", bull: "Позиция даёт быстрый профит на снижении.", bear: "Рынок выносит вверх.", action: "Фиксировать частями и держать риск маленьким.", invalidation: "Сильный ап-импульс против позиции.", status: "Спекуляция" },
   { asset: "USDT", base: "Резерв и гибкость.", bull: "Даёт возможность купить страх.", bear: "Снижает доходность при сильном росте рынка.", action: "Вводить в рынок частями.", invalidation: "Смена режима рынка на устойчивый рост.", status: "Резерв" },
 ];
-
-const fearGreed: FearGreed = {
-  value: 14,
-  label: "Экстремальный страх",
-  summary: "Рынок находится в зоне экстремального страха. Давление эмоций высокое, участники боятся заходить в покупки.",
-  action: "Ниже 20 - сигнал на покупку x1. Ниже 15 - сигнал на покупку x1,5. Ниже 10 - сигнал на откуп x2.",
-};
-
-function getFearGreedLabel(value: number): string {
-  if (value <= 24) return "Экстремальный страх";
-  if (value <= 44) return "Страх";
-  if (value <= 54) return "Нейтрально";
-  if (value <= 74) return "Жадность";
-  return "Крайняя жадность";
-}
-
-function buildFearGreedData(value: number): FearGreed {
-  const label = getFearGreedLabel(value);
-
-  return {
-    ...fearGreed,
-    value,
-    label,
-    summary: `Текущее состояние рынка: ${label}. Используем индекс как фильтр эмоций, а не как отдельный сигнал к действию.`,
-  };
-}
 
 const CATEGORY_ORDER: Category[] = ["Крипта", "Металлы", "Фьючерсы", "Акции", "Свободные деньги"];
 const RISK_BAR_COLORS = ["#63d8ff", "#3ddb72", "#9f57ff", "#f7d64a", "#ff6f8e", "#ff8b2a", "#45c2ff", "#53ea87"];
@@ -1369,32 +1342,7 @@ export default function App() {
   );
 
   const data = useInvestorData(fallbackData);
-  const [fearGreedData, setFearGreedData] = useState<FearGreed>(fearGreed);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadFearGreedData = async () => {
-      try {
-        const value = await fetchFearGreedValue();
-
-        if (!isMounted || value === null) return;
-
-        const normalizedValue = Math.min(Math.max(Math.round(value), 0), 100);
-        setFearGreedData(buildFearGreedData(normalizedValue));
-      } catch (error) {
-        console.error("FEAR GREED DATA LOAD ERROR", error);
-      }
-    };
-
-    loadFearGreedData();
-    const interval = setInterval(loadFearGreedData, FEAR_GREED_REFRESH_INTERVAL_MS);
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+  const fearGreedData = useFearGreed();
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
