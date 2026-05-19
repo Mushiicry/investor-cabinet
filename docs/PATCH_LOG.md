@@ -446,6 +446,35 @@ completed
 
 ---
 
+# PATCH 3.2
+
+Visual Depth.
+
+Type:
+visual polish
+
+Goal:
+strengthen interface depth, block separation and text readability without changing layout or JSX.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- strengthened panel and card layer depth
+- improved border, shadow and text depth readability
+- added subtle edge highlights
+- layout, JSX, data and API behavior were not changed
+- `src/App.tsx` was not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:

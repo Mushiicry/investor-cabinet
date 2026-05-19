@@ -5574,5 +5574,233 @@ body {
   }
 }
 
+/* ===== PATCH 3.2 - VISUAL DEPTH ===== */
+.cyber-panel {
+  border-color: rgba(197, 225, 255, 0.13);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.085),
+    inset 0 -18px 42px rgba(0, 0, 0, 0.18),
+    inset 0 0 42px rgba(125, 211, 252, 0.025),
+    0 24px 80px rgba(0, 0, 0, 0.5),
+    0 0 64px rgba(82, 168, 255, 0.065),
+    0 0 0 1px rgba(255, 255, 255, 0.022);
+}
+
+.cyber-panel::after {
+  opacity: 0.54;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.09), transparent 21%, transparent 72%, rgba(136, 198, 255, 0.045)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 22%),
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.06), transparent 40%);
+}
+
+.cyber-panel-cyan {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.085),
+    inset 0 -18px 42px rgba(0, 0, 0, 0.18),
+    inset 0 0 42px rgba(76, 225, 255, 0.03),
+    0 24px 80px rgba(0, 0, 0, 0.5),
+    0 0 64px rgba(76, 225, 255, 0.075),
+    0 0 0 1px rgba(76, 225, 255, 0.035);
+}
+
+.cyber-panel-violet {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.085),
+    inset 0 -18px 42px rgba(0, 0, 0, 0.18),
+    inset 0 0 42px rgba(160, 111, 255, 0.03),
+    0 24px 80px rgba(0, 0, 0, 0.5),
+    0 0 64px rgba(160, 111, 255, 0.07),
+    0 0 0 1px rgba(160, 111, 255, 0.034);
+}
+
+.cyber-panel-yellow {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.085),
+    inset 0 -18px 42px rgba(0, 0, 0, 0.18),
+    inset 0 0 42px rgba(255, 214, 89, 0.025),
+    0 24px 80px rgba(0, 0, 0, 0.5),
+    0 0 58px rgba(255, 214, 89, 0.055),
+    0 0 0 1px rgba(255, 214, 89, 0.03);
+}
+
+.cyber-panel-cyan::before { --panel-glow: rgba(76, 225, 255, 0.17); }
+.cyber-panel-violet::before { --panel-glow: rgba(160, 111, 255, 0.17); }
+.cyber-panel-yellow::before { --panel-glow: rgba(255, 214, 89, 0.135); }
+
+.cyber-hover-panel:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.095),
+    inset 0 -18px 42px rgba(0, 0, 0, 0.16),
+    0 28px 88px rgba(0, 0, 0, 0.54),
+    0 0 74px rgba(96, 190, 255, 0.095),
+    0 0 0 1px rgba(255, 255, 255, 0.045);
+}
+
+.mini-panel,
+.playbook-card,
+.playbook-detail-block,
+.playbook-open-stat,
+.portfolio-table-wrap,
+.pnl-hero-pill {
+  border-color: rgba(203, 223, 255, 0.105);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    inset 0 -14px 34px rgba(0, 0, 0, 0.16),
+    0 16px 44px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.016);
+}
+
+.playbook-detail-block,
+.playbook-open-stat {
+  position: relative;
+}
+
+.mini-panel {
+  background:
+    radial-gradient(circle at top left, rgba(90, 216, 255, 0.07), transparent 43%),
+    linear-gradient(180deg, rgba(12, 20, 39, 0.82), rgba(4, 9, 22, 0.965));
+}
+
+.mini-panel-violet {
+  background:
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.08), transparent 43%),
+    linear-gradient(180deg, rgba(12, 20, 39, 0.82), rgba(4, 9, 22, 0.965));
+}
+
+.mini-panel-yellow {
+  background:
+    radial-gradient(circle at top left, rgba(255, 216, 77, 0.07), transparent 40%),
+    linear-gradient(180deg, rgba(12, 20, 39, 0.82), rgba(4, 9, 22, 0.965));
+}
+
+.mini-panel::after,
+.playbook-card.playbook-card-tabletop::after,
+.playbook-detail-block::after,
+.playbook-open-stat::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.34;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 24%),
+    linear-gradient(115deg, rgba(115, 207, 255, 0.04), transparent 38%, rgba(167, 139, 250, 0.035));
+}
+
+.section-title,
+.portfolio-title,
+.playbook-hero-text,
+.risk-main-title {
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 42px rgba(0, 0, 0, 0.46),
+    0 0 34px rgba(93, 201, 255, 0.08);
+}
+
+.mini-value,
+.pnl-hero-value,
+.portfolio-pnl-main,
+.playbook-stat-value,
+.playbook-open-stat-value,
+.assets-mini-value {
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.055),
+    0 12px 34px rgba(0, 0, 0, 0.5),
+    0 0 24px rgba(112, 210, 255, 0.065);
+}
+
+.mini-sub,
+.playbook-detail-text,
+.playbook-detail-text-large,
+.portfolio-td,
+.cyber-nav-btn {
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
+}
+
+.cyber-nav-btn {
+  border-color: rgba(202, 226, 255, 0.075);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.cyber-nav-btn:hover {
+  border-color: rgba(125, 211, 252, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 10px 28px rgba(0, 0, 0, 0.22),
+    0 0 28px rgba(91, 214, 255, 0.045);
+}
+
+.cyber-nav-btn-active {
+  border-color: rgba(190, 174, 255, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.075),
+    inset 0 0 22px rgba(142, 98, 255, 0.11),
+    0 14px 36px rgba(0, 0, 0, 0.3),
+    0 0 34px rgba(108, 180, 255, 0.12);
+}
+
+.mini-sub-green,
+.portfolio-pnl-positive,
+.playbook-profit-high .playbook-stat-value,
+.playbook-profit-high .playbook-open-stat-value {
+  text-shadow:
+    0 0 18px rgba(89, 255, 151, 0.2),
+    0 10px 26px rgba(0, 0, 0, 0.38);
+}
+
+.mini-sub-red,
+.portfolio-pnl-negative,
+.playbook-risk-high .playbook-stat-value,
+.playbook-risk-high .playbook-open-stat-value {
+  text-shadow:
+    0 0 18px rgba(255, 114, 136, 0.2),
+    0 10px 26px rgba(0, 0, 0, 0.38);
+}
+
+.cyber-badge,
+.playbook-status-pill {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 10px 28px rgba(0, 0, 0, 0.24),
+    0 0 22px rgba(91, 214, 255, 0.035);
+}
+
+.portfolio-table-row {
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.portfolio-link-card:hover .mini-panel,
+.overview-link-card:hover .mini-panel,
+.playbook-card.playbook-card-tabletop:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.075),
+    inset 0 -14px 34px rgba(0, 0, 0, 0.14),
+    0 20px 56px rgba(0, 0, 0, 0.34),
+    0 0 42px rgba(91, 214, 255, 0.08);
+}
+
+@media (max-width: 768px) {
+  .cyber-panel,
+  .mini-panel,
+  .playbook-card,
+  .playbook-detail-block,
+  .playbook-open-stat {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.055),
+      inset 0 -10px 24px rgba(0, 0, 0, 0.13),
+      0 12px 34px rgba(0, 0, 0, 0.32);
+  }
+
+  .section-title,
+  .mini-value,
+  .pnl-hero-value {
+    text-shadow:
+      0 10px 28px rgba(0, 0, 0, 0.46),
+      0 0 18px rgba(93, 201, 255, 0.055);
+  }
+}
+
 
 .fear-greed-source{margin-top:10px;font-size:12px;line-height:1.4;color:#94a3b8;opacity:.9}
