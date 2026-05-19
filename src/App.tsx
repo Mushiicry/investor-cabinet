@@ -9,16 +9,16 @@ import apexLogo from "./assets/coins/apex.png";
 import mntLogo from "./assets/coins/mnt.png";
 import tiaLogo from "./assets/coins/tia.png";
 import usdtLogo from "./assets/coins/usdt.png";
+import { Sidebar } from "./components/layout/Sidebar";
+import { Panel } from "./components/shared/Panel";
 import {
-  BUY_WINDOW_END,
-  BUY_WINDOW_START,
-  NEXT_HALVING,
   TEST_LOGIN,
   TEST_PASSWORD,
 } from "./config/constants";
 import { useFearGreed } from "./hooks/useFearGreed";
 import { useInvestorData } from "./hooks/useInvestorData";
 import { currency, percent, percentDirect } from "./lib/formatters";
+import { getMoodData } from "./lib/moodData";
 import { buildPortfolioState, round } from "./lib/portfolioCalculations";
 import {
   assetGlyph,
@@ -43,27 +43,6 @@ import type {
 import "./App.css";
 
 const RISK_BAR_COLORS = ["#63d8ff", "#3ddb72", "#9f57ff", "#f7d64a", "#ff6f8e", "#ff8b2a", "#45c2ff", "#53ea87"];
-
-function getMoodData() {
-  const now = new Date();
-  const msPerDay = 1000 * 60 * 60 * 24;
-  const daysToStart = Math.ceil((BUY_WINDOW_START.getTime() - now.getTime()) / msPerDay);
-  const daysToEnd = Math.ceil((BUY_WINDOW_END.getTime() - now.getTime()) / msPerDay);
-  const daysToHalving = Math.ceil((NEXT_HALVING.getTime() - now.getTime()) / msPerDay);
-  const inWindow = now >= BUY_WINDOW_START && now <= BUY_WINDOW_END;
-  const beforeWindow = now < BUY_WINDOW_START;
-  const countdownLabel = inWindow ? `Окно открыто. До закрытия ${Math.max(daysToEnd, 0)} дн.` : beforeWindow ? `До окна ${Math.max(daysToStart, 0)} дн.` : "Окно уже прошло.";
-
-  return {
-    currentMarket: "Текущий рынок - страх. Стейблы на руках, ликвидность высокая, портфель не перегружен. Покупки допустимы только постепенно и без веры в быстрый разворот.",
-    cryptoWave: "Крипта - поздняя волна цикла после основной бычьей фазы. Базовый сценарий - доборы только в сильной слабости и по плану.",
-    goldWave: "Золото - защитная волна. Логика удержания сохраняется, пока рынок не вернулся в устойчивый risk-on (аппетит к риску).",
-    stocksWave: "Акции - нейтрально/осторожно. Массовой силы для агрессивного набора пока нет, приоритет у кэша и точечных действий.",
-    buyWindow: "10 октября 2026 - 15 декабря 2026",
-    countdownLabel,
-    cycleLogic: `Логика цикла: после халвинга рынок проходит эйфорию, затем охлаждение. До следующего халвинга осталось ${Math.max(daysToHalving, 0)} дн. Сейчас приоритет - сантимент, шкала эмоций и дисциплина входа, а не вера в мгновенную бычку.`,
-  };
-}
 
 function Badge({
   children,
@@ -90,48 +69,7 @@ function TrendArrow({ direction = "up" }: { direction?: "up" | "down" }) {
     </span>
   );
 }
-function Panel({
-  children,
-  tone = "cyan",
-  className = "",
-  hover = false,
-}: {
-  children: React.ReactNode;
-  tone?: "cyan" | "violet" | "yellow";
-  className?: string;
-  hover?: boolean;
-}) {
-  const map = { cyan: "cyber-panel-cyan", violet: "cyber-panel-violet", yellow: "cyber-panel-yellow" };
-  return <div className={`cyber-panel ${map[tone]} ${hover ? "cyber-hover-panel" : ""} ${className}`}>{children}</div>;
-}
-function Sidebar({ page, setPage }: { page: Page; setPage: (p: Page) => void }) {
-  const items: Page[] = ["Обзор", "Портфель", "Риск", "Сценарии и решения", "Вход"];
-  return (
-    <aside className="w-full lg:w-72 shrink-0">
-      <Panel tone="violet" className="p-4 lg:sticky lg:top-6" hover>
-        <div className="px-3 py-3 mb-4">
-          <div className="text-[11px] uppercase tracking-[0.35em] text-cyan-300">PATCH 6</div>
-          <div className="text-[34px] leading-none font-black mt-4 text-white">Кабинет</div>
-          <div className="text-[34px] leading-none font-black text-white/90">инвестора</div>
-        </div>
-        <nav className="space-y-2">
-          {items.map((item) => {
-            const active = page === item;
-            return (
-              <button
-                key={item}
-                onClick={() => setPage(item)}
-                className={`cyber-nav-btn ${active ? "cyber-nav-btn-active" : ""}`}
-              >
-                {item}
-              </button>
-            );
-          })}
-        </nav>
-      </Panel>
-    </aside>
-  );
-}
+
 function MiniInfo({
   label,
   value,

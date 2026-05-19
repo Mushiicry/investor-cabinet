@@ -353,6 +353,69 @@ completed
 
 ---
 
+# PATCH 2.3
+
+Extract Mood Data.
+
+Type:
+code organization
+
+Goal:
+move mood and market sentiment logic out of `src/App.tsx` without changing runtime behavior.
+
+Files changed:
+- `src/lib/moodData.ts`
+- `src/App.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- created `src/lib/moodData.ts`
+- moved mood and sentiment logic out of `src/App.tsx`
+- buy window and halving logic were not changed
+- recommendation and emotional texts were not changed
+- UI, JSX, CSS and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.0
+
+Extract Sidebar Component.
+
+Type:
+component extraction
+
+Goal:
+move `Panel` and `Sidebar` out of `src/App.tsx` without changing behavior or visual structure.
+
+Files changed:
+- `src/components/shared/Panel.tsx`
+- `src/components/layout/Sidebar.tsx`
+- `src/App.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- created `src/components/shared/Panel.tsx`
+- created `src/components/layout/Sidebar.tsx`
+- moved `Panel` out of `src/App.tsx`
+- moved `Sidebar` out of `src/App.tsx`
+- nav behavior was not changed
+- className and UI structure were not changed
+- `App.css` was not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:
