@@ -507,6 +507,368 @@ completed
 
 ---
 
+# PATCH 3.3.1
+
+Fix Typography and Wormhole Regression.
+
+Type:
+visual fix
+
+Goal:
+restore normal composition after PATCH 3.3, fix long asset names, improve PnL readability and reduce the cosmic focal element.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- rolled body font back to `Inter, system-ui, sans-serif`
+- kept `Space Grotesk` only for headings and numbers
+- fixed clipping for long asset names such as `BTC SHORT`
+- strengthened PnL readability
+- reduced the wormhole and moved it lower and further left
+- layout, data and API behavior were not changed
+- `src/App.tsx` was not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.3.2
+
+Reposition Cosmic Nebula Element.
+
+Type:
+visual fix
+
+Goal:
+turn the cosmic focal element into a lower-left purple/blue nebula glow that matches the site atmosphere.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- fixed the cosmic focal element
+- removed the eye-like effect
+- moved the element lower into the lower-left sector
+- changed it into a soft purple/blue nebula glow
+- layout, JSX, data and API behavior were not changed
+- `src/App.tsx` was not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.3.3
+
+Purple Milky Way Placement.
+
+Type:
+visual fix
+
+Goal:
+replace the portal-like cosmic element with a lower-left diagonal purple/blue Milky Way style nebula.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- replaced the circular/portal visual model for `.space-wormhole`
+- removed central dark-eye styling and hard radial rays
+- moved the element further lower-left
+- changed the effect into an elongated purple/blue nebula trail
+- layout, JSX, data and API behavior were not changed
+- `src/App.tsx` was not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.3.4
+
+Build Real Purple Milky Way Layer.
+
+Type:
+visual fix
+
+Goal:
+make the lower-left cosmic element read as a bright purple-blue Milky Way layer with a nebula stream and star dust.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- strengthened the purple-blue Milky Way element
+- added a bright core in the lower-left
+- added a diagonal nebula stream
+- added star dust without an eye or portal effect
+- `src/App.tsx`, layout, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.3.5
+
+Use Nebula Image Asset.
+
+Type:
+visual fix
+
+Goal:
+match the lower-left purple Milky Way reference more closely by using a real bitmap nebula asset instead of CSS-only gradients.
+
+Files changed:
+- `src/assets/backgrounds/purple-milky-way.png`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- created a purple-blue Milky Way bitmap asset from the provided reference
+- connected the asset to `.space-wormhole`
+- kept CSS gradients only as a soft bloom layer
+- removed the CSS-only portal/plate look
+- `src/App.tsx`, layout, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.3.6
+
+Attach Nebula To Scene Scroll.
+
+Type:
+visual fix
+
+Goal:
+make the purple Milky Way layer behave like part of the full cosmic background instead of a fixed decorative viewport sticker.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- changed `.space-wormhole` from fixed viewport positioning to an absolute scene layer
+- positioned the nebula inside `.cyber-scene` so it scrolls with the page
+- increased the nebula canvas size to read more like a background galaxy
+- preserved pointer safety and z-index below the UI
+- `src/App.tsx`, layout, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.3.7
+
+Blend Nebula Into Background.
+
+Type:
+visual fix
+
+Goal:
+remove the visible rectangular seam around the purple Milky Way layer so the full screen reads as one unified cosmic background.
+
+Files changed:
+- `src/assets/backgrounds/purple-milky-way.png`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- softened the nebula asset alpha so dark image edges no longer create a pasted rectangle
+- removed the rectangular glow/shadow around `.space-wormhole`
+- added a radial mask so the nebula fades into the site background
+- kept the nebula attached to the scrolling scene
+- `src/App.tsx`, layout, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.3.8
+
+Remove Vertical Seam Near Nebula.
+
+Type:
+visual fix
+
+Goal:
+remove the visible vertical seam near the nebula layer without changing its position, size or scroll behavior.
+
+Files changed:
+- `src/assets/backgrounds/purple-milky-way.png`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- removed the vertical seam / edge artifact near the nebula layer
+- strengthened the right-edge fade through `mask-image`
+- updated `purple-milky-way.png` with a stronger transparent right edge
+- preserved the nebula position, size and scroll behavior
+- `src/App.tsx`, layout, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.3.9
+
+Final Nebula Edge Fade.
+
+Type:
+visual fix
+
+Goal:
+fully remove the remaining vertical edge artifact on the right side of the nebula layer.
+
+Files changed:
+- `src/assets/backgrounds/purple-milky-way.png`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- strengthened the right-edge fade of the nebula layer
+- removed the remaining vertical edge artifact
+- simplified the mask to one aggressive horizontal fade
+- added a soft right-edge blending layer
+- preserved the nebula position, size and scroll behavior
+- `src/App.tsx`, layout, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.3.10
+
+Restore Nebula Soft Edge Balance.
+
+Type:
+visual fix
+
+Goal:
+restore a softer, fuller nebula trail after the aggressive right-edge fade from PATCH 3.3.9.
+
+Files changed:
+- `src/assets/backgrounds/purple-milky-way.png`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- softened the aggressive right-edge fade from PATCH 3.3.9
+- restored a fuller nebula trail with a more gradual transparent edge
+- removed the dark right-edge blending layer
+- preserved the nebula position, size and scroll behavior
+- `src/App.tsx`, layout, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.4
+
+Full Cosmic Background Asset.
+
+Type:
+visual background replacement
+
+Goal:
+replace the separate nebula layer with one full-page cosmic background asset to remove seams, rectangular edges and pasted-layer artifacts.
+
+Files changed:
+- `src/assets/backgrounds/cosmic-dashboard-bg.png`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- added `cosmic-dashboard-bg.png` as the main background for `.cyber-scene`
+- disabled the separate `.space-wormhole` layer
+- removed the old nebula image dependency from `.space-wormhole`
+- kept UI blocks above the background with z-index layering
+- softened old scene-orb / scene-plane intensity so they do not conflict with the full background
+- `src/App.tsx`, layout, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.4.1
+
+Increase Cosmic Background Saturation.
+
+Type:
+visual background enhancement
+
+Goal:
+make the full cosmic background brighter, richer and closer to the vivid purple-blue reference while preserving UI readability.
+
+Files changed:
+- `src/assets/backgrounds/cosmic-dashboard-bg.png`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- increased saturation, contrast and brightness of the full background asset
+- strengthened the lower-left purple/blue nebula and right-side violet glow
+- added more small stars across the center and right side
+- reduced the heavy dark overlay on `.cyber-scene`
+- kept the full background as one continuous image with no separate nebula layer
+- `src/App.tsx`, layout, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:

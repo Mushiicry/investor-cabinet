@@ -5384,17 +5384,13 @@ body {
 .cyber-scene {
   isolation: isolate;
   background:
-    radial-gradient(circle at 50% -12%, rgba(88, 214, 255, 0.13), transparent 32rem),
-    radial-gradient(circle at 86% 16%, rgba(126, 86, 255, 0.12), transparent 34rem),
-    radial-gradient(circle at 16% 76%, rgba(14, 165, 233, 0.08), transparent 38rem),
-    linear-gradient(180deg, rgba(7, 12, 27, 0.9), rgba(2, 5, 15, 0.99)),
-    repeating-linear-gradient(
-      90deg,
-      rgba(91, 214, 255, 0.03) 0,
-      rgba(91, 214, 255, 0.03) 1px,
-      transparent 1px,
-      transparent 8px
-    );
+    linear-gradient(180deg, rgba(3, 7, 18, 0.08), rgba(3, 7, 18, 0.62)),
+    url("./assets/backgrounds/cosmic-dashboard-bg.png"),
+    linear-gradient(180deg, #050814 0%, #02040c 100%);
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
 }
 
 .cyber-scene::before,
@@ -5407,13 +5403,10 @@ body {
 
 .cyber-scene::before {
   z-index: 0;
-  opacity: 0.34;
+  opacity: 0.58;
   background:
-    radial-gradient(circle, rgba(236, 248, 255, 0.6) 0 1px, transparent 1.5px) 8% 12% / 9.5rem 9.5rem,
-    radial-gradient(circle, rgba(144, 210, 255, 0.45) 0 1px, transparent 1.4px) 72% 18% / 13rem 13rem,
-    radial-gradient(circle, rgba(206, 183, 255, 0.42) 0 1px, transparent 1.4px) 32% 68% / 11rem 11rem,
-    linear-gradient(115deg, transparent 0%, rgba(114, 203, 255, 0.045) 34%, transparent 62%);
-  animation: cosmicStarDrift 28s ease-in-out infinite;
+    radial-gradient(circle at 50% 8%, rgba(3, 7, 18, 0.08), rgba(3, 7, 18, 0.32) 48%, rgba(3, 7, 18, 0.58) 100%),
+    linear-gradient(180deg, rgba(1, 4, 12, 0.04), rgba(1, 4, 12, 0.34));
 }
 
 .cyber-scene::after {
@@ -5424,9 +5417,16 @@ body {
     linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 22%, rgba(0, 0, 0, 0.18));
 }
 
-.cyber-scene > :not(.scene-orb):not(.scene-plane) {
+.cyber-scene > :not(.scene-orb):not(.scene-plane):not(.space-wormhole) {
   position: relative;
   z-index: 1;
+}
+
+.cyber-panel,
+.cyber-scene main,
+.cyber-scene aside {
+  position: relative;
+  z-index: 2;
 }
 
 .scene-orb,
@@ -5436,7 +5436,7 @@ body {
 }
 
 .scene-orb {
-  opacity: 0.42;
+  opacity: 0.18;
   filter: blur(52px) saturate(1.15);
   animation: atmosphereOrbDrift 26s ease-in-out infinite, atmosphereBlurBreath 18s ease-in-out infinite;
 }
@@ -5460,7 +5460,7 @@ body {
 }
 
 .scene-plane {
-  opacity: 0.34;
+  opacity: 0.14;
   filter: blur(48px) saturate(1.08);
   animation: atmospherePlaneDrift 30s ease-in-out infinite, atmospherePlanePulse 22s ease-in-out infinite;
 }
@@ -5804,73 +5804,54 @@ body {
 }
 
 /* ===== PATCH 3.3 - TYPOGRAPHY & COSMIC FOCAL ELEMENT ===== */
-body,
-.cyber-scene {
-  font-family: "Space Grotesk", Inter, system-ui, sans-serif !important;
+body {
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.section-title,
+.section-title-main,
+.mini-value,
+.mini-value-hero,
+.mini-value-asset,
+.fear-greed-value,
+.portfolio-title,
+.pnl-hero-value {
+  font-family: "Space Grotesk", Inter, system-ui, sans-serif;
 }
 
 .space-wormhole {
-  position: absolute;
-  left: -13rem;
-  bottom: -14rem;
-  width: 38rem;
-  height: 38rem;
-  border-radius: 999px;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.42;
-  filter: blur(0.45px) saturate(1.16);
-  background:
-    radial-gradient(circle at 50% 50%, rgba(2, 5, 14, 0.98) 0 8%, rgba(15, 19, 36, 0.82) 10%, transparent 17%),
-    conic-gradient(
-      from 32deg,
-      transparent 0deg,
-      rgba(78, 214, 255, 0.28) 38deg,
-      rgba(168, 85, 247, 0.3) 82deg,
-      rgba(255, 105, 180, 0.18) 122deg,
-      transparent 166deg,
-      rgba(87, 220, 255, 0.18) 212deg,
-      rgba(154, 98, 255, 0.24) 268deg,
-      transparent 330deg
-    ),
-    radial-gradient(circle at 50% 50%, rgba(83, 221, 255, 0.24), rgba(111, 67, 255, 0.14) 32%, rgba(255, 91, 157, 0.08) 52%, transparent 68%);
-  box-shadow:
-    0 0 90px rgba(109, 94, 255, 0.2),
-    0 0 150px rgba(72, 214, 255, 0.12);
-  transform-origin: 50% 50%;
-  animation: spaceWormholeSpin 38s linear infinite, spaceWormholePulse 24s ease-in-out infinite;
+  display: none;
 }
 
 .space-wormhole::before,
 .space-wormhole::after {
   content: "";
+  display: none;
   position: absolute;
   pointer-events: none;
-  border-radius: inherit;
 }
 
 .space-wormhole::before {
-  inset: 5rem;
-  opacity: 0.8;
+  left: 4%;
+  bottom: 6%;
+  width: 88%;
+  height: 46%;
+  border-radius: 999px;
   background:
-    repeating-conic-gradient(
-      from -20deg,
-      rgba(255, 255, 255, 0.16) 0deg 1deg,
-      transparent 1deg 12deg
-    ),
-    radial-gradient(circle at center, transparent 0 26%, rgba(96, 218, 255, 0.2) 32%, transparent 58%);
-  filter: blur(1.2px);
-  animation: spaceWormholeCounterSpin 31s linear infinite;
+    linear-gradient(112deg,
+      transparent 0%,
+      rgba(91, 214, 255, 0.08) 12%,
+      rgba(168, 85, 247, 0.2) 34%,
+      rgba(255, 100, 230, 0.24) 48%,
+      rgba(91, 214, 255, 0.14) 64%,
+      transparent 100%
+    );
+  filter: blur(18px);
+  opacity: 0.55;
 }
 
 .space-wormhole::after {
-  inset: -5rem;
-  opacity: 0.46;
-  background:
-    radial-gradient(circle at 31% 38%, rgba(255, 255, 255, 0.9) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 72% 30%, rgba(135, 209, 255, 0.75) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 63% 74%, rgba(235, 176, 255, 0.75) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 44% 82%, rgba(255, 117, 170, 0.55) 0 1px, transparent 1.6px);
+  display: none;
 }
 
 .section-title,
@@ -5894,17 +5875,19 @@ body,
 }
 
 .overview-main-grid .portfolio-link-card .mini-panel {
-  overflow: hidden;
+  overflow: visible !important;
 }
 
 .overview-main-grid .portfolio-link-card .mini-value-asset {
   max-width: 100%;
   display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: clip;
-  font-size: clamp(2.85rem, 3.2vw, 4.05rem);
-  line-height: 0.96;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  overflow: visible;
+  text-overflow: initial;
+  font-size: clamp(2.05rem, 2.2vw, 2.85rem);
+  line-height: 0.92;
   letter-spacing: 0;
   text-align: center;
 }
@@ -5913,7 +5896,7 @@ body,
   position: relative;
   z-index: 1;
   margin-top: 0.82rem;
-  color: rgba(244, 248, 255, 0.95);
+  color: rgba(238, 242, 255, 0.92);
   font-size: 1.12rem;
   line-height: 1.22;
   font-weight: 700;
@@ -5923,26 +5906,26 @@ body,
 }
 
 .mini-sub-pnl-row {
-  color: #67ff9d;
+  color: #43ff8f;
   font-weight: 900;
   text-shadow:
-    0 0 18px rgba(103, 255, 157, 0.28),
+    0 0 12px rgba(67, 255, 143, 0.32),
     0 10px 26px rgba(0, 0, 0, 0.42);
 }
 
 .mini-sub-green,
 .portfolio-pnl-positive {
-  color: #63ff9b;
+  color: #43ff8f;
   text-shadow:
-    0 0 20px rgba(99, 255, 155, 0.32),
+    0 0 12px rgba(67, 255, 143, 0.32),
     0 10px 26px rgba(0, 0, 0, 0.44);
 }
 
 .mini-sub-red,
 .portfolio-pnl-negative {
-  color: #ff5f7d;
+  color: #ff5f7e;
   text-shadow:
-    0 0 20px rgba(255, 95, 125, 0.32),
+    0 0 12px rgba(255, 95, 126, 0.32),
     0 10px 26px rgba(0, 0, 0, 0.44);
 }
 
@@ -5966,39 +5949,35 @@ body,
     0 0 38px rgba(255, 226, 89, 0.11);
 }
 
-@keyframes spaceWormholeSpin {
-  0% { transform: rotate(0deg) scale(1); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-
-@keyframes spaceWormholeCounterSpin {
-  0% { transform: rotate(0deg) scale(1); }
-  100% { transform: rotate(-360deg) scale(1); }
-}
-
-@keyframes spaceWormholePulse {
-  0%, 100% { opacity: 0.34; filter: blur(0.5px) saturate(1.08); }
-  50% { opacity: 0.48; filter: blur(1.1px) saturate(1.22); }
+@keyframes milkyWayImageDrift {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.88;
+  }
+  50% {
+    transform: translate3d(10px, -8px, 0) scale(1.025);
+    opacity: 1;
+  }
 }
 
 @media (max-width: 1280px) {
   .overview-main-grid .portfolio-link-card .mini-value-asset {
-    font-size: clamp(2.55rem, 7.4vw, 3.75rem);
+    font-size: clamp(2.05rem, 4.9vw, 2.85rem);
   }
 }
 
 @media (max-width: 768px) {
   .space-wormhole {
-    left: -16rem;
-    bottom: -16rem;
-    width: 32rem;
-    height: 32rem;
-    opacity: 0.26;
-    filter: blur(1px) saturate(1.04);
+    left: -180px;
+    top: 520px;
+    bottom: auto;
+    width: 480px;
+    height: 520px;
+    opacity: 0.58;
   }
 
   .overview-main-grid .portfolio-link-card .mini-value-asset {
-    font-size: clamp(2.35rem, 12vw, 3.4rem);
+    font-size: clamp(2rem, 9vw, 2.65rem);
   }
 
   .overview-main-grid .portfolio-link-card .mini-sub {
