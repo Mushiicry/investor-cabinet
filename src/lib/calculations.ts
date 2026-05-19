@@ -2,7 +2,7 @@ import type {
   Category,
   CategoryAllocation,
   Decision,
-  PortfolioState,
+  PortfolioStateBase,
   PositionCalculated,
   PositionInput,
   Risk,
@@ -156,7 +156,7 @@ export function buildPortfolioState(
   rawPositions: PositionInput[],
   decisions: Decision[],
   scenarios: ScenarioCard[],
-): PortfolioState {
+): PortfolioStateBase {
   const portfolio = calculatePortfolio(rawPositions);
 
   const invested = round(portfolio.reduce((sum, item) => sum + item.invested, 0));

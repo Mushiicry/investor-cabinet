@@ -88,6 +88,29 @@ completed
 
 ---
 
+# PATCH 1.4
+
+Extract Types.
+
+Type:
+code organization
+
+Goal:
+move TypeScript portfolio/dashboard types from `src/App.tsx` into a dedicated type layer without changing runtime behavior.
+
+Changes:
+- updated `src/types/portfolio.ts`
+- replaced local App type declarations with type-only imports
+- kept UI, fetch logic, state logic, calculations and styling unchanged
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:

@@ -9,6 +9,18 @@ import apexLogo from "./assets/coins/apex.png";
 import mntLogo from "./assets/coins/mnt.png";
 import tiaLogo from "./assets/coins/tia.png";
 import usdtLogo from "./assets/coins/usdt.png";
+import type {
+  Category,
+  CategoryAllocation,
+  Decision,
+  FearGreed,
+  Page,
+  PortfolioState,
+  PositionCalculated,
+  PositionInput,
+  Risk,
+  ScenarioCard,
+} from "./types/portfolio";
 import "./App.css";
 
 const API_URL = "/api/investor";
@@ -23,130 +35,6 @@ const currency = (n: number) =>
 
 const percent = (n: number) => `${(Number(n || 0) * 100).toFixed(1)}%`;
 const percentDirect = (n: number) => `${Number(n || 0).toFixed(1)}%`;
-
-type Page = "Обзор" | "Портфель" | "Риск" | "Сценарии и решения" | "Вход";
-
-type Category =
-  | "Крипта"
-  | "Металлы"
-  | "Фьючерсы"
-  | "Акции"
-  | "Свободные деньги";
-
-type PositionStatus =
-  | "Накапливать"
-  | "Наблюдать"
-  | "Хедж"
-  | "Спекуляция"
-  | "Держать"
-  | "Резерв";
-
-type PositionInput = {
-  asset: string;
-  category: Category;
-  quantity: number;
-  avgEntry: number;
-  currentPrice: number;
-  status: PositionStatus;
-};
-
-type PositionCalculated = PositionInput & {
-  invested: number;
-  currentValue: number;
-  pnl: number;
-  pnlPct: number;
-  share: number;
-};
-
-type CategoryAllocation = {
-  name: Category;
-  value: number;
-  share: number;
-};
-
-type Overview = {
-  portfolioValue: number;
-  invested: number;
-  pnl: number;
-  pnlPct: number;
-  reserve: number;
-  positionsCount: number;
-  health: number;
-  state: string;
-  signal: string;
-  action: string;
-  topPositions: Array<{
-    asset: string;
-    share: number;
-    value: number;
-    status: string;
-  }>;
-  bestPosition: {
-    asset: string;
-    pnl: number;
-    pnlPct: number;
-  };
-  worstPosition: {
-    asset: string;
-    pnl: number;
-    pnlPct: number;
-  };
-  categories: CategoryAllocation[];
-};
-
-type Risk = {
-  portfolioValue: number;
-  reserve: number;
-  reserveShare: number;
-  deployableCash: number;
-  largestRiskAsset: string;
-  largestRiskShare: number;
-  cryptoShare: number;
-  stocksShare: number;
-  metalsShare: number;
-  futuresShare: number;
-  cashShare: number;
-  health: number;
-  state: string;
-  signal: string;
-  summary: string;
-};
-
-type Decision = {
-  asset: string;
-  thesis: string;
-  whyHold: string;
-  expect: string;
-  nextAction: string;
-  reviewTrigger: string;
-  status: string;
-};
-
-type ScenarioCard = {
-  asset: string;
-  base: string;
-  bull: string;
-  bear: string;
-  action: string;
-  invalidation: string;
-  status: string;
-};
-
-type PortfolioState = {
-  overview: Overview;
-  portfolio: PositionCalculated[];
-  risk: Risk;
-  decisions: Decision[];
-  scenarios: ScenarioCard[];
-  updatedAt: string;
-};
-
-type FearGreed = {
-  value: number;
-  label: string;
-  summary: string;
-  action: string;
-};
 
 const TEST_LOGIN = "mushi";
 const TEST_PASSWORD = "invest2026";

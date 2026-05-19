@@ -17,8 +17,7 @@ export type Page =
   | "Обзор"
   | "Портфель"
   | "Риск"
-  | "Решения"
-  | "Сценарии"
+  | "Сценарии и решения"
   | "Вход";
 
 export type PositionInput = {
@@ -44,7 +43,20 @@ export type CategoryAllocation = {
   share: number;
 };
 
-export type Overview = {
+export type OverviewPosition = {
+  asset: string;
+  share: number;
+  value: number;
+  status: string;
+};
+
+export type OverviewPerformancePosition = {
+  asset: string;
+  pnl: number;
+  pnlPct: number;
+};
+
+export type OverviewData = {
   portfolioValue: number;
   invested: number;
   pnl: number;
@@ -55,16 +67,15 @@ export type Overview = {
   state: string;
   signal: string;
   action: string;
-  topPositions: Array<{
-    asset: string;
-    share: number;
-    value: number;
-    status: string;
-  }>;
+  topPositions: OverviewPosition[];
+  bestPosition: OverviewPerformancePosition;
+  worstPosition: OverviewPerformancePosition;
   categories: CategoryAllocation[];
 };
 
-export type Risk = {
+export type OverviewBaseData = Omit<OverviewData, "bestPosition" | "worstPosition">;
+
+export type RiskData = {
   portfolioValue: number;
   reserve: number;
   reserveShare: number;
@@ -102,11 +113,27 @@ export type ScenarioCard = {
   status: string;
 };
 
+export type Position = PositionCalculated;
+export type Scenario = ScenarioCard;
+export type Overview = OverviewData;
+export type Risk = RiskData;
+
+export type FearGreed = {
+  value: number;
+  label: string;
+  summary: string;
+  action: string;
+};
+
 export type PortfolioState = {
-  overview: Overview;
+  overview: OverviewData;
   portfolio: PositionCalculated[];
-  risk: Risk;
+  risk: RiskData;
   decisions: Decision[];
   scenarios: ScenarioCard[];
   updatedAt: string;
+};
+
+export type PortfolioStateBase = Omit<PortfolioState, "overview"> & {
+  overview: OverviewBaseData;
 };
