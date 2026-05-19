@@ -39,12 +39,20 @@ stable
 
 # PATCH 1.2
 
-Fear & Greed integration planned.
+Live Fear & Greed integration.
 
 Goal:
-replace static F&G value.
+show live Fear & Greed index instead of static value.
 
-Requirements:
+Details:
+- changed file: `src/App.tsx`
+- fallback: 14
+- API: `https://api.alternative.me/fng/?limit=1`
+- build: successful
+- `App.css` was not changed
+- `vite.config.ts` was not changed
+
+Safety:
 - keep fallback 14
 - isolated state
 - no geometry changes
@@ -52,7 +60,7 @@ Requirements:
 - no API contract changes
 
 Status:
-planned
+completed
 
 ---
 
