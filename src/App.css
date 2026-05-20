@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -5949,6 +5949,42 @@ body {
     0 0 38px rgba(255, 226, 89, 0.11);
 }
 
+/* ===== PATCH 3.5 - TYPOGRAPHY UPGRADE SORA / SPACE GROTESK ===== */
+.mini-value,
+.mini-value-hero,
+.mini-value-risk,
+.mini-value-risk-money,
+.mini-value-health-metric,
+.mini-value-health-secondary,
+.pnl-hero-value,
+.fear-greed-value,
+.distribution-chart-core-value,
+.allocation-share,
+.portfolio-pnl-main,
+.portfolio-pnl-percent {
+  font-family: "Sora", "Arial", Inter, system-ui, sans-serif;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.055em;
+}
+
+.section-title,
+.section-title-main,
+.portfolio-title,
+.fear-greed-title,
+.mood-panel .section-title {
+  font-family: "Space Grotesk", Inter, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+.mini-value-hero,
+.mini-value-risk-money,
+.mini-value-health-secondary,
+.pnl-hero-value {
+  font-family: "Space Grotesk", Inter, system-ui, sans-serif;
+}
+
 @keyframes milkyWayImageDrift {
   0%, 100% {
     transform: translate3d(0, 0, 0) scale(1);
@@ -5994,3 +6030,1425 @@ body {
 
 
 .fear-greed-source{margin-top:10px;font-size:12px;line-height:1.4;color:#94a3b8;opacity:.9}
+
+/* ===== PATCH 3.5.1 - GLOBAL UI SCALE DOWN 15% ===== */
+.cyber-scene > div[style*="display: flex"] {
+  max-width: 1360px !important;
+  padding: 20px !important;
+  gap: 20px !important;
+}
+
+.cyber-scene aside {
+  flex-basis: 15.3rem !important;
+  width: 15.3rem !important;
+  max-width: 15.3rem !important;
+}
+
+.cyber-scene aside .cyber-panel {
+  padding: 0.85rem !important;
+  border-radius: 1.55rem;
+}
+
+.cyber-scene aside .cyber-panel > div:first-child {
+  padding: 0.65rem 0.65rem 0.7rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.cyber-scene aside .cyber-panel > div:first-child > div:first-child {
+  font-size: 0.62rem !important;
+}
+
+.cyber-scene aside .cyber-panel > div:first-child > div:nth-child(2),
+.cyber-scene aside .cyber-panel > div:first-child > div:nth-child(3) {
+  font-size: 1.8rem !important;
+}
+
+.cyber-scene aside nav {
+  gap: 0.42rem !important;
+}
+
+.cyber-nav-btn {
+  padding: 0.78rem 0.84rem;
+  border-radius: 0.95rem;
+  font-size: 0.92rem;
+}
+
+.cyber-panel {
+  border-radius: 1.7rem;
+}
+
+.overview-main-panel,
+.overview-health-panel,
+.mood-panel,
+.risk-top-panel,
+.risk-main-grid > .cyber-panel {
+  padding: 1.35rem !important;
+}
+
+.overview-top-grid,
+.risk-main-grid,
+.risk-right-grid,
+.mood-grid,
+.allocation-list {
+  gap: 0.85rem !important;
+}
+
+.overview-main-panel,
+.overview-health-panel {
+  min-height: 30.6rem;
+}
+
+.overview-header {
+  min-height: 7.2rem;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.overview-main-grid,
+.overview-health-grid {
+  gap: 0.85rem;
+}
+
+.mini-panel {
+  min-height: 12.1rem;
+  padding: 1.7rem 1.7rem 1.4rem;
+  border-radius: 1.7rem;
+}
+
+.mini-panel-risk {
+  padding: 1.4rem 1.2rem 1.1rem;
+}
+
+.section-title {
+  font-size: clamp(1.7rem, 2.2vw, 2.8rem);
+}
+
+.section-title-main {
+  font-size: clamp(2.05rem, 2.55vw, 3.4rem);
+}
+
+.portfolio-title,
+.fear-greed-title,
+.mood-panel .section-title,
+.risk-main-title {
+  font-size: clamp(2.05rem, 2.55vw, 3.25rem);
+}
+
+.mini-value {
+  font-size: clamp(2.7rem, 3.4vw, 3.75rem);
+}
+
+.mini-value-hero {
+  font-size: clamp(3.05rem, 3.75vw, 4.25rem);
+}
+
+.mini-value-asset,
+.overview-main-grid .portfolio-link-card .mini-value-asset {
+  font-size: clamp(1.75rem, 1.9vw, 2.42rem);
+}
+
+.mini-value-risk,
+.mini-value-health-metric {
+  font-size: clamp(2.55rem, 2.8vw, 3.6rem);
+}
+
+.mini-value-risk-state,
+.mini-value-health-state {
+  font-size: clamp(2.05rem, 2.42vw, 2.95rem);
+}
+
+.mini-value-risk-money,
+.mini-value-health-secondary {
+  font-size: clamp(2.1rem, 2.35vw, 2.95rem);
+}
+
+.pnl-hero-pill {
+  padding: 0.82rem 1.08rem;
+  gap: 0.72rem;
+}
+
+.pnl-hero-value {
+  font-size: clamp(1.5rem, 1.85vw, 2.2rem);
+}
+
+.trend-arrow {
+  width: 1.7rem;
+  height: 1.7rem;
+  font-size: 0.9rem;
+}
+
+.fear-greed-value {
+  font-size: clamp(4.05rem, 4.42vw, 5.78rem);
+}
+
+.fear-greed-main-row,
+.fear-greed-main-row-gauge {
+  gap: 0.9rem;
+}
+
+.fear-greed-main-row-gauge {
+  grid-template-columns: 128px minmax(0, 1fr);
+}
+
+.fear-greed-gauge-wrap {
+  max-width: 272px;
+}
+
+.allocation-header {
+  margin-bottom: 0.95rem;
+}
+
+.allocation-row {
+  padding: 1.02rem 1.1rem;
+  border-radius: 1.3rem;
+}
+
+.allocation-name {
+  font-size: 1.02rem;
+}
+
+.allocation-value {
+  font-size: 0.86rem;
+}
+
+.allocation-share {
+  font-size: 0.98rem;
+}
+
+.mood-panel {
+  padding-top: 1.28rem !important;
+}
+
+.mood-grid {
+  margin-top: 1.15rem;
+}
+
+.mood-card {
+  padding: 0.85rem 0.95rem;
+  border-radius: 1.28rem;
+}
+
+.mood-window-date {
+  font-size: 1.28rem;
+}
+
+.radar-wrap {
+  max-width: 476px;
+  height: 357px;
+}
+
+.radar-center {
+  width: 100px;
+  height: 100px;
+}
+
+.radar-center-value {
+  font-size: 29px;
+}
+
+@media (min-width: 1280px) {
+  .overview-main-panel,
+  .overview-health-panel {
+    min-height: 30.6rem;
+    height: 30.6rem;
+  }
+
+  .fear-greed-title {
+    font-size: clamp(2.2rem, 2.7vw, 3.2rem);
+  }
+
+  .fear-greed-main-row-gauge {
+    grid-template-columns: 136px minmax(0, 1fr);
+  }
+
+  .fear-greed-gauge-wrap {
+    max-width: 290px;
+  }
+
+  .allocation-row {
+    padding: 1.08rem 1.22rem;
+  }
+
+  .allocation-name { font-size: 1.08rem; }
+  .allocation-value { font-size: 0.9rem; }
+  .allocation-share { font-size: 1.02rem; }
+}
+
+@media (max-width: 1024px) {
+  .cyber-scene > div[style*="display: flex"] {
+    padding: 16px !important;
+    gap: 16px !important;
+  }
+
+  .cyber-scene aside {
+    flex-basis: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ===== PATCH 3.5.2 - COMPACT CARDS AFTER SCALE ===== */
+.overview-main-panel,
+.overview-health-panel {
+  min-height: 26.5rem !important;
+}
+
+.overview-main-panel,
+.overview-health-panel,
+.mood-panel,
+.risk-top-panel,
+.risk-main-grid > .cyber-panel {
+  padding: 1.1rem !important;
+}
+
+.overview-header {
+  min-height: 5.9rem !important;
+  margin-bottom: 0.65rem !important;
+  gap: 0.7rem !important;
+}
+
+.overview-top-grid,
+.overview-main-grid,
+.overview-health-grid,
+.risk-main-grid,
+.risk-right-grid,
+.allocation-list,
+.mood-grid {
+  gap: 0.65rem !important;
+}
+
+.mini-panel {
+  min-width: 0;
+  min-height: 9.4rem !important;
+  padding: 1.12rem 1.18rem 0.95rem !important;
+  border-radius: 1.35rem !important;
+  overflow: hidden;
+}
+
+.mini-panel > * {
+  min-width: 0;
+}
+
+.mini-panel-risk {
+  min-height: 9.15rem !important;
+  padding: 1.02rem 1rem 0.86rem !important;
+}
+
+.mini-label {
+  margin-bottom: 0.55rem !important;
+  font-size: 0.66rem;
+}
+
+.mini-label-overview-main,
+.mini-label-risk {
+  min-height: auto !important;
+  margin-bottom: 0.42rem !important;
+  font-size: 0.58rem !important;
+  letter-spacing: 0.2em !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-value,
+.mini-value-hero,
+.mini-value-risk,
+.mini-value-health-metric,
+.mini-value-risk-money,
+.mini-value-health-secondary,
+.mini-value-risk-state,
+.mini-value-health-state,
+.mini-value-asset {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-value {
+  font-size: clamp(2.25rem, 2.85vw, 3.18rem) !important;
+  line-height: 0.9;
+}
+
+.mini-value-hero {
+  font-size: clamp(2.55rem, 3.05vw, 3.5rem) !important;
+}
+
+.mini-value-asset,
+.overview-main-grid .portfolio-link-card .mini-value-asset {
+  font-size: clamp(1.55rem, 1.62vw, 2rem) !important;
+  line-height: 0.94;
+}
+
+.mini-value-risk,
+.mini-value-health-metric {
+  font-size: clamp(2.05rem, 2.3vw, 2.95rem) !important;
+}
+
+.mini-value-risk-state,
+.mini-value-health-state {
+  font-size: clamp(1.72rem, 1.95vw, 2.35rem) !important;
+}
+
+.mini-value-risk-money,
+.mini-value-health-secondary {
+  font-size: clamp(1.76rem, 1.95vw, 2.42rem) !important;
+}
+
+.mini-sub,
+.mini-sub-risk,
+.overview-main-grid .portfolio-link-card .mini-sub {
+  min-height: auto !important;
+  margin-top: 0.46rem !important;
+  font-size: 0.84rem !important;
+  line-height: 1.16 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-sub-pnl-row {
+  margin-top: 0.42rem !important;
+  gap: 0.45rem !important;
+  font-size: 0.84rem !important;
+}
+
+.pnl-hero-pill {
+  padding: 0.62rem 0.82rem !important;
+  gap: 0.52rem !important;
+}
+
+.pnl-hero-value {
+  font-size: clamp(1.24rem, 1.52vw, 1.78rem) !important;
+}
+
+.trend-arrow {
+  width: 1.42rem !important;
+  height: 1.42rem !important;
+  font-size: 0.76rem !important;
+}
+
+.section-kicker {
+  margin-bottom: 0.58rem !important;
+  font-size: 0.62rem !important;
+}
+
+.section-title {
+  font-size: clamp(1.45rem, 1.9vw, 2.38rem) !important;
+}
+
+.section-title-main {
+  font-size: clamp(1.72rem, 2.12vw, 2.75rem) !important;
+}
+
+.portfolio-title,
+.fear-greed-title,
+.mood-panel .section-title,
+.risk-main-title {
+  font-size: clamp(1.72rem, 2.12vw, 2.7rem) !important;
+}
+
+.allocation-header {
+  margin-bottom: 0.68rem !important;
+}
+
+.allocation-kicker,
+.fear-greed-kicker,
+.mood-kicker {
+  font-size: 0.74rem !important;
+  margin-bottom: 0.34rem !important;
+}
+
+.allocation-row {
+  min-width: 0;
+  padding: 0.72rem 0.84rem !important;
+  gap: 0.72rem !important;
+  border-radius: 1.05rem !important;
+}
+
+.allocation-row-left {
+  gap: 0.65rem !important;
+}
+
+.allocation-dot {
+  width: 0.72rem !important;
+  height: 0.72rem !important;
+}
+
+.allocation-name {
+  font-size: 0.9rem !important;
+}
+
+.allocation-value {
+  margin-top: 0.22rem !important;
+  font-size: 0.76rem !important;
+}
+
+.allocation-share {
+  font-size: 0.86rem !important;
+}
+
+.fear-greed-title-wrap {
+  margin-bottom: 0.72rem !important;
+}
+
+.fear-greed-main-row,
+.fear-greed-main-row-gauge {
+  gap: 0.62rem !important;
+  margin-bottom: 0.9rem !important;
+}
+
+.fear-greed-main-row-gauge {
+  grid-template-columns: 110px minmax(0, 1fr) !important;
+}
+
+.fear-greed-value {
+  font-size: clamp(3.2rem, 3.55vw, 4.55rem) !important;
+}
+
+.fear-greed-gauge-wrap {
+  max-width: 230px !important;
+}
+
+.fear-greed-description {
+  margin-bottom: 0.82rem !important;
+  font-size: 0.92rem;
+  line-height: 1.24;
+}
+
+.fear-greed-summary {
+  font-size: 0.96rem;
+  line-height: 1.25;
+}
+
+.mood-panel {
+  padding-top: 1rem !important;
+  padding-bottom: 1rem !important;
+}
+
+.mood-grid {
+  margin-top: 0.85rem !important;
+}
+
+.mood-card {
+  padding: 0.68rem 0.78rem !important;
+  border-radius: 1.05rem !important;
+}
+
+.mood-card-label {
+  margin-bottom: 0.52rem !important;
+  font-size: 0.58rem !important;
+}
+
+.mood-card-text {
+  font-size: 0.88rem !important;
+  line-height: 1.32 !important;
+}
+
+.mood-window-date {
+  font-size: 1.08rem !important;
+}
+
+.mood-countdown {
+  min-height: 1.65rem !important;
+  margin-top: 0.48rem !important;
+  padding: 0 0.7rem !important;
+  font-size: 0.78rem !important;
+}
+
+.radar-wrap {
+  max-width: 430px !important;
+  height: 322px !important;
+}
+
+.radar-center {
+  width: 90px !important;
+  height: 90px !important;
+}
+
+.radar-center-value {
+  font-size: 25px !important;
+}
+
+.risk-right-card {
+  padding: 0.78rem 0.82rem !important;
+  gap: 0.6rem !important;
+}
+
+.risk-mini-title {
+  font-size: 0.72rem !important;
+}
+
+.portfolio-table-wrap {
+  overflow-x: auto;
+}
+
+.portfolio-td,
+.portfolio-th {
+  font-size: 0.88rem;
+}
+
+.portfolio-pnl-main {
+  font-size: 0.88rem !important;
+}
+
+.portfolio-pnl-percent {
+  font-size: 0.82rem !important;
+}
+
+@media (min-width: 1280px) {
+  .overview-main-panel,
+  .overview-health-panel {
+    min-height: 26.5rem !important;
+    height: 26.5rem !important;
+  }
+
+  .fear-greed-main-row-gauge {
+    grid-template-columns: 116px minmax(0, 1fr) !important;
+  }
+
+  .fear-greed-gauge-wrap {
+    max-width: 246px !important;
+  }
+}
+
+/* ===== PATCH 3.5.3 - RESTORE SAFE LAYOUT SPACING ===== */
+.overview-main-panel,
+.overview-health-panel {
+  min-height: 28.6rem !important;
+}
+
+.overview-main-grid,
+.overview-health-grid {
+  gap: 0.95rem !important;
+  row-gap: 1.08rem !important;
+}
+
+.overview-header {
+  min-height: 6.45rem !important;
+  margin-bottom: 0.88rem !important;
+}
+
+.overview-main-grid .mini-panel,
+.overview-health-grid .mini-panel {
+  min-height: 10.25rem !important;
+  padding-top: 1.22rem !important;
+  padding-bottom: 1.08rem !important;
+}
+
+.overview-health-grid .mini-panel {
+  padding-left: 1.12rem !important;
+  padding-right: 1.12rem !important;
+}
+
+.overview-main-grid .mini-sub,
+.overview-health-grid .mini-sub,
+.overview-main-grid .portfolio-link-card .mini-sub {
+  margin-top: 0.58rem !important;
+  line-height: 1.2 !important;
+}
+
+.mini-sub-risk {
+  padding-bottom: 0.08rem;
+}
+
+.allocation-header {
+  margin-bottom: 0.92rem !important;
+}
+
+.allocation-list {
+  gap: 0.82rem !important;
+}
+
+.allocation-row {
+  padding-top: 0.82rem !important;
+  padding-bottom: 0.82rem !important;
+}
+
+.allocation-row-left {
+  gap: 0.78rem !important;
+}
+
+.fear-greed-title-wrap {
+  margin-bottom: 0.9rem !important;
+}
+
+.fear-greed-main-row,
+.fear-greed-main-row-gauge {
+  gap: 0.82rem !important;
+  margin-bottom: 1.08rem !important;
+}
+
+.fear-greed-description {
+  margin-bottom: 1.05rem !important;
+  line-height: 1.3 !important;
+}
+
+.fear-greed-summary {
+  padding-top: 0.95rem !important;
+  padding-bottom: 0.95rem !important;
+}
+
+.mood-panel {
+  padding-top: 1.18rem !important;
+  padding-bottom: 1.18rem !important;
+}
+
+.mood-grid {
+  gap: 0.86rem !important;
+  margin-top: 1.05rem !important;
+}
+
+.mood-card {
+  padding-top: 0.82rem !important;
+  padding-bottom: 0.82rem !important;
+}
+
+.mood-card-label {
+  margin-bottom: 0.62rem !important;
+}
+
+.mood-card-logic {
+  margin-top: 0.08rem;
+}
+
+.risk-main-grid {
+  gap: 1rem !important;
+}
+
+.risk-right-grid {
+  gap: 0.88rem !important;
+}
+
+@media (min-width: 1280px) {
+  .overview-main-panel,
+  .overview-health-panel {
+    min-height: 28.6rem !important;
+    height: 28.6rem !important;
+  }
+
+  .overview-top-grid {
+    gap: 1rem !important;
+  }
+}
+
+/* ===== PATCH 3.5.4 - RESTORE 4MM GUTTERS ===== */
+.overview-top-grid {
+  gap: 1.18rem !important;
+}
+
+.overview-main-panel,
+.overview-health-panel {
+  padding: 1.28rem !important;
+  min-height: 29.8rem !important;
+}
+
+.overview-main-grid,
+.overview-health-grid {
+  gap: 1rem !important;
+  row-gap: 1.08rem !important;
+  column-gap: 1rem !important;
+}
+
+.overview-main-grid > *,
+.overview-health-grid > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+.overview-main-grid .mini-panel,
+.overview-health-grid .mini-panel {
+  min-height: 10.55rem !important;
+  padding: 1.18rem 1.16rem 1.08rem !important;
+}
+
+.overview-main-grid .portfolio-link-card,
+.overview-health-grid .overview-link-card {
+  min-width: 0;
+  min-height: 0;
+}
+
+.overview-main-grid .portfolio-link-card .mini-panel,
+.overview-health-grid .overview-link-card .mini-panel {
+  height: 100%;
+}
+
+.overview-header {
+  margin-bottom: 1.02rem !important;
+}
+
+.overview-top-grid + .grid {
+  gap: 1.18rem !important;
+  margin-top: 1.18rem !important;
+}
+
+.allocation-header {
+  margin-bottom: 1.04rem !important;
+}
+
+.allocation-header + .grid {
+  gap: 1.12rem !important;
+}
+
+.allocation-list {
+  gap: 0.96rem !important;
+}
+
+.allocation-row {
+  padding-top: 0.92rem !important;
+  padding-bottom: 0.92rem !important;
+}
+
+.fear-greed-title-wrap {
+  margin-bottom: 1.04rem !important;
+}
+
+.fear-greed-main-row,
+.fear-greed-main-row-gauge {
+  gap: 1rem !important;
+  margin-bottom: 1.18rem !important;
+}
+
+.fear-greed-description {
+  margin-bottom: 1.12rem !important;
+}
+
+.fear-greed-summary {
+  margin-top: 0.18rem !important;
+}
+
+.mood-panel {
+  margin-top: 1.18rem !important;
+}
+
+.mood-grid {
+  gap: 1rem !important;
+  row-gap: 1.05rem !important;
+}
+
+.mood-card {
+  padding-top: 0.92rem !important;
+  padding-bottom: 0.92rem !important;
+}
+
+@media (min-width: 1280px) {
+  .overview-main-panel,
+  .overview-health-panel {
+    min-height: 29.8rem !important;
+    height: 29.8rem !important;
+  }
+
+  .overview-main-grid,
+  .overview-health-grid {
+    gap: 1rem !important;
+    row-gap: 1.08rem !important;
+    column-gap: 1rem !important;
+  }
+}
+
+/* ===== PATCH 3.5.5 - REAL MINI PANEL GUTTERS ===== */
+.overview-main-panel,
+.overview-health-panel {
+  height: auto !important;
+  min-height: 31.6rem !important;
+}
+
+.overview-main-grid,
+.overview-health-grid {
+  flex: 0 0 auto !important;
+  gap: 1.15rem !important;
+  row-gap: 1.15rem !important;
+  column-gap: 1.15rem !important;
+  align-items: stretch;
+}
+
+.overview-main-grid .mini-panel,
+.overview-health-grid .mini-panel {
+  min-height: 10.75rem !important;
+}
+
+.overview-main-grid .portfolio-link-card,
+.overview-health-grid .overview-link-card {
+  display: block;
+  height: 100%;
+}
+
+.overview-main-grid .portfolio-link-card .mini-panel,
+.overview-health-grid .overview-link-card .mini-panel {
+  height: 100%;
+}
+
+.overview-main-grid .mini-sub,
+.overview-health-grid .mini-sub,
+.overview-main-grid .portfolio-link-card .mini-sub {
+  margin-top: 0.68rem !important;
+}
+
+@media (min-width: 640px) {
+  .overview-main-grid,
+  .overview-health-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(10.75rem, auto)) !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .overview-main-panel,
+  .overview-health-panel {
+    height: auto !important;
+    min-height: 31.6rem !important;
+  }
+
+  .overview-main-grid,
+  .overview-health-grid {
+    grid-template-rows: repeat(2, minmax(10.75rem, auto)) !important;
+    gap: 1.15rem !important;
+    row-gap: 1.15rem !important;
+    column-gap: 1.15rem !important;
+  }
+}
+
+/* ===== PATCH 3.5.6 - MATCH MARKED CARD GUTTERS ===== */
+.overview-main-panel,
+.overview-health-panel {
+  padding: 1.42rem !important;
+  min-height: 31.2rem !important;
+}
+
+.overview-header {
+  min-height: 6.25rem !important;
+  margin-bottom: 1.28rem !important;
+}
+
+.overview-main-grid,
+.overview-health-grid {
+  flex: 0 0 auto !important;
+  gap: 1.28rem !important;
+  row-gap: 1.28rem !important;
+  column-gap: 1.28rem !important;
+  align-items: start !important;
+}
+
+.overview-main-grid .mini-panel,
+.overview-health-grid .mini-panel {
+  height: 9.7rem !important;
+  min-height: 9.7rem !important;
+  padding: 1rem 1.08rem 0.92rem !important;
+}
+
+.overview-main-grid .portfolio-link-card,
+.overview-health-grid .overview-link-card {
+  height: 9.7rem !important;
+}
+
+.overview-main-grid .portfolio-link-card .mini-panel,
+.overview-health-grid .overview-link-card .mini-panel {
+  height: 9.7rem !important;
+  min-height: 9.7rem !important;
+}
+
+.overview-health-grid .mini-panel {
+  justify-content: center;
+}
+
+.overview-main-grid .mini-label,
+.overview-health-grid .mini-label {
+  min-height: 1.62rem !important;
+  margin-bottom: 0.52rem !important;
+}
+
+.overview-main-grid .mini-sub,
+.overview-health-grid .mini-sub,
+.overview-main-grid .portfolio-link-card .mini-sub {
+  margin-top: 0.54rem !important;
+  min-height: 1.34rem !important;
+}
+
+@media (min-width: 640px) {
+  .overview-main-grid,
+  .overview-health-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, 9.7rem) !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .overview-main-panel,
+  .overview-health-panel {
+    height: auto !important;
+    min-height: 31.2rem !important;
+  }
+
+  .overview-main-grid,
+  .overview-health-grid {
+    grid-template-rows: repeat(2, 9.7rem) !important;
+    gap: 1.28rem !important;
+    row-gap: 1.28rem !important;
+    column-gap: 1.28rem !important;
+  }
+}
+
+/* ===== PATCH 3.6 - HOLOGRAM ALLOCATION CHART ===== */
+.hologram-allocation-panel {
+  position: relative;
+  overflow: hidden;
+  min-height: 31.2rem;
+  background:
+    radial-gradient(circle at 24% 56%, rgba(91, 214, 255, 0.13), transparent 34%),
+    radial-gradient(circle at 78% 28%, rgba(168, 85, 247, 0.1), transparent 32%),
+    linear-gradient(145deg, rgba(10, 18, 34, 0.78), rgba(3, 7, 18, 0.9));
+}
+
+.hologram-allocation-panel::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(91, 214, 255, 0.08) 44%, transparent 74%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 30%);
+  opacity: 0.75;
+}
+
+.holo-allocation-header,
+.holo-allocation-layout {
+  position: relative;
+  z-index: 1;
+}
+
+.holo-allocation-header {
+  margin-bottom: 0.72rem !important;
+}
+
+.holo-allocation-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.36fr) minmax(10.8rem, 0.72fr);
+  gap: 0.92rem;
+  align-items: center;
+}
+
+.holo-chart-stage {
+  position: relative;
+  min-height: 21.5rem;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.holo-chart-stage::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 1.15rem;
+  width: 16rem;
+  height: 5.7rem;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at center, rgba(91, 214, 255, 0.55), rgba(30, 112, 255, 0.18) 42%, transparent 72%);
+  filter: blur(12px);
+  opacity: 0.86;
+  animation: holoBasePulse 6s ease-in-out infinite;
+  z-index: -1;
+}
+
+.holo-chart-stage::after {
+  content: "";
+  position: absolute;
+  inset: 1rem 0.5rem 0.35rem;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 18%, rgba(91, 214, 255, 0.12) 18.2%, transparent 18.5% 100%),
+    linear-gradient(0deg, transparent 0 56%, rgba(91, 214, 255, 0.1) 56.2%, transparent 56.6% 100%);
+  opacity: 0.5;
+  mix-blend-mode: screen;
+}
+
+.holo-pie {
+  width: min(100%, 24.5rem);
+  height: auto;
+  overflow: visible;
+  filter:
+    drop-shadow(0 22px 34px rgba(0, 0, 0, 0.34))
+    drop-shadow(0 0 24px rgba(91, 214, 255, 0.18));
+  animation: holoFloat 8s ease-in-out infinite;
+}
+
+.holo-base-orbit {
+  fill: none;
+  stroke: rgba(91, 214, 255, 0.42);
+  stroke-width: 1;
+  stroke-dasharray: 9 6;
+  opacity: 0.7;
+}
+
+.holo-base-orbit-inner {
+  stroke: rgba(168, 85, 247, 0.38);
+  stroke-dasharray: 3 7;
+}
+
+.holo-base-glow {
+  fill: rgba(91, 214, 255, 0.34);
+  filter: blur(6px);
+}
+
+.holo-center-glow {
+  fill: url("#holoCoreGlow");
+  opacity: 0.48;
+}
+
+.holo-axis {
+  stroke: rgba(91, 214, 255, 0.2);
+  stroke-width: 0.7;
+  stroke-dasharray: 6 8;
+}
+
+.holo-allocation-slice {
+  --slice-color: #5bd6ff;
+  --slice-glow: rgba(91, 214, 255, 0.42);
+  transform: translate3d(0, 0, 0);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 260ms ease, filter 260ms ease, opacity 260ms ease;
+}
+
+.holo-allocation-slice:hover {
+  transform: translate3d(var(--slice-x), var(--slice-y), 0);
+  filter: drop-shadow(0 0 12px var(--slice-glow));
+}
+
+.holo-slice-side {
+  fill: color-mix(in srgb, var(--slice-color) 42%, #020617 58%);
+  stroke: color-mix(in srgb, var(--slice-color) 68%, #ffffff 32%);
+  stroke-width: 1;
+  opacity: 0.66;
+}
+
+.holo-slice-top {
+  fill: color-mix(in srgb, var(--slice-color) 54%, rgba(5, 13, 28, 0.62) 46%);
+  stroke: color-mix(in srgb, var(--slice-color) 72%, #ffffff 28%);
+  stroke-width: 1.25;
+  filter: url("#holoSoftGlow");
+}
+
+.holo-slice-glass {
+  fill: url("#holoGlass");
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 0.45;
+  opacity: 0.42;
+  mix-blend-mode: screen;
+}
+
+.holo-chart-hud {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  gap: 0.16rem;
+  font-size: 0.5rem;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(91, 214, 255, 0.82);
+  opacity: 0.78;
+}
+
+.holo-chart-hud strong {
+  font-size: 0.48rem;
+  color: rgba(125, 249, 255, 0.7);
+}
+
+.holo-chart-hud-left {
+  left: 0.38rem;
+  top: 2.6rem;
+}
+
+.holo-chart-hud-right {
+  right: 0.1rem;
+  top: 3.15rem;
+  text-align: right;
+}
+
+.holo-allocation-list {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.holo-allocation-card {
+  position: relative;
+  overflow: hidden;
+  padding: 0.78rem 0.82rem 0.7rem;
+  border-radius: 1.08rem;
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.66));
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 16px 30px rgba(2, 6, 23, 0.2);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.holo-allocation-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(91, 214, 255, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 18px 34px rgba(2, 6, 23, 0.28),
+    0 0 22px rgba(91, 214, 255, 0.08);
+}
+
+.holo-card-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.62rem;
+  align-items: center;
+}
+
+.holo-card-dot {
+  width: 0.76rem;
+  height: 0.76rem;
+  border-radius: 999px;
+}
+
+.holo-card-name-wrap {
+  min-width: 0;
+}
+
+.holo-card-name {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 800;
+  line-height: 1.04;
+  text-overflow: ellipsis;
+}
+
+.holo-card-value {
+  margin-top: 0.2rem;
+  color: rgba(203, 213, 225, 0.74);
+  font-size: 0.76rem;
+  line-height: 1.1;
+}
+
+.holo-card-share {
+  font-family: "Sora", "Arial", Inter, system-ui, sans-serif;
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.05em;
+}
+
+.holo-card-progress {
+  height: 2px;
+  margin-top: 0.62rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.holo-card-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 420ms ease;
+}
+
+@keyframes holoBasePulse {
+  0%, 100% {
+    opacity: 0.68;
+    transform: translateX(-50%) scale(0.96);
+  }
+  50% {
+    opacity: 0.92;
+    transform: translateX(-50%) scale(1.04);
+  }
+}
+
+@keyframes holoFloat {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -5px, 0);
+  }
+}
+
+@media (max-width: 1280px) {
+  .holo-allocation-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .holo-allocation-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .hologram-allocation-panel {
+    min-height: auto;
+  }
+
+  .holo-chart-stage {
+    min-height: 18rem;
+  }
+
+  .holo-pie {
+    width: min(100%, 20rem);
+  }
+
+  .holo-chart-hud {
+    display: none;
+  }
+
+  .holo-allocation-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== PATCH 3.6.1 - HOLOGRAM ALLOCATION COMPOSITION PASS ===== */
+.hologram-allocation-panel {
+  min-height: 33.6rem;
+  padding: 1.32rem !important;
+}
+
+.holo-allocation-header {
+  margin-bottom: 0.48rem !important;
+}
+
+.holo-allocation-layout {
+  grid-template-columns: minmax(0, 1.5fr) minmax(11.6rem, 0.72fr);
+  gap: 0.78rem;
+  align-items: stretch;
+}
+
+.holo-chart-stage {
+  min-height: 25.6rem;
+  align-self: stretch;
+  place-items: center;
+  transform: translateX(-0.45rem);
+}
+
+.holo-chart-stage::before {
+  bottom: 1.65rem;
+  width: 20rem;
+  height: 6.4rem;
+  opacity: 0.98;
+}
+
+.holo-chart-stage::after {
+  inset: 0.3rem 0 0;
+  opacity: 0.36;
+}
+
+.holo-pie {
+  width: min(112%, 30rem);
+  max-width: none;
+  transform-origin: 50% 62%;
+}
+
+.holo-chart-hud-left {
+  left: 0.72rem;
+  top: 4.15rem;
+}
+
+.holo-chart-hud-right {
+  right: 0.24rem;
+  top: 4.45rem;
+}
+
+.holo-allocation-list {
+  align-content: center;
+  gap: 0.82rem;
+}
+
+.holo-allocation-card {
+  min-height: 4.24rem;
+  padding: 0.78rem 0.78rem 0.66rem;
+  border-radius: 1rem;
+}
+
+.holo-card-main {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.58rem;
+}
+
+.holo-card-dot {
+  width: 0.72rem;
+  height: 0.72rem;
+}
+
+.holo-card-name {
+  display: block;
+  overflow: visible;
+  max-width: 100%;
+  font-size: 0.92rem;
+  line-height: 1.02;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.holo-card-value {
+  font-size: 0.72rem;
+}
+
+.holo-card-share {
+  align-self: center;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.holo-card-progress {
+  margin-top: 0.54rem;
+}
+
+.holo-slice-side {
+  opacity: 0.76;
+}
+
+.holo-slice-top {
+  stroke-width: 1.45;
+}
+
+.holo-slice-glass {
+  opacity: 0.5;
+}
+
+@media (min-width: 1280px) {
+  .hologram-allocation-panel {
+    min-height: 33.6rem;
+  }
+}
+
+@media (max-width: 1280px) {
+  .holo-chart-stage {
+    min-height: 22.5rem;
+    transform: none;
+  }
+
+  .holo-pie {
+    width: min(100%, 25rem);
+  }
+}
+
+/* ===== PATCH 3.6.2 - UNIFIED HOLOGRAM SEGMENT HOVER ===== */
+.holo-segments {
+  isolation: isolate;
+}
+
+.holo-allocation-slice {
+  cursor: default;
+  pointer-events: visiblePainted;
+}
+
+.holo-allocation-slice:hover {
+  transform: translate3d(var(--slice-x), var(--slice-y), 0) scale(1.035);
+  filter:
+    drop-shadow(0 0 10px var(--slice-glow))
+    drop-shadow(0 0 20px color-mix(in srgb, var(--slice-color) 42%, transparent));
+}
+
+.holo-allocation-slice:hover .holo-slice-side,
+.holo-allocation-slice:hover .holo-slice-top {
+  stroke-width: 1.65;
+}
+
+.holo-allocation-slice:hover .holo-slice-glass {
+  opacity: 0.62;
+}

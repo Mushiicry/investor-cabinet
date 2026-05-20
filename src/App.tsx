@@ -9,6 +9,7 @@ import apexLogo from "./assets/coins/apex.png";
 import mntLogo from "./assets/coins/mnt.png";
 import tiaLogo from "./assets/coins/tia.png";
 import usdtLogo from "./assets/coins/usdt.png";
+import { HologramAllocationChart } from "./components/charts/HologramAllocationChart";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Panel } from "./components/shared/Panel";
 import {
@@ -35,7 +36,6 @@ import {
 } from "./lib/uiHelpers";
 import { rawPositions, decisionsData, scenariosData } from "./mocks/portfolioData";
 import type {
-  CategoryAllocation,
   FearGreed,
   Page,
   PortfolioState,
@@ -97,78 +97,6 @@ function MiniInfo({
       <div className={`mini-value ${valueClassName}`.trim()}>{value}</div>
       {sub ? <div className={`mini-sub ${subClassName}`.trim()}>{sub}</div> : null}
     </div>
-  );
-}
-function DonutChart({ categories }: { categories: CategoryAllocation[] }) {
-  const sortedCategories = [...categories]
-    .filter((item) => Number(item.value || 0) > 0)
-    .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
-  const total = sortedCategories.reduce((sum, item) => sum + Number(item.value || 0), 0);
-  let current = 0;
-  const colors = ["#22c55e", "#5bd6ff", "#a855f7", "#ffd84d", "#94a3b8"];
-  const segments = sortedCategories.map((item, idx) => {
-    const fraction = total ? Number(item.value || 0) / total : 0;
-    const start = current;
-    current += fraction;
-    return {
-      ...item,
-      color: colors[idx % colors.length],
-      dashArray: `${fraction * 282.74} 282.74`,
-      dashOffset: -start * 282.74,
-    };
-  });
-
-  return (
-    <Panel tone="yellow" className="p-6 h-full" hover>
-      <div className="allocation-header">
-        <div>
-          <div className="section-kicker allocation-kicker text-yellow-300">Allocation</div>
-          <div className="section-title">Распределение средств</div>
-        </div>
-      </div>
-
-      <div className="grid xl:grid-cols-[260px_1fr] gap-8 items-center">
-        <div className="relative w-[240px] h-[240px] mx-auto">
-          <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-            <circle cx="60" cy="60" r="45" fill="none" stroke="#091122" strokeWidth="12" />
-            {segments.map((segment) => (
-              <circle
-                key={segment.name}
-                cx="60"
-                cy="60"
-                r="45"
-                fill="none"
-                stroke={segment.color}
-                strokeWidth="12"
-                strokeLinecap="butt"
-                strokeDasharray={segment.dashArray}
-                strokeDashoffset={segment.dashOffset}
-              />
-            ))}
-          </svg>
-
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-[11px] uppercase tracking-[0.25em] text-slate-400">Total</div>
-            <div className="text-3xl font-black text-white">{currency(total)}</div>
-          </div>
-        </div>
-
-        <div className="allocation-list">
-          {segments.map((item) => (
-            <div key={item.name} className="allocation-row">
-              <div className="allocation-row-left">
-                <div className="allocation-dot" style={{ backgroundColor: item.color }} />
-                <div>
-                  <div className="allocation-name">{item.name}</div>
-                  <div className="allocation-value">{currency(item.value)}</div>
-                </div>
-              </div>
-              <div className="allocation-share">{percent(item.share)}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </Panel>
   );
 }
 function FearGreedGauge({ data }: { data: FearGreed }) {
@@ -432,7 +360,7 @@ function OverviewPage({ data, setPage, fearGreedData }: { data: PortfolioState; 
       </div>
 
       <div className="grid xl:grid-cols-[1.08fr_0.92fr] gap-6">
-        <DonutChart categories={overview.categories} />
+        <HologramAllocationChart categories={overview.categories} />
         <FearGreedGauge data={fearGreedData} />
       </div>
 

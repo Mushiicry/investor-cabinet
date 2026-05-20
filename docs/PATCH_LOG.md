@@ -869,6 +869,331 @@ completed
 
 ---
 
+# PATCH 3.5
+
+Typography Upgrade Sora/Space Grotesk.
+
+Type:
+visual typography enhancement
+
+Goal:
+make the interface typography feel more technological and premium while preserving readable body text and a classic dollar sign.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- connected `Sora` and `Space Grotesk` through Google Fonts
+- kept `Inter, system-ui, sans-serif` for body text
+- applied `Sora` to large numbers and key metrics
+- applied `Space Grotesk` to major titles and headings
+- kept currency-heavy values on `Space Grotesk` so the `$` sign stays classic and bold
+- `src/App.tsx`, layout, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.5.1
+
+Global UI Scale Down 15%.
+
+Type:
+visual scale adjustment
+
+Goal:
+make the UI feel about 15% more compact after the typography upgrade without using browser zoom or whole-page transform scaling.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- reduced the main container width, page padding and large layout gaps
+- reduced sidebar width, nav padding and sidebar title size
+- reduced panel radii, panel padding, mini-card padding and overview panel heights
+- reduced major headings, metrics, PnL value, Fear & Greed value and chart wrappers
+- preserved Sora / Space Grotesk typography
+- `src/App.tsx`, layout structure, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.5.2
+
+Compact Cards After Global Scale.
+
+Type:
+visual compactness adjustment
+
+Goal:
+tighten cards and internal panels after the global scale reduction so values and labels fit cleanly without excess whitespace.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- reduced internal padding and heights for overview, allocation, Fear & Greed, mood and risk cards
+- reduced gaps between mini-panels and internal card groups
+- added overflow guards for labels, values and subtext inside mini-panels
+- compacted allocation rows, Fear & Greed gauge, mood cards and risk chart wrappers
+- `src/App.tsx`, layout structure, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.5.3
+
+Restore Safe Layout Spacing.
+
+Type:
+visual spacing adjustment
+
+Goal:
+restore safe local spacing after the compact card patch without increasing the whole UI scale again.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- restored comfortable row gaps inside overview and health mini-panel grids
+- added safer vertical rhythm around allocation, Fear & Greed and mood sections
+- increased local spacing where cards visually merged after compact mode
+- preserved compact structure, typography, colors and background
+- `src/App.tsx`, layout structure, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.5.4
+
+Restore 4mm Gutters.
+
+Type:
+visual spacing adjustment
+
+Goal:
+restore visible gutters between major blocks and internal mini-panels after compact mode without increasing the whole UI scale.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- increased local gutters between Overview and Health mini-panels to roughly 14-16px
+- added safer spacing between top Overview cards and lower position cards
+- restored breathing room inside allocation, Fear & Greed and mood sections
+- kept compact typography, colors, background and visual scale intact
+- `src/App.tsx`, layout structure, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.5.5
+
+Real Mini Panel Gutters.
+
+Type:
+visual spacing fix
+
+Goal:
+make the requested visible clearance between internal mini-panels actually render by removing the fixed-height conflict in the top overview panels.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- removed the effective fixed-height squeeze from the top Overview and Health panels
+- restored real row and column gutters between internal mini-panels
+- set safer grid rows so mini-panels do not touch or overlap
+- preserved compact scale, typography, colors and background
+- `src/App.tsx`, JSX, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.5.6
+
+Match Marked Card Gutters.
+
+Type:
+visual spacing fix
+
+Goal:
+match the user-marked spacing where internal mini-cards have visible gutters and do not fill or touch the parent panel edges.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- set explicit mini-card heights for the Overview and Health grids
+- increased row and column gutters to match the marked clearance between cards
+- restored internal parent padding and header-to-grid spacing
+- prevented internal cards from stretching into each other
+- `src/App.tsx`, JSX, data and API behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.6
+
+Hologram Allocation Chart.
+
+Type:
+visual component replacement
+
+Goal:
+replace the flat allocation donut with a live dynamic hologram allocation diagram built from `overview.categories`.
+
+Files changed:
+- `src/App.tsx`
+- `src/App.css`
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- created `HologramAllocationChart` as a data-driven SVG/CSS component
+- replaced the old local `DonutChart` render with `HologramAllocationChart`
+- sectors, category cards, shares and total value are calculated from live `overview.categories`
+- added hologram depth, cyan base glow, glass reflections, HUD lines, hover lift and soft pulse animation
+- kept PNG/static-image usage out of the chart
+- API, hooks, calculations, portfolio data and fetch behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.6.1
+
+Hologram Allocation Composition Pass.
+
+Type:
+visual refinement
+
+Goal:
+make the new hologram allocation block feel larger, clearer and closer to the premium reference while preserving live data behavior.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- enlarged the hologram chart stage and cyan base glow
+- improved layout balance between the chart and category cards
+- allowed long category names to wrap instead of truncating
+- increased visual depth for hologram sectors and glass highlights
+- `src/App.tsx`, API, hooks, calculations and data behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.6.2
+
+Unified Hologram Segment Hover.
+
+Type:
+visual interaction fix
+
+Goal:
+make each hologram allocation sector behave as one complete 3D fragment on hover instead of separating its top and side layers.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- grouped each sector side, top and glass highlight into one SVG segment
+- hover now moves and scales the whole fragment together
+- added a controlled neon glow to the unified hovered segment
+- preserved live data-driven sector sizing and allocation cards
+- `src/App.tsx`, API, hooks, calculations and data behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.6.3
+
+Clean Hologram Chart Center.
+
+Type:
+visual cleanup
+
+Goal:
+remove the center text and numbers from the hologram allocation diagram so the chart surface stays clean.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- removed the center `Total Portfolio` label
+- removed the center portfolio value from the chart
+- removed the center categories count from the chart
+- kept the live allocation data, right-side category cards and sector sizing unchanged
+- `src/App.tsx`, API, hooks, calculations and data behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:
