@@ -1194,6 +1194,835 @@ completed
 
 ---
 
+# PATCH 3.6.4
+
+Polish Hologram Allocation Chart.
+
+Type:
+visual refinement
+
+Goal:
+reduce empty space in the allocation block, add dynamic total value and make the hologram chart feel more glassy and premium.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- tightened the allocation chart layout and reduced empty vertical space
+- added dynamic total value inside the hologram chart area above the diagram
+- added a cyan hologram platform with soft concentric glow under the chart
+- made sectors more translucent and glass-like
+- preserved unified sector hover with subtle lift and neon glow
+- preserved dynamic rebuild from `overview.categories`
+- `src/App.tsx`, API, hooks, calculations and data behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.6.5
+
+Improve Hologram Allocation Chart Visual.
+
+Type:
+visual refinement
+
+Goal:
+bring the live hologram allocation chart closer to the premium sci-fi/Bloomberg reference without changing data behavior.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- improved the hologram/glass styling of the allocation pie
+- added stronger cyan hologram platform treatment under the diagram
+- added subtle HUD details around the chart
+- improved category rows with progress/glow accents
+- kept the chart dynamic from `overview.categories`
+- `src/App.tsx`, API, hooks and calculations were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.6.6
+
+Crop Allocation Panel Height.
+
+Type:
+visual layout fix
+
+Goal:
+crop the external allocation panel height to fit the hologram chart content and remove the large empty lower area.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- reduced the allocation panel height to fit its content
+- removed the empty lower air inside the allocation block
+- preserved the current 3D hologram chart
+- preserved the dynamic total value and right category rows
+- preserved width and scroll behavior
+- `src/App.tsx`, API, hooks, calculations and data behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.6.7
+
+Fix Allocation Proportions After Crop.
+
+Type:
+visual layout fix
+
+Goal:
+restore correct hologram pie proportions after cropping the allocation panel height.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- restored more natural hologram pie proportions after the compact crop
+- kept the allocation panel height compact
+- constrained the chart stage width and height to avoid horizontal stretching
+- improved the total value placement inside the chart area
+- kept the right category rows in place
+- preserved dynamic rebuild from `overview.categories`
+- `src/App.tsx`, API, hooks, calculations and data behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.6.8
+
+Final Hologram Allocation Composition.
+
+Type:
+visual refinement
+
+Goal:
+improve the internal composition, color intensity and 3D hologram feel of the allocation chart without changing the external panel size.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- improved the internal allocation chart composition
+- moved the diagram lower and aligned it inside the compact panel
+- intensified the glass, neon and 3D effects of the sectors
+- added a brighter rim layer to each dynamic sector
+- strengthened the cyan hologram platform under the chart
+- refined HUD labels and category row accents
+- kept the external allocation panel size unchanged
+- preserved dynamic rebuild from `overview.categories`
+- `src/App.tsx`, API, hooks, calculations and data behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.6.9
+
+Final Allocation Chart Polish.
+
+Type:
+visual refinement
+
+Goal:
+finish the internal hologram allocation chart polish without changing the external allocation panel size.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- improved the final composition of the hologram allocation chart
+- made the pie slightly smaller and moved it lower inside the block
+- strengthened 3D depth, glass edges and cyan platform glow
+- refined the total badge, HUD labels and category rows
+- kept the external allocation panel size unchanged
+- preserved dynamic rebuild from `overview.categories`
+- `src/App.tsx`, API, hooks, calculations and data behavior were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.6.8
+
+Perfect 3D Hologram Allocation Pie.
+
+Type:
+visual refinement
+
+Goal:
+make the live allocation pie feel like a premium 3D hologram glass object instead of a flat SVG drawing.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- strengthened 3D depth of the allocation pie
+- added bottom layers, side walls, radial walls, edge highlights and a stronger hologram platform
+- gave the green sector more visible volume, darker side depth and glass edge glow
+- preserved whole-sector hover behavior
+- kept the chart dynamic from `overview.categories`
+- external layout, `src/App.tsx`, API, hooks and calculations were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.6.8.1
+
+Hologram Pie Reference Alignment.
+
+Type:
+visual refinement
+
+Goal:
+move the live allocation chart closer to the provided premium reference without changing the external allocation panel or data behavior.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- enlarged the internal hologram pie inside the existing allocation card
+- added a dedicated glowing outer arc rim for each dynamic sector
+- softened the heavy internal radial walls so small sectors no longer look like dark plates
+- strengthened translucent side depth, glass sheen and cyan platform glow
+- preserved live rebuild from `overview.categories`
+- external allocation panel size, `src/App.tsx`, API, hooks and calculations were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.7
+
+Rebuild Allocation Chart With Canvas 2D.
+
+Type:
+visual renderer rebuild
+
+Goal:
+replace the SVG allocation pie renderer with a Canvas 2D renderer for a more realistic dynamic hologram pie and cyan portal platform.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- rewrote `HologramAllocationChart` from SVG paths to a Canvas 2D renderer
+- added dynamic canvas redraw from `categories` with device pixel ratio support
+- added 3D side walls, translucent glass top surfaces, neon edges and hover lift
+- added animated cyan hologram portal rings under the chart
+- preserved the right-side category rows, progress lines and dynamic total value
+- preserved rebuild from `overview.categories`
+- external allocation panel size, `src/App.tsx`, API, hooks and calculations were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.7.1
+
+Tune Canvas Allocation Chart Geometry.
+
+Type:
+visual refinement
+
+Goal:
+fine-tune the Canvas 2D allocation chart geometry after the renderer rebuild.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- improved the Canvas 3D pie geometry
+- strengthened side/front walls and glass depth
+- improved green and cyan sector volume
+- strengthened the cyan portal platform
+- preserved hover behavior and dynamic rebuild from `overview.categories`
+- external allocation panel size, `src/App.tsx`, API, hooks and calculations were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.7.2
+
+Rebuild Canvas Pie As Separate 3D Slices.
+
+Type:
+visual renderer refinement
+
+Goal:
+remove the shared-cylinder feeling from the Canvas allocation chart and make each category read as an individual 3D glass slice.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- rebuilt the Canvas pie draw order around separate slice shadows, side walls and top faces
+- added stable per-category exploded offsets and larger gaps between slices
+- reduced the shared cylinder effect by tuning pie depth and per-slice wall opacity
+- sorted sector drawing by visual depth so front slices layer over back slices
+- strengthened the cyan portal while keeping it below the chart
+- preserved hover behavior and dynamic rebuild from `overview.categories`
+- external allocation panel size, `src/App.tsx`, API, hooks and calculations were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.7.3
+
+Stylized Canvas Hologram Pie Like Reference.
+
+Type:
+visual renderer refinement
+
+Goal:
+move the Canvas allocation chart from physically literal 3D geometry toward a stylized premium fake-3D hologram pie closer to the reference.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- converted the Canvas chart toward a stylized fake-3D render
+- removed the shared-cylinder/drum feeling by limiting side walls to visible front arcs
+- improved individual glass wedge slices with stronger rim lights and per-slice side walls
+- strengthened the cyan portal as the main light source under the pie
+- preserved hover behavior and dynamic rebuild from `overview.categories`
+- external allocation panel size, `src/App.tsx`, API, hooks and calculations were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.7.4
+
+Premium Sci-Fi Hologram Pie Target.
+
+Type:
+visual renderer refinement
+
+Goal:
+push the Canvas allocation chart closer to the premium sci-fi hologram reference while preserving dynamic category data and the existing allocation panel geometry.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- narrowed and deepened the Canvas pie geometry to reduce the flat cylinder feeling
+- strengthened individual slice side walls, front walls, shadows and neon edge strokes
+- made the green hero slice richer and more volumetric with stronger emerald glass glow
+- made the cyan slice denser and more crystalline with stronger lower light interaction
+- improved small violet/yellow slices so they read as physical hologram wedges
+- strengthened the cyan portal glow, rings, center core and upward light beam
+- preserved hover behavior and dynamic rebuild from `overview.categories`
+- external allocation panel size, `src/App.tsx`, API, hooks and calculations were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.8
+
+Isolate Pie Renderer Without Portal.
+
+Type:
+visual renderer isolation
+
+Goal:
+temporarily disable the portal/platform layer so the dynamic Canvas pie sectors can be polished in isolation.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- portal layer temporarily disabled for focused pie polish
+- removed active cyan portal/ring/glow rendering from the Canvas draw path
+- disabled CSS-only portal/platform glow layers under the Canvas chart
+- focused the Canvas renderer on dynamic 3D pie sector shadows, side walls, top faces and neon edges
+- removed the continuous lower-rim stroke that contributed to the shared-cylinder feeling
+- added minimum visual angles for tiny categories while preserving real category values and shares in the right rows
+- dynamic categories and hover behavior preserved
+- external allocation panel size, `src/App.tsx`, API, hooks and calculations were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.8.1
+
+Polish Canvas Pie Sectors Only.
+
+Type:
+visual renderer refinement
+
+Goal:
+remove the shared-cylinder feeling from the isolated Canvas allocation pie and make every category read as an individual 3D glass slice.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- narrowed the pie and added more vertical depth without changing the allocation panel layout
+- increased per-slice separation and minimum visual angle for small wedge readability
+- tuned slice shadows so they no longer combine into one lower cylinder
+- strengthened individual outer walls, radial walls and neon arc edges per sector
+- made the green cash sector less acidic with a softer emerald glass render
+- made the cyan crypto sector denser with a brighter front wall and arc rim
+- kept violet/yellow as physical wedge sectors rather than flat plates
+- preserved whole-slice hover movement and dynamic rebuild from `categories`
+- portal/platform rendering remains disabled and was not intensified
+- `src/App.tsx`, API, hooks, calculations, right category rows, TOTAL block, Fear & Greed and page layout were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.8.2
+
+Remove Rectangular Walls From Canvas Pie.
+
+Type:
+visual renderer refinement
+
+Goal:
+remove rectangular/wireframe wall artifacts inside the isolated Canvas allocation pie while preserving dynamic category data and hover behavior.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- removed rectangular transparent wall behavior inside the Canvas pie
+- rebuilt front walls around curved upper and lower arc paths
+- reduced radial wall visibility and removed full polygon strokes that created box-like center lines
+- kept only subtle top radial separators, neon upper arcs and individual outer rim glow
+- improved green, cyan, violet and yellow sector edges as curved glass wedges
+- increased minimum visual angle so small sectors read as wedges
+- dynamic categories and whole-slice hover behavior preserved
+- portal/platform rendering was not changed or intensified
+- `src/App.tsx`, API, hooks, calculations, right category rows, TOTAL block, Fear & Greed and page layout were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.8.3
+
+Remove Back Ellipse And Make Pie Slice-Only.
+
+Type:
+visual renderer refinement
+
+Goal:
+remove rear/bottom ellipse artifacts so the Canvas allocation chart reads as separate 3D wedge sectors instead of a shared cylinder.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- removed rear/bottom ellipse artifacts from the slice shadow layer
+- removed shared cylinder/platform-like shadow strokes
+- converted pie shadow into soft blurred per-slice radial glow without visible oval outlines
+- preserved only individual wedge sector top faces, curved front walls, radial side walls and edge glow
+- removed lower rim light so cyan/green/violet/yellow no longer create a shared bottom ellipse
+- dynamic categories and whole-slice hover behavior preserved
+- portal/platform rendering was not changed or intensified
+- `src/App.tsx`, API, hooks, calculations, right category rows, TOTAL block, Fear & Greed and page layout were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 3.8.5
+
+Separate Glass Slices And Restore Premium Depth.
+
+Type:
+visual renderer refinement
+
+Goal:
+restore premium 3D depth while keeping the Canvas allocation chart slice-only, with no shared portal, platform or oval cylinder artifacts.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- increased visual gap and exploded offset between allocation sectors
+- increased minimum visual angle so yellow and violet read as glass wedges instead of thin strips
+- strengthened per-slice shadows without adding shared contours
+- made the cyan sector denser as its own glass slice instead of a shared lower tray
+- made the green cash sector less flat with stronger emerald top/side contrast and brighter visible rim
+- restored subtle radial side walls for selected visible boundaries without drawing shared walls
+- increased contrast between top faces and side walls
+- dynamic categories and whole-slice hover behavior preserved
+- portal/platform rendering was not changed or intensified
+- `src/App.tsx`, API, hooks, calculations, right category rows, TOTAL block, Fear & Greed, background and page layout were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 4.1
+
+Refine Existing Canvas Pie Toward Reference.
+
+Type:
+visual renderer refinement
+
+Goal:
+move the existing Canvas allocation pie closer to the premium holographic 3D reference without rebuilding the block or changing layout/data.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- tightened pie perspective into a thicker compact suspended glass object
+- increased visual slice gaps and minimum wedge readability for yellow/purple
+- tuned emerald, cyan, violet and yellow render colors toward the reference palette
+- added cleaner dark-glass side-wall gradients with less ambient blur
+- added per-slice lower front rim accents without shared oval contours
+- sharpened top/front neon rims for each sector
+- reduced jelly/blob softness by lowering broad shadow blur and strengthening physical edges
+- preserved current Canvas renderer, dynamic categories and hover behavior
+- portal/platform rendering was not changed or intensified
+- `src/App.tsx`, `App.css`, API, hooks, calculations, right category rows, TOTAL block, Fear & Greed, background and page layout were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 4.2
+
+Rollback Failed 4.1 And Restore Previous Best Pie Brightness.
+
+Type:
+visual rollback / renderer refinement
+
+Goal:
+visually roll back the dark, heavy PATCH 4.1 material treatment and restore the brighter best-known Canvas pie look while preserving slice-only geometry.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- visually rolled back PATCH 4.1 darkening inside the Canvas pie renderer
+- restored brighter emerald cash, neon cyan crypto and saturated violet/yellow sector treatment
+- restored stronger rim glow on green outer edge, cyan front edge and small sector rims
+- lightened side-wall gradients so slices read as clean glass instead of dirty black mass
+- removed the PATCH 4.1 lower front rim accent that made the object feel heavier
+- preserved no rear/bottom oval artifacts, no shared cylinder, no rectangular wall panels and no extra internal arcs
+- preserved dynamic categories and whole-slice hover behavior
+- `src/App.tsx`, `App.css`, API, hooks, calculations, layout, right category rows, TOTAL block, Fear & Greed, background and portal/platform rendering were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 4.3
+
+Move Pie Right And Restore Neon Slice Borders.
+
+Type:
+visual renderer refinement
+
+Goal:
+move only the Canvas pie geometry slightly to the right and restore brighter premium neon borders for each individual glass slice.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- shifted only the pie slice rendering and hover hitbox to the right inside the existing canvas
+- kept DATA FLOW, TOTAL, right category rows, panel size, layout and portal/platform unchanged
+- reduced exploded slice spacing so sectors sit closer together while remaining separate objects
+- increased emerald/cyan/violet/yellow color saturation for clearer glass-slice readability
+- lightened side-wall gradients so green and cyan read as transparent crystal volume instead of dark blotches
+- restored stronger per-slice neon rims along top arcs, visible front/lower arcs, radial boundaries and outer vertical edges
+- replaced the compact-sector inner arc accent with wedge boundary strokes to avoid internal semicircle artifacts
+- preserved no shared oval contours, no shared cylinder, no rectangular wall panels, dynamic categories and hover behavior
+- `src/App.tsx`, `App.css`, API, hooks, calculations, data, right category cards, TOTAL block, Fear & Greed, background and allocation panel size were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 4.4
+
+Final Slice Borders And Base Lines.
+
+Type:
+visual renderer refinement
+
+Goal:
+finish the Canvas allocation pie by tightening slice spacing, moving only the pie body farther right and adding readable per-slice neon base lines.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- shifted only the Canvas pie geometry and matching hover hitbox farther right
+- reduced slice gap and exploded offset so the pie reads as a closer premium object while preserving separate wedges
+- added per-slice lower/base rim strokes for green, cyan, violet and yellow without drawing a shared oval or cylinder
+- widened green and compact slice wall rendering so their lower glass body is visible within each slice boundary
+- increased green saturation and dark emerald glass volume without adding internal arcs
+- brightened violet and yellow wedge bodies and restored stronger neon outlines on their visible edges
+- kept cyan front rim and made side walls remain crystal-like rather than black
+- preserved no common oval contours, no portal/platform, no internal semicircle artifacts, no rectangular panels, dynamic categories and hover behavior
+- `src/App.tsx`, `App.css`, API, hooks, calculations, data, right category cards, TOTAL, DATA FLOW labels, layout, allocation panel size, portal and background were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 4.5
+
+Remove Wrong Cyan Arc And Add Missing Segment Base Lines.
+
+Type:
+visual renderer refinement
+
+Goal:
+remove the stray inner cyan/green arc while keeping external rims and strengthening missing per-slice base lines for small sectors.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- removed the long green lower-base arc that appeared as a wrong internal semicircle across the cyan/green area
+- kept the bright external cyan rim and cyan lower base line
+- changed green base rendering to short per-edge lower rim segments instead of a full internal lower arc
+- preserved and strengthened full lower wedge base lines for violet and yellow small slices
+- kept current right-shifted pie position, compact slice spacing, bright green top, hover logic and dynamic category data
+- preserved no shared oval contours, no shared cylinder, no portal/platform, no rectangular panels and no decorative inner guide arcs
+- `src/App.tsx`, `App.css`, API, data, hooks, calculations, layout, cards, TOTAL, DATA FLOW labels, right rows, allocation panel size, portal and background were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 4.5.1
+
+Clean Segment Edge Artifacts.
+
+Type:
+visual renderer fix
+
+Goal:
+remove remaining green edge artifacts and close small neon border gaps without changing layout or data behavior.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- removed green lower base arc segments that created the right-side hook artifact
+- prevented the left green radial edge from appearing inside the violet slice
+- kept only the visible right green vertical edge where the cash slice body needs definition
+- added rounded line caps and joins to reduce small gaps between cyan rim and vertical edges
+- added short lower radial connectors for compact violet/yellow slices so their bottom wedge borders read as connected
+- preserved current pie position, compact slice spacing, cyan rim/base line, hover behavior and dynamic category data
+- `src/App.tsx`, `App.css`, API, data, hooks, calculations, layout, cards, TOTAL, DATA FLOW labels, right rows, allocation panel size, portal and background were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 4.5.2
+
+Remove Extra Violet Lower Connector Lines.
+
+Type:
+visual renderer fix
+
+Goal:
+remove extra lower connector strokes inside the violet slice while keeping only the lower wedge base line.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- removed the compact-slice lower radial connector helper
+- removed the extra internal horizontal connector strokes that appeared inside the violet wall
+- preserved the violet lower base edge as the only lower boundary line
+- preserved green/cyan artifact cleanup, current pie position, hover behavior and dynamic category data
+- `src/App.tsx`, `App.css`, API, data, hooks, calculations, layout, cards, TOTAL, DATA FLOW labels, right rows, allocation panel size, portal and background were not changed
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
+# PATCH 4.5.3
+
+Allocation Pie Checkpoint.
+
+Type:
+checkpoint / release stabilization
+
+Goal:
+freeze the current allocation Canvas pie state as the next stable working point before continuing visual refinement.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- preserved the current premium holographic Canvas pie state
+- kept the latest right-shifted composition, compact slice spacing and cleaned violet lower connector lines
+- preserved dynamic category data, hover behavior and device pixel ratio canvas rendering
+- preserved current allocation panel geometry, TOTAL, DATA FLOW labels and right category rows
+- `src/App.tsx`, API, data, hooks, calculations, portfolio logic, Fear & Greed, portal and background behavior were not changed
+- ready to push to GitHub and trigger Vercel deployment from `main`
+
+Build:
+successful
+
+Status:
+completed
+
+---
+
 # PATCH RULES
 
 Every patch must include:
