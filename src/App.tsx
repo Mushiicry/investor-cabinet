@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import GaugeComponent from "react-gauge-component";
 import btcLogo from "./assets/coins/btc.png";
 import ethLogo from "./assets/coins/eth.png";
 import tonLogo from "./assets/coins/ton.png";
@@ -9,6 +8,7 @@ import apexLogo from "./assets/coins/apex.png";
 import mntLogo from "./assets/coins/mnt.png";
 import tiaLogo from "./assets/coins/tia.png";
 import usdtLogo from "./assets/coins/usdt.png";
+import gaugeBg from "./assets/fear-greed/gauge-bg.webp";
 import { HologramAllocationChart } from "./components/charts/HologramAllocationChart";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Panel } from "./components/shared/Panel";
@@ -101,72 +101,54 @@ function MiniInfo({
 }
 function FearGreedGauge({ data }: { data: FearGreed }) {
   const tone = fgTone(data.value);
+  const clampedValue = Math.max(0, Math.min(100, data.value));
+  const needleAngle = -90 + (clampedValue / 100) * 180;
+  const buyLadderRows = [
+    { range: "30 - 100", action: "Наблюдение", size: "0%", mode: "Пассивный", active: clampedValue >= 30 },
+    { range: "20 - 29", action: "Осторожная покупка", size: "1%", mode: "Активный", active: clampedValue >= 20 && clampedValue <= 29 },
+    { range: "15 - 19", action: "Усиленная покупка", size: "1.5%", mode: "Агрессивный", active: clampedValue >= 15 && clampedValue <= 19 },
+    { range: "0 - 14", action: "Агрессивная покупка", size: "2%", mode: "Максимальный", active: clampedValue <= 14 },
+  ];
 
   return (
-    <Panel tone={tone} className="p-6 h-full" hover>
-      <div className="fear-greed-header">
-        <div>
-          <div className="section-kicker fear-greed-kicker text-yellow-300">Fear & Greed</div>
+    <Panel tone={tone} className="fear-greed-panel fg-clean-panel h-full" hover>
+      <div
+        className="fg-image-gauge"
+        style={{ "--fg-angle": `${needleAngle}deg` } as React.CSSProperties}
+        aria-label={`Fear and Greed index ${clampedValue}`}
+      >
+        <img src={gaugeBg} alt="" className="fg-image-gauge-bg" />
+        <div className="fg-image-bloom" aria-hidden="true" />
+        <div className="fg-image-needle-wrap" aria-hidden="true">
+          <div className="fg-image-needle" />
         </div>
-        <div className="fear-greed-top-badge-wrap">
-          <Badge tone={tone}>{data.label}</Badge>
-        </div>
-      </div>
-
-      <div className="fear-greed-title-wrap">
-        <div className="section-title fear-greed-title">Индекс страха и жадности</div>
-      </div>
-
-      <div className="fear-greed-main-row-gauge">
-        <div className="fear-greed-value-box">
-          <div className="fear-greed-value">{data.value}</div>
-        </div>
-
-        <div className="fear-greed-gauge-wrap">
-          <GaugeComponent
-            type="semicircle"
-            value={data.value}
-            minValue={0}
-            maxValue={100}
-            arc={{
-              subArcs: [
-                { limit: 25, color: "#ff3b5c" },
-                { limit: 55, color: "#ffd84d" },
-                { limit: 100, color: "#22c55e" },
-              ],
-              padding: 0.02,
-              width: 0.22,
-            }}
-            pointer={{
-              color: "#eef2ff",
-              length: 0.72,
-              width: 14,
-              elastic: true,
-            }}
-            labels={{
-              valueLabel: { hide: true },
-              tickLabels: {
-                hideMinMax: false,
-                type: "outer",
-                defaultTickValueConfig: {
-                  style: { fill: "#94a3b8", fontSize: "10px" },
-                },
-              },
-            }}
-          />
+        <div className="fg-image-center-value" aria-label={`Fear and Greed value ${clampedValue}`}>
+          {clampedValue}
         </div>
       </div>
 
-      <div className="fear-greed-description">
-        <div className="fear-greed-summary">{data.summary}</div>
-      </div>
+      <div className="fg-buy-ladder">
+        <div className="fg-buy-ladder-table">
+          {buyLadderRows.map((row) => (
+            <div key={row.range} className={`fg-buy-row ${row.active ? "is-active" : ""}`.trim()}>
+              <div className="fg-buy-cell">{row.range}</div>
+              <div className="fg-buy-cell">{row.action}</div>
+              <div className="fg-buy-cell">{row.size}</div>
+              <div className="fg-buy-cell">
+                <span className="fg-buy-mode">{row.mode}</span>
+              </div>
+            </div>
+          ))}
+        </div>
 
-      <div className="fear-strategy-box">
-        <div className="fear-strategy-title">По стратегии на откуп 1 раз в неделю:</div>
-        <div className="fear-strategy-lines">
-          <div>Ниже 20 пунктов - на 1%</div>
-          <div>Ниже 15 - на 1,5%</div>
-          <div>Ниже 10 - на 2%</div>
+        <div className="fg-buy-note">
+          <div className="fg-buy-note-icon" aria-hidden="true" />
+          <div>
+            <div className="fg-buy-note-title">ВАЖНОЕ УТОЧНЕНИЕ</div>
+            <div className="fg-buy-note-text">
+              По данной стратегии допускается только <strong>1 покупка в неделю.</strong>
+            </div>
+          </div>
         </div>
       </div>
     </Panel>
@@ -359,7 +341,7 @@ function OverviewPage({ data, setPage, fearGreedData }: { data: PortfolioState; 
         </Panel>
       </div>
 
-      <div className="grid xl:grid-cols-[1.08fr_0.92fr] gap-6">
+      <div className="overview-secondary-grid grid xl:grid-cols-[0.88fr_1.12fr] gap-6">
         <HologramAllocationChart categories={overview.categories} />
         <FearGreedGauge data={fearGreedData} />
       </div>

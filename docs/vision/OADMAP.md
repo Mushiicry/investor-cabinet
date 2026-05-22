@@ -21,6 +21,7 @@ Current capabilities:
 - reserve tracking
 - futures tracking
 - fear & greed integration
+- premium Fear & Greed market mood block with dynamic needle and buy ladder
 - live pricing
 - scenario blocks
 
@@ -75,6 +76,11 @@ Planned features:
 - rebalance system
 - cycle tracking
 - market phase detection
+
+Completed checkpoint:
+
+- Fear & Greed market mood widget:
+  premium WebP speedometer, dynamic index needle, glass value sphere and rule-based buy ladder.
 
 ---
 

@@ -2023,6 +2023,44 @@ completed
 
 ---
 
+# PATCH 4.6
+
+Fear & Greed Market Mood Block.
+
+Type:
+visual UI checkpoint / Overview refinement
+
+Goal:
+freeze the current Fear & Greed block as a completed premium market mood widget before moving to the next development step.
+
+Files changed:
+- `src/App.tsx`
+- `src/App.css`
+- `src/assets/fear-greed/gauge-bg.webp`
+- `docs/PATCH_LOG.md`
+- `docs/vision/OADMAP.md`
+
+Details:
+- replaced the previous `react-gauge-component` usage inside `FearGreedGauge` with a WebP premium speedometer background
+- kept the Fear & Greed API, `data.value`, fallback behavior and needle angle formula unchanged
+- added a dynamic neon needle driven by the current index value
+- added the current index value inside a glass sphere over the speedometer
+- added the buy ladder table under the gauge with active row highlighting based on `data.value`
+- added the weekly purchase clarification note with a custom neon calendar icon
+- widened and shifted the Fear & Greed block on desktop while keeping the rest of Overview intact
+- preserved Portfolio page, Risk page, Sidebar, allocation calculations, Google Sheets bindings, API contracts and business logic
+
+Build:
+successful
+
+Status:
+completed
+
+Deployment impact:
+requires push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
 # PATCH RULES
 
 Every patch must include:
