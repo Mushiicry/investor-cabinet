@@ -2061,6 +2061,361 @@ requires push to GitHub; Vercel should deploy from `main` after push.
 
 ---
 
+# PATCH 4.7
+
+Allocation Reference Labels.
+
+Type:
+visual UI refinement / allocation metadata
+
+Goal:
+bring the allocation block closer to the reference by adding the missing institutional labels and category guardrail text without changing allocation calculations or pie geometry.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- changed the right chart HUD from category count to `PORTFOLIO / DISTRIBUTION`
+- added the lower-left chart HUD `BALANCE / STATUS: ACTIVE`
+- added category display labels for stablecoins and spot crypto
+- added target allocation ranges and `OK` / `LOW` status text to the right category rows
+- added a display-only zero `Акции` row so the category stack matches the reference structure
+- changed the `Акции` category display palette to orange for the allocation row
+- kept Canvas pie data, hover behavior, device pixel ratio rendering and dynamic category calculations unchanged
+- `src/App.tsx`, API, hooks, calculations, Google Sheets bindings, Fear & Greed, background and external panel layout were not changed
+
+Risks:
+- the fifth category row makes the allocation row stack denser on small panel heights
+
+Rollback:
+- revert this patch in `HologramAllocationChart.tsx`, the `PATCH 4.7` CSS block in `src/App.css`, and this log entry
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
+# PATCH 4.8
+
+Allocation Row Icons And Scale.
+
+Type:
+visual UI refinement / allocation category rows
+
+Goal:
+make the allocation category rows closer to the reference by restoring category icons, colored percentages and larger readable metric text while keeping the current panel geometry.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- removed the `(стейблы)` and `(спот)` suffixes from category names
+- added compact category icons for cash, crypto, futures, metals and stocks
+- colored each category percentage with its own category color and glow
+- slightly increased the metric typography inside the allocation category rows
+- increased the Canvas pie display area by roughly 35px in width and height
+- preserved dynamic allocation data, pie calculations, hover behavior and the existing external allocation panel size
+- `src/App.tsx`, API, hooks, calculations, Google Sheets bindings, Fear & Greed and page layout were not changed
+
+Risks:
+- larger row typography and icons make the right category stack denser, especially on smaller viewports
+
+Rollback:
+- revert the `PATCH 4.8` CSS block and the small metadata/icon edits in `HologramAllocationChart.tsx`
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
+# PATCH 4.9
+
+Allocation Portal WebP Layer.
+
+Type:
+visual UI refinement / allocation hologram base
+
+Goal:
+add the glowing portal under the Canvas allocation pie using the provided WebP reference asset without restoring the old canvas/platform oval artifacts.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `src/assets/hologram/allocation-portal.webp`
+- `docs/PATCH_LOG.md`
+
+Details:
+- added the provided portal WebP as a dedicated decorative image asset
+- rendered the portal as an `aria-hidden` image layer underneath the Canvas pie
+- positioned the portal inside the existing canvas wrapper so the external allocation panel size stays unchanged
+- used screen blending, cyan saturation and a controlled glow filter to integrate the portal with the dark dashboard
+- kept the Canvas pie renderer, dynamic categories, hover behavior, API, hooks and calculations unchanged
+- did not re-enable the old SVG/canvas platform, shared oval strokes or cylinder base
+
+Risks:
+- the bitmap layer may need visual position tuning after browser inspection on the target viewport
+
+Rollback:
+- remove the portal image import/render line, the `PATCH 4.9` CSS block and the asset file
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
+# PATCH 5.0
+
+Allocation Row Alignment And Wider Cards.
+
+Type:
+visual UI refinement / allocation row layout
+
+Goal:
+fix category row text collisions after adding icons and colored percentages by widening the right allocation stack toward the pie and giving each row stable internal columns.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- widened the right allocation category column toward the chart without changing the external panel size
+- reduced the gap between the pie area and the category rows
+- gave row content fixed columns for dot, icon, label/value and percentage
+- tightened row spacing so five category rows still fit in the allocation panel
+- kept the Canvas pie renderer, portal image, dynamic data, hover behavior, API, hooks and calculations unchanged
+- `src/App.tsx`, Fear & Greed, page layout and Google Sheets bindings were not changed
+
+Risks:
+- the allocation card stack remains dense and may need viewport-specific tuning after visual review
+
+Rollback:
+- revert the `PATCH 5.0` CSS block and this log entry
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
+# PATCH 5.1
+
+Allocation Pie Thickness Toward Reference.
+
+Type:
+visual UI refinement / canvas pie geometry
+
+Goal:
+reduce the overly tall sector body after the portal and scale changes so the allocation pie reads closer to the reference holographic suspended slices instead of a thick cylinder.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- reduced Canvas pie physical depth from 64 to 42 units
+- tightened the lower wall ellipse scale so side walls become shallower and cleaner
+- preserved individual slice bodies, per-slice rims, portal image layer and hover behavior
+- kept dynamic category data, API, hooks, calculations, right cards, panel size and page layout unchanged
+- did not restore shared cylinder strokes, common oval contours or the old canvas platform
+
+Risks:
+- thinner side walls may need one more visual tuning pass for the exact reference balance
+
+Rollback:
+- restore the previous `PIE.depth` and lower wall ellipse scale values in `HologramAllocationChart.tsx`
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
+# PATCH 5.2
+
+Low Profile Holographic Pie And Portal Rebuild.
+
+Type:
+visual UI refinement / Canvas pie geometry and portal composition
+
+Goal:
+move the allocation pie away from the thick barrel look and closer to the reference: thin semi-transparent glass slices floating over a larger holographic portal.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- rebuilt the Canvas pie proportions to be wider, lower and visually lighter
+- reduced sector extrusion depth from 42 to 18 units
+- reduced slice gaps and exploded offsets for a tighter premium composition
+- made top faces and side walls more transparent with softer glass-like alpha values
+- reduced heavy shadows, lower rim thickness and wall opacity
+- kept per-slice geometry, neon rims and hover behavior
+- enlarged the WebP portal layer and added cyan bloom plus a vertical projection beam
+- preserved right allocation rows, typography, page layout, data, API, hooks and calculations
+- did not restore shared cylinder strokes, common oval outlines or the old platform renderer
+
+Risks:
+- this is a larger visual geometry shift and may need viewport-specific tuning after local inspection
+
+Rollback:
+- restore the previous `PIE` constants, wall/top alpha values and remove the `PATCH 5.2` CSS block
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
+# PATCH 5.3
+
+Medium Glass Pie Balance.
+
+Type:
+visual UI refinement / Canvas pie volume and portal integration
+
+Goal:
+restore premium medium-depth glass volume after PATCH 5.2 made the pie too flat and small, while avoiding the previous thick barrel/cylinder look.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- increased Canvas pie depth from 18 to 30 units for controlled medium glass thickness
+- adjusted lower wall ellipse scale so side faces are visible but not dominant
+- increased top face opacity, side wall opacity and neon edge glow moderately
+- enlarged the canvas composition by roughly 18-25% inside the existing allocation panel
+- lifted and enlarged the portal layer so it connects visually with the pie
+- strengthened the vertical beam and portal cyan bloom
+- preserved right allocation cards, typography, page layout, data, API, hooks and calculations
+- did not restore heavy cylinder geometry, shared oval strokes or old platform rendering
+
+Risks:
+- final visual balance still depends on browser viewport and may need a small follow-up position/scale pass
+
+Rollback:
+- restore PATCH 5.2 pie constants and remove the `PATCH 5.3` CSS block
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
+# PATCH 5.4
+
+Raise Allocation Portal.
+
+Type:
+visual UI refinement / portal positioning
+
+Goal:
+move the holographic portal closer to the allocation pie after the medium-depth pie balance pass.
+
+Files changed:
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- raised the WebP portal image layer by roughly 180px
+- raised the portal cyan glow layer by the same amount
+- adjusted the vertical beam upward so it continues to visually connect the portal with the pie center
+- follow-up tuning lowered the portal stack by 40px, leaving a net upward shift of roughly 140px
+- follow-up tuning lowered the portal stack by another 20px, leaving a net upward shift of roughly 120px
+- follow-up tuning shifted only the Canvas pie image 15px to the right
+- preserved Canvas pie geometry, right allocation cards, data, API, hooks, calculations and page layout
+
+Risks:
+- portal may need a small follow-up vertical tuning after browser review
+
+Rollback:
+- remove the `PATCH 5.4` CSS block
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
+# PATCH 5.5
+
+Glass Slice Closure And Highlights.
+
+Type:
+visual UI refinement / Canvas slice material
+
+Goal:
+fix open-looking slice seams and make each allocation sector read as a cohesive glass 3D object rather than a transparent flat fill.
+
+Files changed:
+- `src/components/charts/HologramAllocationChart.tsx`
+- `docs/PATCH_LOG.md`
+
+Details:
+- introduced shared lower ellipse scale constants so lower wall points, wall paths and lower strokes use identical geometry
+- removed skipped top-edge segments that caused visible breaks on larger slices
+- added a closed perimeter seam stroke over each side wall path to cover micro-gaps between top, wall and lower layers
+- enabled lower edge rendering for all sectors, improving the purple/yellow bottom readability
+- added a subtle glossy white highlight along the illuminated top edge of each sector
+- preserved current pie scale, portal positioning, right allocation cards, data, API, hooks and calculations
+- did not increase pie depth or restore thick barrel/cylinder geometry
+
+Risks:
+- glossy highlights may need opacity tuning after visual review on the target display
+
+Rollback:
+- revert the lower scale constants, perimeter seam stroke and gloss edge helper changes in `HologramAllocationChart.tsx`
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
+# PATCH 6.0
+
+Investor Terminal Visual System.
+
+Type:
+visual UI refinement / dashboard shell and overview diagnostics
+
+Goal:
+save the completed premium investor terminal visual pass before moving from visual work to internal logic and system behavior.
+
+Files changed:
+- `src/components/layout/Sidebar.tsx`
+- `src/App.tsx`
+- `src/App.css`
+- `src/assets/health/ChatGPT Image 24 мая 2026 г., 20_54_33.webp`
+- `src/assets/health/health-shield.webp`
+- `docs/PATCH_LOG.md`
+
+Details:
+- rebuilt Sidebar without the old shared `Panel` wrapper so it behaves as a dedicated glass hardware shell
+- added live HTML navigation icons, active state surfaces, HUD accents, micro details and layered sci-fi glass depth
+- rebuilt the `Портфель сегодня` block into a premium terminal panel with colored glass cards, icon orbs, sparklines and dynamic PnL display
+- preserved investor data, API fetches, portfolio calculations, fallback state and page switching logic
+- upgraded the `Здоровье портфеля` block into the same glass/neon system with calmer diagnostic blue/green colors
+- replaced the text status badge with the provided `PROTECTED` WebP asset and cleaned the decorative image layer
+- aligned the top overview panels and their mini cards on a shared horizontal grid
+- kept Allocation, Fear & Greed, Mood, API contracts and Google Sheets bindings unchanged by this patch
+
+Build:
+successful
+
+Risks:
+- this patch is visually broad and may need small viewport-specific CSS tuning after deployment review
+- the protected WebP is a bitmap asset and may need future cropping or transparency cleanup if the source image changes
+
+Rollback:
+- revert the `PATCH 6.0` Sidebar/App JSX changes, the appended overview/sidebar/health CSS blocks and the health image assets
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
 # PATCH RULES
 
 Every patch must include:

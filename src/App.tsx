@@ -9,6 +9,7 @@ import mntLogo from "./assets/coins/mnt.png";
 import tiaLogo from "./assets/coins/tia.png";
 import usdtLogo from "./assets/coins/usdt.png";
 import gaugeBg from "./assets/fear-greed/gauge-bg.webp";
+import healthProtected from "./assets/health/ChatGPT Image 24 мая 2026 г., 20_54_33.webp";
 import { HologramAllocationChart } from "./components/charts/HologramAllocationChart";
 import { Sidebar } from "./components/layout/Sidebar";
 import { Panel } from "./components/shared/Panel";
@@ -44,21 +45,6 @@ import "./App.css";
 
 const RISK_BAR_COLORS = ["#63d8ff", "#3ddb72", "#9f57ff", "#f7d64a", "#ff6f8e", "#ff8b2a", "#45c2ff", "#53ea87"];
 
-function Badge({
-  children,
-  tone = "cyan",
-}: {
-  children: React.ReactNode;
-  tone?: "cyan" | "violet" | "yellow";
-}) {
-  const map = {
-    cyan: "cyber-badge-cyan",
-    violet: "cyber-badge-violet",
-    yellow: "cyber-badge-yellow",
-  };
-
-  return <span className={`cyber-badge ${map[tone]}`}>{children}</span>;
-}
 function TrendArrow({ direction = "up" }: { direction?: "up" | "down" }) {
   return (
     <span
@@ -97,6 +83,60 @@ function MiniInfo({
       <div className={`mini-value ${valueClassName}`.trim()}>{value}</div>
       {sub ? <div className={`mini-sub ${subClassName}`.trim()}>{sub}</div> : null}
     </div>
+  );
+}
+
+type OverviewTerminalTone = "cyan" | "violet" | "green" | "red";
+type OverviewTerminalIconName = "wallet" | "capital" | "star" | "down";
+type OverviewSparklineShape = "portfolio" | "capital" | "best" | "worst";
+
+function OverviewTerminalIcon({ name }: { name: OverviewTerminalIconName }) {
+  const icons = {
+    wallet: (
+      <>
+        <path d="M7 9.5h12a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h11" />
+        <path d="M7 4v5.5" />
+        <path d="M17 14h.01" />
+      </>
+    ),
+    capital: (
+      <>
+        <path d="M12 3v18" />
+        <path d="M17 7.5c-.9-1.1-2.4-1.8-4.4-1.8-2.7 0-4.6 1.2-4.6 3.1 0 4.3 9.5 1.9 9.5 6.5 0 2-1.9 3.2-4.8 3.2-2.2 0-4-.8-5-2.2" />
+      </>
+    ),
+    star: (
+      <path d="m12 3.8 2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19l.9-5.5-4-3.9 5.5-.8L12 3.8Z" />
+    ),
+    down: (
+      <>
+        <path d="M12 4v15" />
+        <path d="m6 13 6 6 6-6" />
+      </>
+    ),
+  };
+
+  return (
+    <span className={`overview-card-icon overview-card-icon-${name}`} aria-hidden="true">
+      <svg viewBox="0 0 24 24">{icons[name]}</svg>
+    </span>
+  );
+}
+
+function OverviewSparkline({ tone, shape }: { tone: OverviewTerminalTone; shape: OverviewSparklineShape }) {
+  const points = {
+    portfolio: "4,67 16,66 25,58 33,63 43,48 51,53 61,38 71,55 82,47 91,56 104,41 113,46 124,31 137,36 147,25 158,29 171,18 184,23 196,14",
+    capital: "4,28 13,14 22,55 31,34 39,46 48,29 58,44 67,38 78,59 90,47 104,51 119,42 132,49 148,53 164,50 180,60 196,68",
+    best: "4,68 18,58 31,49 45,52 58,43 71,47 86,36 102,39 116,28 132,31 147,22 162,25 177,15 196,11",
+    worst: "4,29 17,18 31,25 45,22 58,37 73,31 88,45 102,42 118,54 133,48 149,59 164,62 181,70 196,74",
+  };
+
+  return (
+    <svg className={`overview-sparkline overview-sparkline-${tone}`} viewBox="0 0 200 80" preserveAspectRatio="none" aria-hidden="true">
+      <path className="overview-sparkline-baseline" d="M4 72H196" />
+      <polyline className="overview-sparkline-line" points={points[shape]} />
+      <polyline className="overview-sparkline-glow" points={points[shape]} />
+    </svg>
   );
 }
 function FearGreedGauge({ data }: { data: FearGreed }) {
@@ -202,82 +242,90 @@ function OverviewPage({ data, setPage, fearGreedData }: { data: PortfolioState; 
   const risk = data.risk;
   const riskValue = Math.round(risk.health * 10);
   const riskColor = getRiskColor(riskValue);
+  const bestPositionDetails = data.portfolio.find((item) => item.asset === overview.bestPosition.asset);
+  const worstPositionDetails = data.portfolio.find((item) => item.asset === overview.worstPosition.asset);
+  const signedCurrency = (value: number) => `${value > 0 ? "+" : ""}${currency(value)}`;
+  const signedPercent = (value: number) => `${value > 0 ? "+" : ""}${percentDirect(value)}`;
+  const worstAssetParts = String(overview.worstPosition.asset).split(/\s+/).filter(Boolean);
 
   return (
     <div className="space-y-6">
       <div className="overview-top-grid">
-        <Panel tone="cyan" className="p-7 xl:p-8 h-full overview-main-panel" hover>
-          <div className="overview-header overview-header-main">
+        <Panel tone="cyan" className="p-7 xl:p-8 h-full overview-main-panel overview-terminal-panel" hover>
+          <div className="overview-header overview-header-main overview-terminal-header">
             <div>
-              <div className="section-kicker section-kicker-main text-cyan-300">Today</div>
-              <div className="section-title section-title-main">Портфель сегодня</div>
+              <div className="section-kicker section-kicker-main text-cyan-300 overview-terminal-kicker">Портфель сегодня</div>
             </div>
-            <div className="pnl-hero-pill">
-              <span className="pnl-hero-value">{currency(overview.pnl)}</span>
+            <div className={`pnl-hero-pill overview-terminal-pnl ${overview.pnl < 0 ? "overview-terminal-pnl-negative" : "overview-terminal-pnl-positive"}`}>
+              <span className="pnl-hero-value">{signedCurrency(overview.pnl)}</span>
               {overview.pnl > 0 ? <TrendArrow direction="up" /> : overview.pnl < 0 ? <TrendArrow direction="down" /> : null}
             </div>
           </div>
 
-          <div className="overview-main-grid">
-            <MiniInfo
-              label="Стоимость портфеля"
-              value={currency(overview.portfolioValue)}
-              sub={
-                <span className="mini-sub-pnl-row">
-                  {overview.pnl > 0 ? <TrendArrow direction="up" /> : overview.pnl < 0 ? <TrendArrow direction="down" /> : null}
-                  <span>PnL {percent(overview.pnlPct)}</span>
-                </span>
-              }
-              tone="cyan"
-              center
-              panelClassName="overview-mini-card"
-              labelClassName="mini-label-overview-main"
-              valueClassName="mini-value-hero"
-              subClassName={overview.pnl > 0 ? "mini-sub-green" : overview.pnl < 0 ? "mini-sub-red" : ""}
-            />
+          <div className="overview-main-grid overview-terminal-grid">
+            <div className="overview-terminal-card overview-terminal-card-cyan">
+              <div className="overview-card-head">
+                <OverviewTerminalIcon name="wallet" />
+                <div className="overview-card-label overview-card-label-stack">
+                  <span>Стоимость</span>
+                  <span>портфеля</span>
+                </div>
+              </div>
+              <div className="overview-card-value overview-card-value-money">{currency(overview.portfolioValue)}</div>
+              <div className={`overview-card-pnl-badge ${overview.pnl < 0 ? "overview-card-pnl-negative" : "overview-card-pnl-positive"}`}>
+                {overview.pnl > 0 ? <TrendArrow direction="up" /> : overview.pnl < 0 ? <TrendArrow direction="down" /> : null}
+                <span>PnL {percent(overview.pnlPct)}</span>
+              </div>
+              <OverviewSparkline tone="cyan" shape="portfolio" />
+            </div>
 
-            <MiniInfo
-              label="Вложено"
-              value={currency(overview.invested)}
-              tone="yellow"
-              center
-              panelClassName="overview-mini-card"
-              labelClassName="mini-label-overview-main"
-              valueClassName="mini-value-hero"
-            />
+            <div className="overview-terminal-card overview-terminal-card-violet">
+              <div className="overview-card-head">
+                <OverviewTerminalIcon name="capital" />
+                <div className="overview-card-label">Вложено</div>
+              </div>
+              <div className="overview-card-value overview-card-value-money">{currency(overview.invested)}</div>
+              <OverviewSparkline tone="violet" shape="capital" />
+            </div>
 
-            <button type="button" onClick={() => setPage("Портфель")} className="portfolio-link-card">
-              <MiniInfo
-                label="Лучшая позиция"
-                value={overview.bestPosition.asset}
-                sub={
-                  <span>
-                    {currency(overview.bestPosition.pnl)} /{" "}
-                    <span className="mini-sub-green">{percentDirect(overview.bestPosition.pnlPct)}</span>
-                  </span>
-                }
-                tone="cyan"
-                center
-                panelClassName="overview-mini-card"
-                valueClassName="mini-value-asset"
-              />
+            <button type="button" onClick={() => setPage("Портфель")} className="portfolio-link-card overview-terminal-card overview-terminal-card-green overview-terminal-card-button">
+              <div className="overview-card-head">
+                <OverviewTerminalIcon name="star" />
+                <div className="overview-card-label overview-card-label-stack">
+                  <span>Лучшая</span>
+                  <span>позиция</span>
+                </div>
+              </div>
+              <div className="overview-card-value overview-card-value-asset">{overview.bestPosition.asset}</div>
+              <div className="overview-card-sub">
+                {currency(bestPositionDetails?.currentValue ?? 0)}{" "}
+                <span className="overview-card-sub-green">({signedCurrency(overview.bestPosition.pnl)})</span>
+                {" / "}
+                <span className="overview-card-sub-green">{signedPercent(overview.bestPosition.pnlPct)}</span>
+              </div>
+              <OverviewSparkline tone="green" shape="best" />
             </button>
 
-            <button type="button" onClick={() => setPage("Портфель")} className="portfolio-link-card">
-              <MiniInfo
-                label="Худшая позиция"
-                value={overview.worstPosition.asset}
-                sub={
-                  <span>
-                    {currency(overview.worstPosition.pnl)} /{" "}
-                    <span className="mini-sub-red">{percentDirect(overview.worstPosition.pnlPct)}</span>
-                  </span>
-                }
-                tone="violet"
-                center
-                panelClassName="overview-mini-card"
-                valueClassName="mini-value-asset"
-              />
+            <button type="button" onClick={() => setPage("Портфель")} className="portfolio-link-card overview-terminal-card overview-terminal-card-red overview-terminal-card-button">
+              <div className="overview-card-head">
+                <OverviewTerminalIcon name="down" />
+                <div className="overview-card-label overview-card-label-stack">
+                  <span>Худшая</span>
+                  <span>позиция</span>
+                </div>
+              </div>
+              <div className="overview-card-value overview-card-value-asset overview-card-value-worst">
+                {worstAssetParts.length > 1
+                  ? worstAssetParts.map((part) => <span key={part}>{part}</span>)
+                  : overview.worstPosition.asset}
+              </div>
+              <div className="overview-card-sub">
+                {currency(worstPositionDetails?.currentValue ?? 0)}{" "}
+                <span className="overview-card-sub-red">({signedCurrency(overview.worstPosition.pnl)})</span>
+                {" / "}
+                <span className="overview-card-sub-red">{signedPercent(overview.worstPosition.pnlPct)}</span>
+              </div>
+              <OverviewSparkline tone="red" shape="worst" />
             </button>
           </div>
         </Panel>
@@ -285,10 +333,11 @@ function OverviewPage({ data, setPage, fearGreedData }: { data: PortfolioState; 
         <Panel tone="violet" className="p-6 xl:p-8 h-full overview-health-panel" hover>
           <div className="overview-header overview-header-health">
             <div>
-              <div className="section-kicker section-kicker-main text-violet-300">Health</div>
-              <div className="section-title section-title-main risk-title-main">Здоровье портфеля</div>
+              <div className="section-kicker section-kicker-main text-violet-300">Здоровье портфеля</div>
             </div>
-            <Badge tone={risk.health >= 0.8 ? "cyan" : risk.health >= 0.6 ? "yellow" : "violet"}>{risk.state}</Badge>
+            <div className="health-shield-badge" aria-label={risk.state}>
+              <img src={healthProtected} alt="" />
+            </div>
           </div>
 
           <div className="overview-health-grid risk-grid-main">
