@@ -55,19 +55,19 @@ medium.
 
 ---
 
-## 4. Fear & Greed still static
+## 4. Fear & Greed source stability
 
 Current value:
-14
+34
 
 Issue:
-not connected to live source.
+live source is connected through `/api/fear-greed`; fallback must stay conservative and be reviewed if the external source changes.
 
 Planned patch:
-PATCH 1.2
+monitor after deployment
 
 Priority:
-medium.
+low.
 
 ---
 

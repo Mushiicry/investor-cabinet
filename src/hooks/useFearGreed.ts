@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { fetchFearGreedValue } from "../api/fearGreed";
-import { FEAR_GREED_REFRESH_INTERVAL_MS } from "../config/constants";
+import {
+  FEAR_GREED_FALLBACK_VALUE,
+  FEAR_GREED_REFRESH_INTERVAL_MS,
+} from "../config/constants";
 import type { FearGreed } from "../types/portfolio";
 
 const fearGreed: FearGreed = {
-  value: 14,
-  label: "Экстремальный страх",
-  summary: "Рынок находится в зоне экстремального страха. Давление эмоций высокое, участники боятся заходить в покупки.",
+  value: FEAR_GREED_FALLBACK_VALUE,
+  label: "Страх",
+  summary: "Рынок находится в зоне страха. Индекс используем как фильтр эмоций, а не как отдельный сигнал к действию.",
   action: "Ниже 20 - сигнал на покупку x1. Ниже 15 - сигнал на покупку x1,5. Ниже 10 - сигнал на откуп x2.",
 };
 

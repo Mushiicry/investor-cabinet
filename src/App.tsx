@@ -244,8 +244,21 @@ function OverviewPage({ data, setPage, fearGreedData }: { data: PortfolioState; 
   const riskColor = getRiskColor(riskValue);
   const bestPositionDetails = data.portfolio.find((item) => item.asset === overview.bestPosition.asset);
   const worstPositionDetails = data.portfolio.find((item) => item.asset === overview.worstPosition.asset);
+  const bestPositionView = {
+    value: bestPositionDetails?.currentValue ?? 0,
+    pnl: bestPositionDetails?.pnl ?? overview.bestPosition.pnl,
+    pnlPct: bestPositionDetails?.pnlPct ?? overview.bestPosition.pnlPct,
+  };
+  const worstPositionView = {
+    value: worstPositionDetails?.currentValue ?? 0,
+    pnl: worstPositionDetails?.pnl ?? overview.worstPosition.pnl,
+    pnlPct: worstPositionDetails?.pnlPct ?? overview.worstPosition.pnlPct,
+  };
+  const futuresDeployableCash = risk.futuresDeployableCash ?? risk.deployableCash;
+  const spotDeployableCash = risk.spotDeployableCash ?? 0;
   const signedCurrency = (value: number) => `${value > 0 ? "+" : ""}${currency(value)}`;
   const signedPercent = (value: number) => `${value > 0 ? "+" : ""}${percentDirect(value)}`;
+  const bestAssetParts = String(overview.bestPosition.asset).split(/\s+/).filter(Boolean);
   const worstAssetParts = String(overview.worstPosition.asset).split(/\s+/).filter(Boolean);
 
   return (
@@ -274,7 +287,7 @@ function OverviewPage({ data, setPage, fearGreedData }: { data: PortfolioState; 
               <div className="overview-card-value overview-card-value-money">{currency(overview.portfolioValue)}</div>
               <div className={`overview-card-pnl-badge ${overview.pnl < 0 ? "overview-card-pnl-negative" : "overview-card-pnl-positive"}`}>
                 {overview.pnl > 0 ? <TrendArrow direction="up" /> : overview.pnl < 0 ? <TrendArrow direction="down" /> : null}
-                <span>PnL {percent(overview.pnlPct)}</span>
+                <span className="overview-card-pnl-percent">PnL {percent(overview.pnlPct)}</span>
               </div>
               <OverviewSparkline tone="cyan" shape="portfolio" />
             </div>
@@ -292,16 +305,19 @@ function OverviewPage({ data, setPage, fearGreedData }: { data: PortfolioState; 
               <div className="overview-card-head">
                 <OverviewTerminalIcon name="star" />
                 <div className="overview-card-label overview-card-label-stack">
-                  <span>Лучшая</span>
-                  <span>позиция</span>
+                  <span>THE BEST</span>
                 </div>
               </div>
-              <div className="overview-card-value overview-card-value-asset">{overview.bestPosition.asset}</div>
+              <div className={`overview-card-value overview-card-value-asset ${bestAssetParts.length > 1 ? "overview-card-value-best-stacked" : ""}`}>
+                {bestAssetParts.length > 1
+                  ? bestAssetParts.map((part) => <span key={part}>{part}</span>)
+                  : overview.bestPosition.asset}
+              </div>
               <div className="overview-card-sub">
-                {currency(bestPositionDetails?.currentValue ?? 0)}{" "}
-                <span className="overview-card-sub-green">({signedCurrency(overview.bestPosition.pnl)})</span>
+                {currency(bestPositionView.value)}{" "}
+                <span className="overview-card-sub-green">({signedCurrency(bestPositionView.pnl)})</span>
                 {" / "}
-                <span className="overview-card-sub-green">{signedPercent(overview.bestPosition.pnlPct)}</span>
+                <span className="overview-card-sub-green">{signedPercent(bestPositionView.pnlPct)}</span>
               </div>
               <OverviewSparkline tone="green" shape="best" />
             </button>
@@ -310,8 +326,7 @@ function OverviewPage({ data, setPage, fearGreedData }: { data: PortfolioState; 
               <div className="overview-card-head">
                 <OverviewTerminalIcon name="down" />
                 <div className="overview-card-label overview-card-label-stack">
-                  <span>Худшая</span>
-                  <span>позиция</span>
+                  <span>THE WORST</span>
                 </div>
               </div>
               <div className="overview-card-value overview-card-value-asset overview-card-value-worst">
@@ -320,10 +335,10 @@ function OverviewPage({ data, setPage, fearGreedData }: { data: PortfolioState; 
                   : overview.worstPosition.asset}
               </div>
               <div className="overview-card-sub">
-                {currency(worstPositionDetails?.currentValue ?? 0)}{" "}
-                <span className="overview-card-sub-red">({signedCurrency(overview.worstPosition.pnl)})</span>
+                {currency(worstPositionView.value)}{" "}
+                <span className="overview-card-sub-red">({signedCurrency(worstPositionView.pnl)})</span>
                 {" / "}
-                <span className="overview-card-sub-red">{signedPercent(overview.worstPosition.pnlPct)}</span>
+                <span className="overview-card-sub-red">{signedPercent(worstPositionView.pnlPct)}</span>
               </div>
               <OverviewSparkline tone="red" shape="worst" />
             </button>
@@ -378,8 +393,12 @@ function OverviewPage({ data, setPage, fearGreedData }: { data: PortfolioState; 
 
             <MiniInfo
               label="Можно пустить в работу"
-              value={currency(risk.deployableCash)}
-              sub="Без поломки структуры"
+              value={(
+                <span className="deployable-split-value">
+                  <span><span className="deployable-split-label">Фьючерсы</span>{currency(futuresDeployableCash)}</span>
+                  <span><span className="deployable-split-label">Спот</span>{currency(spotDeployableCash)}</span>
+                </span>
+              )}
               tone="cyan"
               panelClassName="mini-panel-risk overview-mini-card"
               labelClassName="mini-label-risk"
@@ -427,13 +446,29 @@ function PortfolioPage({ data }: { data: PortfolioState }) {
 
           <tbody>
             {sortedPortfolio.map((item) => {
+              const isStable = item.category === "Свободные деньги";
+              const normalizedStatus = String(item.status).toUpperCase();
+              const statusClass =
+                normalizedStatus === "RESERVE" || item.status === "Резерв"
+                  ? "status-badge-reserve"
+                  : normalizedStatus === "ACCUMULATE" || item.status === "Накапливать"
+                    ? "status-badge-accumulate"
+                    : normalizedStatus === "WATCH" || item.status === "Наблюдать"
+                      ? "status-badge-watch"
+                      : normalizedStatus === "HEDGE" || item.status === "Хедж"
+                        ? "status-badge-hedge"
+                        : normalizedStatus === "SPECULATION" || item.status === "Спекуляция"
+                          ? "status-badge-spec"
+                          : "status-badge-hold";
               const pnlClass =
-                getProfitColor(item.pnlPct) === "green"
+                isStable
+                  ? "portfolio-pnl-neutral"
+                  : getProfitColor(item.pnlPct) === "green"
                   ? "portfolio-pnl-positive"
                   : "portfolio-pnl-negative";
 
               return (
-                <tr key={item.asset} className="portfolio-table-row">
+                <tr key={item.asset} className="portfolio-table-row portfolio-row-glass">
                   <td className="px-3 py-3 rounded-l-2xl portfolio-td portfolio-td-asset">{item.asset}</td>
 
                   <td className="px-3 py-3 portfolio-td portfolio-td-center">{item.category}</td>
@@ -462,17 +497,7 @@ function PortfolioPage({ data }: { data: PortfolioState }) {
 
                   <td className="px-3 py-3 rounded-r-2xl portfolio-td portfolio-td-center">
                     <span
-                      className={`status-badge ${
-                        item.status === "Держать"
-                          ? "status-badge-hold"
-                          : item.status === "Накапливать"
-                            ? "status-badge-accumulate"
-                            : item.status === "Наблюдать"
-                              ? "status-badge-watch"
-                              : item.status === "Хедж"
-                                ? "status-badge-hedge"
-                                : "status-badge-spec"
-                      }`}
+                      className={`status-badge ${statusClass}`}
                       title={item.status}
                     >
                       {item.status}
@@ -517,7 +542,8 @@ function RiskPage({ data }: { data: PortfolioState }) {
       .sort((a, b) => b.currentValue - a.currentValue)[0] ?? portfolio[0];
   const largestAssetValueText = `${Math.round(Number(largestNonCashAsset?.currentValue || 0))} $`;
   const reserveText = `${Math.round(Number(risk.reserve || 0))} $`;
-  const deployableText = `${Math.round(Number(risk.deployableCash || 0))} $`;
+  const futuresDeployableText = `${Math.round(Number(risk.futuresDeployableCash || risk.deployableCash || 0))} $`;
+  const spotDeployableText = `${Math.round(Number(risk.spotDeployableCash || 0))} $`;
 
   return (
     <div className="space-y-6">
@@ -629,7 +655,10 @@ function RiskPage({ data }: { data: PortfolioState }) {
 
                   <div className="assets-mini-card">
                     <div className="assets-mini-label">Можно в работу</div>
-                    <div className="assets-mini-value">{deployableText}</div>
+                    <div className="assets-mini-value assets-mini-value-split">
+                      <span>Фьючи {futuresDeployableText}</span>
+                      <span>Спот {spotDeployableText}</span>
+                    </div>
                   </div>
 
                   <div className="assets-mini-card">

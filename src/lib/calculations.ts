@@ -10,6 +10,7 @@ import type {
 } from "../types/portfolio";
 
 const round = (n: number, digits = 2) => Number(n.toFixed(digits));
+const MIN_SPOT_RESERVE_SHARE = 0.3;
 
 const CATEGORY_ORDER: Category[] = [
   "Крипта",
@@ -102,6 +103,13 @@ export function calculateRisk(positions: PositionCalculated[]): Risk {
     .reduce((sum, item) => sum + item.currentValue, 0);
 
   const workBudget = reserve * 0.4575;
+  const futuresDeployableCash = positions
+    .filter((item) => item.category === "Свободные деньги" && item.asset.toUpperCase().includes("USDC HL"))
+    .reduce((sum, item) => sum + item.currentValue, 0);
+  const spotReserve = positions
+    .filter((item) => item.category === "Свободные деньги" && !item.asset.toUpperCase().includes("USDC HL"))
+    .reduce((sum, item) => sum + item.currentValue, 0);
+  const spotDeployableCash = Math.max(spotReserve - portfolioValue * MIN_SPOT_RESERVE_SHARE, 0);
 
   const largestRiskAsset =
     positions
@@ -138,6 +146,8 @@ export function calculateRisk(positions: PositionCalculated[]): Risk {
     reserve: round(reserve),
     reserveShare: round(reserveShare, 4),
     deployableCash: round(workBudget),
+    futuresDeployableCash: round(futuresDeployableCash),
+    spotDeployableCash: round(spotDeployableCash),
     largestRiskAsset: largestRiskAsset?.asset ?? "-",
     largestRiskShare: largestRiskAsset ? round(largestRiskAsset.share / 100, 4) : 0,
     cryptoShare: portfolioValue ? round(cryptoValue / portfolioValue, 4) : 0,

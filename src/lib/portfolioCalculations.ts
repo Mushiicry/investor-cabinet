@@ -10,6 +10,7 @@ import type {
 } from "../types/portfolio";
 
 export const CATEGORY_ORDER: Category[] = ["Крипта", "Металлы", "Фьючерсы", "Акции", "Свободные деньги"];
+const MIN_SPOT_RESERVE_SHARE = 0.3;
 
 export const round = (n: number, digits = 2) => Number(n.toFixed(digits));
 
@@ -64,6 +65,13 @@ export function calculateRisk(positions: PositionCalculated[]): Risk {
   const futuresValue = positions.filter((item) => item.category === "Фьючерсы").reduce((sum, item) => sum + item.currentValue, 0);
   const stocksValue = positions.filter((item) => item.category === "Акции").reduce((sum, item) => sum + item.currentValue, 0);
   const workBudget = reserve * 0.4575;
+  const futuresDeployableCash = positions
+    .filter((item) => item.category === "Свободные деньги" && item.asset.toUpperCase().includes("USDC HL"))
+    .reduce((sum, item) => sum + item.currentValue, 0);
+  const spotReserve = positions
+    .filter((item) => item.category === "Свободные деньги" && !item.asset.toUpperCase().includes("USDC HL"))
+    .reduce((sum, item) => sum + item.currentValue, 0);
+  const spotDeployableCash = Math.max(spotReserve - portfolioValue * MIN_SPOT_RESERVE_SHARE, 0);
   const largestRiskAsset = positions.filter((item) => item.category !== "Свободные деньги").sort((a, b) => b.currentValue - a.currentValue)[0] ?? null;
   const health = reserveShare >= 0.5 ? 0.88 : reserveShare >= 0.35 ? 0.74 : reserveShare >= 0.2 ? 0.59 : 0.41;
   const state = health >= 0.8 ? "Контроль" : health >= 0.6 ? "Баланс" : "Риск";
@@ -74,6 +82,8 @@ export function calculateRisk(positions: PositionCalculated[]): Risk {
     reserve: round(reserve),
     reserveShare: round(reserveShare, 4),
     deployableCash: round(workBudget),
+    futuresDeployableCash: round(futuresDeployableCash),
+    spotDeployableCash: round(spotDeployableCash),
     largestRiskAsset: largestRiskAsset?.asset ?? "-",
     largestRiskShare: largestRiskAsset ? round(largestRiskAsset.share / 100, 4) : 0,
     cryptoShare: portfolioValue ? round(cryptoValue / portfolioValue, 4) : 0,

@@ -95,7 +95,8 @@ Source:
 
 Frontend behavior:
 - React state stores the current index
-- fallback value remains `14`
+- frontend reads it through `/api/fear-greed`
+- fallback value is `34`
 - widget label is derived from the index range
 
 ---
@@ -135,13 +136,14 @@ Meaning:
 ## Fear & Greed flow
 
 alternative.me
+-> `/api/fear-greed`
 -> React state
 -> Fear & Greed widget
 
 Meaning:
 - The widget uses a separate external API.
 - It does not depend on Google Sheets.
-- If the request fails, the widget falls back to `14`.
+- If the request fails, the widget falls back to `34`.
 
 ---
 
@@ -168,4 +170,3 @@ Meaning:
 - Do not touch Apps Script UPDATE PRICES unless the task is about prices.
 - Do not touch Apps Script SITE API unless the task is about JSON contract.
 - Do not start multi-user/auth/refactor work inside unrelated patches.
-

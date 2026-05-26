@@ -2416,6 +2416,90 @@ requires a normal build and push to GitHub; Vercel should deploy from `main` aft
 
 ---
 
+# PATCH 6.1
+
+Fear & Greed live index repair.
+
+Type:
+data integration / safety fallback / lint cleanup
+
+Goal:
+restore the Fear & Greed widget to the current live value and prevent the UI from falling back into an overly aggressive `14` buy state when the external request fails.
+
+Files changed:
+- `src/config/constants.ts`
+- `src/hooks/useFearGreed.ts`
+- `vite.config.ts`
+- `vercel.json`
+- `src/api/investor.ts`
+- `src/hooks/useInvestorData.ts`
+- `docs/ARCHITECTURE_BASELINE.md`
+- `docs/KNOWN_ISSUES.md`
+- `docs/PATCH_LOG.md`
+
+Details:
+- routed Fear & Greed through `/api/fear-greed` for local Vite and Vercel deployments
+- confirmed `alternative.me` returns `34` on 2026-05-26
+- changed fallback from `14` to `34` so a failed request does not visually trigger maximum aggressive-buy mode
+- preserved the existing widget geometry, buy ladder, API naming and Google Sheets contract
+- removed two explicit `any` usages in investor API typing so lint passes
+
+Build:
+successful
+
+Risks:
+- `/api/fear-greed` depends on the external alternative.me response format staying compatible with `{ data: [{ value }] }`
+
+Rollback:
+- restore `FEAR_GREED_API_URL` to the direct external URL and fallback value if the proxy route creates deployment issues
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel must deploy the updated rewrite for `/api/fear-greed`.
+
+---
+
+# PATCH 6.2
+
+Overview risk-position and deployable cash split.
+
+Type:
+data normalization / risk UI correction
+
+Goal:
+prevent closed or zero-value positions from being shown as the best position, and split the deployable capital card into futures cash and spot cash limits.
+
+Files changed:
+- `src/hooks/useInvestorData.ts`
+- `src/types/portfolio.ts`
+- `src/lib/portfolioCalculations.ts`
+- `src/lib/calculations.ts`
+- `src/App.tsx`
+- `src/App.css`
+- `docs/PATCH_LOG.md`
+
+Details:
+- derive best and worst overview positions from open non-reserve risk positions instead of trusting stale `overview.bestPosition` values from the API
+- exclude `EXITED`, `FIXED`, `CLOSED`, reserve and cash rows from best/worst position selection
+- treat `USDC HL` as futures deployable cash and keep it separate from spot stable reserves
+- calculate spot deployable cash as spot reserve minus the 30% minimum portfolio reserve rule
+- render the overview “Можно пустить в работу” card as two lines: `Фьючерсы` and `Спот`
+- mirror the split in the Risk page mini-card without changing the Google Sheets or Apps Script API contract
+
+Build:
+successful
+
+Risks:
+- spot deployable cash depends on the current 30% reserve rule documented in the risk sheet; if the strategy target changes, this constant should move to API/settings
+- futures cash detection currently relies on the `USDC HL` asset naming
+
+Rollback:
+- restore best/worst selection to the API `overview.bestPosition`/`worstPosition` fields and render `risk.deployableCash` as a single value
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
 # PATCH RULES
 
 Every patch must include:

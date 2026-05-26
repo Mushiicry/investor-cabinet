@@ -80,6 +80,8 @@ export type RiskData = {
   reserve: number;
   reserveShare: number;
   deployableCash: number;
+  futuresDeployableCash: number;
+  spotDeployableCash: number;
   largestRiskAsset: string;
   largestRiskShare: number;
   cryptoShare: number;

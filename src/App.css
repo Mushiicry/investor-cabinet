@@ -1129,6 +1129,7 @@ select {
 
 .portfolio-table {
   border-collapse: separate;
+  border-spacing: 0 0.72rem;
   table-layout: fixed;
 }
 
@@ -1150,7 +1151,51 @@ select {
 }
 
 .portfolio-table-row {
-  background: rgba(255, 255, 255, 0.03);
+  --portfolio-row-accent: rgba(126, 218, 255, 0.34);
+  --portfolio-row-violet: rgba(168, 85, 247, 0.24);
+  background: transparent;
+}
+
+.portfolio-row-glass .portfolio-td {
+  position: relative;
+  background:
+    radial-gradient(circle at 0% 50%, rgba(126, 218, 255, 0.09), transparent 32%),
+    radial-gradient(circle at 100% 50%, rgba(168, 85, 247, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(14, 24, 44, 0.64), rgba(5, 10, 24, 0.82));
+  border-top: 1px solid rgba(126, 218, 255, 0.16);
+  border-bottom: 1px solid rgba(126, 218, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -14px 26px rgba(0, 0, 0, 0.3);
+}
+
+.portfolio-row-glass .portfolio-td:first-child {
+  border-left: 1px solid rgba(126, 218, 255, 0.22);
+  border-radius: 18px 0 0 18px;
+  box-shadow:
+    inset 3px 0 0 rgba(126, 218, 255, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -14px 26px rgba(0, 0, 0, 0.3),
+    -10px 0 22px rgba(91, 214, 255, 0.08);
+}
+
+.portfolio-row-glass .portfolio-td:last-child {
+  border-right: 1px solid rgba(168, 85, 247, 0.28);
+  border-radius: 0 18px 18px 0;
+  box-shadow:
+    inset -2px 0 0 rgba(168, 85, 247, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -14px 26px rgba(0, 0, 0, 0.3),
+    10px 0 24px rgba(168, 85, 247, 0.1);
+}
+
+.portfolio-row-glass:hover .portfolio-td {
+  border-top-color: rgba(126, 218, 255, 0.3);
+  border-bottom-color: rgba(168, 85, 247, 0.24);
+  background:
+    radial-gradient(circle at 0% 50%, rgba(126, 218, 255, 0.14), transparent 34%),
+    radial-gradient(circle at 100% 50%, rgba(168, 85, 247, 0.18), transparent 36%),
+    linear-gradient(180deg, rgba(18, 31, 55, 0.72), rgba(6, 12, 28, 0.9));
 }
 
 .portfolio-td {
@@ -1192,7 +1237,8 @@ select {
 }
 
 .portfolio-pnl-neutral {
-  color: #ffe07b;
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.16);
 }
 
 .portfolio-pnl-main {
@@ -1297,39 +1343,48 @@ select {
 }
 
 .status-badge-accumulate {
-  color: #dbeafe;
-  background: linear-gradient(180deg, rgba(12, 44, 108, 0.96), rgba(8, 28, 72, 0.98));
-  border: 1px solid rgba(61, 124, 255, 0.34);
+  color: #fff1a8;
+  background: linear-gradient(180deg, rgba(102, 82, 18, 0.95), rgba(58, 43, 9, 0.98));
+  border: 1px solid rgba(255, 216, 77, 0.34);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.05),
-    0 0 20px rgba(37, 99, 235, 0.16) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 20px rgba(255, 216, 77, 0.16) !important;
+}
+
+.status-badge-reserve {
+  color: #baffcf;
+  background: linear-gradient(180deg, rgba(18, 91, 49, 0.95), rgba(8, 53, 29, 0.98));
+  border: 1px solid rgba(67, 255, 143, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 20px rgba(67, 255, 143, 0.16) !important;
 }
 
 .status-badge-watch {
-  color: #ffb86b;
-  background: linear-gradient(180deg, rgba(96, 53, 18, 0.95), rgba(58, 31, 10, 0.98));
-  border: 1px solid rgba(255, 153, 51, 0.28);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.04),
-    0 0 18px rgba(255, 140, 40, 0.12) !important;
-}
-
-.status-badge-hedge {
-  color: #ffe27a;
-  background: linear-gradient(180deg, rgba(86, 72, 16, 0.95), rgba(52, 43, 10, 0.98));
-  border: 1px solid rgba(255, 216, 77, 0.28);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.04),
-    0 0 18px rgba(255, 216, 77, 0.10) !important;
-}
-
-.status-badge-spec {
   color: #dcc4ff;
   background: linear-gradient(180deg, rgba(73, 34, 110, 0.95), rgba(45, 20, 70, 0.98));
   border: 1px solid rgba(168, 85, 247, 0.30);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.04),
     0 0 18px rgba(168, 85, 247, 0.12) !important;
+}
+
+.status-badge-hedge {
+  color: #b9f3ff;
+  background: linear-gradient(180deg, rgba(14, 74, 103, 0.95), rgba(7, 42, 66, 0.98));
+  border: 1px solid rgba(91, 214, 255, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 0 18px rgba(91, 214, 255, 0.14) !important;
+}
+
+.status-badge-spec {
+  color: #ffc1cd;
+  background: linear-gradient(180deg, rgba(102, 18, 38, 0.95), rgba(58, 8, 24, 0.98));
+  border: 1px solid rgba(255, 95, 126, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 0 18px rgba(255, 95, 126, 0.14) !important;
 }
 
 .portfolio-table td:last-child {
@@ -5927,6 +5982,11 @@ body {
   text-shadow:
     0 0 12px rgba(255, 95, 126, 0.32),
     0 10px 26px rgba(0, 0, 0, 0.44);
+}
+
+.portfolio-pnl-cell.portfolio-pnl-neutral {
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.16);
 }
 
 .portfolio-pnl-cell {
@@ -12850,6 +12910,15 @@ body {
   white-space: normal;
 }
 
+.cyber-scene .overview-card-value-best-stacked {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.02em;
+  font-size: clamp(1.5rem, 1.68vw, 2.08rem);
+  line-height: 0.86;
+  white-space: normal;
+}
+
 .cyber-scene .overview-card-sub {
   align-self: center;
   margin-top: 0.36rem;
@@ -12896,6 +12965,32 @@ body {
   height: 1.12rem !important;
   font-size: 0.62rem !important;
   animation: none;
+}
+
+.cyber-scene .overview-card-pnl-badge.overview-card-pnl-negative {
+  color: #ff4f6e;
+  background: rgba(55, 8, 20, 0.84);
+  border-color: rgba(255, 79, 110, 0.44);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 18px rgba(255, 79, 110, 0.3),
+    0 0 36px rgba(255, 79, 110, 0.12);
+}
+
+.cyber-scene .overview-card-pnl-badge.overview-card-pnl-negative .trend-arrow {
+  color: #ff5f7e;
+  background:
+    radial-gradient(circle at 36% 28%, rgba(255, 255, 255, 0.16), transparent 30%),
+    rgba(78, 9, 25, 0.78) !important;
+  border-color: rgba(255, 79, 110, 0.46);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 16px rgba(255, 79, 110, 0.34) !important;
+}
+
+.cyber-scene .overview-card-pnl-percent {
+  font-size: 1.06em;
+  letter-spacing: 0.01em;
 }
 
 .cyber-scene .overview-sparkline {
@@ -13003,6 +13098,11 @@ body {
 }
 
 .cyber-scene .overview-card-value-worst {
+  font-size: clamp(1.45rem, 1.62vw, 2.04rem);
+  line-height: 0.84;
+}
+
+.cyber-scene .overview-card-value-best-stacked {
   font-size: clamp(1.45rem, 1.62vw, 2.04rem);
   line-height: 0.84;
 }
@@ -13171,6 +13271,39 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
     0 0 18px rgba(67, 255, 143, 0.44),
     0 0 34px rgba(67, 255, 143, 0.18) !important;
+}
+
+.cyber-scene .overview-terminal-pnl.overview-terminal-pnl-negative {
+  border-color: rgba(255, 79, 110, 0.62) !important;
+  background:
+    radial-gradient(circle at 88% 50%, rgba(255, 79, 110, 0.34), transparent 44%),
+    linear-gradient(180deg, rgba(41, 14, 29, 0.9), rgba(14, 7, 18, 0.98)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -14px 30px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 79, 110, 0.16),
+    0 0 26px rgba(255, 79, 110, 0.42),
+    0 0 58px rgba(255, 79, 110, 0.2),
+    0 18px 48px rgba(0, 0, 0, 0.34) !important;
+}
+
+.cyber-scene .overview-terminal-pnl.overview-terminal-pnl-negative::after {
+  background: radial-gradient(circle at 82% 50%, rgba(255, 79, 110, 0.28), transparent 58%);
+}
+
+.cyber-scene .overview-terminal-pnl.overview-terminal-pnl-negative .trend-arrow {
+  color: #ff5f7e;
+  background:
+    radial-gradient(circle at 36% 28%, rgba(255, 255, 255, 0.16), transparent 30%),
+    rgba(78, 9, 25, 0.76) !important;
+  border-color: rgba(255, 79, 110, 0.5);
+  text-shadow:
+    0 0 10px rgba(255, 79, 110, 0.7),
+    0 0 22px rgba(255, 79, 110, 0.36);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 18px rgba(255, 79, 110, 0.46),
+    0 0 34px rgba(255, 79, 110, 0.2) !important;
 }
 
 @keyframes overviewCardGlowBreath {
@@ -13437,6 +13570,46 @@ body {
 .cyber-scene .overview-terminal-card-green .overview-card-label,
 .cyber-scene .overview-terminal-card-red .overview-card-label {
   font-size: clamp(0.66rem, 0.7vw, 0.72rem) !important;
+}
+
+/* ===== DEPLOYABLE CASH SPLIT ===== */
+.cyber-scene .deployable-split-value {
+  display: grid;
+  gap: 0.08rem;
+  line-height: 1.02;
+}
+
+.cyber-scene .deployable-split-value > span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.55rem;
+  min-width: min(11.4rem, 100%);
+  white-space: nowrap;
+}
+
+.cyber-scene .deployable-split-label {
+  color: rgba(200, 224, 255, 0.68);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.cyber-scene .mini-value-risk .deployable-split-value {
+  font-size: clamp(1.12rem, 1.45vw, 1.48rem);
+  width: 100%;
+  max-width: 12.4rem;
+}
+
+.cyber-scene .assets-mini-value-split {
+  display: grid;
+  gap: 0.1rem;
+  font-size: clamp(1.0rem, 1.08vw, 1.22rem) !important;
+  line-height: 1.08;
+}
+
+.cyber-scene .assets-mini-value-split span {
+  white-space: nowrap;
 }
 
 /* ===== OVERVIEW DIAGNOSTIC ALIGNMENT CLEANUP ===== */
