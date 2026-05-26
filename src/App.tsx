@@ -12,6 +12,7 @@ import gaugeBg from "./assets/fear-greed/gauge-bg.webp";
 import healthProtected from "./assets/health/ChatGPT Image 24 мая 2026 г., 20_54_33.webp";
 import { HologramAllocationChart } from "./components/charts/HologramAllocationChart";
 import { Sidebar } from "./components/layout/Sidebar";
+import { PortfolioPage } from "./components/portfolio/PortfolioPage";
 import { Panel } from "./components/shared/Panel";
 import {
   TEST_LOGIN,
@@ -30,7 +31,6 @@ import {
   cardNumbers,
   fgTone,
   getAttackMetricClass,
-  getProfitColor,
   getRiskColor,
   getRiskMetricClass,
   statusTone,
@@ -418,101 +418,6 @@ function OverviewPage({ data, setPage, fearGreedData }: { data: PortfolioState; 
     </div>
   );
 }
-function PortfolioPage({ data }: { data: PortfolioState }) {
-  const sortedPortfolio = [...data.portfolio].sort((a, b) => b.invested - a.invested);
-
-  return (
-    <div className="space-y-6">
-      <Panel tone="cyan" className="p-6 portfolio-header-panel" hover>
-        <div className="section-kicker portfolio-kicker text-cyan-300">PORTFOLIO</div>
-        <div className="section-title portfolio-title">Все позиции</div>
-      </Panel>
-
-      <div className="overflow-x-auto portfolio-table-wrap">
-        <table className="w-full min-w-[1000px] border-separate border-spacing-y-3 portfolio-table">
-          <thead>
-            <tr className="portfolio-table-head-row">
-              <th className="px-3 portfolio-th portfolio-th-left">Актив</th>
-              <th className="px-3 portfolio-th">Категория</th>
-              <th className="px-3 portfolio-th">Средняя</th>
-              <th className="px-3 portfolio-th">Текущая</th>
-              <th className="px-3 portfolio-th">Вложено</th>
-              <th className="px-3 portfolio-th">Стоимость</th>
-              <th className="px-3 portfolio-th">PnL</th>
-              <th className="px-3 portfolio-th">Доля</th>
-              <th className="px-3 portfolio-th">Статус</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {sortedPortfolio.map((item) => {
-              const isStable = item.category === "Свободные деньги";
-              const normalizedStatus = String(item.status).toUpperCase();
-              const statusClass =
-                normalizedStatus === "RESERVE" || item.status === "Резерв"
-                  ? "status-badge-reserve"
-                  : normalizedStatus === "ACCUMULATE" || item.status === "Накапливать"
-                    ? "status-badge-accumulate"
-                    : normalizedStatus === "WATCH" || item.status === "Наблюдать"
-                      ? "status-badge-watch"
-                      : normalizedStatus === "HEDGE" || item.status === "Хедж"
-                        ? "status-badge-hedge"
-                        : normalizedStatus === "SPECULATION" || item.status === "Спекуляция"
-                          ? "status-badge-spec"
-                          : "status-badge-hold";
-              const pnlClass =
-                isStable
-                  ? "portfolio-pnl-neutral"
-                  : getProfitColor(item.pnlPct) === "green"
-                  ? "portfolio-pnl-positive"
-                  : "portfolio-pnl-negative";
-
-              return (
-                <tr key={item.asset} className="portfolio-table-row portfolio-row-glass">
-                  <td className="px-3 py-3 rounded-l-2xl portfolio-td portfolio-td-asset">{item.asset}</td>
-
-                  <td className="px-3 py-3 portfolio-td portfolio-td-center">{item.category}</td>
-
-                  <td className="px-3 py-3 portfolio-td portfolio-td-center">{currency(item.avgEntry)}</td>
-
-                  <td className="px-3 py-3 portfolio-td portfolio-td-center">{currency(item.currentPrice)}</td>
-
-                  <td className="px-3 py-3 portfolio-td portfolio-td-center portfolio-td-money">{currency(item.invested)}</td>
-
-                  <td className="px-3 py-3 portfolio-td portfolio-td-center portfolio-td-money">{currency(item.currentValue)}</td>
-
-                  <td className={`px-3 py-3 portfolio-td portfolio-td-center portfolio-pnl-cell ${pnlClass}`}>
-                    <span className="portfolio-pnl-main">
-                      {item.pnl > 0 ? "+" : ""}
-                      {currency(item.pnl)}
-                    </span>
-                    <span className="portfolio-pnl-sep"> / </span>
-                    <span className="portfolio-pnl-percent">
-                      {item.pnlPct > 0 ? "+" : ""}
-                      {percentDirect(item.pnlPct)}
-                    </span>
-                  </td>
-
-                  <td className="px-3 py-3 portfolio-td portfolio-td-center">{percentDirect(item.share)}</td>
-
-                  <td className="px-3 py-3 rounded-r-2xl portfolio-td portfolio-td-center">
-                    <span
-                      className={`status-badge ${statusClass}`}
-                      title={item.status}
-                    >
-                      {item.status}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 function RiskPage({ data }: { data: PortfolioState }) {
   const risk = data.risk;
   const portfolio = [...data.portfolio].sort((a, b) => b.share - a.share);
