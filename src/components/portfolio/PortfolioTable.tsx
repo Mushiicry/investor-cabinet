@@ -1,42 +1,7 @@
 import { currency, percentDirect } from "../../lib/formatters";
-import { getProfitColor } from "../../lib/uiHelpers";
+import { getPortfolioPnlClass } from "../../lib/portfolioPresentation";
 import type { PositionCalculated } from "../../types/portfolio";
-
-function getStatusBadgeClass(status: string): string {
-  const normalizedStatus = String(status).toUpperCase();
-
-  if (normalizedStatus === "RESERVE" || status === "Резерв") {
-    return "status-badge-reserve";
-  }
-
-  if (normalizedStatus === "ACCUMULATE" || status === "Накапливать") {
-    return "status-badge-accumulate";
-  }
-
-  if (normalizedStatus === "WATCH" || status === "Наблюдать") {
-    return "status-badge-watch";
-  }
-
-  if (normalizedStatus === "HEDGE" || status === "Хедж") {
-    return "status-badge-hedge";
-  }
-
-  if (normalizedStatus === "SPECULATION" || status === "Спекуляция") {
-    return "status-badge-spec";
-  }
-
-  return "status-badge-hold";
-}
-
-function getPortfolioPnlClass(item: PositionCalculated): string {
-  if (item.category === "Свободные деньги") {
-    return "portfolio-pnl-neutral";
-  }
-
-  return getProfitColor(item.pnlPct) === "green"
-    ? "portfolio-pnl-positive"
-    : "portfolio-pnl-negative";
-}
+import { PortfolioStatusBadge } from "./PortfolioStatusBadge";
 
 type PortfolioTableProps = {
   portfolio: PositionCalculated[];
@@ -64,7 +29,6 @@ export function PortfolioTable({ portfolio }: PortfolioTableProps) {
 
         <tbody>
           {sortedPortfolio.map((item) => {
-            const statusClass = getStatusBadgeClass(item.status);
             const pnlClass = getPortfolioPnlClass(item);
 
             return (
@@ -96,12 +60,7 @@ export function PortfolioTable({ portfolio }: PortfolioTableProps) {
                 <td className="px-3 py-3 portfolio-td portfolio-td-center">{percentDirect(item.share)}</td>
 
                 <td className="px-3 py-3 rounded-r-2xl portfolio-td portfolio-td-center">
-                  <span
-                    className={`status-badge ${statusClass}`}
-                    title={item.status}
-                  >
-                    {item.status}
-                  </span>
+                  <PortfolioStatusBadge status={item.status} />
                 </td>
               </tr>
             );

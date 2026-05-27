@@ -97,6 +97,7 @@ Frontend behavior:
 - React state stores the current index
 - frontend reads it through `/api/fear-greed`
 - fallback value is `34`
+- fallback value is a conservative emergency fallback, not a current market reading
 - widget label is derived from the index range
 
 ---

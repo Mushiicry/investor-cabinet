@@ -209,6 +209,10 @@ scenario system.
 - analytics
 - future charts
 
+Источник истины для будущего `history` API.
+На этапе Stage 2 экспорт должен быть read-only:
+читать существующие строки и не менять формулы.
+
 
 ---
 

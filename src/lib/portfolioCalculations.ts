@@ -8,9 +8,24 @@ import type {
   Risk,
   ScenarioCard,
 } from "../types/portfolio";
+import {
+  RESERVE_WORK_BUDGET_SHARE,
+  SPOT_RESERVE_FLOOR_SHARE,
+} from "../config/riskRules";
+import {
+  calculateReserveHealth,
+  getReserveSignal,
+  getReserveSummary,
+  getRiskState,
+} from "./riskCore";
+import {
+  buildExposureWarnings,
+  calculateCategoryExposureShares,
+  calculateCategoryValue,
+  calculatePortfolioValue,
+} from "./riskExposure";
 
 export const CATEGORY_ORDER: Category[] = ["Крипта", "Металлы", "Фьючерсы", "Акции", "Свободные деньги"];
-const MIN_SPOT_RESERVE_SHARE = 0.3;
 
 export const round = (n: number, digits = 2) => Number(n.toFixed(digits));
 
@@ -57,26 +72,26 @@ export function calculateCategoryAllocations(positions: PositionCalculated[]): C
 }
 
 export function calculateRisk(positions: PositionCalculated[]): Risk {
-  const portfolioValue = round(positions.reduce((sum, item) => sum + item.currentValue, 0));
-  const reserve = positions.find((item) => item.category === "Свободные деньги")?.currentValue ?? 0;
+  const portfolioValue = round(calculatePortfolioValue(positions));
+  const reserve = calculateCategoryValue(positions, "Свободные деньги");
   const reserveShare = portfolioValue ? reserve / portfolioValue : 0;
-  const cryptoValue = positions.filter((item) => item.category === "Крипта").reduce((sum, item) => sum + item.currentValue, 0);
-  const metalsValue = positions.filter((item) => item.category === "Металлы").reduce((sum, item) => sum + item.currentValue, 0);
-  const futuresValue = positions.filter((item) => item.category === "Фьючерсы").reduce((sum, item) => sum + item.currentValue, 0);
-  const stocksValue = positions.filter((item) => item.category === "Акции").reduce((sum, item) => sum + item.currentValue, 0);
-  const workBudget = reserve * 0.4575;
+  const categoryExposure = calculateCategoryExposureShares(positions, portfolioValue);
+  const workBudget = reserve * RESERVE_WORK_BUDGET_SHARE;
   const futuresDeployableCash = positions
     .filter((item) => item.category === "Свободные деньги" && item.asset.toUpperCase().includes("USDC HL"))
     .reduce((sum, item) => sum + item.currentValue, 0);
   const spotReserve = positions
     .filter((item) => item.category === "Свободные деньги" && !item.asset.toUpperCase().includes("USDC HL"))
     .reduce((sum, item) => sum + item.currentValue, 0);
-  const spotDeployableCash = Math.max(spotReserve - portfolioValue * MIN_SPOT_RESERVE_SHARE, 0);
+  const spotDeployableCash = Math.max(spotReserve - portfolioValue * SPOT_RESERVE_FLOOR_SHARE, 0);
   const largestRiskAsset = positions.filter((item) => item.category !== "Свободные деньги").sort((a, b) => b.currentValue - a.currentValue)[0] ?? null;
-  const health = reserveShare >= 0.5 ? 0.88 : reserveShare >= 0.35 ? 0.74 : reserveShare >= 0.2 ? 0.59 : 0.41;
-  const state = health >= 0.8 ? "Контроль" : health >= 0.6 ? "Баланс" : "Риск";
-  const signal = reserveShare >= 0.5 ? "Резерв высокий. Можно добирать ядро и держать спекулятивный лимит." : reserveShare >= 0.35 ? "Резерв нормальный. Добор только ступенчато." : "Резерв низкий. Новые входы только выборочно.";
-  const summary = reserveShare >= 0.5 ? "Портфель защитный. Есть манёвренность и запас по риску." : reserveShare >= 0.35 ? "Портфель сбалансирован, но агрессию лучше не повышать." : "Портфель уже нагружен. Приоритет - защита и дисциплина.";
+  const health = calculateReserveHealth(reserveShare);
+  const state = getRiskState(health);
+  const signal = getReserveSignal(reserveShare);
+  const summary = getReserveSummary(reserveShare);
+  const largestRiskShare = largestRiskAsset ? round(largestRiskAsset.share / 100, 4) : 0;
+  const exposureWarnings = buildExposureWarnings(categoryExposure, largestRiskShare);
+
   return {
     portfolioValue,
     reserve: round(reserve),
@@ -85,16 +100,17 @@ export function calculateRisk(positions: PositionCalculated[]): Risk {
     futuresDeployableCash: round(futuresDeployableCash),
     spotDeployableCash: round(spotDeployableCash),
     largestRiskAsset: largestRiskAsset?.asset ?? "-",
-    largestRiskShare: largestRiskAsset ? round(largestRiskAsset.share / 100, 4) : 0,
-    cryptoShare: portfolioValue ? round(cryptoValue / portfolioValue, 4) : 0,
-    stocksShare: portfolioValue ? round(stocksValue / portfolioValue, 4) : 0,
-    metalsShare: portfolioValue ? round(metalsValue / portfolioValue, 4) : 0,
-    futuresShare: portfolioValue ? round(futuresValue / portfolioValue, 4) : 0,
-    cashShare: portfolioValue ? round(reserve / portfolioValue, 4) : 0,
+    largestRiskShare,
+    cryptoShare: categoryExposure.cryptoShare,
+    stocksShare: categoryExposure.stocksShare,
+    metalsShare: categoryExposure.metalsShare,
+    futuresShare: categoryExposure.futuresShare,
+    cashShare: categoryExposure.cashShare,
     health: round(health, 2),
     state,
     signal,
     summary,
+    warnings: exposureWarnings,
   };
 }
 
@@ -145,6 +161,7 @@ export function buildPortfolioState(positionsInput: PositionInput[], decisions: 
     risk,
     decisions,
     scenarios,
+    history: [],
     updatedAt: new Date().toISOString(),
   };
 }

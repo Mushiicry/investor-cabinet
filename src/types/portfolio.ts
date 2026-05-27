@@ -93,6 +93,13 @@ export type RiskData = {
   state: string;
   signal: string;
   summary: string;
+  warnings: RiskWarning[];
+};
+
+export type RiskWarning = {
+  code: "CRYPTO_OVEREXPOSURE" | "FUTURES_OVEREXPOSURE" | "SINGLE_ASSET_CONCENTRATION";
+  level: "watch" | "high";
+  message: string;
 };
 
 export type Decision = {
@@ -127,12 +134,28 @@ export type FearGreed = {
   action: string;
 };
 
+export type PortfolioHistoryPoint = {
+  date: string;
+  portfolioValue: number;
+  invested: number;
+  pnl: number;
+  pnlPct: number;
+  reserve: number;
+  positionsCount: number;
+  pointType: string;
+  note: string;
+  trigger: string;
+  source: string;
+  comment: string;
+};
+
 export type PortfolioState = {
   overview: OverviewData;
   portfolio: PositionCalculated[];
   risk: RiskData;
   decisions: Decision[];
   scenarios: ScenarioCard[];
+  history: PortfolioHistoryPoint[];
   updatedAt: string;
 };
 

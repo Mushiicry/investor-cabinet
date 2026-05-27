@@ -4,6 +4,11 @@ import {
   FEAR_GREED_FALLBACK_VALUE,
   FEAR_GREED_REFRESH_INTERVAL_MS,
 } from "../config/constants";
+import {
+  readCachedFearGreedState,
+  writeCachedFearGreedState,
+} from "../services/fearGreedCache";
+import type { DataLoadState } from "../types/dataStatus";
 import type { FearGreed } from "../types/portfolio";
 
 const fearGreed: FearGreed = {
@@ -32,8 +37,27 @@ function buildFearGreedData(value: number): FearGreed {
   };
 }
 
-export function useFearGreed(): FearGreed {
-  const [fearGreedData, setFearGreedData] = useState<FearGreed>(fearGreed);
+export type FearGreedDataSource = "cache" | "fallback" | "live";
+
+export type FearGreedDataResult = DataLoadState<FearGreed> & {
+  source: FearGreedDataSource;
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Unknown fear greed data error";
+
+export function useFearGreed(): FearGreedDataResult {
+  const [state, setState] = useState<FearGreedDataResult>(() => {
+    const cachedFearGreedState = readCachedFearGreedState();
+
+    return {
+      data: cachedFearGreedState?.data ?? fearGreed,
+      isLoading: true,
+      error: null,
+      lastLoadedAt: cachedFearGreedState?.cachedAt ?? null,
+      source: cachedFearGreedState ? "cache" : "fallback",
+    };
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -42,12 +66,39 @@ export function useFearGreed(): FearGreed {
       try {
         const value = await fetchFearGreedValue();
 
-        if (!isMounted || value === null) return;
+        if (!isMounted) return;
+
+        if (value === null) {
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            error: "Fear & Greed API response is invalid",
+          }));
+          return;
+        }
 
         const normalizedValue = Math.min(Math.max(Math.round(value), 0), 100);
-        setFearGreedData(buildFearGreedData(normalizedValue));
+        const loadedAt = new Date().toISOString();
+        const data = buildFearGreedData(normalizedValue);
+
+        writeCachedFearGreedState(data, loadedAt);
+
+        setState({
+          data,
+          isLoading: false,
+          error: null,
+          lastLoadedAt: loadedAt,
+          source: "live",
+        });
       } catch (error) {
         console.error("FEAR GREED DATA LOAD ERROR", error);
+        if (!isMounted) return;
+
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: getErrorMessage(error),
+        }));
       }
     };
 
@@ -60,5 +111,5 @@ export function useFearGreed(): FearGreed {
     };
   }, []);
 
-  return fearGreedData;
+  return state;
 }

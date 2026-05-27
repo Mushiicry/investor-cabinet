@@ -14,10 +14,6 @@ export function getRiskMetricClass(value: number): string {
   return value >= 5 ? "playbook-risk-high" : "playbook-risk-low";
 }
 
-export function getRiskColor(value: number): "red" | "green" {
-  return value >= 5 ? "red" : "green";
-}
-
 export function getProfitColor(value: number): "red" | "green" {
   return value >= 6 ? "green" : "red";
 }

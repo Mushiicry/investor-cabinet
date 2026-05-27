@@ -161,11 +161,12 @@ currentPrice
 
 ## API
 
-SITE API PATCH 1.1
+SITE API PATCH 1.2
 отдает:
 
 overview
 portfolio
+history
 risk
 decisions
 scenarios
@@ -174,9 +175,13 @@ Frontend читает:
 - overview
 - risk
 - partially portfolio
+- optional history
 
 portfolio сейчас частично собирается
 локально внутри App.tsx fallback state.
+
+history должен читаться из листа `История`
+без записи в таблицу и без изменения формул.
 
 
 ---
