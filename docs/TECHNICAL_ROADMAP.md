@@ -3,7 +3,7 @@
 Version: MVP Core Stabilization Roadmap  
 Status: Active Development  
 Current stage: Functional Premium MVP -> Stabilization + Risk Core Completion  
-Last updated: 2026-05-26
+Last updated: 2026-05-27
 
 ---
 
@@ -80,7 +80,7 @@ MVP Core Stabilized means:
 | Stage | Name | Status | Progress | Priority |
 | --- | --- | --- | --- | --- |
 | Stage 1 | Functional Premium MVP | Almost complete | 80-85% | Current foundation |
-| Stage 2 | Stabilization + Risk Core Completion | Current stage | 45-55% | Highest |
+| Stage 2 | Stabilization + Risk Core Completion | Current stage | 65-70% | Highest |
 | Stage 3 | Professional Dashboard / Analytics | Next major layer | 25-35% | High after stabilization |
 | Stage 4 | Decision Engine | Early concept | 15-20% | Medium-high |
 | Stage 5 | Automation + Smart Alerts | Partial | 40-50% | Medium |
@@ -166,7 +166,7 @@ Status:
 Current main stage.
 
 Progress:
-45-55%.
+65-70%.
 
 Goal:
 Make the MVP stable enough to become the foundation for future analytics, decision systems, AI assistant, backend migration, and SaaS architecture.
@@ -184,13 +184,24 @@ Every stabilization patch must either:
 - improve maintainability;
 - preserve UI geometry.
 
+Current checkpoint:
+
+- latest saved stabilization commit: `987f04b feat: stabilize stage 2 data and risk core`;
+- `App.tsx` is now mostly routing/composition instead of a monolith;
+- portfolio, overview, risk, decisions/scenarios, mood, auth and shared UI have been moved into feature modules;
+- investor API fetch now has timeout, validation, typed boundaries, cache and safer fallback behavior;
+- first paint no longer presents mock portfolio fallback as live data;
+- Fear & Greed fallback no longer activates buy-ladder signals while live data is loading;
+- source-of-truth documentation is now explicit in `docs/DATA_SOURCE_OF_TRUTH.md`;
+- history API foundation is prepared but still waiting for read-only Apps Script export from Sheets `История`.
+
 ## 4.1 Data Contract Stabilization
 
 Status:
 In progress.
 
 Progress:
-55%.
+75%.
 
 Goal:
 Create a stable JSON contract between Google Sheets, Apps Script, and frontend.
@@ -198,24 +209,22 @@ Create a stable JSON contract between Google Sheets, Apps Script, and frontend.
 Already present:
 
 - `/api/investor`;
-- root JSON sections: `overview`, `portfolio`, `risk`, `decisions`, `scenarios`;
+- root JSON sections: `overview`, `portfolio`, `history`, `risk`, `decisions`, `scenarios`;
 - documentation in `docs/sheets/API_CONTRACT.md`;
-- frontend normalizers in hooks;
-- safe fallback state.
+- frontend normalizers outside hooks;
+- safe fallback state;
+- source-of-truth map in `docs/DATA_SOURCE_OF_TRUTH.md`;
+- read-only Apps Script export guide for future `history`;
+- units documented for money and percentage fields;
+- status/category/closed-position handling documented;
+- futures cash and deployable cash split documented.
 
 Needed:
 
-- freeze all field names;
-- document optional vs required fields;
-- document units: percent as `82.6` vs `0.826`;
-- document money fields as numbers only;
-- document status values;
-- document category values;
-- define how closed positions are represented;
-- define where `USDC HL` belongs;
-- define `deployableCash`, `futuresDeployableCash`, `spotDeployableCash`;
-- remove ambiguous API values like stale `overview.bestPosition` when possible;
-- create validation layer for incoming JSON.
+- keep field names frozen while Apps Script catches up;
+- make `history` export live from Sheets `История`;
+- remove ambiguous API values like stale `overview.bestPosition` when Apps Script can export authoritative open-risk best/worst;
+- decide which Stage 2 fields become required after the current optional transition period.
 
 Risk:
 
@@ -227,7 +236,7 @@ Status:
 In progress.
 
 Progress:
-65%.
+80%.
 
 Already present:
 
@@ -236,18 +245,17 @@ Already present:
 - local Vite proxy;
 - Vercel rewrites;
 - refresh intervals;
-- basic fallback behavior.
+- request timeout logic;
+- root API response validation;
+- typed API response interfaces;
+- previous-state protection for invalid data;
+- last successful live investor state cache;
+- same-day Fear & Greed cache;
+- loading/error state handling.
 
 Needed:
 
-- timeout logic;
-- error state handling;
-- loading states;
-- invalid data protection;
 - retry rules;
-- API response validation;
-- centralized API service folder;
-- typed response interfaces;
 - stable refresh synchronization;
 - separate API errors from calculation errors.
 
@@ -261,43 +269,46 @@ Recommended future structure:
 ## 4.3 State Management
 
 Status:
-Early in progress.
+In progress.
 
 Progress:
-40%.
+60%.
 
 Current state:
 
 - `useInvestorData()` stores portfolio state;
 - `useFearGreed()` stores market mood state;
 - fallback state is still important;
-- some derived values are calculated in hooks/frontend.
+- normalizers and selectors are separated from hooks;
+- investor state merge is centralized in `src/services/investorState.ts`;
+- overview and risk section builders are isolated in `src/services/investorStateSections.ts`;
+- decisions/scenarios now normalize API data instead of staying only fallback/mock;
+- history is accepted and normalized when API starts sending it.
 
 Needed:
 
 - central portfolio state contract;
-- shared derived data selectors;
-- stable cache strategy;
 - clear loading/error/ready states;
 - fetch deduplication;
 - avoid recalculating derived metrics in multiple places;
-- separate raw API data from normalized UI data.
+- separate raw API data from normalized UI data;
+- continue reducing fallback calculations as Sheets/API become authoritative.
 
 Do not add heavy state libraries yet unless needed.
 
 ## 4.4 Frontend Modularization
 
 Status:
-Needed.
+In progress.
 
 Progress:
-25-35%.
+55%.
 
 Current issue:
 
-- `src/App.tsx` is too large;
+- `src/App.tsx` is much smaller but still owns app shell and auth state;
 - `src/App.css` is too large;
-- pages, UI, calculations and normalizers are too close together.
+- pages and UI are now separated, but CSS is still monolithic.
 
 Safe modularization plan:
 
@@ -308,15 +319,15 @@ Safe modularization plan:
 
 Recommended extraction order:
 
-- `PortfolioTable`;
-- `StatusBadge`;
-- `OverviewPage`;
-- `RiskPage`;
-- `FearGreedGauge`;
+- `PortfolioTable` - done;
+- `StatusBadge` - done;
+- `OverviewPage` - done;
+- `RiskPage` - done;
+- `FearGreedGauge` - done;
 - `HealthPanel`;
 - `AllocationSection`;
-- `formatters/status helpers`;
-- `portfolio selectors`.
+- `formatters/status helpers` - partially done;
+- `portfolio selectors` - done.
 
 Forbidden:
 
@@ -333,7 +344,7 @@ Status:
 Core development inside Stage 2.
 
 Progress:
-45%.
+60%.
 
 Goal:
 Make Investor Cabinet a true risk-first system.
@@ -353,7 +364,13 @@ The risk engine is the main product value. It should not be postponed behind fro
 - visual risk indicators;
 - portfolio health block;
 - stable reserve logic;
-- basic risk summary.
+- basic risk summary;
+- reserve health rules;
+- deployable cash split for futures and spot;
+- category exposure shares;
+- largest open risk asset;
+- overexposure warnings foundation;
+- risk warnings panel on the Risk page.
 
 ## 5.2 Exposure Engine
 
@@ -361,20 +378,25 @@ Status:
 In progress.
 
 Progress:
-30%.
+55%.
 
-Needed:
+Already added:
 
 - crypto exposure;
 - futures exposure;
 - stable reserve ratio;
-- leverage pressure;
-- correlated asset risk;
-- concentration risk;
+- concentration warning foundation;
 - max category limits;
 - max single-asset limits;
 - spot vs futures distinction;
+- warning codes for overexposure.
+
+Remaining:
+
+- leverage pressure;
+- correlated asset risk;
 - reserve after planned deployment.
+- drawdown-aware risk pressure.
 
 Key output examples:
 

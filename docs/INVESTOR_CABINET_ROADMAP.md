@@ -380,7 +380,7 @@ MVP Core Stabilized.
 текущий главный этап.
 
 Прогресс:
-45-55%.
+65-70%.
 
 Цель:
 сделать MVP надежной системой, а не просто красивым интерфейсом.
@@ -395,87 +395,133 @@ MVP Core Stabilized.
 - безопасная модульность;
 - сохранение визуальной геометрии.
 
+Текущая точка сохранения:
+
+- последний сохраненный технический пакет: `987f04b feat: stabilize stage 2 data and risk core`;
+- frontend больше не показывает mock portfolio fallback как live-данные при первой загрузке;
+- Fear & Greed fallback больше не активирует buy-ladder до получения live/cache значения;
+- `App.tsx` стал тонким shell/router вместо тяжелого монолита;
+- Portfolio, Overview, Risk, Fear & Greed, Decisions/Scenarios, Auth и shared UI вынесены в feature modules;
+- источник истины описан в `docs/DATA_SOURCE_OF_TRUTH.md`;
+- подготовлен контракт `history` и read-only план экспорта из Google Sheets `История`;
+- decisions/scenarios подключены к API/state pipeline через normalizers;
+- Risk Core получил reserve rules, deployable capital split, exposure warnings и отдельный warnings panel.
+
 ### 2.1 Data Contract
 
 Прогресс:
-55%.
+75%.
 
 Нужно:
 
-- зафиксировать JSON schema;
-- описать все поля;
-- определить обязательные и optional поля;
-- стандартизировать naming;
-- определить percent units;
-- определить money units;
-- определить status values;
-- определить category values;
-- описать closed positions;
-- описать reserve assets;
-- описать futures cash;
-- описать deployable cash;
-- ввести validation layer.
+- держать JSON schema стабильной;
+- подключить live `history` export из Apps Script без изменения формул;
+- после переходного периода решить, какие поля Stage 2 становятся required;
+- убрать зависимость от stale `overview.bestPosition/worstPosition`, когда API сможет отдавать authoritative open-risk values.
+
+Закрыто:
+
+- описаны поля API;
+- определены optional/root fallback rules;
+- стандартизированы percent/money units;
+- описаны status/category values;
+- описаны closed positions;
+- описаны reserve assets и futures cash;
+- описан deployable cash split;
+- добавлен validation layer.
 
 ### 2.2 API Layer
 
 Прогресс:
-65%.
+80%.
 
 Нужно:
 
-- error handling;
+- retry rules;
+- stable refresh synchronization;
+- отделить API errors от calculation errors;
+- подготовить Apps Script к live `history`.
+
+Закрыто:
+
 - timeout logic;
-- loading states;
+- loading/error states;
 - invalid data protection;
 - typed API responses;
-- single API service layer;
-- fallback handling;
-- refresh synchronization.
+- validation layer;
+- investor cache;
+- same-day Fear & Greed cache;
+- safe fallback handling.
 
 ### 2.3 State Management
 
 Прогресс:
-40%.
+60%.
 
 Нужно:
 
-- отделить raw API data от normalized UI data;
-- создать shared selectors;
-- убрать лишние пересчеты;
-- централизовать portfolio state;
-- определить caching strategy;
-- сделать loading/error/ready states.
+- сделать loading/error/ready states;
+- продолжить отделять raw API data от normalized UI data;
+- убрать оставшиеся fallback calculations по мере усиления API;
+- не добавлять тяжелую state library до реальной необходимости.
+
+Закрыто:
+
+- созданы shared selectors;
+- normalizers вынесены из hooks;
+- централизован investor state merge;
+- overview/risk section builders вынесены отдельно;
+- caching strategy определена для investor data и Fear & Greed;
+- decisions/scenarios подключены к API/state pipeline;
+- history нормализуется при появлении API data.
 
 ### 2.4 Risk Core
 
 Прогресс:
-45%.
+60%.
 
 Нужно:
 
-- exposure engine;
-- futures exposure;
 - leverage pressure;
 - position sizing;
-- concentration risk;
+- drawdown foundation;
+- correlated asset risk;
+- planned deployment impact.
+
+Закрыто:
+
 - reserve safety;
 - deployable cash rules;
-- drawdown foundation;
-- overexposure warnings.
+- futures/spot capital split;
+- exposure engine foundation;
+- futures exposure share;
+- concentration warning foundation;
+- overexposure warnings;
+- risk warnings panel.
 
 ### 2.5 Frontend Modularization
 
 Прогресс:
-25-35%.
+55%.
 
 Нужно выносить по safe patches:
+
+- HealthPanel;
+- AllocationSection;
+- feature CSS, только после стабилизации компонентов.
+
+Закрыто:
 
 - PortfolioTable;
 - StatusBadge;
 - OverviewPage;
 - RiskPage;
-- HealthPanel;
 - FearGreedGauge;
+- Auth page;
+- Decisions/Scenarios page;
+- MoodSummary;
+- Sidebar;
+- shared Panel;
 - helper logic;
 - status color logic;
 - portfolio selectors.
