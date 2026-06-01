@@ -178,7 +178,8 @@ function IC_SOLANA_applyBalanceDeltas_(calculationsSheet, importSheet, previousB
   if (usdcSpent > 0.5 && solReceived > 0.000001 && impliedBuyPrice >= 0.01 && impliedBuyPrice <= 10000) {
     IC_SOLANA_applyAssetPurchase_(calculationsSheet, 'SOL', solReceived, usdcSpent);
     IC_SOLANA_applyStableDelta_(calculationsSheet, 'USDC', usdcDelta);
-    if (importSheet) IC_SOLANA_appendBalanceDeltaBuyAuditRow_(importSheet, 'SOL', solReceived, impliedBuyPrice, usdcSpent, syncStartedAt);
+    var strategyMark = markFearGreedStrategyBuy(SpreadsheetApp.getActiveSpreadsheet(), usdcSpent, syncStartedAt);
+    if (importSheet) IC_SOLANA_appendBalanceDeltaBuyAuditRow_(importSheet, 'SOL', solReceived, impliedBuyPrice, usdcSpent, syncStartedAt, strategyMark);
     return;
   }
 
@@ -194,7 +195,7 @@ function IC_SOLANA_applyBalanceDeltas_(calculationsSheet, importSheet, previousB
   }
 }
 
-function IC_SOLANA_appendBalanceDeltaBuyAuditRow_(sheet, asset, assetReceived, impliedPrice, usdcSpent, syncStartedAt) {
+function IC_SOLANA_appendBalanceDeltaBuyAuditRow_(sheet, asset, assetReceived, impliedPrice, usdcSpent, syncStartedAt, strategyMark) {
   var syncId = Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyyMMdd'T'HHmmss");
   var importId = [
     'SOLANA_BALANCE_DELTA',
@@ -225,8 +226,22 @@ function IC_SOLANA_appendBalanceDeltaBuyAuditRow_(sheet, asset, assetReceived, i
     '',
     'USDC -> ' + asset,
     IC_SOLANA_round_(usdcSpent, 6) + ' -> ' + IC_SOLANA_round_(assetReceived, 12),
-    'BALANCE_APPLIED audit row at ' + Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss") + '. Do not approve again; cost basis was applied from Solana wallet balance delta.'
+    'BALANCE_APPLIED audit row at ' + Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss") +
+      '. Do not approve again; cost basis was applied from Solana wallet balance delta.' +
+      IC_SOLANA_strategyMarkComment_(strategyMark)
   ]]);
+}
+
+function IC_SOLANA_strategyMarkComment_(strategyMark) {
+  if (!strategyMark || !strategyMark.marked) {
+    return strategyMark && strategyMark.reason
+      ? ' FearGreed strategy cooldown not marked: ' + strategyMark.reason + '.'
+      : '';
+  }
+
+  return ' FearGreed strategy cooldown marked for ' + strategyMark.currentMode +
+    '; lastBuyAt=' + strategyMark.lastBuyAt +
+    '; nextAvailableAt=' + strategyMark.nextAvailableAt + '.';
 }
 
 function IC_SOLANA_appendBalanceDeltaSellAuditRow_(sheet, asset, assetSold, impliedPrice, usdcReceived, sale, syncStartedAt) {

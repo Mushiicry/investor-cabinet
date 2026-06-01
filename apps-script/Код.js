@@ -171,9 +171,12 @@ function getScenarios(sheet) {
 function getFearGreedStrategy(ss, portfolioValue) {
   const currentIndex = getFearGreedCurrentIndex(ss);
   const sheet = getOrCreateFearGreedRulesSheet(ss);
-  const rules = readFearGreedRules(sheet);
   const now = new Date();
+  let rules = readFearGreedRules(sheet);
   const currentMode = getFearGreedMode(currentIndex, rules);
+
+  const autoMark = autoMarkFearGreedFromRecentStrategyImport(ss, sheet, rules, currentMode, portfolioValue, now);
+  if (autoMark.marked) rules = readFearGreedRules(sheet);
 
   const apiRules = rules.map(rule => buildFearGreedRuleState(rule, currentIndex, currentMode, portfolioValue, now));
   writeFearGreedComputedState(sheet, apiRules);
@@ -184,6 +187,125 @@ function getFearGreedStrategy(ss, portfolioValue) {
     portfolioValue: portfolioValue,
     rules: apiRules
   };
+}
+
+function autoMarkFearGreedFromRecentStrategyImport(ss, rulesSheet, rules, currentMode, portfolioValue, now) {
+  const ruleIndex = rules.findIndex(rule => rule.mode === currentMode);
+  if (ruleIndex < 0) return { marked: false, reason: "missing_current_rule" };
+
+  const rule = rules[ruleIndex];
+  if (!rule.buyPct || !rule.cooldownDays) return { marked: false, reason: "mode_has_no_buy" };
+
+  const lastBuyDate = parseFearGreedDate(rule.lastBuyAt);
+  const nextAvailableDate = lastBuyDate ? addFearGreedDays(lastBuyDate, rule.cooldownDays) : null;
+  if (nextAvailableDate && nextAvailableDate.getTime() > now.getTime()) {
+    return { marked: false, reason: "already_on_cooldown" };
+  }
+
+  const importSheet = ss.getSheetByName("Транзакции_IMPORT");
+  if (!importSheet || importSheet.getLastRow() < 2) return { marked: false, reason: "missing_import_sheet" };
+
+  const lookbackRows = Math.min(importSheet.getLastRow() - 1, 20);
+  const rows = importSheet.getRange(importSheet.getLastRow() - lookbackRows + 1, 1, lookbackRows, 19).getValues();
+  const expectedAmount = portfolioValue * rule.buyPct;
+  const tolerance = Math.max(0.35, expectedAmount * 0.15);
+
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index];
+    const importId = String(row[0] || "");
+    const action = String(row[5] || "").trim();
+    const asset = String(row[3] || "").trim().toUpperCase();
+    const chain = String(row[11] || "").trim().toUpperCase();
+    const comment = String(row[9] || "");
+    const amount = parseNumber(row[8]);
+    const note = String(row[18] || "");
+    const isSolanaBalanceDelta = importId.indexOf("SOLANA_BALANCE_DELTA") === 0 || comment.indexOf("Solana wallet balance delta") >= 0;
+    const boughtAt = parseFearGreedImportDate(note) || parseFearGreedImportIdDate(importId) || parseFearGreedDate(row[2]) || now;
+    const ageHours = Math.abs(now.getTime() - boughtAt.getTime()) / 3600000;
+
+    if (!isSolanaBalanceDelta) continue;
+    if (action !== "Покупка" || asset !== "SOL") continue;
+    if (chain && chain !== "SOLANA") continue;
+    if (ageHours > 36) continue;
+    if (Math.abs(amount - expectedAmount) > tolerance) continue;
+
+    rulesSheet.getRange(ruleIndex + 2, 7).setValue(formatFearGreedDate(boughtAt));
+    return {
+      marked: true,
+      currentMode: currentMode,
+      buyAmount: roundFearGreed(amount, 2),
+      expectedAmount: roundFearGreed(expectedAmount, 2),
+      lastBuyAt: formatFearGreedDate(boughtAt)
+    };
+  }
+
+  return { marked: false, reason: "no_recent_strategy_import" };
+}
+
+function markFearGreedStrategyBuy(ss, buyAmount, boughtAt) {
+  const amount = Number(buyAmount || 0);
+  if (!amount || amount <= 0) return { marked: false, reason: "empty_buy_amount" };
+
+  const currentIndex = getFearGreedCurrentIndex(ss);
+  const sheet = getOrCreateFearGreedRulesSheet(ss);
+  const rules = readFearGreedRules(sheet);
+  const currentMode = getFearGreedMode(currentIndex, rules);
+  const ruleIndex = rules.findIndex(rule => rule.mode === currentMode);
+  if (ruleIndex < 0) return { marked: false, reason: "missing_current_rule", currentMode: currentMode };
+
+  const rule = rules[ruleIndex];
+  if (!rule.buyPct || !rule.cooldownDays) {
+    return { marked: false, reason: "mode_has_no_buy", currentMode: currentMode };
+  }
+
+  const now = boughtAt || new Date();
+  const portfolioValue = getOverviewData(ss).portfolioValue;
+  const expectedAmount = portfolioValue * rule.buyPct;
+  const tolerance = Math.max(0.35, expectedAmount * 0.15);
+  if (Math.abs(amount - expectedAmount) > tolerance) {
+    return {
+      marked: false,
+      reason: "amount_outside_strategy_band",
+      currentMode: currentMode,
+      buyAmount: roundFearGreed(amount, 2),
+      expectedAmount: roundFearGreed(expectedAmount, 2)
+    };
+  }
+
+  const lastBuyDate = parseFearGreedDate(rule.lastBuyAt);
+  const nextAvailableDate = lastBuyDate ? addFearGreedDays(lastBuyDate, rule.cooldownDays) : null;
+  if (nextAvailableDate && nextAvailableDate.getTime() > now.getTime()) {
+    return {
+      marked: false,
+      reason: "already_on_cooldown",
+      currentMode: currentMode,
+      nextAvailableAt: formatFearGreedDate(nextAvailableDate)
+    };
+  }
+
+  sheet.getRange(ruleIndex + 2, 7).setValue(formatFearGreedDate(now));
+  getFearGreedStrategy(ss, portfolioValue);
+
+  return {
+    marked: true,
+    currentMode: currentMode,
+    buyAmount: roundFearGreed(amount, 2),
+    expectedAmount: roundFearGreed(expectedAmount, 2),
+    lastBuyAt: formatFearGreedDate(now),
+    nextAvailableAt: formatFearGreedDate(addFearGreedDays(now, rule.cooldownDays))
+  };
+}
+
+function markFearGreedCurrentModeBuyNow() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const portfolioValue = getOverviewData(ss).portfolioValue;
+  const currentIndex = getFearGreedCurrentIndex(ss);
+  const rules = readFearGreedRules(getOrCreateFearGreedRulesSheet(ss));
+  const currentMode = getFearGreedMode(currentIndex, rules);
+  const currentRule = rules.find(rule => rule.mode === currentMode);
+  const buyAmount = currentRule ? portfolioValue * currentRule.buyPct : 0;
+
+  return markFearGreedStrategyBuy(ss, buyAmount, new Date());
 }
 
 function getFearGreedCurrentIndex(ss) {
@@ -330,6 +452,27 @@ function parseFearGreedDate(value) {
 
   const date = new Date(value);
   return isNaN(date.getTime()) ? null : date;
+}
+
+function parseFearGreedImportDate(value) {
+  const match = String(value || "").match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+  return match ? parseFearGreedDate(match[0]) : null;
+}
+
+function parseFearGreedImportIdDate(value) {
+  const match = String(value || "").match(/(\d{8})T(\d{6})/);
+  if (!match) return null;
+
+  const datePart = match[1];
+  const timePart = match[2];
+  return parseFearGreedDate(
+    datePart.slice(0, 4) + "-" +
+    datePart.slice(4, 6) + "-" +
+    datePart.slice(6, 8) + "T" +
+    timePart.slice(0, 2) + ":" +
+    timePart.slice(2, 4) + ":" +
+    timePart.slice(4, 6)
+  );
 }
 
 function addFearGreedDays(date, days) {

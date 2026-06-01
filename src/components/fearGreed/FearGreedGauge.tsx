@@ -20,10 +20,45 @@ function formatBuyPct(value: number) {
   return percent(value, value === 0.015 ? 1 : 0);
 }
 
+function formatMoneyDetailed(value: number) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+}
+
 function getStatusLabel(row: FearGreedStrategyRule) {
-  if (row.cooldownRemainingHours > 0) return `Cooldown ${formatCooldown(row.cooldownRemainingHours)}`;
+  if (row.cooldownRemainingHours > 0) return "Кулдаун";
   if (row.isAvailable) return "Доступно";
   return "Пассивный";
+}
+
+function getRuleHint(row: FearGreedStrategyRule) {
+  if (!row.buyPct) return "Покупка не активна";
+  return "Можно купить 1 актив";
+}
+
+function getCooldownLabel(row: FearGreedStrategyRule) {
+  if (!row.buyPct) return "—";
+  if (row.cooldownRemainingHours > 0) return formatCooldown(row.cooldownRemainingHours);
+  if (row.isAvailable) return "Доступно";
+  return "—";
+}
+
+function getCooldownSubLabel(row: FearGreedStrategyRule) {
+  if (row.cooldownRemainingHours > 0 && row.nextAvailableAt) {
+    return `до ${new Intl.DateTimeFormat("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(row.nextAvailableAt))}`;
+  }
+  if (row.isAvailable) return "можно купить";
+  return "";
 }
 
 export function FearGreedGauge({
@@ -76,19 +111,50 @@ export function FearGreedGauge({
 
       <div className="fg-buy-ladder">
         <div className="fg-buy-ladder-table">
+          <div className="fg-buy-row fg-buy-head">
+            <div className="fg-buy-cell">Диапазон индекса</div>
+            <div className="fg-buy-cell">Режим покупки</div>
+            <div className="fg-buy-cell">% от капитала</div>
+            <div className="fg-buy-cell">Сумма покупки</div>
+            <div className="fg-buy-cell">Статус</div>
+            <div className="fg-buy-cell">Кулдаун</div>
+          </div>
+
           {buyStrategy.rules.map((row) => (
             <div
               key={row.mode}
-              className={`fg-buy-row ${row.isCurrent && !isSyncingWithoutFreshValue ? "is-active" : ""}`.trim()}
+              className={`fg-buy-row fg-buy-row-${row.mode} ${row.isCurrent && !isSyncingWithoutFreshValue ? "is-active" : ""}`.trim()}
             >
-              <div className="fg-buy-cell">{row.range}</div>
-              <div className="fg-buy-cell">{row.label}</div>
-              <div className="fg-buy-cell">{formatBuyPct(row.buyPct)}</div>
-              <div className="fg-buy-cell">{currency(row.buyAmount)}</div>
-              <div className="fg-buy-cell">
+              <div className="fg-buy-cell fg-buy-range">
+                <span className="fg-buy-dot" aria-hidden="true" />
+                <span>{row.range.replace("-", " - ")}</span>
+                {row.isCurrent && !isSyncingWithoutFreshValue ? <span className="fg-buy-current-tag">Текущий уровень</span> : null}
+              </div>
+
+              <div className="fg-buy-cell fg-buy-title-cell">
+                <span className="fg-buy-main">{row.label}</span>
+                <span className="fg-buy-sub">{getRuleHint(row)}</span>
+              </div>
+
+              <div className="fg-buy-cell fg-buy-number-cell">
+                <span className="fg-buy-main">{formatBuyPct(row.buyPct)}</span>
+                <span className="fg-buy-sub">от капитала</span>
+              </div>
+
+              <div className="fg-buy-cell fg-buy-number-cell">
+                <span className="fg-buy-main">{formatMoneyDetailed(row.buyAmount)}</span>
+                <span className="fg-buy-sub">{formatMoneyDetailed(buyStrategy.portfolioValue)} × {formatBuyPct(row.buyPct)}</span>
+              </div>
+
+              <div className="fg-buy-cell fg-buy-status-cell">
                 <span className={`fg-buy-mode fg-buy-mode-${row.cooldownRemainingHours > 0 ? "cooldown" : row.isAvailable ? "available" : "passive"}`}>
                   {getStatusLabel(row)}
                 </span>
+              </div>
+
+              <div className="fg-buy-cell fg-buy-cooldown-cell">
+                <span className="fg-buy-main">{getCooldownLabel(row)}</span>
+                <span className="fg-buy-sub">{getCooldownSubLabel(row)}</span>
               </div>
             </div>
           ))}
