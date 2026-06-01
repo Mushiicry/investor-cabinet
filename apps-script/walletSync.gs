@@ -3,7 +3,8 @@ var IC_WALLET_SYNC_TRIGGER_HANDLERS = [
   'syncInvestorCabinetWallets',
   'syncTonWalletImports',
   'syncTonWalletBalances',
-  'syncArbitrumWalletBalances'
+  'syncArbitrumWalletBalances',
+  'syncSolanaWalletBalances'
 ];
 
 function syncInvestorCabinetWallets() {
@@ -16,6 +17,11 @@ function syncInvestorCabinetWallets() {
   IC_WALLET_runSyncStep_('Arbitrum wallet balances', function() {
     setupArbitrumWalletImport();
     syncArbitrumWalletBalances();
+  }, errors);
+
+  IC_WALLET_runSyncStep_('Solana wallet balances', function() {
+    setupSolanaWalletImport();
+    syncSolanaWalletBalances();
   }, errors);
 
   if (errors.length) {

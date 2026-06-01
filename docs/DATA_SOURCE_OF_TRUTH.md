@@ -68,6 +68,7 @@ Owns:
 - read-only public blockchain fetches;
 - TON wallet transaction normalization;
 - Arbitrum wallet balance normalization;
+- Solana wallet balance normalization;
 - transaction import deduplication by chain, address, hash and logical time;
 - writing pending rows into `Транзакции_IMPORT`;
 - updating wallet sync metadata.
@@ -167,11 +168,14 @@ Source of truth:
 Pending external source:
 - public TON wallet address `UQALTg4Pc2kWGwMY2cxv4-gSi-pmVOnvKjgK81oyb1vUhKMp`;
 - public Arbitrum wallet address `0xFEc18D4474826afd65d578ff931F4ff2926ee0c3`;
+- public Solana wallet address `E5dwGSC3DKKh4A1Hdpb2BXvcSpoWrfyWWicXq8h1Sus9`;
 - Apps Script read-only TON wallet import;
 - Apps Script read-only Arbitrum wallet balance import;
+- Apps Script read-only Solana wallet balance import;
 - Sheets `Транзакции_IMPORT`;
 - Sheets `TON_WALLETS`.
 - Sheets `EVM_WALLETS`.
+- Sheets `SOLANA_WALLETS`.
 
 Rules:
 - imported blockchain transactions are facts to review, not portfolio truth yet;

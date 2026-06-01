@@ -210,6 +210,8 @@ scenario system.
 
 Используется:
 - TON wallet import;
+- Arbitrum wallet balance import;
+- Solana wallet balance import;
 - дедупликация blockchain transactions;
 - ручное подтверждение перед попаданием в `Транзакции`;
 - защита от spam/dust/unknown jettons.
@@ -233,6 +235,49 @@ scenario system.
 - import mode
 - last seen LT
 - last sync timestamp
+
+Нельзя хранить:
+- seed phrase
+- private key
+- wallet password
+- signing permissions.
+
+
+---
+
+## EVM_WALLETS / EVM_WALLET_BALANCES
+
+Конфигурация и read-only snapshot публичных EVM-адресов.
+
+Текущая сеть:
+- Arbitrum.
+
+Текущие активы:
+- ETH;
+- USDC.
+
+`EVM_WALLET_BALANCES` является техническим snapshot-слоем.
+Покупки и продажи применяются в `Расчеты` только через balance delta accounting.
+
+Нельзя хранить:
+- seed phrase
+- private key
+- wallet password
+- signing permissions.
+
+
+---
+
+## SOLANA_WALLETS / SOLANA_WALLET_BALANCES
+
+Конфигурация и read-only snapshot публичных Solana-адресов.
+
+Текущие активы:
+- SOL;
+- USDC.
+
+`SOLANA_WALLET_BALANCES` является техническим snapshot-слоем.
+Покупки и продажи применяются в `Расчеты` только через balance delta accounting.
 
 Нельзя хранить:
 - seed phrase
