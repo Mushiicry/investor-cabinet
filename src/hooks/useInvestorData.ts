@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchInvestorData } from "../api/investor";
 import { INVESTOR_REFRESH_INTERVAL_MS } from "../config/constants";
-import { validateInvestorApiResponse } from "../services/apiValidation";
+import { validateInvestorApiPayload } from "../services/apiValidation";
 import {
   readCachedInvestorState,
   writeCachedInvestorState,
@@ -26,6 +26,8 @@ export function useInvestorData(fallbackData: PortfolioState): InvestorDataResul
     return {
       data: cachedInvestorState?.data ?? fallbackData,
       isLoading: true,
+      isRefreshing: Boolean(cachedInvestorState),
+      status: cachedInvestorState ? "refreshing" : "initial-loading",
       error: null,
       lastLoadedAt: cachedInvestorState?.cachedAt ?? null,
       source: cachedInvestorState ? "cache" : "fallback",
@@ -36,16 +38,38 @@ export function useInvestorData(fallbackData: PortfolioState): InvestorDataResul
     let isMounted = true;
 
     const loadInvestorData = async () => {
+      setState((prev) => ({
+        ...prev,
+        isLoading: prev.source === "fallback" && !prev.lastLoadedAt,
+        isRefreshing: prev.source !== "fallback" || Boolean(prev.lastLoadedAt),
+        status: prev.source === "fallback" && !prev.lastLoadedAt ? "initial-loading" : "refreshing",
+      }));
+
       try {
-        const json = validateInvestorApiResponse(await fetchInvestorData());
+        const validation = validateInvestorApiPayload(await fetchInvestorData());
 
         if (!isMounted) return;
 
-        if (!json?.success) {
+        if (!validation.ok) {
           setState((prev) => ({
             ...prev,
             isLoading: false,
-            error: "Investor API response is invalid or unsuccessful",
+            isRefreshing: false,
+            status: prev.source === "fallback" ? "error" : "stale",
+            error: `Investor API response is invalid: ${validation.error}`,
+          }));
+          return;
+        }
+
+        const json = validation.data;
+
+        if (!json.success) {
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            isRefreshing: false,
+            status: prev.source === "fallback" ? "error" : "stale",
+            error: "Investor API response is unsuccessful",
           }));
           return;
         }
@@ -59,6 +83,8 @@ export function useInvestorData(fallbackData: PortfolioState): InvestorDataResul
           return {
             data,
             isLoading: false,
+            isRefreshing: false,
+            status: "ready",
             error: null,
             lastLoadedAt: loadedAt,
             source: "live",
@@ -71,6 +97,8 @@ export function useInvestorData(fallbackData: PortfolioState): InvestorDataResul
         setState((prev) => ({
           ...prev,
           isLoading: false,
+          isRefreshing: false,
+          status: prev.source === "fallback" ? "error" : "stale",
           error: getErrorMessage(error),
         }));
       }

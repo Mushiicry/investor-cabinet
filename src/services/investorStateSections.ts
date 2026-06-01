@@ -36,13 +36,17 @@ export function buildOverviewStateFromApi({
   const worstAsset = json?.overview?.worstPosition?.asset ?? prev.overview.worstPosition.asset;
   const bestPosition = bestOpenPosition ?? findPosition(portfolio, bestAsset);
   const worstPosition = worstOpenPosition ?? findPosition(portfolio, worstAsset);
+  const invested = toNumber(json?.overview?.invested, prev.overview.invested);
+  const apiPnl = toNumber(json?.overview?.pnl, prev.overview.pnl);
+  const pnl = invested ? portfolioValue - invested : apiPnl;
+  const pnlPct = invested ? pnl / invested : toRatio(json?.overview?.pnlPct, prev.overview.pnlPct);
 
   return {
     ...prev.overview,
-    invested: toNumber(json?.overview?.invested, prev.overview.invested),
+    invested,
     portfolioValue,
-    pnl: toNumber(json?.overview?.pnl, prev.overview.pnl),
-    pnlPct: toRatio(json?.overview?.pnlPct, prev.overview.pnlPct),
+    pnl,
+    pnlPct,
     reserve: toNumber(json?.overview?.reserve, prev.overview.reserve),
     positionsCount: toNumber(json?.overview?.positionsCount, prev.overview.positionsCount),
     health: toRatio(json?.overview?.health, prev.overview.health),

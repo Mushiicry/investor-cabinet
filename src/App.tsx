@@ -74,7 +74,7 @@ export default function App() {
       );
     }
 
-    if (investorData.isLoading && investorData.source === "fallback") {
+    if (investorData.status === "initial-loading") {
       return (
         <Panel tone="cyan" className="p-8" hover>
           <div className="section-kicker text-cyan-300">Data sync</div>

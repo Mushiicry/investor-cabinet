@@ -248,6 +248,73 @@ Frontend ожидает optional массив объектов:
 
 ---
 
+# WALLET TRANSACTION IMPORT
+
+Status:
+planned Stage 2 integration.
+
+Primary tracked public wallet:
+
+`UQALTg4Pc2kWGwMY2cxv4-gSi-pmVOnvKjgK81oyb1vUhKMp`
+
+Wallet imports are not part of `/api/investor` root state yet.
+
+Source of truth:
+- reviewed rows in Google Sheets `Транзакции`.
+
+Pending import source:
+- Google Sheets `Транзакции_IMPORT`.
+
+Wallet config source:
+- Google Sheets `TON_WALLETS`.
+
+Important:
+- wallet import must be read-only;
+- no private keys;
+- no seed phrases;
+- no signing permissions;
+- no direct writes to `Портфель`;
+- no direct writes to `Транзакции` before review.
+
+Pending import row contract:
+
+{
+  "importId": "TON:<address>:<hash>:<lt>",
+  "status": "PENDING",
+  "date": "",
+  "asset": "",
+  "category": "",
+  "action": "",
+  "quantity": 0,
+  "price": 0,
+  "amount": 0,
+  "comment": "",
+  "walletId": "",
+  "chain": "TON",
+  "hash": "",
+  "lt": "",
+  "direction": "",
+  "counterparty": "",
+  "rawAsset": "",
+  "rawAmount": "",
+  "reviewNote": ""
+}
+
+Allowed initial statuses:
+- `PENDING`;
+- `APPROVED`;
+- `SKIPPED`.
+
+Allowed initial assets:
+- `TON`;
+- `USDT`;
+- `USDC`.
+
+Unknown assets must stay pending or skipped until reviewed.
+
+
+---
+
 # DECISIONS
 
 decisions используются:

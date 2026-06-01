@@ -36,6 +36,7 @@ The frontend must not present stale fallback/cache values as current live market
 Owns:
 - manual portfolio inputs;
 - transactions;
+- pending wallet imports;
 - active spot positions;
 - active futures positions;
 - price registry;
@@ -61,6 +62,23 @@ Owns:
 
 The SITE API should not rename frontend-facing fields without an API contract patch.
 
+## Apps Script Wallet Import
+
+Owns:
+- read-only public blockchain fetches;
+- TON wallet transaction normalization;
+- Arbitrum wallet balance normalization;
+- transaction import deduplication by chain, address, hash and logical time;
+- writing pending rows into `Транзакции_IMPORT`;
+- updating wallet sync metadata.
+
+Apps Script Wallet Import must not:
+- request private keys or seed phrases;
+- sign transactions;
+- execute trades;
+- write directly into `Портфель`;
+- write directly into `Транзакции` before manual review.
+
 ## Frontend API Layer
 
 Owns:
@@ -71,6 +89,8 @@ Owns:
 - preserving previous state when API data is invalid;
 - typed API response boundaries.
 - last successful same-day Fear & Greed cache for first paint.
+- explicit data sync status: initial loading, refreshing, ready, stale and error.
+- structured validation errors before API data enters normalized portfolio state.
 
 Frontend API layer does not own financial truth.
 Mock fallback data must not be presented as current live portfolio data during initial loading.
@@ -138,6 +158,28 @@ Frontend may normalize:
 - `"Кэш / Стейблы"` -> `"Свободные деньги"`;
 - reserve USDC/USDT rows into cash category;
 - closed zero-value rows out of active display state.
+
+## Transactions
+
+Source of truth:
+- Sheets `Транзакции`.
+
+Pending external source:
+- public TON wallet address `UQALTg4Pc2kWGwMY2cxv4-gSi-pmVOnvKjgK81oyb1vUhKMp`;
+- public Arbitrum wallet address `0xFEc18D4474826afd65d578ff931F4ff2926ee0c3`;
+- Apps Script read-only TON wallet import;
+- Apps Script read-only Arbitrum wallet balance import;
+- Sheets `Транзакции_IMPORT`;
+- Sheets `TON_WALLETS`.
+- Sheets `EVM_WALLETS`.
+
+Rules:
+- imported blockchain transactions are facts to review, not portfolio truth yet;
+- only approved rows should become accounting rows in `Транзакции`;
+- dedupe by `chain + wallet address + transaction hash + lt`;
+- spam, dust, unknown jettons and unclear swaps must stay pending or skipped;
+- wallet import must never require seed phrase, private key or signing permission.
+- balance-delta audit rows can document already-applied wallet accounting changes, but must be protected from approval-based double counting.
 
 ## Overview
 

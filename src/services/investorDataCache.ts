@@ -20,8 +20,24 @@ const normalizeCachedPortfolioState = (value: unknown): PortfolioState | null =>
     Array.isArray(value.decisions) &&
     Array.isArray(value.scenarios)
   ) {
+    const cachedState = value as PortfolioState;
+    const portfolioValue = Number(cachedState.overview?.portfolioValue ?? 0);
+    const invested = Number(cachedState.overview?.invested ?? 0);
+    const apiPnl = Number(cachedState.overview?.pnl ?? 0);
+    const pnl = Number.isFinite(portfolioValue) && Number.isFinite(invested) && invested
+      ? portfolioValue - invested
+      : apiPnl;
+    const pnlPct = Number.isFinite(invested) && Number.isFinite(pnl) && invested
+      ? pnl / invested
+      : cachedState.overview.pnlPct;
+
     return {
-      ...(value as PortfolioState),
+      ...cachedState,
+      overview: {
+        ...cachedState.overview,
+        pnl,
+        pnlPct,
+      },
       history: Array.isArray(value.history) ? value.history : [],
     };
   }

@@ -197,6 +197,49 @@ scenario system.
 
 Источник истории портфеля.
 
+Основной источник истины для учетных сделок.
+Автоимпорты из кошельков не должны писать сюда напрямую
+без review-слоя.
+
+
+---
+
+## ТРАНЗАКЦИИ_IMPORT
+
+Промежуточный лист для импортированных операций.
+
+Используется:
+- TON wallet import;
+- дедупликация blockchain transactions;
+- ручное подтверждение перед попаданием в `Транзакции`;
+- защита от spam/dust/unknown jettons.
+
+Не является источником истины для портфеля,
+пока строка не подтверждена и не перенесена в `Транзакции`.
+
+
+---
+
+## TON_WALLETS
+
+Конфигурация публичных TON-адресов для read-only импорта.
+
+Содержит:
+- wallet id
+- chain
+- public address
+- status
+- allowed assets
+- import mode
+- last seen LT
+- last sync timestamp
+
+Нельзя хранить:
+- seed phrase
+- private key
+- wallet password
+- signing permissions.
+
 
 ---
 

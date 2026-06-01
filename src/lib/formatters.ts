@@ -5,6 +5,7 @@ export const currency = (n: number) =>
     maximumFractionDigits: 1,
   }).format(Number(n || 0));
 
-export const percent = (n: number) => `${(Number(n || 0) * 100).toFixed(1)}%`;
+export const percent = (n: number, fractionDigits = 1) =>
+  `${(Number(n || 0) * 100).toFixed(fractionDigits)}%`;
 
 export const percentDirect = (n: number) => `${Number(n || 0).toFixed(1)}%`;

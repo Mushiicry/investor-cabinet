@@ -493,7 +493,8 @@ Already implemented:
 - scenarios;
 - Apps Script exports;
 - Telegram reporting;
-- live formulas.
+- live formulas;
+- TON wallet import contract for public read-only transaction ingestion.
 
 ## 6.1 Sheet Structure Normalization
 
@@ -520,7 +521,46 @@ Do not:
 - rename keys without frontend API check;
 - change formulas without understanding dependencies.
 
-## 6.2 Formula Engine
+## 6.2 Wallet Transaction Import
+
+Status:
+Planned / contract prepared.
+
+Progress:
+15%.
+
+Goal:
+Import public wallet transactions into Investor Cabinet without turning the product into an execution tool.
+
+Initial chain:
+- TON.
+
+Initial public wallet:
+- `UQALTg4Pc2kWGwMY2cxv4-gSi-pmVOnvKjgK81oyb1vUhKMp`.
+
+Already prepared:
+- `docs/sheets/TON_WALLET_IMPORT.md`;
+- `TON_WALLETS` sheet contract;
+- `Транзакции_IMPORT` sheet contract;
+- pending-review workflow;
+- dedupe key rules;
+- no-private-key safety rules.
+
+Needed:
+- add actual sheets;
+- add Apps Script read-only fetcher;
+- add dedupe implementation;
+- add manual approval flow into `Транзакции`;
+- later expose import status to frontend.
+
+Do not:
+- store seed phrases;
+- store private keys;
+- request wallet signing permissions;
+- auto-write uncertain transactions into `Транзакции`;
+- treat wallet import as trade execution.
+
+## 6.3 Formula Engine
 
 Status:
 In progress.
@@ -547,7 +587,7 @@ Needed:
 - add risk coefficients;
 - add future snapshot formulas.
 
-## 6.3 Automation Layer
+## 6.4 Automation Layer
 
 Status:
 Partial.

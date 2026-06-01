@@ -44,6 +44,8 @@ export function OverviewPage({
   };
   const futuresDeployableCash = risk.futuresDeployableCash ?? risk.deployableCash;
   const spotDeployableCash = risk.spotDeployableCash ?? 0;
+  const overviewPnl = overview.invested ? overview.portfolioValue - overview.invested : overview.pnl;
+  const overviewPnlPct = overview.invested ? overviewPnl / overview.invested : overview.pnlPct;
   const signedCurrency = (value: number) => `${value > 0 ? "+" : ""}${currency(value)}`;
   const signedPercent = (value: number) => `${value > 0 ? "+" : ""}${percentDirect(value)}`;
   const bestAssetParts = String(overview.bestPosition.asset).split(/\s+/).filter(Boolean);
@@ -57,9 +59,9 @@ export function OverviewPage({
             <div>
               <div className="section-kicker section-kicker-main text-cyan-300 overview-terminal-kicker">Портфель сегодня</div>
             </div>
-            <div className={`pnl-hero-pill overview-terminal-pnl ${overview.pnl < 0 ? "overview-terminal-pnl-negative" : "overview-terminal-pnl-positive"}`}>
-              <span className="pnl-hero-value">{signedCurrency(overview.pnl)}</span>
-              {overview.pnl > 0 ? <TrendArrow direction="up" /> : overview.pnl < 0 ? <TrendArrow direction="down" /> : null}
+            <div className={`pnl-hero-pill overview-terminal-pnl ${overviewPnl < 0 ? "overview-terminal-pnl-negative" : "overview-terminal-pnl-positive"}`}>
+              <span className="pnl-hero-value">{signedCurrency(overviewPnl)}</span>
+              {overviewPnl > 0 ? <TrendArrow direction="up" /> : overviewPnl < 0 ? <TrendArrow direction="down" /> : null}
             </div>
           </div>
 
@@ -73,9 +75,9 @@ export function OverviewPage({
                 </div>
               </div>
               <div className="overview-card-value overview-card-value-money">{currency(overview.portfolioValue)}</div>
-              <div className={`overview-card-pnl-badge ${overview.pnl < 0 ? "overview-card-pnl-negative" : "overview-card-pnl-positive"}`}>
-                {overview.pnl > 0 ? <TrendArrow direction="up" /> : overview.pnl < 0 ? <TrendArrow direction="down" /> : null}
-                <span className="overview-card-pnl-percent">PnL {percent(overview.pnlPct)}</span>
+              <div className={`overview-card-pnl-badge ${overviewPnl < 0 ? "overview-card-pnl-negative" : "overview-card-pnl-positive"}`}>
+                {overviewPnl > 0 ? <TrendArrow direction="up" /> : overviewPnl < 0 ? <TrendArrow direction="down" /> : null}
+                <span className="overview-card-pnl-percent">PnL {percent(overviewPnlPct, 2)}</span>
               </div>
               <OverviewSparkline tone="cyan" shape="portfolio" />
             </div>

@@ -404,6 +404,7 @@ MVP Core Stabilized.
 - Portfolio, Overview, Risk, Fear & Greed, Decisions/Scenarios, Auth и shared UI вынесены в feature modules;
 - источник истины описан в `docs/DATA_SOURCE_OF_TRUTH.md`;
 - подготовлен контракт `history` и read-only план экспорта из Google Sheets `История`;
+- подготовлен контракт TON wallet import для публичного read-only чтения транзакций;
 - decisions/scenarios подключены к API/state pipeline через normalizers;
 - Risk Core получил reserve rules, deployable capital split, exposure warnings и отдельный warnings panel.
 
@@ -416,6 +417,7 @@ MVP Core Stabilized.
 
 - держать JSON schema стабильной;
 - подключить live `history` export из Apps Script без изменения формул;
+- создать `TON_WALLETS` и `Транзакции_IMPORT` для безопасного импорта TON-кошелька;
 - после переходного периода решить, какие поля Stage 2 становятся required;
 - убрать зависимость от stale `overview.bestPosition/worstPosition`, когда API сможет отдавать authoritative open-risk values.
 
@@ -428,6 +430,7 @@ MVP Core Stabilized.
 - описаны closed positions;
 - описаны reserve assets и futures cash;
 - описан deployable cash split;
+- описан pending-review contract для TON wallet import;
 - добавлен validation layer.
 
 ### 2.2 API Layer
@@ -621,9 +624,13 @@ Decision Engine не должен заставлять действовать.
 - Telegram reports;
 - scheduled messaging foundation;
 - table integration.
+- TON wallet import contract для будущей read-only автоматизации.
 
 Нужно:
 
+- Apps Script fetcher для публичного TON-адреса;
+- дедупликация blockchain transactions;
+- pending review flow перед записью в `Транзакции`;
 - risk alerts;
 - allocation alerts;
 - reserve alerts;

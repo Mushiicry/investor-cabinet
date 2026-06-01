@@ -53,6 +53,8 @@ export function useFearGreed(): FearGreedDataResult {
     return {
       data: cachedFearGreedState?.data ?? fearGreed,
       isLoading: true,
+      isRefreshing: Boolean(cachedFearGreedState),
+      status: cachedFearGreedState ? "refreshing" : "initial-loading",
       error: null,
       lastLoadedAt: cachedFearGreedState?.cachedAt ?? null,
       source: cachedFearGreedState ? "cache" : "fallback",
@@ -63,6 +65,13 @@ export function useFearGreed(): FearGreedDataResult {
     let isMounted = true;
 
     const loadFearGreedData = async () => {
+      setState((prev) => ({
+        ...prev,
+        isLoading: prev.source === "fallback" && !prev.lastLoadedAt,
+        isRefreshing: prev.source !== "fallback" || Boolean(prev.lastLoadedAt),
+        status: prev.source === "fallback" && !prev.lastLoadedAt ? "initial-loading" : "refreshing",
+      }));
+
       try {
         const value = await fetchFearGreedValue();
 
@@ -72,6 +81,8 @@ export function useFearGreed(): FearGreedDataResult {
           setState((prev) => ({
             ...prev,
             isLoading: false,
+            isRefreshing: false,
+            status: prev.source === "fallback" ? "error" : "stale",
             error: "Fear & Greed API response is invalid",
           }));
           return;
@@ -86,6 +97,8 @@ export function useFearGreed(): FearGreedDataResult {
         setState({
           data,
           isLoading: false,
+          isRefreshing: false,
+          status: "ready",
           error: null,
           lastLoadedAt: loadedAt,
           source: "live",
@@ -97,6 +110,8 @@ export function useFearGreed(): FearGreedDataResult {
         setState((prev) => ({
           ...prev,
           isLoading: false,
+          isRefreshing: false,
+          status: prev.source === "fallback" ? "error" : "stale",
           error: getErrorMessage(error),
         }));
       }
