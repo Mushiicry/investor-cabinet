@@ -380,7 +380,7 @@ MVP Core Stabilized.
 текущий главный этап.
 
 Прогресс:
-65-70%.
+75-80%.
 
 Цель:
 сделать MVP надежной системой, а не просто красивым интерфейсом.
@@ -405,6 +405,10 @@ MVP Core Stabilized.
 - источник истины описан в `docs/DATA_SOURCE_OF_TRUTH.md`;
 - подготовлен контракт `history` и read-only план экспорта из Google Sheets `История`;
 - подготовлен контракт TON wallet import для публичного read-only чтения транзакций;
+- 2026-06-01 завершен Stage 2 wallet accounting patch: TON, Arbitrum, Solana и Cosmos Hub подключены к read-only sync;
+- SELL списывает cost basis по старой средней входа и не двигает avgEntry при частичной продаже;
+- BUY через observable stablecoin delta увеличивает cost basis и пересчитывает avgEntry;
+- live `/api/investor` проверен после синхронизации: portfolio, invested, reserve, PnL и `pnlPct` совпадают с расчетным слоем;
 - decisions/scenarios подключены к API/state pipeline через normalizers;
 - Risk Core получил reserve rules, deployable capital split, exposure warnings и отдельный warnings panel.
 
@@ -417,7 +421,7 @@ MVP Core Stabilized.
 
 - держать JSON schema стабильной;
 - подключить live `history` export из Apps Script без изменения формул;
-- создать `TON_WALLETS` и `Транзакции_IMPORT` для безопасного импорта TON-кошелька;
+- довести manual approval flow из `Транзакции_IMPORT` в `Транзакции`;
 - после переходного периода решить, какие поля Stage 2 становятся required;
 - убрать зависимость от stale `overview.bestPosition/worstPosition`, когда API сможет отдавать authoritative open-risk values.
 
@@ -431,6 +435,7 @@ MVP Core Stabilized.
 - описаны reserve assets и futures cash;
 - описан deployable cash split;
 - описан pending-review contract для TON wallet import;
+- созданы wallet sync contracts для TON, Arbitrum, Solana и Cosmos Hub;
 - добавлен validation layer.
 
 ### 2.2 API Layer
@@ -624,12 +629,11 @@ Decision Engine не должен заставлять действовать.
 - Telegram reports;
 - scheduled messaging foundation;
 - table integration.
-- TON wallet import contract для будущей read-only автоматизации.
+- read-only wallet sync foundation для TON, Arbitrum, Solana и Cosmos Hub.
 
 Нужно:
 
-- Apps Script fetcher для публичного TON-адреса;
-- дедупликация blockchain transactions;
+- manual approval flow для blockchain transaction imports;
 - pending review flow перед записью в `Транзакции`;
 - risk alerts;
 - allocation alerts;

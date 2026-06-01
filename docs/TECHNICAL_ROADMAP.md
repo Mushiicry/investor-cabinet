@@ -80,7 +80,7 @@ MVP Core Stabilized means:
 | Stage | Name | Status | Progress | Priority |
 | --- | --- | --- | --- | --- |
 | Stage 1 | Functional Premium MVP | Almost complete | 80-85% | Current foundation |
-| Stage 2 | Stabilization + Risk Core Completion | Current stage | 65-70% | Highest |
+| Stage 2 | Stabilization + Risk Core Completion | Current stage | 75-80% | Highest |
 | Stage 3 | Professional Dashboard / Analytics | Next major layer | 25-35% | High after stabilization |
 | Stage 4 | Decision Engine | Early concept | 15-20% | Medium-high |
 | Stage 5 | Automation + Smart Alerts | Partial | 40-50% | Medium |
@@ -166,7 +166,7 @@ Status:
 Current main stage.
 
 Progress:
-65-70%.
+75-80%.
 
 Goal:
 Make the MVP stable enough to become the foundation for future analytics, decision systems, AI assistant, backend migration, and SaaS architecture.
@@ -194,6 +194,10 @@ Current checkpoint:
 - Fear & Greed fallback no longer activates buy-ladder signals while live data is loading;
 - source-of-truth documentation is now explicit in `docs/DATA_SOURCE_OF_TRUTH.md`;
 - history API foundation is prepared but still waiting for read-only Apps Script export from Sheets `История`.
+- 2026-06-01 wallet accounting patch completed for TON, Arbitrum, Solana and Cosmos snapshots;
+- partial sells reduce cost basis at previous average entry and do not move average entry;
+- unified wallet sync trigger covers TON, Arbitrum, Solana and Cosmos read-only sync;
+- live `/api/investor` verified after sync: portfolio, invested, reserve, PnL and `overview.pnlPct` stay consistent.
 
 ## 4.1 Data Contract Stabilization
 
@@ -524,34 +528,51 @@ Do not:
 ## 6.2 Wallet Transaction Import
 
 Status:
-Planned / contract prepared.
+Implemented for supported Stage 2 wallet sync; transaction-review flow remains partial.
 
 Progress:
-15%.
+70%.
 
 Goal:
 Import public wallet transactions into Investor Cabinet without turning the product into an execution tool.
 
-Initial chain:
-- TON.
+Supported chains:
+- TON;
+- Arbitrum;
+- Solana;
+- Cosmos Hub.
 
-Initial public wallet:
+Tracked public wallets:
 - `UQALTg4Pc2kWGwMY2cxv4-gSi-pmVOnvKjgK81oyb1vUhKMp`.
+- `0xFEc18D4474826afd65d578ff931F4ff2926ee0c3`.
+- `E5dwGSC3DKKh4A1Hdpb2BXvcSpoWrfyWWicXq8h1Sus9`.
+- `cosmos19cykvjv5sqgqgrrw0n94et2knvj3t3chpv7hka`.
 
 Already prepared:
 - `docs/sheets/TON_WALLET_IMPORT.md`;
+- `docs/sheets/EVM_WALLET_IMPORT.md`;
+- `docs/sheets/SOLANA_WALLET_IMPORT.md`;
+- `docs/sheets/COSMOS_WALLET_IMPORT.md`;
 - `TON_WALLETS` sheet contract;
+- `EVM_WALLETS` sheet contract;
+- `SOLANA_WALLETS` sheet contract;
+- `COSMOS_WALLETS` sheet contract;
 - `Транзакции_IMPORT` sheet contract;
 - pending-review workflow;
 - dedupe key rules;
 - no-private-key safety rules.
 
+Completed:
+- TON sale accounting uses cost basis at previous average entry;
+- Arbitrum USDC/ETH balance deltas apply buy/sell accounting;
+- Solana USDC/SOL balance deltas apply buy/sell accounting;
+- Cosmos ATOM sync imports liquid + staked quantity and keeps rewards snapshot-only;
+- unified `syncInvestorCabinetWallets()` runs all supported read-only wallet syncs.
+
 Needed:
-- add actual sheets;
-- add Apps Script read-only fetcher;
-- add dedupe implementation;
 - add manual approval flow into `Транзакции`;
 - later expose import status to frontend.
+- add exact counter-asset transaction accounting for networks where a wallet snapshot alone cannot prove buy/sell price.
 
 Do not:
 - store seed phrases;
