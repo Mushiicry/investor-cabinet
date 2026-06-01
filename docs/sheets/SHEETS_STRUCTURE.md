@@ -288,6 +288,28 @@ scenario system.
 
 ---
 
+## COSMOS_WALLETS / COSMOS_WALLET_BALANCES
+
+Конфигурация и read-only snapshot публичных Cosmos Hub адресов.
+
+Текущие активы:
+- ATOM liquid;
+- ATOM staked;
+- ATOM rewards как snapshot-only строка.
+
+`COSMOS_WALLET_BALANCES` является техническим snapshot-слоем.
+В `Расчеты` попадает только liquid + staked ATOM.
+Unclaimed rewards не меняют cost basis до claim.
+
+Нельзя хранить:
+- seed phrase
+- private key
+- wallet password
+- signing permissions.
+
+
+---
+
 ## ИСТОРИЯ
 
 Историческое состояние портфеля.
