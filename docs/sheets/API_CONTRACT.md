@@ -21,6 +21,7 @@ API должен возвращать:
   "portfolio": [],
   "history": [],
   "risk": {},
+  "fearGreedStrategy": {},
   "decisions": [],
   "scenarios": [],
   "updatedAt": ""
@@ -244,6 +245,49 @@ Frontend ожидает optional массив объектов:
 - frontend can read existing sheet-export decimal strings like `"438,9"` and `"2,8%"` only inside the history normalizer;
 - frontend не должен строить настоящую историю из browser cache;
 - browser cache можно использовать только как UX cache последнего live состояния.
+
+
+---
+
+# FEAR GREED STRATEGY
+
+fearGreedStrategy используется:
+- Fear & Greed decision module;
+- cooldown дисциплина покупок;
+- расчет разрешенной суммы покупки.
+
+Source of truth:
+- Google Sheets лист `FearGreedRules`;
+- live index может приходить через `/api/fear-greed`, но cooldown rules и `lastBuyAt` должны оставаться в Sheets.
+
+Формат:
+
+{
+  "currentIndex": 29,
+  "currentMode": "cautious",
+  "portfolioValue": 767.2,
+  "rules": [
+    {
+      "mode": "cautious",
+      "range": "20-29",
+      "label": "Осторожная покупка",
+      "buyPct": 0.01,
+      "buyAmount": 7.67,
+      "cooldownDays": 7,
+      "lastBuyAt": null,
+      "nextAvailableAt": null,
+      "isCurrent": true,
+      "isAvailable": true,
+      "cooldownRemainingHours": 0,
+      "status": "active"
+    }
+  ]
+}
+
+Important:
+- `buyPct` is decimal fraction: `0.01`, `0.015`, `0.02`;
+- each mode has independent cooldown;
+- this module never places orders and never chooses the asset to buy.
 
 
 ---

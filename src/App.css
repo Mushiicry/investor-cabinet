@@ -9984,7 +9984,7 @@ body {
 
 .fg-buy-row {
   display: grid;
-  grid-template-columns: 0.78fr 1.62fr 0.92fr 1.18fr;
+  grid-template-columns: 0.72fr 1.4fr 0.58fr 0.78fr 1.14fr;
   min-height: 36px;
   align-items: center;
   border-bottom: 1px solid rgba(91, 214, 255, 0.12);
@@ -10040,6 +10040,7 @@ body {
   align-items: center;
   gap: 8px;
   white-space: nowrap;
+  font-size: 12px;
 }
 
 .fg-buy-mode::before {
@@ -10057,6 +10058,20 @@ body {
   box-shadow:
     0 0 0 3px rgba(255,216,77,0.12),
     0 0 14px rgba(255,216,77,0.7);
+}
+
+.fg-buy-mode-available::before {
+  background: rgba(89, 244, 134, 0.92);
+  border-color: rgba(89, 244, 134, 0.92);
+}
+
+.fg-buy-mode-cooldown {
+  color: #ff8999;
+}
+
+.fg-buy-mode-cooldown::before {
+  background: rgba(255, 111, 125, 0.88);
+  border-color: rgba(255, 111, 125, 0.9);
 }
 
 .fg-buy-note {
@@ -10146,7 +10161,7 @@ body {
   }
 
   .fg-buy-row {
-    grid-template-columns: 0.8fr 1.35fr 1fr 1.1fr;
+    grid-template-columns: 0.72fr 1.2fr 0.7fr 0.88fr 1fr;
   }
 
   .fg-buy-cell {

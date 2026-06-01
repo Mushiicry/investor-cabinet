@@ -81,6 +81,18 @@ Apps Script Wallet Import must not:
 - write directly into `Портфель`;
 - write directly into `Транзакции` before manual review.
 
+## Fear & Greed Buy Engine
+
+Source of truth:
+- Google Sheets лист `FearGreedRules`;
+- `/api/fear-greed` supplies the live market index;
+- `/api/investor` supplies cooldown rules, buy amounts and last-buy state.
+
+Rules:
+- each mode has its own cooldown;
+- `buyPct` is stored and exported as decimal fraction;
+- this is a decision/risk module only, not an order execution system.
+
 ## Frontend API Layer
 
 Owns:

@@ -201,7 +201,13 @@ export function OverviewPage({
 
       <div className="overview-secondary-grid grid xl:grid-cols-[0.88fr_1.12fr] gap-6">
         <HologramAllocationChart categories={overview.categories} />
-        <FearGreedGauge data={fearGreedData} isLoading={fearGreedIsLoading} source={fearGreedSource} />
+        <FearGreedGauge
+          data={fearGreedData}
+          isLoading={fearGreedIsLoading}
+          source={fearGreedSource}
+          strategy={data.fearGreedStrategy}
+          portfolioValue={overview.portfolioValue}
+        />
       </div>
 
       <MoodSummary />

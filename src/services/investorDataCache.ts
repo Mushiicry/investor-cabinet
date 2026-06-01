@@ -1,4 +1,5 @@
 import type { PortfolioState } from "../types/portfolio";
+import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
 
 const INVESTOR_DATA_CACHE_KEY = "investor-cabinet:last-live-investor-state";
 
@@ -39,6 +40,7 @@ const normalizeCachedPortfolioState = (value: unknown): PortfolioState | null =>
         pnlPct,
       },
       history: Array.isArray(value.history) ? value.history : [],
+      fearGreedStrategy: cachedState.fearGreedStrategy ?? buildFearGreedStrategy(50, portfolioValue),
     };
   }
 

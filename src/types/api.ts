@@ -13,6 +13,21 @@ export type PortfolioApiItem = {
   status?: unknown;
 };
 
+export type FearGreedStrategyApiRule = {
+  mode?: unknown;
+  range?: unknown;
+  label?: unknown;
+  buyPct?: unknown;
+  buyAmount?: unknown;
+  cooldownDays?: unknown;
+  lastBuyAt?: unknown;
+  nextAvailableAt?: unknown;
+  isCurrent?: unknown;
+  isAvailable?: unknown;
+  cooldownRemainingHours?: unknown;
+  status?: unknown;
+};
+
 export type InvestorApiResponse = {
   success?: boolean;
   overview?: {
@@ -36,6 +51,12 @@ export type InvestorApiResponse = {
       pnl?: unknown;
       pnlPct?: unknown;
     };
+  };
+  fearGreedStrategy?: {
+    currentIndex?: unknown;
+    currentMode?: unknown;
+    portfolioValue?: unknown;
+    rules?: unknown;
   };
   portfolio?: unknown;
   history?: unknown;

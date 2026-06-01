@@ -11,17 +11,19 @@ function doGet() {
   const risk = ss.getSheetByName("Риск");
   const decisions = ss.getSheetByName("Решения");
   const scenarios = ss.getSheetByName("Сценарии");
+  const overviewData = getOverview(overview);
 
   const result = {
     success: true,
     patch: "SITE API - PATCH 1.1",
     updatedAt: new Date().toISOString(),
 
-    overview: getOverview(overview),
+    overview: overviewData,
     portfolio: getPortfolio(portfolio),
     risk: getRisk(risk),
     decisions: getDecisions(decisions),
-    scenarios: getScenarios(scenarios)
+    scenarios: getScenarios(scenarios),
+    fearGreedStrategy: getFearGreedStrategy(ss, overviewData.portfolioValue)
   };
 
   return ContentService
@@ -164,4 +166,183 @@ function getScenarios(sheet) {
       invalidation: row[5],
       status: row[6]
     }));
+}
+
+function getFearGreedStrategy(ss, portfolioValue) {
+  const currentIndex = getFearGreedCurrentIndex(ss);
+  const sheet = getOrCreateFearGreedRulesSheet(ss);
+  const rules = readFearGreedRules(sheet);
+  const now = new Date();
+  const currentMode = getFearGreedMode(currentIndex, rules);
+
+  const apiRules = rules.map(rule => buildFearGreedRuleState(rule, currentIndex, currentMode, portfolioValue, now));
+  writeFearGreedComputedState(sheet, apiRules);
+
+  return {
+    currentIndex: currentIndex,
+    currentMode: currentMode,
+    portfolioValue: portfolioValue,
+    rules: apiRules
+  };
+}
+
+function getFearGreedCurrentIndex(ss) {
+  const sheet = ss.getSheetByName("Настройки");
+  if (!sheet) return 50;
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 1) return 50;
+
+  const rows = sheet.getRange(1, 1, lastRow, 2).getDisplayValues();
+  for (let i = 0; i < rows.length; i += 1) {
+    if (String(rows[i][0]).trim() === "fearGreedValue") {
+      const value = parseNumber(rows[i][1]);
+      return Math.max(0, Math.min(100, Math.round(value || 50)));
+    }
+  }
+
+  return 50;
+}
+
+function getOrCreateFearGreedRulesSheet(ss) {
+  const sheetName = "FearGreedRules";
+  const sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
+  const headers = [
+    "mode",
+    "minIndex",
+    "maxIndex",
+    "label",
+    "buyPct",
+    "cooldownDays",
+    "lastBuyAt",
+    "nextAvailableAt",
+    "isAvailable",
+    "buyAmount",
+    "status"
+  ];
+
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+
+  const currentHeaders = sheet.getRange(1, 1, 1, headers.length).getDisplayValues()[0];
+  const needsHeaders = headers.some((header, index) => currentHeaders[index] !== header);
+  if (needsHeaders) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+
+  if (sheet.getLastRow() < 5) {
+    sheet.getRange(2, 1, 4, headers.length).setValues(getDefaultFearGreedRules().map(rule => [
+      rule.mode,
+      rule.minIndex,
+      rule.maxIndex,
+      rule.label,
+      rule.buyPct,
+      rule.cooldownDays,
+      "",
+      "",
+      false,
+      0,
+      "Passive"
+    ]));
+  }
+
+  return sheet;
+}
+
+function getDefaultFearGreedRules() {
+  return [
+    { mode: "observation", minIndex: 30, maxIndex: 100, label: "Наблюдение", buyPct: 0, cooldownDays: 0 },
+    { mode: "cautious", minIndex: 20, maxIndex: 29, label: "Осторожная покупка", buyPct: 0.01, cooldownDays: 7 },
+    { mode: "strong", minIndex: 15, maxIndex: 19, label: "Усиленная покупка", buyPct: 0.015, cooldownDays: 7 },
+    { mode: "aggressive", minIndex: 0, maxIndex: 14, label: "Агрессивная покупка", buyPct: 0.02, cooldownDays: 7 }
+  ];
+}
+
+function readFearGreedRules(sheet) {
+  const defaults = getDefaultFearGreedRules();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return defaults;
+
+  const rows = sheet.getRange(2, 1, Math.min(lastRow - 1, 4), 7).getValues();
+  return rows.map((row, index) => {
+    const fallback = defaults[index];
+    return {
+      mode: String(row[0] || fallback.mode),
+      minIndex: parseNumber(row[1] || fallback.minIndex),
+      maxIndex: parseNumber(row[2] || fallback.maxIndex),
+      label: String(row[3] || fallback.label),
+      buyPct: parseNumber(row[4] === "" ? fallback.buyPct : row[4]),
+      cooldownDays: parseNumber(row[5] === "" ? fallback.cooldownDays : row[5]),
+      lastBuyAt: row[6] || ""
+    };
+  });
+}
+
+function getFearGreedMode(index, rules) {
+  const matchingRule = rules.find(rule => index >= rule.minIndex && index <= rule.maxIndex);
+  return matchingRule ? matchingRule.mode : "observation";
+}
+
+function buildFearGreedRuleState(rule, currentIndex, currentMode, portfolioValue, now) {
+  const lastBuyDate = parseFearGreedDate(rule.lastBuyAt);
+  const nextAvailableDate = lastBuyDate && rule.cooldownDays
+    ? addFearGreedDays(lastBuyDate, rule.cooldownDays)
+    : null;
+  const cooldownRemainingHours = nextAvailableDate
+    ? Math.max(0, Math.ceil((nextAvailableDate.getTime() - now.getTime()) / 3600000))
+    : 0;
+  const hasCooldown = rule.buyPct > 0 && cooldownRemainingHours > 0;
+  const isAvailable = rule.buyPct > 0 && !hasCooldown;
+  const isCurrent = rule.mode === currentMode;
+  const status = hasCooldown ? "cooldown" : (isCurrent && isAvailable ? "active" : "passive");
+
+  return {
+    mode: rule.mode,
+    range: rule.minIndex + "-" + rule.maxIndex,
+    label: rule.label,
+    buyPct: rule.buyPct,
+    buyAmount: roundFearGreed(portfolioValue * rule.buyPct, 2),
+    cooldownDays: rule.cooldownDays,
+    lastBuyAt: lastBuyDate ? formatFearGreedDate(lastBuyDate) : null,
+    nextAvailableAt: nextAvailableDate ? formatFearGreedDate(nextAvailableDate) : null,
+    isCurrent: isCurrent,
+    isAvailable: isAvailable,
+    cooldownRemainingHours: cooldownRemainingHours,
+    status: status
+  };
+}
+
+function writeFearGreedComputedState(sheet, rules) {
+  const rows = rules.map(rule => [
+    rule.nextAvailableAt || "",
+    rule.isAvailable,
+    rule.buyAmount,
+    rule.status === "active" ? "Active" : rule.status === "cooldown" ? "Cooldown" : "Passive"
+  ]);
+
+  sheet.getRange(2, 8, rows.length, 4).setValues(rows);
+}
+
+function parseFearGreedDate(value) {
+  if (!value) return null;
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) return value;
+
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function addFearGreedDays(date, days) {
+  const next = new Date(date.getTime());
+  next.setDate(next.getDate() + Number(days || 0));
+  return next;
+}
+
+function formatFearGreedDate(date) {
+  return Utilities.formatDate(date, "UTC", "yyyy-MM-dd'T'HH:mm:ss'Z'");
+}
+
+function roundFearGreed(value, digits) {
+  const factor = Math.pow(10, digits || 0);
+  return Math.round(Number(value || 0) * factor) / factor;
 }

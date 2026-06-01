@@ -1,4 +1,5 @@
 import { normalizeHistory } from "../lib/historyNormalizers";
+import { normalizeFearGreedStrategyFromApi } from "../lib/fearGreedStrategy";
 import { normalizeDecisions, normalizeScenarios } from "../lib/playbookNormalizers";
 import { normalizePortfolio, toNumber } from "../lib/portfolioNormalizers";
 import { getOpenRiskPositions } from "../lib/portfolioSelectors";
@@ -16,6 +17,11 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
   const scenarios = normalizeScenarios(json?.scenarios, prev.scenarios);
   const openRiskPositions = getOpenRiskPositions(portfolio);
   const portfolioValue = toNumber(json?.overview?.portfolioValue, prev.overview.portfolioValue);
+  const fearGreedStrategy = normalizeFearGreedStrategyFromApi(
+    json?.fearGreedStrategy,
+    prev.fearGreedStrategy,
+    portfolioValue
+  );
 
   return {
     ...prev,
@@ -23,6 +29,7 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
     history,
     decisions,
     scenarios,
+    fearGreedStrategy,
 
     overview: buildOverviewStateFromApi({
       json,

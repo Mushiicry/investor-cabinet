@@ -24,6 +24,7 @@ import {
   calculateCategoryValue,
   calculatePortfolioValue,
 } from "./riskExposure";
+import { buildFearGreedStrategy } from "./fearGreedStrategy";
 
 export const CATEGORY_ORDER: Category[] = ["Крипта", "Металлы", "Фьючерсы", "Акции", "Свободные деньги"];
 
@@ -162,6 +163,7 @@ export function buildPortfolioState(positionsInput: PositionInput[], decisions: 
     decisions,
     scenarios,
     history: [],
+    fearGreedStrategy: buildFearGreedStrategy(50, portfolioValue),
     updatedAt: new Date().toISOString(),
   };
 }

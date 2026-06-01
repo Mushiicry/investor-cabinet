@@ -134,6 +134,32 @@ export type FearGreed = {
   action: string;
 };
 
+export type FearGreedMode = "observation" | "cautious" | "strong" | "aggressive";
+
+export type FearGreedStrategyStatus = "passive" | "active" | "cooldown";
+
+export type FearGreedStrategyRule = {
+  mode: FearGreedMode;
+  range: string;
+  label: string;
+  buyPct: number;
+  buyAmount: number;
+  cooldownDays: number;
+  lastBuyAt: string | null;
+  nextAvailableAt: string | null;
+  isCurrent: boolean;
+  isAvailable: boolean;
+  cooldownRemainingHours: number;
+  status: FearGreedStrategyStatus;
+};
+
+export type FearGreedStrategy = {
+  currentIndex: number;
+  currentMode: FearGreedMode;
+  portfolioValue: number;
+  rules: FearGreedStrategyRule[];
+};
+
 export type PortfolioHistoryPoint = {
   date: string;
   portfolioValue: number;
@@ -156,6 +182,7 @@ export type PortfolioState = {
   decisions: Decision[];
   scenarios: ScenarioCard[];
   history: PortfolioHistoryPoint[];
+  fearGreedStrategy: FearGreedStrategy;
   updatedAt: string;
 };
 

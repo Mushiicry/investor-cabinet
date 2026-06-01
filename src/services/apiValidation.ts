@@ -43,6 +43,10 @@ export function validateInvestorApiPayload(value: unknown): ApiValidationResult<
     return validationError("risk must be an object");
   }
 
+  if (!hasOptionalRecord(value, "fearGreedStrategy")) {
+    return validationError("fearGreedStrategy must be an object");
+  }
+
   if (!hasOptionalArray(value, "decisions")) {
     return validationError("decisions must be an array");
   }
