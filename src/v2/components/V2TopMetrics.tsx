@@ -68,7 +68,7 @@ export function V2TopMetrics({ portfolio }: Props) {
       area: "pnl",
     },
     {
-      label: "СВОБОДНЫЕ ДЕНЬГИ",
+      label: "ТОРГОВЫЙ КАПИТАЛ",
       value: money.format(freeCash),
       sub: "можно пустить в работу",
       area: "trading",
