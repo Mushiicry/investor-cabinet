@@ -3,7 +3,6 @@ import type { PointerEvent } from "react";
 import { Panel } from "../shared/Panel";
 import { currency } from "../../lib/formatters";
 import type { Category, CategoryAllocation } from "../../types/portfolio";
-import allocationPortal from "../../assets/hologram/allocation-portal.webp";
 
 type HologramAllocationChartProps = {
   categories: CategoryAllocation[];
@@ -59,11 +58,11 @@ const PIE = {
   cy: 106,
   rx: 128,
   ry: 66,
-  depth: 30,
+  depth: 50,
   startAngle: Math.PI * 1.02,
 };
 const MIN_VISIBLE_ANGLE = (Math.PI / 180) * 18;
-const SLICE_GAP = 0.04;
+const SLICE_GAP = 0.012;
 const PIE_X_SHIFT = 30;
 const LOWER_RX_SCALE = 0.975;
 const LOWER_RY_SCALE = 0.84;
@@ -121,27 +120,13 @@ function lowerWallPoint(angle: number): Point {
 }
 
 function sliceExplodeDistance(segment: CanvasSegment) {
-  if (segment.name === "Свободные деньги") {
-    return 5.5;
-  }
+  void segment;
 
-  if (segment.name === "Крипта") {
-    return 7;
-  }
-
-  if (segment.name === "Фьючерсы") {
-    return 8;
-  }
-
-  if (segment.name === "Металлы") {
-    return 8.5;
-  }
-
-  return 6;
+  return 0;
 }
 
 function sliceOffset(segment: CanvasSegment, hovered: boolean) {
-  const distance = sliceExplodeDistance(segment) + (hovered ? 8 : 0);
+  const distance = sliceExplodeDistance(segment) + (hovered ? 5 : 0);
 
   return {
     x: Math.cos(segment.midAngle) * distance,
@@ -269,11 +254,9 @@ function frontArcRanges(segment: CanvasSegment) {
 }
 
 function wallArcRanges(segment: CanvasSegment) {
-  if (segment.name === "Свободные деньги" || isSmallSlice(segment)) {
-    return [{ startAngle: segment.startAngle, endAngle: segment.endAngle }];
-  }
+  const frontRanges = frontArcRanges(segment);
 
-  return frontArcRanges(segment);
+  return frontRanges.length > 0 ? frontRanges : [{ startAngle: segment.startAngle, endAngle: segment.endAngle }];
 }
 
 function isSmallSlice(segment: CanvasSegment) {
@@ -787,41 +770,6 @@ export function HologramAllocationChart({ categories }: HologramAllocationChartP
       </div>
 
       <div className="holo-allocation-layout">
-        <div className="holo-chart-stage" aria-label="Динамическое распределение активов">
-          <div className="holo-chart-hud holo-chart-hud-left">
-            <span>DATA FLOW</span>
-            <strong>SYS. ONLINE</strong>
-          </div>
-          <div className="holo-chart-hud holo-chart-hud-right">
-            <span>PORTFOLIO</span>
-            <strong>DISTRIBUTION</strong>
-          </div>
-          <div className="holo-chart-hud holo-chart-hud-bottom">
-            <span>BALANCE</span>
-            <strong>STATUS: ACTIVE</strong>
-          </div>
-          <div className="holo-total-strip">
-            <span>Total</span>
-            <strong>{currency(total)}</strong>
-          </div>
-          <div className="holo-canvas-wrap">
-            <img className="holo-portal-image" src={allocationPortal} alt="" aria-hidden="true" />
-            <canvas
-              ref={canvasRef}
-              className="holo-canvas"
-              aria-label="Hologram allocation diagram"
-              onPointerLeave={() => setHoveredIndex(null)}
-              onPointerMove={(event) => {
-                const canvas = canvasRef.current;
-                const index = canvas ? getHoveredSegment(canvas, event, segments) : null;
-                const nextIndex = index === null || index < 0 ? null : index;
-
-                setHoveredIndex(nextIndex);
-              }}
-            />
-          </div>
-        </div>
-
         <div className="holo-allocation-list">
           {displayRows.map((item) => {
             const meta = CATEGORY_META[item.name];
@@ -861,6 +809,42 @@ export function HologramAllocationChart({ categories }: HologramAllocationChartP
               </div>
             );
           })}
+        </div>
+
+        <div className="holo-chart-stage" aria-label="Динамическое распределение активов">
+          <div className="holo-chart-hud holo-chart-hud-left">
+            <span>DATA FLOW</span>
+            <strong>SYS. ONLINE</strong>
+          </div>
+          <div className="holo-chart-hud holo-chart-hud-right">
+            <span>PORTFOLIO</span>
+            <strong>DISTRIBUTION</strong>
+          </div>
+          <div className="holo-chart-hud holo-chart-hud-bottom">
+            <span>BALANCE</span>
+            <strong>STATUS: ACTIVE</strong>
+          </div>
+          <div className="holo-total-strip">
+            <span>Total</span>
+            <strong>{currency(total)}</strong>
+          </div>
+          <div className="holo-portal-layer" aria-hidden="true" />
+          <div className="holo-beam-layer" aria-hidden="true" />
+          <div className="holo-canvas-wrap">
+            <canvas
+              ref={canvasRef}
+              className="holo-canvas"
+              aria-label="Hologram allocation diagram"
+              onPointerLeave={() => setHoveredIndex(null)}
+              onPointerMove={(event) => {
+                const canvas = canvasRef.current;
+                const index = canvas ? getHoveredSegment(canvas, event, segments) : null;
+                const nextIndex = index === null || index < 0 ? null : index;
+
+                setHoveredIndex(nextIndex);
+              }}
+            />
+          </div>
         </div>
       </div>
     </Panel>

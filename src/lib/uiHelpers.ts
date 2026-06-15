@@ -63,7 +63,9 @@ export function assetGlyph(asset: string): string {
     TIA: "T",
     APEX: "A",
     MNT: "M",
+    "MNT LONG": "M",
     "GOLD LONG": "G",
+    "BTC LONG": "₿",
     "BTC SHORT": "₿",
     USDT: "$",
   };
@@ -75,7 +77,7 @@ export function assetRarity(asset: string): CardRarity {
   if (asset === "ETH") return "epic";
   if (asset === "SOL" || asset === "BNB") return "rare";
   if (asset === "GOLD LONG" || asset === "USDT") return "defense";
-  if (asset === "BTC SHORT" || asset === "APEX") return "risk";
+  if (asset === "BTC SHORT" || asset === "BTC LONG" || asset === "MNT LONG" || asset === "APEX") return "risk";
   return "common";
 }
 
@@ -90,7 +92,9 @@ export function cardNumbers(asset: string): { attack: number; risk: number; clas
     APEX: { attack: 9, risk: 9, className: "risk", title: "Опасная карта" },
     MNT: { attack: 7, risk: 7, className: "common", title: "Спекулятивная карта" },
     "GOLD LONG": { attack: 3, risk: 1, className: "defense", title: "Защитная карта" },
+    "BTC LONG": { attack: 8, risk: 8, className: "risk", title: "Лонг-карта" },
     "BTC SHORT": { attack: 8, risk: 8, className: "risk", title: "Шорт-карта" },
+    "MNT LONG": { attack: 7, risk: 8, className: "risk", title: "Фьючерсная карта" },
     USDT: { attack: 2, risk: 1, className: "defense", title: "Резервная карта" },
   };
   return map[asset] ?? { attack: 5, risk: 5, className: "common", title: "Карточка актива" };

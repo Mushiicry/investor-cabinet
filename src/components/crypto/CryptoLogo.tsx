@@ -24,7 +24,7 @@ const importedCoinLogos: Record<string, { src: string; mode: "cover" | "contain"
 export function CryptoLogo({ asset, className = "" }: { asset: string; className?: string }) {
   const wrap = `crypto-logo ${className}`.trim();
 
-  if (asset === "BTC") {
+  if (asset === "BTC" || asset === "BTC LONG") {
     return (
       <div className={`${wrap} crypto-logo-image crypto-logo-image-contain coin-image-btc`.trim()} aria-label={asset}>
         <img src={btcLogo} alt={asset} className="crypto-logo-img" />
@@ -55,7 +55,7 @@ export function CryptoLogo({ asset, className = "" }: { asset: string; className
     );
   }
 
-  const imported = importedCoinLogos[asset];
+  const imported = importedCoinLogos[asset] ?? (asset === "MNT LONG" ? importedCoinLogos.MNT : undefined);
   if (imported) {
     return (
       <div

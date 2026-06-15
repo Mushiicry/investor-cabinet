@@ -2500,6 +2500,46 @@ requires a normal build and push to GitHub; Vercel should deploy from `main` aft
 
 ---
 
+# PATCH 8.1
+
+Transfer live overview metrics into V2 Lab.
+
+Type:
+data mapping / visual-lab integration
+
+Goal:
+start moving the correct Investor Cabinet live calculations into the new `/v2-lab` visual without changing the visual geometry or API contract.
+
+Files changed:
+- `src/v2/InvestorCabinetV2Lab.tsx`
+- `src/v2/components/V2TopMetrics.tsx`
+- `src/v2/components/V2Shell.tsx`
+- `docs/INVESTOR_CABINET_ROADMAP.md`
+- `docs/PATCH_LOG.md`
+
+Details:
+- connected V2 Lab top overview metrics to the existing `useInvestorData` flow and `/api/investor` source
+- kept mock data as fallback for the rest of the V2 visual
+- mapped live `overview.portfolioValue`, `overview.reserve`, `overview.pnl`, `overview.pnlPct`, `overview.state`, `overview.signal`, `overview.positionsCount`
+- mapped `risk.deployableCash` into the existing Deployable Capital top card
+- kept Health Reactor, right column, lower cards, grid and CSS geometry unchanged
+- reapplied numeric font processing when live V2 data refreshes
+
+Build:
+successful
+
+Risks:
+- V2 Lab still has demo values below the top metric row until later transfer patches
+- first render can briefly show cache/fallback before the live API refresh completes
+
+Rollback:
+- restore `InvestorCabinetV2Lab` to render `mockData` directly and restore the previous V2 top metric labels
+
+Deployment impact:
+requires a normal build and push to GitHub; Vercel should deploy from `main` after push.
+
+---
+
 # PATCH RULES
 
 Every patch must include:

@@ -163,7 +163,7 @@ export function buildPortfolioState(positionsInput: PositionInput[], decisions: 
     decisions,
     scenarios,
     history: [],
-    fearGreedStrategy: buildFearGreedStrategy(50, portfolioValue),
+    fearGreedStrategy: buildFearGreedStrategy(50, invested),
     updatedAt: new Date().toISOString(),
   };
 }

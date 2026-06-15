@@ -2,6 +2,7 @@ import type { FearGreedStrategyApiRule, InvestorApiResponse } from "../types/api
 import type {
   FearGreedMode,
   FearGreedStrategy,
+  FearGreedStrategyLastBuy,
   FearGreedStrategyRule,
   FearGreedStrategyStatus,
 } from "../types/portfolio";
@@ -108,12 +109,81 @@ export function buildFearGreedStrategy(
     currentIndex: normalizedIndex,
     currentMode,
     portfolioValue,
+    lastBuy: getLastBuyFromRules(rules),
     rules,
   };
 }
 
 const toApiRule = (item: unknown): FearGreedStrategyApiRule =>
   item && typeof item === "object" ? item as FearGreedStrategyApiRule : {};
+
+const getLastBuyFromRules = (rules: FearGreedStrategyRule[]): FearGreedStrategyLastBuy | null => {
+  const latest = rules.reduce<FearGreedStrategyRule | null>((currentLatest, rule) => {
+    if (!rule.buyPct || !rule.lastBuyAt) return currentLatest;
+    if (!currentLatest?.lastBuyAt) return rule;
+    const ruleTime = toDateTime(rule.lastBuyAt) ?? 0;
+    const latestTime = toDateTime(currentLatest.lastBuyAt) ?? 0;
+    return ruleTime > latestTime ? rule : currentLatest;
+  }, null);
+
+  if (!latest?.lastBuyAt) return null;
+
+  return {
+    mode: latest.mode,
+    range: latest.range,
+    label: latest.label,
+    asset: "",
+    assetPrice: 0,
+    buyAmount: latest.buyAmount,
+    boughtAt: latest.lastBuyAt,
+  };
+};
+
+const toLastBuy = (item: unknown): FearGreedStrategyLastBuy | null => {
+  if (!item || typeof item !== "object") return null;
+
+  const source = item as Record<string, unknown>;
+  const mode = source.mode;
+  const boughtAt = toIsoOrNull(source.boughtAt);
+
+  if (!isMode(mode) || !boughtAt) return null;
+
+  return {
+    mode,
+    range: typeof source.range === "string" ? source.range : "",
+    label: typeof source.label === "string" ? source.label : "",
+    asset: typeof source.asset === "string" ? source.asset : "",
+    assetPrice: toNumber(source.assetPrice),
+    buyAmount: toNumber(source.buyAmount),
+    boughtAt,
+  };
+};
+
+const applyLastBuyLadderCooldown = (
+  rules: Partial<FearGreedStrategyRule>[],
+  lastBuy: FearGreedStrategyLastBuy | null,
+) => {
+  if (!lastBuy?.boughtAt) return rules;
+
+  const boughtAtTimestamp = toDateTime(lastBuy.boughtAt);
+  if (!boughtAtTimestamp) return rules;
+
+  return rules.map((rule) => {
+    const mode = rule.mode;
+    if (!mode || mode !== lastBuy.mode) {
+      return rule;
+    }
+
+    const existingLastBuyTimestamp = toDateTime(rule.lastBuyAt);
+
+    return {
+      ...rule,
+      lastBuyAt: !existingLastBuyTimestamp || existingLastBuyTimestamp < boughtAtTimestamp
+        ? lastBuy.boughtAt
+        : rule.lastBuyAt,
+    };
+  });
+};
 
 export function normalizeFearGreedStrategyFromApi(
   source: InvestorApiResponse["fearGreedStrategy"],
@@ -123,9 +193,13 @@ export function normalizeFearGreedStrategyFromApi(
   const safeFallback = fallback ?? buildFearGreedStrategy(50, portfolioValue);
 
   if (!source || !Array.isArray(source.rules)) {
-    return buildFearGreedStrategy(safeFallback.currentIndex, portfolioValue, safeFallback.rules);
+    return {
+      ...buildFearGreedStrategy(safeFallback.currentIndex, portfolioValue, safeFallback.rules),
+      lastBuy: safeFallback.lastBuy ?? null,
+    };
   }
 
+  const apiLastBuy = toLastBuy(source.lastBuy);
   const sourceRules = source.rules.map((rawRule, index) => {
     const rule = toApiRule(rawRule);
     const fallbackRule = DEFAULT_RULES[index] ?? DEFAULT_RULES[0];
@@ -147,5 +221,10 @@ export function normalizeFearGreedStrategyFromApi(
   });
 
   const currentIndex = toNumber(source.currentIndex, safeFallback.currentIndex);
-  return buildFearGreedStrategy(currentIndex, portfolioValue, sourceRules);
+  const strategyRules = applyLastBuyLadderCooldown(sourceRules, apiLastBuy);
+
+  return {
+    ...buildFearGreedStrategy(currentIndex, portfolioValue, strategyRules),
+    lastBuy: apiLastBuy ?? safeFallback.lastBuy ?? null,
+  };
 }

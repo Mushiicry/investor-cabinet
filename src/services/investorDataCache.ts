@@ -40,7 +40,7 @@ const normalizeCachedPortfolioState = (value: unknown): PortfolioState | null =>
         pnlPct,
       },
       history: Array.isArray(value.history) ? value.history : [],
-      fearGreedStrategy: cachedState.fearGreedStrategy ?? buildFearGreedStrategy(50, portfolioValue),
+      fearGreedStrategy: cachedState.fearGreedStrategy ?? buildFearGreedStrategy(50, cachedState.overview.invested),
     };
   }
 

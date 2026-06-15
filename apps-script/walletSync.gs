@@ -5,7 +5,8 @@ var IC_WALLET_SYNC_TRIGGER_HANDLERS = [
   'syncTonWalletBalances',
   'syncArbitrumWalletBalances',
   'syncSolanaWalletBalances',
-  'syncCosmosWalletBalances'
+  'syncCosmosWalletBalances',
+  'syncHyperliquidAccountState'
 ];
 
 function syncInvestorCabinetWallets() {
@@ -28,6 +29,11 @@ function syncInvestorCabinetWallets() {
   IC_WALLET_runSyncStep_('Cosmos wallet balances', function() {
     setupCosmosWalletImport();
     syncCosmosWalletBalances();
+  }, errors);
+
+  IC_WALLET_runSyncStep_('Hyperliquid account state', function() {
+    setupHyperliquidAccountImport();
+    syncHyperliquidAccountState();
   }, errors);
 
   if (errors.length) {

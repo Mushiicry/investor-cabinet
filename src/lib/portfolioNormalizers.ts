@@ -41,6 +41,33 @@ const normalizePortfolioCategory = (item: PortfolioApiItem): Category => {
   return normalizeCategory(item?.category);
 };
 
+const normalizePortfolioPnlPct = (item: PortfolioApiItem) => {
+  const pnlPct = toNumber(item?.pnlPct);
+  const invested = toNumber(item?.invested);
+  const pnl = toNumber(item?.pnl);
+
+  if (!invested) return pnlPct;
+
+  const moneyPct = (pnl / invested) * 100;
+  if (!Number.isFinite(moneyPct)) return pnlPct;
+
+  const isClearlyBrokenPct =
+    Math.abs(pnlPct) > 500 ||
+    Math.abs(pnlPct - moneyPct) > Math.max(25, Math.abs(moneyPct) * 4);
+
+  if (isClearlyBrokenPct) return moneyPct;
+
+  if (Math.abs(pnlPct) < 1000) return pnlPct;
+
+  const scaledPct = pnlPct / 100;
+
+  if (Math.abs(scaledPct) < Math.abs(pnlPct) && Math.abs(scaledPct) <= 500) {
+    return scaledPct;
+  }
+
+  return moneyPct;
+};
+
 export const normalizePortfolio = (portfolio: unknown, fallback: PositionCalculated[]) => {
   if (!Array.isArray(portfolio)) return fallback;
 
@@ -57,7 +84,7 @@ export const normalizePortfolio = (portfolio: unknown, fallback: PositionCalcula
         invested: toNumber(item?.invested),
         currentValue: toNumber(item?.currentValue),
         pnl: toNumber(item?.pnl),
-        pnlPct: toNumber(item?.pnlPct),
+        pnlPct: normalizePortfolioPnlPct(item),
         share: toNumber(item?.share),
         status: String(item?.status ?? ""),
       };

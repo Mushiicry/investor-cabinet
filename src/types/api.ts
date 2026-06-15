@@ -56,6 +56,7 @@ export type InvestorApiResponse = {
     currentIndex?: unknown;
     currentMode?: unknown;
     portfolioValue?: unknown;
+    lastBuy?: unknown;
     rules?: unknown;
   };
   portfolio?: unknown;

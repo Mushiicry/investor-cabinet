@@ -153,10 +153,21 @@ export type FearGreedStrategyRule = {
   status: FearGreedStrategyStatus;
 };
 
+export type FearGreedStrategyLastBuy = {
+  mode: FearGreedMode;
+  range: string;
+  label: string;
+  asset: string;
+  assetPrice: number;
+  buyAmount: number;
+  boughtAt: string;
+};
+
 export type FearGreedStrategy = {
   currentIndex: number;
   currentMode: FearGreedMode;
   portfolioValue: number;
+  lastBuy: FearGreedStrategyLastBuy | null;
   rules: FearGreedStrategyRule[];
 };
 

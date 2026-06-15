@@ -1,9 +1,9 @@
 import type { CSSProperties } from "react";
 import gaugeBg from "../../assets/fear-greed/gauge-bg.webp";
-import { currency, percent } from "../../lib/formatters";
+import { percent } from "../../lib/formatters";
 import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
 import { fgTone } from "../../lib/uiHelpers";
-import type { FearGreed, FearGreedStrategy, FearGreedStrategyRule } from "../../types/portfolio";
+import type { FearGreed, FearGreedMode, FearGreedStrategy, FearGreedStrategyRule } from "../../types/portfolio";
 import { Panel } from "../shared/Panel";
 
 function formatCooldown(hours: number) {
@@ -30,35 +30,34 @@ function formatMoneyDetailed(value: number) {
 }
 
 function getStatusLabel(row: FearGreedStrategyRule) {
-  if (row.cooldownRemainingHours > 0) return "Кулдаун";
+  if (row.cooldownRemainingHours > 0) return getCooldownLabel(row);
   if (row.isAvailable) return "Доступно";
   return "Пассивный";
 }
 
-function getRuleHint(row: FearGreedStrategyRule) {
-  if (!row.buyPct) return "Покупка не активна";
-  return "Можно купить 1 актив";
+function getShortModeLabel(mode: FearGreedMode) {
+  if (mode === "cautious") return "Добор";
+  if (mode === "strong") return "Усиление";
+  if (mode === "aggressive") return "Максимум";
+  return "Наблюдение";
 }
 
 function getCooldownLabel(row: FearGreedStrategyRule) {
-  if (!row.buyPct) return "—";
-  if (row.cooldownRemainingHours > 0) return formatCooldown(row.cooldownRemainingHours);
-  if (row.isAvailable) return "Доступно";
+  if (row.cooldownRemainingHours > 0) return `⏱ ${formatCooldown(row.cooldownRemainingHours)}`;
   return "—";
 }
 
-function getCooldownSubLabel(row: FearGreedStrategyRule) {
-  if (row.cooldownRemainingHours > 0 && row.nextAvailableAt) {
-    return `до ${new Intl.DateTimeFormat("ru-RU", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(row.nextAvailableAt))}`;
-  }
-  if (row.isAvailable) return "можно купить";
-  return "";
+function formatStrategyDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 export function FearGreedGauge({
@@ -67,12 +66,18 @@ export function FearGreedGauge({
   source = "live",
   strategy,
   portfolioValue = 0,
+  spotDeployableCash = 0,
+  futuresDeployableCash = 0,
+  freeCashTotal = 0,
 }: {
   data: FearGreed;
   isLoading?: boolean;
   source?: "cache" | "fallback" | "live";
   strategy?: FearGreedStrategy;
   portfolioValue?: number;
+  spotDeployableCash?: number;
+  futuresDeployableCash?: number;
+  freeCashTotal?: number;
 }) {
   const isSyncingWithoutFreshValue = isLoading && source === "fallback";
   const tone = fgTone(data.value);
@@ -83,14 +88,9 @@ export function FearGreedGauge({
     portfolioValue || strategy?.portfolioValue || 0,
     strategy?.rules
   );
-  const currentRule = buyStrategy.rules.find((row) => row.isCurrent);
-  const currentRuleMessage = isSyncingWithoutFreshValue
-    ? "Синхронизируем индекс. До live-значения сигнал не используется."
-    : !currentRule || currentRule.mode === "observation"
-      ? "Наблюдение: покупка по индексу не активна."
-      : currentRule.cooldownRemainingHours > 0
-        ? `Покупка уже использована, осталось ${formatCooldown(currentRule.cooldownRemainingHours)}.`
-        : `Можно купить на ${currency(currentRule.buyAmount)}.`;
+  const lastBuy = strategy?.lastBuy ?? buyStrategy.lastBuy;
+  const strategyMaxBuy = buyStrategy.rules.find((row) => row.mode === "aggressive")?.buyAmount ?? 0;
+  const visibleFreeCash = freeCashTotal || spotDeployableCash + futuresDeployableCash;
 
   return (
     <Panel tone={tone} className="fear-greed-panel fg-clean-panel h-full" hover>
@@ -111,15 +111,6 @@ export function FearGreedGauge({
 
       <div className="fg-buy-ladder">
         <div className="fg-buy-ladder-table">
-          <div className="fg-buy-row fg-buy-head">
-            <div className="fg-buy-cell">Диапазон индекса</div>
-            <div className="fg-buy-cell">Режим покупки</div>
-            <div className="fg-buy-cell">% от капитала</div>
-            <div className="fg-buy-cell">Сумма покупки</div>
-            <div className="fg-buy-cell">Статус</div>
-            <div className="fg-buy-cell">Кулдаун</div>
-          </div>
-
           {buyStrategy.rules.map((row) => (
             <div
               key={row.mode}
@@ -127,23 +118,20 @@ export function FearGreedGauge({
             >
               <div className="fg-buy-cell fg-buy-range">
                 <span className="fg-buy-dot" aria-hidden="true" />
-                <span>{row.range.replace("-", " - ")}</span>
+                <span>{row.range}</span>
                 {row.isCurrent && !isSyncingWithoutFreshValue ? <span className="fg-buy-current-tag">Текущий уровень</span> : null}
               </div>
 
               <div className="fg-buy-cell fg-buy-title-cell">
-                <span className="fg-buy-main">{row.label}</span>
-                <span className="fg-buy-sub">{getRuleHint(row)}</span>
+                <span className="fg-buy-main">{getShortModeLabel(row.mode)}</span>
               </div>
 
               <div className="fg-buy-cell fg-buy-number-cell">
                 <span className="fg-buy-main">{formatBuyPct(row.buyPct)}</span>
-                <span className="fg-buy-sub">от капитала</span>
               </div>
 
               <div className="fg-buy-cell fg-buy-number-cell">
                 <span className="fg-buy-main">{formatMoneyDetailed(row.buyAmount)}</span>
-                <span className="fg-buy-sub">{formatMoneyDetailed(buyStrategy.portfolioValue)} × {formatBuyPct(row.buyPct)}</span>
               </div>
 
               <div className="fg-buy-cell fg-buy-status-cell">
@@ -151,25 +139,56 @@ export function FearGreedGauge({
                   {getStatusLabel(row)}
                 </span>
               </div>
-
-              <div className="fg-buy-cell fg-buy-cooldown-cell">
-                <span className="fg-buy-main">{getCooldownLabel(row)}</span>
-                <span className="fg-buy-sub">{getCooldownSubLabel(row)}</span>
-              </div>
             </div>
           ))}
         </div>
 
-        <div className="fg-buy-note">
-          <div className="fg-buy-note-icon" aria-hidden="true" />
-          <div>
-            <div className="fg-buy-note-title">ВАЖНОЕ УТОЧНЕНИЕ</div>
-            <div className="fg-buy-note-text">
-              {isSyncingWithoutFreshValue ? (
-                <>Синхронизируем индекс. До live-значения сигнал не используется.</>
+        <div className="fg-bottom-grid">
+          <div className="fg-last-buy-card">
+            <div className={`fg-last-buy-icon fg-last-buy-icon-${lastBuy?.mode ?? "empty"}`} aria-hidden="true" />
+            <div className="fg-last-buy-body">
+              <div className="fg-last-buy-title">Последняя покупка</div>
+              {lastBuy ? (
+                <div className="fg-last-buy-metrics">
+                  <div className="fg-last-buy-metric">
+                    <div className="fg-last-buy-kicker">Режим</div>
+                    <div className="fg-last-buy-name">{getShortModeLabel(lastBuy.mode)} ({lastBuy.range.replace("-", "–")})</div>
+                    <div className="fg-last-buy-date">{formatStrategyDate(lastBuy.boughtAt)}</div>
+                    <div className="fg-last-buy-amount">{formatMoneyDetailed(lastBuy.buyAmount)}</div>
+                  </div>
+                  <div className="fg-last-buy-metric">
+                    <div className="fg-last-buy-kicker">Актив / цена</div>
+                    <div className="fg-last-buy-name">{lastBuy.asset || "—"}</div>
+                    <div className="fg-last-buy-date">Цена покупки</div>
+                    <div className="fg-last-buy-amount">
+                      {lastBuy.assetPrice ? formatMoneyDetailed(lastBuy.assetPrice) : "—"}
+                    </div>
+                  </div>
+                </div>
               ) : (
-                <>{currentRuleMessage} Каждый режим имеет <strong>отдельный cooldown.</strong></>
+                <div className="fg-last-buy-empty">Покупок по стратегии еще нет</div>
               )}
+            </div>
+          </div>
+
+          <div className="fg-cash-card">
+            <div className="fg-cash-title-row">
+              <div className="fg-cash-title">Свободные деньги</div>
+              <strong>{formatMoneyDetailed(visibleFreeCash)}</strong>
+            </div>
+            <div className="fg-cash-grid">
+              <div className="fg-cash-metric">
+                <span>Фьючи</span>
+                <strong>{formatMoneyDetailed(futuresDeployableCash)}</strong>
+              </div>
+              <div className="fg-cash-metric">
+                <span>Спот</span>
+                <strong>{formatMoneyDetailed(spotDeployableCash)}</strong>
+              </div>
+              <div className="fg-cash-metric fg-cash-metric-strategy">
+                <span>Стратегия</span>
+                <strong>{formatMoneyDetailed(strategyMaxBuy)}</strong>
+              </div>
             </div>
           </div>
         </div>

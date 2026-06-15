@@ -1,6 +1,36 @@
 function parseNumber(value) {
   if (value === null || value === undefined || value === "") return 0;
-  return Number(String(value).replace(/\s/g, "").replace(",", ".").replace("%", ""));
+  const normalized = String(value)
+    .replace(/\s/g, "")
+    .replace(",", ".")
+    .replace("%", "")
+    .replace(/[^\d.+-]/g, "");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizePortfolioPnlPct(pnlPct, invested, pnl) {
+  if (!Number.isFinite(pnlPct)) return 0;
+  if (!invested) return pnlPct;
+
+  const moneyPct = (pnl / invested) * 100;
+  if (!Number.isFinite(moneyPct)) return pnlPct;
+
+  const isClearlyBrokenPct =
+    Math.abs(pnlPct) > 500 ||
+    Math.abs(pnlPct - moneyPct) > Math.max(25, Math.abs(moneyPct) * 4);
+
+  if (isClearlyBrokenPct) return moneyPct;
+
+  if (Math.abs(pnlPct) < 1000) return pnlPct;
+
+  const scaledPct = pnlPct / 100;
+
+  if (Math.abs(scaledPct) < Math.abs(pnlPct) && Math.abs(scaledPct) <= 500) {
+    return scaledPct;
+  }
+
+  return moneyPct;
 }
 
 function doGet() {
@@ -8,10 +38,12 @@ function doGet() {
 
   const overview = ss.getSheetByName("Обзор");
   const portfolio = ss.getSheetByName("Портфель");
+  const calculations = ss.getSheetByName("Расчеты");
   const risk = ss.getSheetByName("Риск");
   const decisions = ss.getSheetByName("Решения");
   const scenarios = ss.getSheetByName("Сценарии");
   const overviewData = getOverview(overview);
+  const portfolioSource = calculations || portfolio;
 
   const result = {
     success: true,
@@ -19,11 +51,11 @@ function doGet() {
     updatedAt: new Date().toISOString(),
 
     overview: overviewData,
-    portfolio: getPortfolio(portfolio),
+    portfolio: getPortfolio(portfolioSource),
     risk: getRisk(risk),
     decisions: getDecisions(decisions),
     scenarios: getScenarios(scenarios),
-    fearGreedStrategy: getFearGreedStrategy(ss, overviewData.portfolioValue)
+    fearGreedStrategy: getFearGreedStrategy(ss, overviewData.invested)
   };
 
   return ContentService
@@ -73,38 +105,131 @@ function getPortfolio(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
 
-  // Берем A:L, потому что статус у нас в L
-  const rows = sheet.getRange(2, 1, lastRow - 1, 12).getDisplayValues();
+  const lastColumn = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0];
+  const rows = sheet.getRange(2, 1, lastRow - 1, lastColumn).getDisplayValues();
+  const columns = getPortfolioColumns(headers);
 
   return rows
-    .filter(row => row[0])
+    .filter(row => row[columns.asset])
     .map(row => {
-      const asset = row[0];
+      const asset = row[columns.asset];
+      const category = normalizePortfolioCategoryForApi(
+        getPortfolioCell(row, columns.category),
+        asset
+      );
+      const quantity = parseNumber(getPortfolioCell(row, columns.quantity));
+      const invested = parseNumber(getPortfolioCell(row, columns.invested));
+      const currentValue = parseNumber(getPortfolioCell(row, columns.currentValue));
+      const pnl = parseNumber(getPortfolioCell(row, columns.pnl));
+      const rawStatus = getPortfolioCell(row, columns.status);
 
       return {
         asset: asset,
-        ticker: row[1],
-        category: getCategoryByAsset(asset),
+        ticker: getPortfolioCell(row, columns.ticker) || getTickerByAsset(asset),
+        category: category,
 
-        quantity: parseNumber(row[3]),
-        avgEntry: parseNumber(row[4]),
-        invested: parseNumber(row[5]),
-        currentPrice: parseNumber(row[6]),
-        currentValue: parseNumber(row[7]),
-        pnl: parseNumber(row[8]),
-        pnlPct: parseNumber(row[9]),
-        share: parseNumber(row[10]),
-        status: row[11]
+        quantity: quantity,
+        avgEntry: parseNumber(getPortfolioCell(row, columns.avgEntry)),
+        invested: invested,
+        currentPrice: parseNumber(getPortfolioCell(row, columns.currentPrice)),
+        currentValue: currentValue,
+        pnl: pnl,
+        pnlPct: normalizePortfolioPnlPct(parseNumber(getPortfolioCell(row, columns.pnlPct)), invested, pnl),
+        share: parseNumber(getPortfolioCell(row, columns.share)),
+        status: normalizePortfolioStatus(asset, category, rawStatus, quantity, invested, currentValue)
       };
     });
+}
+
+function getPortfolioColumns(headers) {
+  return {
+    asset: findPortfolioColumn(headers, ["asset", "актив"], 0),
+    ticker: findPortfolioColumn(headers, ["ticker", "тикер"], -1),
+    category: findPortfolioColumn(headers, ["category", "категория"], 2),
+    quantity: findPortfolioColumn(headers, ["quantity", "количество"], 3),
+    avgEntry: findPortfolioColumn(headers, ["avgentry", "средняя входа", "средняя"], 4),
+    invested: findPortfolioColumn(headers, ["invested", "вложено"], 5),
+    currentPrice: findPortfolioColumn(headers, ["currentprice", "текущая цена"], 6),
+    currentValue: findPortfolioColumn(headers, ["currentvalue", "текущая стоимость", "стоимость"], 7),
+    pnl: findPortfolioColumn(headers, ["pnl", "pnl $"], 8),
+    pnlPct: findPortfolioColumn(headers, ["pnlpct", "pnl %"], 9),
+    share: findPortfolioColumn(headers, ["share", "доля", "доля %"], 10),
+    status: findPortfolioColumn(headers, ["status", "статус", "столбец1", "столбец 1"], -1)
+  };
+}
+
+function findPortfolioColumn(headers, aliases, fallbackIndex) {
+  for (let index = 0; index < headers.length; index += 1) {
+    const header = normalizePortfolioHeader(headers[index]);
+    if (aliases.indexOf(header) >= 0) return index;
+  }
+
+  return fallbackIndex;
+}
+
+function normalizePortfolioHeader(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getPortfolioCell(row, index) {
+  if (index < 0 || index >= row.length) return "";
+  return row[index];
+}
+
+function getTickerByAsset(asset) {
+  const a = String(asset || "").toUpperCase();
+  if (a.includes("BTC")) return "BTC";
+  if (a.includes("ETH")) return "ETH";
+  if (a.includes("TON")) return "TON";
+  if (a.includes("SOL")) return "SOL";
+  if (a.includes("MNT")) return "MNT";
+  if (a.includes("GOLD") || a.includes("PAXG")) return "GOLD-PERP";
+  if (a.includes("USDC")) return "USDC";
+  if (a.includes("USDT")) return "USDT";
+  return a;
+}
+
+function normalizePortfolioCategoryForApi(category, asset) {
+  const normalizedCategory = String(category || "").trim();
+
+  if (!normalizedCategory) return getCategoryByAsset(asset);
+  if (normalizedCategory === "Кэш / Стейблы") return "Свободные деньги";
+
+  return normalizedCategory;
+}
+
+function normalizePortfolioStatus(asset, category, status, quantity, invested, currentValue) {
+  const normalizedStatus = String(status || "").trim();
+  const statusUpper = normalizedStatus.toUpperCase();
+
+  if (statusUpper === "CLOSED" || statusUpper === "EXITED" || statusUpper === "FIXED") {
+    return statusUpper;
+  }
+
+  if (!quantity && !invested && !currentValue) return "EXITED";
+
+  if (
+    normalizedStatus &&
+    statusUpper !== "0"
+  ) {
+    return normalizedStatus;
+  }
+
+  const a = String(asset || "").toUpperCase();
+  if (category === "Свободные деньги") return "Reserve";
+  if (category === "Металлы") return "Hedge";
+  if (category === "Фьючерсы" || a.includes("LONG") || a.includes("SHORT")) return "Speculation";
+  if (a === "ETH" || a === "ATOM") return "Accumulate";
+  return "Watch";
 }
 
 function getCategoryByAsset(asset) {
   const a = String(asset || "").toUpperCase();
 
-  if (a === "USDT" || a === "USDC") return "Свободные деньги";
+  if (a.includes("USDT") || a.includes("USDC")) return "Свободные деньги";
   if (a.includes("GOLD") || a.includes("PAXG")) return "Металлы";
-  if (a.includes("SHORT") || a.includes("PERP")) return "Фьючерсы";
+  if (a.includes("SHORT") || a.includes("PERP") || a.includes(" LONG")) return "Фьючерсы";
   return "Крипта";
 }
 
@@ -175,7 +300,7 @@ function getFearGreedStrategy(ss, portfolioValue) {
   let rules = readFearGreedRules(sheet);
   const currentMode = getFearGreedMode(currentIndex, rules);
 
-  const autoMark = autoMarkFearGreedFromRecentStrategyImport(ss, sheet, rules, currentMode, portfolioValue, now);
+  const autoMark = autoMarkFearGreedFromRecentStrategyImport(ss, sheet, rules, currentIndex, currentMode, portfolioValue, now);
   if (autoMark.marked) rules = readFearGreedRules(sheet);
 
   const apiRules = rules.map(rule => buildFearGreedRuleState(rule, currentIndex, currentMode, portfolioValue, now));
@@ -185,32 +310,20 @@ function getFearGreedStrategy(ss, portfolioValue) {
     currentIndex: currentIndex,
     currentMode: currentMode,
     portfolioValue: portfolioValue,
+    lastBuy: getFearGreedLastStrategyBuy(ss, rules, portfolioValue),
     rules: apiRules
   };
 }
 
-function autoMarkFearGreedFromRecentStrategyImport(ss, rulesSheet, rules, currentMode, portfolioValue, now) {
-  const ruleIndex = rules.findIndex(rule => rule.mode === currentMode);
-  if (ruleIndex < 0) return { marked: false, reason: "missing_current_rule" };
-
-  const rule = rules[ruleIndex];
-  if (!rule.buyPct || !rule.cooldownDays) return { marked: false, reason: "mode_has_no_buy" };
-
-  const lastBuyDate = parseFearGreedDate(rule.lastBuyAt);
-  const nextAvailableDate = lastBuyDate ? addFearGreedDays(lastBuyDate, rule.cooldownDays) : null;
-  if (nextAvailableDate && nextAvailableDate.getTime() > now.getTime()) {
-    return { marked: false, reason: "already_on_cooldown" };
-  }
-
+function autoMarkFearGreedFromRecentStrategyImport(ss, rulesSheet, rules, currentIndex, currentMode, portfolioValue, now) {
   const importSheet = ss.getSheetByName("Транзакции_IMPORT");
   if (!importSheet || importSheet.getLastRow() < 2) return { marked: false, reason: "missing_import_sheet" };
 
-  const lookbackRows = Math.min(importSheet.getLastRow() - 1, 20);
+  const lookbackRows = Math.min(importSheet.getLastRow() - 1, 80);
   const rows = importSheet.getRange(importSheet.getLastRow() - lookbackRows + 1, 1, lookbackRows, 19).getValues();
-  const expectedAmount = portfolioValue * rule.buyPct;
-  const tolerance = Math.max(0.35, expectedAmount * 0.15);
+  const allMarks = [];
 
-  for (let index = rows.length - 1; index >= 0; index -= 1) {
+  for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index];
     const importId = String(row[0] || "");
     const action = String(row[5] || "").trim();
@@ -219,27 +332,120 @@ function autoMarkFearGreedFromRecentStrategyImport(ss, rulesSheet, rules, curren
     const comment = String(row[9] || "");
     const amount = parseNumber(row[8]);
     const note = String(row[18] || "");
-    const isSolanaBalanceDelta = importId.indexOf("SOLANA_BALANCE_DELTA") === 0 || comment.indexOf("Solana wallet balance delta") >= 0;
+    const isSolanaStrategyBuy =
+      importId.indexOf("SOLANA_BALANCE_DELTA") === 0 ||
+      importId.indexOf("SOLANA_SWAP_TX") === 0 ||
+      comment.indexOf("Solana wallet balance delta") >= 0 ||
+      comment.indexOf("Solana wallet transaction") >= 0;
     const boughtAt = parseFearGreedImportDate(note) || parseFearGreedImportIdDate(importId) || parseFearGreedDate(row[2]) || now;
     const ageHours = Math.abs(now.getTime() - boughtAt.getTime()) / 3600000;
 
-    if (!isSolanaBalanceDelta) continue;
+    if (!isSolanaStrategyBuy) continue;
     if (action !== "Покупка" || asset !== "SOL") continue;
     if (chain && chain !== "SOLANA") continue;
     if (ageHours > 36) continue;
-    if (Math.abs(amount - expectedAmount) > tolerance) continue;
 
-    rulesSheet.getRange(ruleIndex + 2, 7).setValue(formatFearGreedDate(boughtAt));
+    const mark = markFearGreedStrategyBuyAmount_(rulesSheet, rules, portfolioValue, amount, boughtAt, currentIndex);
+    if (mark.marked && mark.marks) allMarks.push.apply(allMarks, mark.marks);
+  }
+
+  if (allMarks.length) {
     return {
       marked: true,
       currentMode: currentMode,
-      buyAmount: roundFearGreed(amount, 2),
-      expectedAmount: roundFearGreed(expectedAmount, 2),
-      lastBuyAt: formatFearGreedDate(boughtAt)
+      marks: allMarks,
+      lastBuyAt: allMarks[allMarks.length - 1].lastBuyAt
     };
   }
 
   return { marked: false, reason: "no_recent_strategy_import" };
+}
+
+function getFearGreedLastStrategyBuy(ss, rules, portfolioValue) {
+  const importSheet = ss.getSheetByName("Транзакции_IMPORT");
+  if (!importSheet || importSheet.getLastRow() < 2) return getFearGreedLastBuyFromRules(rules, portfolioValue);
+
+  const lookbackRows = Math.min(importSheet.getLastRow() - 1, 80);
+  const rows = importSheet.getRange(importSheet.getLastRow() - lookbackRows + 1, 1, lookbackRows, 19).getValues();
+
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index];
+    const importId = String(row[0] || "");
+    const action = String(row[5] || "").trim();
+    const asset = String(row[3] || "").trim().toUpperCase();
+    const comment = String(row[9] || "");
+    const amount = parseNumber(row[8]);
+    const assetPrice = parseNumber(row[7]);
+    const note = String(row[18] || "");
+    const isStrategySource =
+      importId.indexOf("SOLANA_BALANCE_DELTA") === 0 ||
+      importId.indexOf("SOLANA_SWAP_TX") === 0 ||
+      comment.indexOf("Solana wallet balance delta") >= 0 ||
+      comment.indexOf("Solana wallet transaction") >= 0;
+    if (!isStrategySource || action !== "Покупка" || !asset || !amount) continue;
+
+    const boughtAt = parseFearGreedImportDate(note) || parseFearGreedImportIdDate(importId) || parseFearGreedDate(row[2]) || new Date();
+    const matchedRule = getFearGreedRuleForBuyAmount(rules, portfolioValue, amount) ||
+      getFearGreedRuleForBuyDate(rules, boughtAt);
+    if (!matchedRule) continue;
+
+    return {
+      mode: matchedRule.mode,
+      range: matchedRule.minIndex + "-" + matchedRule.maxIndex,
+      label: matchedRule.label,
+      asset: asset,
+      assetPrice: roundFearGreed(assetPrice, 4),
+      buyAmount: roundFearGreed(amount, 2),
+      boughtAt: formatFearGreedDate(boughtAt)
+    };
+  }
+
+  return getFearGreedLastBuyFromRules(rules, portfolioValue);
+}
+
+function getFearGreedRuleForBuyAmount(rules, portfolioValue, amount) {
+  const directRules = getFearGreedDirectRulesForBuyAmount_(rules, portfolioValue, amount);
+  return directRules.length ? directRules[0].rule : null;
+}
+
+function getFearGreedRuleForBuyDate(rules, boughtAt) {
+  if (!boughtAt) return null;
+  const boughtAtTime = boughtAt.getTime();
+
+  return rules.find(rule => {
+    if (!rule.buyPct || !rule.lastBuyAt) return false;
+    const lastBuyDate = parseFearGreedDate(rule.lastBuyAt);
+    if (!lastBuyDate) return false;
+    return Math.abs(lastBuyDate.getTime() - boughtAtTime) <= 36 * 3600000;
+  }) || null;
+}
+
+function getFearGreedLastBuyFromRules(rules, portfolioValue) {
+  let latest = null;
+
+  rules.forEach(rule => {
+    const lastBuyDate = parseFearGreedDate(rule.lastBuyAt);
+    if (!lastBuyDate || !rule.buyPct) return;
+    if (
+      !latest ||
+      lastBuyDate.getTime() > latest.date.getTime() ||
+      (lastBuyDate.getTime() === latest.date.getTime() && rule.buyPct > latest.rule.buyPct)
+    ) {
+      latest = { rule: rule, date: lastBuyDate };
+    }
+  });
+
+  if (!latest) return null;
+
+  return {
+    mode: latest.rule.mode,
+    range: latest.rule.minIndex + "-" + latest.rule.maxIndex,
+    label: latest.rule.label,
+    asset: "",
+    assetPrice: 0,
+    buyAmount: roundFearGreed(portfolioValue * latest.rule.buyPct, 2),
+    boughtAt: formatFearGreedDate(latest.date)
+  };
 }
 
 function markFearGreedStrategyBuy(ss, buyAmount, boughtAt) {
@@ -250,55 +456,195 @@ function markFearGreedStrategyBuy(ss, buyAmount, boughtAt) {
   const sheet = getOrCreateFearGreedRulesSheet(ss);
   const rules = readFearGreedRules(sheet);
   const currentMode = getFearGreedMode(currentIndex, rules);
-  const ruleIndex = rules.findIndex(rule => rule.mode === currentMode);
-  if (ruleIndex < 0) return { marked: false, reason: "missing_current_rule", currentMode: currentMode };
-
-  const rule = rules[ruleIndex];
-  if (!rule.buyPct || !rule.cooldownDays) {
-    return { marked: false, reason: "mode_has_no_buy", currentMode: currentMode };
-  }
-
   const now = boughtAt || new Date();
-  const portfolioValue = getOverviewData(ss).portfolioValue;
-  const expectedAmount = portfolioValue * rule.buyPct;
-  const tolerance = Math.max(0.35, expectedAmount * 0.15);
-  if (Math.abs(amount - expectedAmount) > tolerance) {
+  const portfolioValue = getOverview(ss.getSheetByName("Обзор")).invested;
+  const mark = markFearGreedStrategyBuyAmount_(sheet, rules, portfolioValue, amount, now, currentIndex);
+
+  if (mark.marked) getFearGreedStrategy(ss, portfolioValue);
+
+  return Object.assign({ currentMode: currentMode }, mark);
+}
+
+function markFearGreedStrategyBuyAmount_(sheet, rules, portfolioValue, amount, boughtAt, currentIndex) {
+  const matches = getFearGreedRulesForBuyAmount_(rules, portfolioValue, amount, currentIndex);
+  if (!matches.length) {
     return {
       marked: false,
       reason: "amount_outside_strategy_band",
-      currentMode: currentMode,
-      buyAmount: roundFearGreed(amount, 2),
+      buyAmount: roundFearGreed(amount, 2)
+    };
+  }
+
+  const now = boughtAt || new Date();
+  const marks = [];
+  const skipped = [];
+
+  matches.forEach(match => {
+    const rule = match.rule;
+    const ruleIndex = rules.findIndex(item => item.mode === rule.mode);
+    if (ruleIndex < 0) return;
+
+    if (!rule.buyPct || !rule.cooldownDays) {
+      skipped.push({ mode: rule.mode, reason: "mode_has_no_buy" });
+      return;
+    }
+
+    const lastBuyDate = parseFearGreedDate(rule.lastBuyAt);
+    const nextAvailableDate = lastBuyDate ? addFearGreedDays(lastBuyDate, rule.cooldownDays) : null;
+    if (nextAvailableDate && nextAvailableDate.getTime() > now.getTime()) {
+      skipped.push({
+        mode: rule.mode,
+        reason: "already_on_cooldown",
+        nextAvailableAt: formatFearGreedDate(nextAvailableDate)
+      });
+      return;
+    }
+
+    const lastBuyAt = formatFearGreedDate(now);
+    const nextAvailableAt = formatFearGreedDate(addFearGreedDays(now, rule.cooldownDays));
+    sheet.getRange(ruleIndex + 2, 7).setValue(lastBuyAt);
+    rules[ruleIndex].lastBuyAt = lastBuyAt;
+    marks.push({
+      mode: rule.mode,
+      range: rule.minIndex + "-" + rule.maxIndex,
+      buyAmount: roundFearGreed(match.amount || match.expectedAmount, 2),
+      expectedAmount: roundFearGreed(match.expectedAmount, 2),
+      lastBuyAt: lastBuyAt,
+      nextAvailableAt: nextAvailableAt
+    });
+  });
+
+  if (!marks.length) {
+    return {
+      marked: false,
+      reason: skipped.length ? skipped.map(item => item.mode + ":" + item.reason).join(",") : "no_markable_rule",
+      skipped: skipped
+    };
+  }
+
+  return {
+    marked: true,
+    currentMode: marks.map(mark => mark.mode).join("+"),
+    buyAmount: roundFearGreed(amount, 2),
+    marks: marks,
+    skipped: skipped,
+    lastBuyAt: marks[marks.length - 1].lastBuyAt,
+    nextAvailableAt: marks[marks.length - 1].nextAvailableAt
+  };
+}
+
+function markFearGreedStrategyModeBuy_(sheet, rules, mode, portfolioValue, amount, boughtAt) {
+  const ruleIndex = rules.findIndex(rule => rule.mode === mode);
+  if (ruleIndex < 0) return { marked: false, reason: "missing_rule", mode: mode };
+
+  const rule = rules[ruleIndex];
+  if (!rule.buyPct || !rule.cooldownDays) {
+    return { marked: false, reason: "mode_has_no_buy", mode: mode };
+  }
+
+  const expectedAmount = portfolioValue * rule.buyPct;
+  const numericAmount = Number(amount || expectedAmount);
+  if (Math.abs(numericAmount - expectedAmount) > getFearGreedBuyTolerance_(expectedAmount)) {
+    return {
+      marked: false,
+      reason: "amount_outside_strategy_band",
+      mode: mode,
+      buyAmount: roundFearGreed(numericAmount, 2),
       expectedAmount: roundFearGreed(expectedAmount, 2)
     };
   }
 
-  const lastBuyDate = parseFearGreedDate(rule.lastBuyAt);
-  const nextAvailableDate = lastBuyDate ? addFearGreedDays(lastBuyDate, rule.cooldownDays) : null;
-  if (nextAvailableDate && nextAvailableDate.getTime() > now.getTime()) {
-    return {
-      marked: false,
-      reason: "already_on_cooldown",
-      currentMode: currentMode,
-      nextAvailableAt: formatFearGreedDate(nextAvailableDate)
-    };
-  }
+  const buyDate = parseFearGreedDate(boughtAt) || new Date();
+  const lastBuyAt = formatFearGreedDate(buyDate);
+  const nextAvailableAt = formatFearGreedDate(addFearGreedDays(buyDate, rule.cooldownDays));
 
-  sheet.getRange(ruleIndex + 2, 7).setValue(formatFearGreedDate(now));
-  getFearGreedStrategy(ss, portfolioValue);
+  sheet.getRange(ruleIndex + 2, 7).setValue(lastBuyAt);
+  rules[ruleIndex].lastBuyAt = lastBuyAt;
 
   return {
     marked: true,
-    currentMode: currentMode,
-    buyAmount: roundFearGreed(amount, 2),
+    mode: mode,
+    range: rule.minIndex + "-" + rule.maxIndex,
+    buyAmount: roundFearGreed(numericAmount, 2),
     expectedAmount: roundFearGreed(expectedAmount, 2),
-    lastBuyAt: formatFearGreedDate(now),
-    nextAvailableAt: formatFearGreedDate(addFearGreedDays(now, rule.cooldownDays))
+    lastBuyAt: lastBuyAt,
+    nextAvailableAt: nextAvailableAt
   };
+}
+
+function getFearGreedRulesForBuyAmount_(rules, portfolioValue, amount, currentIndex) {
+  const eligibleRules = getFearGreedEligibleBuyRules_(rules, currentIndex);
+  const directMatches = getFearGreedDirectRulesForBuyAmount_(eligibleRules, portfolioValue, amount);
+  if (directMatches.length) return directMatches;
+
+  const buyRules = eligibleRules;
+  let bestMatch = null;
+
+  for (let mask = 1; mask < Math.pow(2, buyRules.length); mask += 1) {
+    const combo = [];
+    for (let index = 0; index < buyRules.length; index += 1) {
+      if (mask & Math.pow(2, index)) combo.push(buyRules[index]);
+    }
+
+    if (combo.length < 2) continue;
+
+    const expectedAmount = combo.reduce((sum, rule) => sum + portfolioValue * rule.buyPct, 0);
+    const tolerance = combo.reduce((sum, rule) => sum + getFearGreedBuyTolerance_(portfolioValue * rule.buyPct), 0);
+    const diff = Math.abs(amount - expectedAmount);
+    if (diff > tolerance) continue;
+
+    if (!bestMatch || diff < bestMatch.diff || (diff === bestMatch.diff && combo.length > bestMatch.rules.length)) {
+      bestMatch = {
+        rules: combo,
+        diff: diff,
+        expectedAmount: expectedAmount
+      };
+    }
+  }
+
+  if (!bestMatch) return [];
+
+  const scale = bestMatch.expectedAmount ? amount / bestMatch.expectedAmount : 1;
+  return bestMatch.rules.map(rule => {
+    const expectedAmount = portfolioValue * rule.buyPct;
+    return {
+      rule: rule,
+      expectedAmount: expectedAmount,
+      amount: expectedAmount * scale
+    };
+  });
+}
+
+function getFearGreedDirectRulesForBuyAmount_(rules, portfolioValue, amount) {
+  return rules
+    .filter(rule => {
+      if (!rule.buyPct) return false;
+      const expectedAmount = portfolioValue * rule.buyPct;
+      return Math.abs(amount - expectedAmount) <= getFearGreedBuyTolerance_(expectedAmount);
+    })
+    .map(rule => ({
+      rule: rule,
+      expectedAmount: portfolioValue * rule.buyPct,
+      amount: amount,
+      diff: Math.abs(amount - portfolioValue * rule.buyPct)
+    }))
+    .sort((a, b) => a.diff - b.diff || b.rule.buyPct - a.rule.buyPct);
+}
+
+function getFearGreedEligibleBuyRules_(rules, currentIndex) {
+  const index = Number(currentIndex);
+  if (!Number.isFinite(index)) return rules.filter(rule => rule.buyPct > 0);
+
+  return rules.filter(rule => rule.buyPct > 0 && index <= rule.maxIndex);
+}
+
+function getFearGreedBuyTolerance_(expectedAmount) {
+  return Math.max(0.35, Math.min(1.25, expectedAmount * 0.15));
 }
 
 function markFearGreedCurrentModeBuyNow() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const portfolioValue = getOverviewData(ss).portfolioValue;
+  const portfolioValue = getOverview(ss.getSheetByName("Обзор")).invested;
   const currentIndex = getFearGreedCurrentIndex(ss);
   const rules = readFearGreedRules(getOrCreateFearGreedRulesSheet(ss));
   const currentMode = getFearGreedMode(currentIndex, rules);
@@ -306,6 +652,51 @@ function markFearGreedCurrentModeBuyNow() {
   const buyAmount = currentRule ? portfolioValue * currentRule.buyPct : 0;
 
   return markFearGreedStrategyBuy(ss, buyAmount, new Date());
+}
+
+function markFearGreedCurrentLadderBuyNow() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = getOrCreateFearGreedRulesSheet(ss);
+  const portfolioValue = getOverview(ss.getSheetByName("Обзор")).invested;
+  const currentIndex = getFearGreedCurrentIndex(ss);
+  const rules = readFearGreedRules(sheet);
+  const now = new Date();
+  const lastBuyAt = formatFearGreedDate(now);
+  const marks = [];
+
+  getFearGreedEligibleBuyRules_(rules, currentIndex).forEach(rule => {
+    const ruleIndex = rules.findIndex(item => item.mode === rule.mode);
+    if (ruleIndex < 0 || !rule.cooldownDays) return;
+
+    sheet.getRange(ruleIndex + 2, 7).setValue(lastBuyAt);
+    marks.push({
+      mode: rule.mode,
+      range: rule.minIndex + "-" + rule.maxIndex,
+      expectedAmount: roundFearGreed(portfolioValue * rule.buyPct, 2),
+      lastBuyAt: lastBuyAt,
+      nextAvailableAt: formatFearGreedDate(addFearGreedDays(now, rule.cooldownDays))
+    });
+  });
+
+  getFearGreedStrategy(ss, portfolioValue);
+
+  return {
+    marked: marks.length > 0,
+    currentIndex: currentIndex,
+    modes: marks.map(mark => mark.mode).join("+"),
+    marks: marks
+  };
+}
+
+function markFearGreedModeBuy(mode, buyAmount, boughtAt) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = getOrCreateFearGreedRulesSheet(ss);
+  const portfolioValue = getOverview(ss.getSheetByName("Обзор")).invested;
+  const rules = readFearGreedRules(sheet);
+  const mark = markFearGreedStrategyModeBuy_(sheet, rules, String(mode || ""), portfolioValue, buyAmount, boughtAt);
+
+  if (mark.marked) getFearGreedStrategy(ss, portfolioValue);
+  return mark;
 }
 
 function getFearGreedCurrentIndex(ss) {

@@ -8,6 +8,7 @@ var IC_SOLANA_DEFAULT_ADDRESS = 'E5dwGSC3DKKh4A1Hdpb2BXvcSpoWrfyWWicXq8h1Sus9';
 var IC_SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com';
 var IC_SOLANA_USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 var IC_SOLANA_CHAIN_ID = 101;
+var IC_SOLANA_RECENT_TRANSACTION_LIMIT = 25;
 
 function setupSolanaWalletImport() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -41,6 +42,8 @@ function syncSolanaWalletBalances() {
   if (calculationsSheet) {
     IC_SOLANA_syncSnapshotToCalculations_(calculationsSheet, importSheet, previousBalances, currentBalances, syncStartedAt);
   }
+
+  IC_SOLANA_markRecentFearGreedSwapCooldowns_(ss, wallets, importSheet);
 }
 
 function installSolanaWalletBalanceTrigger() {
@@ -239,6 +242,14 @@ function IC_SOLANA_strategyMarkComment_(strategyMark) {
       : '';
   }
 
+  if (strategyMark.marks && strategyMark.marks.length) {
+    return ' FearGreed strategy cooldown marked for ' + strategyMark.marks.map(function(mark) {
+      return mark.mode + '(' + mark.range + ')';
+    }).join(', ') +
+      '; lastBuyAt=' + strategyMark.lastBuyAt +
+      '; nextAvailableAt=' + strategyMark.nextAvailableAt + '.';
+  }
+
   return ' FearGreed strategy cooldown marked for ' + strategyMark.currentMode +
     '; lastBuyAt=' + strategyMark.lastBuyAt +
     '; nextAvailableAt=' + strategyMark.nextAvailableAt + '.';
@@ -279,6 +290,164 @@ function IC_SOLANA_appendBalanceDeltaSellAuditRow_(sheet, asset, assetSold, impl
       '. Do not approve again; cost basis was reduced at avgEntry ' + IC_SOLANA_round_(sale.avgEntry, 12) +
       '; costBasisSold=' + IC_SOLANA_round_(sale.costBasisSold, 6) +
       '; realizedPnL=' + IC_SOLANA_round_(sale.realizedPnl, 6) + '.'
+  ]]);
+}
+
+function IC_SOLANA_markRecentFearGreedSwapCooldowns_(ss, wallets, importSheet) {
+  var existingImportIds = importSheet ? IC_SOLANA_readExistingImportIds_(importSheet) : {};
+
+  wallets.forEach(function(wallet) {
+    if (wallet.chain !== IC_SOLANA_DEFAULT_CHAIN || wallet.status !== 'ACTIVE') return;
+
+    var signatures = IC_SOLANA_fetchRecentSignatures_(wallet.address, IC_SOLANA_RECENT_TRANSACTION_LIMIT);
+    signatures.forEach(function(signatureInfo) {
+      var signature = signatureInfo && signatureInfo.signature;
+      if (!signature) return;
+
+      var importId = 'SOLANA_SWAP_TX:' + signature;
+      if (existingImportIds[importId]) return;
+
+      var transaction = IC_SOLANA_fetchTransaction_(signature);
+      var swap = IC_SOLANA_extractUsdcToSolSwap_(transaction, wallet.address);
+      if (!swap) return;
+
+      swap.signature = signature;
+      swap.walletId = wallet.walletId;
+
+      var strategyMark = markFearGreedStrategyBuy(ss, swap.usdcSpent, swap.boughtAt);
+      if (importSheet) {
+        IC_SOLANA_appendSwapCooldownAuditRow_(importSheet, importId, swap, strategyMark);
+        existingImportIds[importId] = true;
+      }
+    });
+  });
+}
+
+function IC_SOLANA_fetchRecentSignatures_(address, limit) {
+  var result = IC_SOLANA_rpcCall_('getSignaturesForAddress', [
+    address,
+    { limit: limit || IC_SOLANA_RECENT_TRANSACTION_LIMIT }
+  ]);
+
+  return Array.isArray(result) ? result : [];
+}
+
+function IC_SOLANA_fetchTransaction_(signature) {
+  return IC_SOLANA_rpcCall_('getTransaction', [
+    signature,
+    {
+      encoding: 'jsonParsed',
+      maxSupportedTransactionVersion: 0
+    }
+  ]);
+}
+
+function IC_SOLANA_extractUsdcToSolSwap_(transaction, walletAddress) {
+  if (!transaction || !transaction.meta || transaction.meta.err) return null;
+
+  var usdcDelta = IC_SOLANA_tokenBalanceDelta_(transaction, walletAddress, IC_SOLANA_USDC_MINT);
+  var solDelta = IC_SOLANA_nativeBalanceDelta_(transaction, walletAddress);
+  var usdcSpent = -usdcDelta;
+  var solReceived = solDelta;
+  var boughtAt = transaction.blockTime ? new Date(Number(transaction.blockTime) * 1000) : new Date();
+  var impliedPrice = solReceived ? usdcSpent / solReceived : 0;
+
+  if (usdcSpent <= 0.5 || solReceived <= 0.000001) return null;
+  if (impliedPrice < 0.01 || impliedPrice > 10000) return null;
+
+  return {
+    boughtAt: boughtAt,
+    usdcSpent: usdcSpent,
+    solReceived: solReceived,
+    impliedPrice: impliedPrice
+  };
+}
+
+function IC_SOLANA_tokenBalanceDelta_(transaction, walletAddress, mint) {
+  var meta = transaction.meta || {};
+  var preBalances = Array.isArray(meta.preTokenBalances) ? meta.preTokenBalances : [];
+  var postBalances = Array.isArray(meta.postTokenBalances) ? meta.postTokenBalances : [];
+  var totals = {};
+
+  preBalances.concat(postBalances).forEach(function(balance) {
+    if (!balance || balance.mint !== mint || balance.owner !== walletAddress) return;
+    var accountIndex = String(balance.accountIndex);
+    if (!totals[accountIndex]) totals[accountIndex] = { pre: 0, post: 0 };
+  });
+
+  preBalances.forEach(function(balance) {
+    if (!balance || balance.mint !== mint || balance.owner !== walletAddress) return;
+    totals[String(balance.accountIndex)].pre += IC_SOLANA_uiTokenAmount_(balance);
+  });
+
+  postBalances.forEach(function(balance) {
+    if (!balance || balance.mint !== mint || balance.owner !== walletAddress) return;
+    totals[String(balance.accountIndex)].post += IC_SOLANA_uiTokenAmount_(balance);
+  });
+
+  return Object.keys(totals).reduce(function(delta, accountIndex) {
+    return delta + totals[accountIndex].post - totals[accountIndex].pre;
+  }, 0);
+}
+
+function IC_SOLANA_nativeBalanceDelta_(transaction, walletAddress) {
+  var message = transaction &&
+    transaction.transaction &&
+    transaction.transaction.message;
+  var accountKeys = message && Array.isArray(message.accountKeys) ? message.accountKeys : [];
+  var accountIndex = -1;
+
+  accountKeys.forEach(function(accountKey, index) {
+    if (accountIndex >= 0) return;
+    if (IC_SOLANA_accountPubkey_(accountKey) === walletAddress) accountIndex = index;
+  });
+
+  if (accountIndex < 0) return 0;
+
+  var meta = transaction.meta || {};
+  var preLamports = Array.isArray(meta.preBalances) ? Number(meta.preBalances[accountIndex] || 0) : 0;
+  var postLamports = Array.isArray(meta.postBalances) ? Number(meta.postBalances[accountIndex] || 0) : 0;
+
+  return (postLamports - preLamports) / 1000000000;
+}
+
+function IC_SOLANA_accountPubkey_(accountKey) {
+  if (typeof accountKey === 'string') return accountKey;
+  if (accountKey && accountKey.pubkey) return String(accountKey.pubkey);
+  return '';
+}
+
+function IC_SOLANA_uiTokenAmount_(balance) {
+  var amount = balance && balance.uiTokenAmount;
+  var value = amount ? Number(amount.uiAmountString || amount.uiAmount || 0) : 0;
+  return Number.isFinite(value) ? value : 0;
+}
+
+function IC_SOLANA_appendSwapCooldownAuditRow_(sheet, importId, swap, strategyMark) {
+  if (IC_SOLANA_readExistingImportIds_(sheet)[importId]) return;
+
+  IC_SOLANA_appendRows_(sheet, [[
+    importId,
+    'PENDING',
+    Utilities.formatDate(swap.boughtAt, Session.getScriptTimeZone(), 'dd.MM.yyyy'),
+    'SOL',
+    IC_SOLANA_category_('SOL'),
+    'Покупка',
+    swap.solReceived,
+    swap.impliedPrice,
+    swap.usdcSpent,
+    'Solana wallet transaction; cooldown-only audit row. Do not approve again; cost basis is handled by balance delta sync.',
+    swap.walletId || IC_SOLANA_DEFAULT_WALLET_ID,
+    'SOLANA',
+    'CHAIN_TX',
+    swap.signature || '',
+    'SWAP',
+    '',
+    'USDC -> SOL',
+    IC_SOLANA_round_(swap.usdcSpent, 6) + ' -> ' + IC_SOLANA_round_(swap.solReceived, 12),
+    'COOLDOWN_ONLY audit row at ' + Utilities.formatDate(swap.boughtAt, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss") +
+      '. Do not approve again; asset balance/cost basis was not changed by this row.' +
+      IC_SOLANA_strategyMarkComment_(strategyMark)
   ]]);
 }
 

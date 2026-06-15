@@ -17,10 +17,11 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
   const scenarios = normalizeScenarios(json?.scenarios, prev.scenarios);
   const openRiskPositions = getOpenRiskPositions(portfolio);
   const portfolioValue = toNumber(json?.overview?.portfolioValue, prev.overview.portfolioValue);
+  const invested = toNumber(json?.overview?.invested, prev.overview.invested);
   const fearGreedStrategy = normalizeFearGreedStrategyFromApi(
     json?.fearGreedStrategy,
     prev.fearGreedStrategy,
-    portfolioValue
+    invested
   );
 
   return {
