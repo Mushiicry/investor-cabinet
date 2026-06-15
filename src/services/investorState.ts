@@ -16,8 +16,18 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
   const decisions = normalizeDecisions(json?.decisions, prev.decisions);
   const scenarios = normalizeScenarios(json?.scenarios, prev.scenarios);
   const openRiskPositions = getOpenRiskPositions(portfolio);
-  const portfolioValue = toNumber(json?.overview?.portfolioValue, prev.overview.portfolioValue);
-  const invested = toNumber(json?.overview?.invested, prev.overview.invested);
+
+  // Единый источник правды: totals считаем из строк позиций («Расчеты»), а не из
+  // агрегатных ячеек листа (Обзор N6/N7), где фьючерсы учитывались асимметрично.
+  // Фьючерсы приходят в строках по марже как «вложено»; закрытые позиции = 0 и не влияют.
+  const round2 = (value: number) => Number(value.toFixed(2));
+  const hasRows = portfolio.length > 0;
+  const portfolioValue = hasRows
+    ? round2(portfolio.reduce((sum, position) => sum + (position.currentValue || 0), 0))
+    : toNumber(json?.overview?.portfolioValue, prev.overview.portfolioValue);
+  const invested = hasRows
+    ? round2(portfolio.reduce((sum, position) => sum + (position.invested || 0), 0))
+    : toNumber(json?.overview?.invested, prev.overview.invested);
   const fearGreedStrategy = normalizeFearGreedStrategyFromApi(
     json?.fearGreedStrategy,
     prev.fearGreedStrategy,
@@ -38,6 +48,7 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
       portfolio,
       openRiskPositions,
       portfolioValue,
+      invested,
     }),
 
     risk: buildRiskStateFromApi({
@@ -46,6 +57,7 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
       portfolio,
       openRiskPositions,
       portfolioValue,
+      invested,
     }),
 
     updatedAt: json?.updatedAt ?? prev.updatedAt,

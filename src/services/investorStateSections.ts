@@ -21,7 +21,27 @@ type InvestorStateSectionInput = {
   portfolio: PositionCalculated[];
   openRiskPositions: PositionCalculated[];
   portfolioValue: number;
+  invested: number;
 };
+
+const CASH_CATEGORY = "Свободные деньги";
+
+// Кэш/резерв = сумма текущей стоимости позиций категории «Свободные деньги»
+function sumCashFromRows(portfolio: PositionCalculated[]): number {
+  return Number(
+    portfolio
+      .filter((position) => position.category === CASH_CATEGORY)
+      .reduce((sum, position) => sum + (position.currentValue || 0), 0)
+      .toFixed(2)
+  );
+}
+
+// Активные позиции = со стоимостью или вложением (закрытые/пустые не считаем)
+function countActivePositions(portfolio: PositionCalculated[]): number {
+  return portfolio.filter(
+    (position) => (position.currentValue || 0) > 0 || (position.invested || 0) > 0
+  ).length;
+}
 
 export function buildOverviewStateFromApi({
   json,
@@ -29,6 +49,7 @@ export function buildOverviewStateFromApi({
   portfolio,
   openRiskPositions,
   portfolioValue,
+  invested,
 }: InvestorStateSectionInput): PortfolioState["overview"] {
   const bestOpenPosition = pickBestPosition(openRiskPositions);
   const worstOpenPosition = pickWorstPosition(openRiskPositions);
@@ -36,7 +57,7 @@ export function buildOverviewStateFromApi({
   const worstAsset = json?.overview?.worstPosition?.asset ?? prev.overview.worstPosition.asset;
   const bestPosition = bestOpenPosition ?? findPosition(portfolio, bestAsset);
   const worstPosition = worstOpenPosition ?? findPosition(portfolio, worstAsset);
-  const invested = toNumber(json?.overview?.invested, prev.overview.invested);
+  const hasRows = portfolio.length > 0;
   const apiPnl = toNumber(json?.overview?.pnl, prev.overview.pnl);
   const pnl = invested ? portfolioValue - invested : apiPnl;
   const pnlPct = invested ? pnl / invested : toRatio(json?.overview?.pnlPct, prev.overview.pnlPct);
@@ -47,8 +68,8 @@ export function buildOverviewStateFromApi({
     portfolioValue,
     pnl,
     pnlPct,
-    reserve: toNumber(json?.overview?.reserve, prev.overview.reserve),
-    positionsCount: toNumber(json?.overview?.positionsCount, prev.overview.positionsCount),
+    reserve: hasRows ? sumCashFromRows(portfolio) : toNumber(json?.overview?.reserve, prev.overview.reserve),
+    positionsCount: hasRows ? countActivePositions(portfolio) : toNumber(json?.overview?.positionsCount, prev.overview.positionsCount),
     health: toRatio(json?.overview?.health, prev.overview.health),
     state: json?.overview?.state ?? prev.overview.state,
     signal: json?.overview?.signal ?? prev.overview.signal,
