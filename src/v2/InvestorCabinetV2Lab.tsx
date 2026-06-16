@@ -3,6 +3,8 @@ import { V2Shell } from "./components/V2Shell";
 import { useInvestorData } from "../hooks/useInvestorData";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
 import { buildPortfolioState } from "../lib/portfolioCalculations";
+import { computePortfolioHealth } from "../lib/portfolioHealth";
+import { MAX_FUTURES_EXPOSURE_SHARE, MAX_SINGLE_RISK_ASSET_SHARE } from "../config/riskRules";
 import { rawPositions, decisionsData, scenariosData } from "../mocks/portfolioData";
 import type { PortfolioState } from "../types/portfolio";
 import "./v2.css";
@@ -184,34 +186,71 @@ const resolveReserveShare = (state: PortfolioState) => {
   return state.overview.reserve / state.overview.portfolioValue;
 };
 
-const buildLiveV2Data = (state: PortfolioState): V2LabData => ({
-  ...mockData,
-  fearGreedStrategy: state.fearGreedStrategy,
-  allocation: state.overview.categories.map((category) => ({
-    name: category.name,
-    share: category.share,
-    value: category.value,
-  })),
-  portfolio: {
-    ...mockData.portfolio,
-    totalPortfolioValue: state.overview.portfolioValue,
-    totalInvested: state.overview.invested,
-    pnlUsd: state.overview.pnl,
-    pnlPct: state.overview.pnlPct,
-    stableReserve: state.overview.reserve,
-    positionsCount: Math.round(state.overview.positionsCount),
-    deployableCapital: state.risk.deployableCash,
-    spotDeployable: state.risk.spotDeployableCash,
-    futuresDeployable: state.risk.futuresDeployableCash,
-    reserveShare: resolveReserveShare(state),
-    exposureMode: state.overview.state || state.risk.state || mockData.portfolio.exposureMode,
-    exposureSignal:
-      state.overview.signal ||
-      state.overview.action ||
-      state.risk.signal ||
-      mockData.portfolio.exposureSignal,
-  },
-});
+const categoryShare = (state: PortfolioState, name: string) =>
+  state.overview.categories.find((category) => category.name === name)?.share ?? 0;
+
+const buildLiveV2Data = (state: PortfolioState): V2LabData => {
+  // Реальный Health Factor из долей портфеля (единый прозрачный расчёт)
+  const health = computePortfolioHealth({
+    cashShare: categoryShare(state, "Свободные деньги"),
+    cryptoShare: categoryShare(state, "Крипта"),
+    futuresShare: categoryShare(state, "Фьючерсы"),
+    largestShare: state.risk.largestRiskShare,
+    categoryShares: state.overview.categories.map((category) => category.share),
+  });
+
+  return {
+    ...mockData,
+    fearGreedStrategy: state.fearGreedStrategy,
+    allocation: state.overview.categories.map((category) => ({
+      name: category.name,
+      share: category.share,
+      value: category.value,
+    })),
+    portfolio: {
+      ...mockData.portfolio,
+      totalPortfolioValue: state.overview.portfolioValue,
+      totalInvested: state.overview.invested,
+      pnlUsd: state.overview.pnl,
+      pnlPct: state.overview.pnlPct,
+      stableReserve: state.overview.reserve,
+      positionsCount: Math.round(state.overview.positionsCount),
+      healthFactor: health.healthFactor,
+      healthStatus: health.status,
+      riskLevel: health.riskLevel,
+      deployableCapital: state.risk.deployableCash,
+      spotDeployable: state.risk.spotDeployableCash,
+      futuresDeployable: state.risk.futuresDeployableCash,
+      reserveShare: resolveReserveShare(state),
+      exposureMode: state.overview.state || state.risk.state || mockData.portfolio.exposureMode,
+      exposureSignal:
+        state.overview.signal ||
+        state.overview.action ||
+        state.risk.signal ||
+        mockData.portfolio.exposureSignal,
+    },
+    risk: {
+      ...mockData.risk,
+      reserve: health.components.reserve,
+      exposure: health.components.exposure,
+      leverage: health.components.leverage,
+      diversification: health.components.diversification,
+      volatility: health.components.volatility,
+      concentration:
+        state.risk.largestRiskShare > MAX_SINGLE_RISK_ASSET_SHARE
+          ? "HIGH"
+          : state.risk.largestRiskShare > 0.2
+            ? "MEDIUM"
+            : "LOW",
+      futuresPressure:
+        categoryShare(state, "Фьючерсы") > MAX_FUTURES_EXPOSURE_SHARE
+          ? "HIGH"
+          : categoryShare(state, "Фьючерсы") > 0.05
+            ? "MEDIUM"
+            : "LOW",
+    },
+  };
+};
 
 export default function InvestorCabinetV2Lab() {
   const fallbackData = useMemo(

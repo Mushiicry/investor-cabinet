@@ -52,22 +52,22 @@ export function V2HealthCore({ portfolio, risk }: Props) {
           <div className="v2-hud-item hud-reserve">
             <span className="v2-hud-node" />
             <span className="v2-hud-icon" />
-            <span className="v2-hud-label">Reserve</span>
-            <strong>{risk.reserve}%</strong>
+            <span className="v2-hud-label">Резерв</span>
+            <strong>{risk.reserve}</strong>
             <span className="v2-hud-bars" />
           </div>
           <div className="v2-hud-item hud-exposure">
             <span className="v2-hud-node" />
             <span className="v2-hud-icon" />
-            <span className="v2-hud-label">Exposure</span>
-            <strong>{risk.exposure}%</strong>
+            <span className="v2-hud-label">Крипта</span>
+            <strong>{risk.exposure}</strong>
             <span className="v2-hud-bars" />
           </div>
           <div className="v2-hud-item hud-leverage">
             <span className="v2-hud-node" />
             <span className="v2-hud-icon" />
-            <span className="v2-hud-label">Leverage</span>
-            <strong>{risk.leverage}%</strong>
+            <span className="v2-hud-label">Концентр.</span>
+            <strong>{risk.volatility}</strong>
             <span className="v2-hud-bars" />
           </div>
         </div>
@@ -111,12 +111,12 @@ export function V2HealthCore({ portfolio, risk }: Props) {
         </div>
         <div className="v2-health-composition">
           Health factor built from:
-          <span>Reserve · Exposure · Leverage · Diversification · Volatility</span>
+          <span>Резерв · Концентрация · Крипта · Фьючерсы · Диверсификация</span>
         </div>
       </div>
       <span className="v2-sr-only">
         Portfolio health {portfolio.healthFactor}, {portfolio.healthStatus}, risk level {portfolio.riskLevel}.
-        Reserve {risk.reserve}%, exposure {risk.exposure}%, leverage {risk.leverage}%.
+        Резерв {risk.reserve}, крипта {risk.exposure}, фьючерсы {risk.leverage}.
       </span>
       <div className="v2-core-footer">
         <span>Reserve discipline active</span>

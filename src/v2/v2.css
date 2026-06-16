@@ -1122,6 +1122,16 @@ body:has(.v2-lab) {
   color: #5af08d;
 }
 
+.v2-ph-status.is-good {
+  color: #5af08d;
+}
+.v2-ph-status.is-mid {
+  color: #e8b35a;
+}
+.v2-ph-status.is-risk {
+  color: #ff5d6c;
+}
+
 .v2-panel-header em {
   color: #8da7b5;
   font-style: normal;

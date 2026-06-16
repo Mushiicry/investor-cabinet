@@ -15,7 +15,7 @@ export function V2RiskRadar({ risk }: Props) {
 
   return (
     <section className="v2-panel v2-risk-radar">
-      <div className="v2-panel-kicker">Risk Exposure Radar</div>
+      <div className="v2-panel-kicker">Health компоненты</div>
       <svg viewBox="0 0 100 100" role="img" aria-label="Risk exposure radar">
         <polygon className="v2-radar-grid" points="50,6 92,36 76,88 24,88 8,36" />
         <polygon className="v2-radar-grid mid" points="50,22 76,41 66,74 34,74 24,41" />
@@ -26,10 +26,11 @@ export function V2RiskRadar({ risk }: Props) {
         <line x1="76" y1="88" x2="24" y2="36" />
       </svg>
       <div className="v2-radar-labels">
-        <span>Reserve {risk.reserve}%</span>
-        <span>Exposure {risk.exposure}%</span>
-        <span>Leverage {risk.leverage}%</span>
-        <span>Diversification {risk.diversification}%</span>
+        <span>Резерв {risk.reserve}</span>
+        <span>Крипта {risk.exposure}</span>
+        <span>Фьючерсы {risk.leverage}</span>
+        <span>Диверсиф. {risk.diversification}</span>
+        <span>Концентр. {risk.volatility}</span>
       </div>
     </section>
   );
