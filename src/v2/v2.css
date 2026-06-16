@@ -1164,21 +1164,13 @@ body:has(.v2-lab) {
 
 .v2-health-row {
   display: grid;
-  grid-template-columns: 10px 1fr auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 11px;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-radius: 11px;
   border: 1px solid rgba(126, 178, 234, 0.1);
   background: rgba(11, 22, 40, 0.4);
-}
-
-.v2-health-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--c);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--c) 60%, transparent);
 }
 
 .v2-health-meta {
@@ -1202,8 +1194,14 @@ body:has(.v2-lab) {
 .v2-health-score {
   font-size: 19px;
   font-weight: 900;
-  color: var(--c);
+  color: #7fe3ff;
+  text-shadow: 0 0 12px rgba(86, 234, 255, 0.45);
   font-variant-numeric: tabular-nums;
+}
+
+.v2-radar-dot {
+  fill: #56eaff;
+  filter: drop-shadow(0 0 2px rgba(86, 234, 255, 0.8));
 }
 
 .v2-health-radar {

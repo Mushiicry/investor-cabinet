@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 
 type Props = {
@@ -43,12 +42,7 @@ export function V2PortfolioHealth({ health }: Props) {
       <div className="v2-health-merged-body">
         <div className="v2-health-list">
           {components.map((component) => (
-            <div
-              className="v2-health-row"
-              key={component.key}
-              style={{ "--c": component.color } as CSSProperties}
-            >
-              <span className="v2-health-dot" aria-hidden="true" />
+            <div className="v2-health-row" key={component.key}>
               <div className="v2-health-meta">
                 <span className="v2-health-name">{component.label}</span>
                 <span className="v2-health-desc">{component.desc}</span>
@@ -82,12 +76,10 @@ export function V2PortfolioHealth({ health }: Props) {
               return (
                 <circle
                   key={`dot-${component.key}`}
+                  className="v2-radar-dot"
                   cx={p.x}
                   cy={p.y}
-                  r="2.4"
-                  fill={component.color}
-                  stroke="#04101a"
-                  strokeWidth="0.8"
+                  r="2.2"
                 />
               );
             })}
