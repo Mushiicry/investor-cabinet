@@ -40,8 +40,6 @@ export function V2TopMetrics({ portfolio }: Props) {
   // Резерв — неприкосновенный запас (отдельный кошелёк USDT в сети BNB, цель 30% от вложено).
   // Сейчас фактически 0 — это нарушение правила резерва.
   const reserveHeld = 0;
-  // Свободные деньги — кэш, который можно пустить в работу сейчас (= бывш. «торговый капитал»)
-  const freeCash = portfolio.stableReserve;
 
   const metrics: Metric[] = [
     {
@@ -66,12 +64,6 @@ export function V2TopMetrics({ portfolio }: Props) {
       value: percent(portfolio.pnlPct),
       tone: pnlTone,
       area: "pnl",
-    },
-    {
-      label: "ТОРГОВЫЙ КАПИТАЛ",
-      value: money.format(freeCash),
-      sub: "можно пустить в работу",
-      area: "trading",
     },
     {
       label: "РЕЗЕРВ",

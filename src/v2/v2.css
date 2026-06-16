@@ -758,11 +758,11 @@ body:has(.v2-lab) {
 
 .v2-metrics {
   display: grid;
-  grid-template-columns: 1fr 1.08fr 1.05fr;
+  grid-template-columns: repeat(6, 1fr);
   grid-template-rows: auto auto;
   grid-template-areas:
-    "invested portftoday trading"
-    "positions pnl reserve";
+    "invested invested portftoday portftoday pnl pnl"
+    "positions positions positions reserve reserve reserve";
   align-items: stretch;
   gap: 8px;
 }
@@ -3157,6 +3157,7 @@ body:has(.v2-lab) {
 
   .v2-metrics {
     grid-template-columns: repeat(2, 1fr);
+    grid-template-areas: none;
   }
 
   .v2-bar-row {
