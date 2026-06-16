@@ -1145,15 +1145,65 @@ body:has(.v2-lab) {
   margin-top: 18px;
 }
 
-/* Объединённый Health-блок: радар слева, компоненты с % справа */
+/* Объединённый Health-блок: компоненты слева, радар справа */
 .v2-health-merged-body {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 210px 1fr;
+  grid-template-columns: 1fr 230px;
   gap: 22px;
   align-items: center;
   margin-top: 14px;
+}
+
+.v2-health-list {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+}
+
+.v2-health-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 12px;
+  border-radius: 11px;
+  border: 1px solid rgba(126, 178, 234, 0.1);
+  background: rgba(11, 22, 40, 0.4);
+}
+
+.v2-health-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--c) 60%, transparent);
+}
+
+.v2-health-meta {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.v2-health-name {
+  font-size: 13px;
+  font-weight: 900;
+  color: #eaf1fb;
+}
+
+.v2-health-desc {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(150, 173, 187, 0.72);
+}
+
+.v2-health-score {
+  font-size: 19px;
+  font-weight: 900;
+  color: var(--c);
+  font-variant-numeric: tabular-nums;
 }
 
 .v2-health-radar {
@@ -1161,13 +1211,24 @@ body:has(.v2-lab) {
 }
 
 .v2-health-radar svg {
-  height: 200px;
-  margin-top: 0;
+  width: 100%;
+  height: 220px;
 }
 
-.v2-health-merged-body .v2-bars {
-  margin-top: 0;
-  align-content: center;
+.v2-health-radar .v2-radar-score {
+  fill: #eaf5ff;
+  font-size: 13px;
+  font-weight: 900;
+  text-anchor: middle;
+  font-family: "Black Ops One", system-ui, sans-serif;
+}
+
+.v2-health-radar .v2-radar-caption {
+  fill: rgba(150, 173, 187, 0.8);
+  font-size: 4px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-anchor: middle;
 }
 
 .v2-analysis-row-2 {

@@ -1,12 +1,15 @@
-import type { V2Portfolio, V2Risk } from "../InvestorCabinetV2Lab";
+import type { V2Portfolio } from "../InvestorCabinetV2Lab";
+import type { HealthComponentKey, PortfolioHealth } from "../../lib/portfolioHealth";
 import healthReactorImage from "../../assets/health/v2-portfolio-health-reactor.webp";
 
 type Props = {
   portfolio: V2Portfolio;
-  risk: V2Risk;
+  health: PortfolioHealth;
 };
 
-export function V2HealthCore({ portfolio, risk }: Props) {
+export function V2HealthCore({ portfolio, health }: Props) {
+  const score = (key: HealthComponentKey) =>
+    health.components.find((component) => component.key === key)?.score ?? 0;
   return (
     <section className="v2-panel v2-health-core" aria-label="Portfolio health factor">
       <div className="v2-health-stage" aria-hidden="true">
@@ -53,21 +56,21 @@ export function V2HealthCore({ portfolio, risk }: Props) {
             <span className="v2-hud-node" />
             <span className="v2-hud-icon" />
             <span className="v2-hud-label">Резерв</span>
-            <strong>{risk.reserve}</strong>
+            <strong>{score("reserve")}</strong>
             <span className="v2-hud-bars" />
           </div>
           <div className="v2-hud-item hud-exposure">
             <span className="v2-hud-node" />
             <span className="v2-hud-icon" />
             <span className="v2-hud-label">Крипта</span>
-            <strong>{risk.exposure}</strong>
+            <strong>{score("crypto")}</strong>
             <span className="v2-hud-bars" />
           </div>
           <div className="v2-hud-item hud-leverage">
             <span className="v2-hud-node" />
             <span className="v2-hud-icon" />
             <span className="v2-hud-label">Концентр.</span>
-            <strong>{risk.volatility}</strong>
+            <strong>{score("concentration")}</strong>
             <span className="v2-hud-bars" />
           </div>
         </div>
@@ -111,12 +114,12 @@ export function V2HealthCore({ portfolio, risk }: Props) {
         </div>
         <div className="v2-health-composition">
           Health factor built from:
-          <span>Резерв · Концентрация · Крипта · Фьючерсы · Диверсификация</span>
+          <span>Резерв · Крипта · Фьючерсы · Концентрация · Диверсификация · Гибкость</span>
         </div>
       </div>
       <span className="v2-sr-only">
         Portfolio health {portfolio.healthFactor}, {portfolio.healthStatus}, risk level {portfolio.riskLevel}.
-        Резерв {risk.reserve}, крипта {risk.exposure}, фьючерсы {risk.leverage}.
+        Резерв {score("reserve")}, крипта {score("crypto")}, концентрация {score("concentration")}.
       </span>
       <div className="v2-core-footer">
         <span>Reserve discipline active</span>

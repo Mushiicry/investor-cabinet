@@ -1,13 +1,10 @@
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 import { V2Allocation3D } from "./V2Allocation3D";
-import { V2DecisionCards } from "./V2DecisionCards";
 import { V2DeployableCapital } from "./V2DeployableCapital";
 import { V2FearGreed } from "./V2FearGreed";
 import { V2FearGreedStrategy } from "./V2FearGreedStrategy";
 import { V2HealthCore } from "./V2HealthCore";
-import { V2MarketTicker } from "./V2MarketTicker";
 import { V2PortfolioHealth } from "./V2PortfolioHealth";
-import { V2ScenarioCards } from "./V2ScenarioCards";
 import { V2Sidebar } from "./V2Sidebar";
 import { V2TopMetrics } from "./V2TopMetrics";
 
@@ -27,9 +24,9 @@ export function V2Shell({ data }: Props) {
                 <V2TopMetrics portfolio={data.portfolio} />
               </div>
               <div className="v2-hero-reactor">
-                <V2HealthCore portfolio={data.portfolio} risk={data.risk} />
+                <V2HealthCore portfolio={data.portfolio} health={data.health} />
               </div>
-              <V2PortfolioHealth risk={data.risk} />
+              <V2PortfolioHealth health={data.health} />
             </div>
             <div className="v2-strategy-zone">
               <div className="v2-strategy-top">
@@ -56,12 +53,7 @@ export function V2Shell({ data }: Props) {
               </div>
             </div>
           </div>
-          <div className="v2-analysis-row v2-analysis-row-2">
-            <V2DecisionCards decisions={data.decisions} />
-            <V2ScenarioCards scenarios={data.scenarios} />
-          </div>
         </section>
-        <V2MarketTicker ticker={data.ticker} />
       </main>
     </div>
   );

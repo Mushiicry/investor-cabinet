@@ -1,66 +1,103 @@
-import type { V2Risk } from "../InvestorCabinetV2Lab";
+import type { CSSProperties } from "react";
+import type { PortfolioHealth } from "../../lib/portfolioHealth";
 
 type Props = {
-  risk: V2Risk;
+  health: PortfolioHealth;
 };
 
-const rows: Array<{ key: keyof Pick<V2Risk, "reserve" | "exposure" | "leverage" | "diversification" | "volatility">; label: string }> = [
-  { key: "reserve", label: "Резерв" },
-  { key: "exposure", label: "Крипта" },
-  { key: "leverage", label: "Фьючерсы" },
-  { key: "diversification", label: "Диверсификация" },
-  { key: "volatility", label: "Концентрация" },
-];
+const RADAR_R = 40;
+const RADAR_C = 50;
 
-function healthLabel(avg: number) {
-  if (avg >= 75) return { text: "GOOD", tone: "is-good" };
-  if (avg >= 55) return { text: "BALANCED", tone: "is-mid" };
-  return { text: "RISK", tone: "is-risk" };
+function radarPoint(index: number, total: number, radius: number) {
+  const angle = (-90 + (360 / total) * index) * (Math.PI / 180);
+  return {
+    x: RADAR_C + radius * Math.cos(angle),
+    y: RADAR_C + radius * Math.sin(angle),
+  };
 }
 
-export function V2PortfolioHealth({ risk }: Props) {
-  const avg =
-    rows.reduce((sum, row) => sum + (risk[row.key] || 0), 0) / rows.length;
-  const status = healthLabel(avg);
+export function V2PortfolioHealth({ health }: Props) {
+  const components = health.components;
+  const total = components.length;
 
-  const radarPoints = [
-    `50,${100 - risk.reserve}`,
-    `${50 + risk.exposure * 0.44},${50 - risk.exposure * 0.12}`,
-    `${50 + risk.leverage * 0.28},${50 + risk.leverage * 0.38}`,
-    `${50 - risk.diversification * 0.4},${50 + risk.diversification * 0.28}`,
-    `${50 - risk.volatility * 0.38},${50 - risk.volatility * 0.18}`,
-  ].join(" ");
+  const gridPoints = components
+    .map((_, i) => {
+      const p = radarPoint(i, total, RADAR_R);
+      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  const valuePoints = components
+    .map((component, i) => {
+      const p = radarPoint(i, total, RADAR_R * (component.score / 100));
+      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+    })
+    .join(" ");
 
   return (
     <section className="v2-panel v2-ph-panel v2-health-merged">
       <div className="v2-panel-header">
         <span>Health компоненты</span>
-        <strong className={`v2-ph-status ${status.tone}`}>{status.text}</strong>
       </div>
 
       <div className="v2-health-merged-body">
-        <div className="v2-risk-radar v2-health-radar">
-          <svg viewBox="0 0 100 100" role="img" aria-label="Health компоненты радар">
-            <polygon className="v2-radar-grid" points="50,6 92,36 76,88 24,88 8,36" />
-            <polygon className="v2-radar-grid mid" points="50,22 76,41 66,74 34,74 24,41" />
-            <polygon className="v2-radar-area" points={radarPoints} />
-            <line x1="50" y1="6" x2="50" y2="94" />
-            <line x1="8" y1="36" x2="92" y2="36" />
-            <line x1="24" y1="88" x2="76" y2="36" />
-            <line x1="76" y1="88" x2="24" y2="36" />
-          </svg>
-        </div>
-
-        <div className="v2-bars">
-          {rows.map((row) => (
-            <div className="v2-bar-row" key={row.key}>
-              <span>{row.label}</span>
-              <div className="v2-bar-track">
-                <div className="v2-bar-fill" style={{ width: `${risk[row.key]}%` }} />
+        <div className="v2-health-list">
+          {components.map((component) => (
+            <div
+              className="v2-health-row"
+              key={component.key}
+              style={{ "--c": component.color } as CSSProperties}
+            >
+              <span className="v2-health-dot" aria-hidden="true" />
+              <div className="v2-health-meta">
+                <span className="v2-health-name">{component.label}</span>
+                <span className="v2-health-desc">{component.desc}</span>
               </div>
-              <strong>{risk[row.key]}%</strong>
+              <strong className="v2-health-score">{component.score}</strong>
             </div>
           ))}
+        </div>
+
+        <div className="v2-health-radar">
+          <svg viewBox="0 0 100 100" role="img" aria-label="Health компоненты радар">
+            <polygon className="v2-radar-grid" points={gridPoints} />
+            <polygon
+              className="v2-radar-grid mid"
+              points={components
+                .map((_, i) => {
+                  const p = radarPoint(i, total, RADAR_R * 0.55);
+                  return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+                })
+                .join(" ")}
+            />
+            {components.map((_, i) => {
+              const p = radarPoint(i, total, RADAR_R);
+              return (
+                <line key={`axis-${i}`} x1={RADAR_C} y1={RADAR_C} x2={p.x} y2={p.y} />
+              );
+            })}
+            <polygon className="v2-radar-area" points={valuePoints} />
+            {components.map((component, i) => {
+              const p = radarPoint(i, total, RADAR_R);
+              return (
+                <circle
+                  key={`dot-${component.key}`}
+                  cx={p.x}
+                  cy={p.y}
+                  r="2.4"
+                  fill={component.color}
+                  stroke="#04101a"
+                  strokeWidth="0.8"
+                />
+              );
+            })}
+            <text className="v2-radar-score" x="50" y="49">
+              {health.healthFactor}
+            </text>
+            <text className="v2-radar-caption" x="50" y="58">
+              HEALTH
+            </text>
+          </svg>
         </div>
       </div>
     </section>

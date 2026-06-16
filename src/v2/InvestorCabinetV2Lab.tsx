@@ -4,7 +4,7 @@ import { useInvestorData } from "../hooks/useInvestorData";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
 import { buildPortfolioState } from "../lib/portfolioCalculations";
 import { computePortfolioHealth } from "../lib/portfolioHealth";
-import { MAX_FUTURES_EXPOSURE_SHARE, MAX_SINGLE_RISK_ASSET_SHARE } from "../config/riskRules";
+import type { PortfolioHealth } from "../lib/portfolioHealth";
 import { rawPositions, decisionsData, scenariosData } from "../mocks/portfolioData";
 import type { PortfolioState } from "../types/portfolio";
 import "./v2.css";
@@ -81,6 +81,7 @@ export type V2LabData = {
   scenarios: V2Scenario[];
   fearGreedStrategy: PortfolioState["fearGreedStrategy"];
   allocation: Array<{ name: string; share: number; value: number }>;
+  health: PortfolioHealth;
   ticker: Array<{ label: string; value: string; change: number }>;
 };
 
@@ -170,6 +171,13 @@ const mockData: V2LabData = {
     { name: "Акции", share: 0, value: 0 },
     { name: "Свободные деньги", share: 0.324, value: 173 },
   ],
+  health: computePortfolioHealth({
+    cashShare: 0.324,
+    cryptoShare: 0.627,
+    futuresShare: 0.021,
+    largestShare: 0.4,
+    categoryShares: [0.627, 0.026, 0.021, 0, 0.324],
+  }),
   ticker: [
     { label: "BTC / USD", value: "$69,759.60", change: 0.0152 },
     { label: "ETH / USD", value: "$2,156.00", change: 0.0234 },
@@ -202,6 +210,7 @@ const buildLiveV2Data = (state: PortfolioState): V2LabData => {
   return {
     ...mockData,
     fearGreedStrategy: state.fearGreedStrategy,
+    health,
     allocation: state.overview.categories.map((category) => ({
       name: category.name,
       share: category.share,
@@ -228,26 +237,6 @@ const buildLiveV2Data = (state: PortfolioState): V2LabData => {
         state.overview.action ||
         state.risk.signal ||
         mockData.portfolio.exposureSignal,
-    },
-    risk: {
-      ...mockData.risk,
-      reserve: health.components.reserve,
-      exposure: health.components.exposure,
-      leverage: health.components.leverage,
-      diversification: health.components.diversification,
-      volatility: health.components.volatility,
-      concentration:
-        state.risk.largestRiskShare > MAX_SINGLE_RISK_ASSET_SHARE
-          ? "HIGH"
-          : state.risk.largestRiskShare > 0.2
-            ? "MEDIUM"
-            : "LOW",
-      futuresPressure:
-        categoryShare(state, "Фьючерсы") > MAX_FUTURES_EXPOSURE_SHARE
-          ? "HIGH"
-          : categoryShare(state, "Фьючерсы") > 0.05
-            ? "MEDIUM"
-            : "LOW",
     },
   };
 };
