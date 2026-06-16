@@ -1145,6 +1145,35 @@ body:has(.v2-lab) {
   margin-top: 18px;
 }
 
+/* Объединённый Health-блок: радар слева, компоненты с % справа */
+.v2-health-merged-body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 22px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.v2-health-radar {
+  align-self: center;
+}
+
+.v2-health-radar svg {
+  height: 200px;
+  margin-top: 0;
+}
+
+.v2-health-merged-body .v2-bars {
+  margin-top: 0;
+  align-content: center;
+}
+
+.v2-analysis-row-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .v2-bar-row {
   display: grid;
   grid-template-columns: 116px 1fr 42px;

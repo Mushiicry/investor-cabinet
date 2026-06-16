@@ -7,7 +7,6 @@ import { V2FearGreedStrategy } from "./V2FearGreedStrategy";
 import { V2HealthCore } from "./V2HealthCore";
 import { V2MarketTicker } from "./V2MarketTicker";
 import { V2PortfolioHealth } from "./V2PortfolioHealth";
-import { V2RiskRadar } from "./V2RiskRadar";
 import { V2ScenarioCards } from "./V2ScenarioCards";
 import { V2Sidebar } from "./V2Sidebar";
 import { V2TopMetrics } from "./V2TopMetrics";
@@ -57,8 +56,7 @@ export function V2Shell({ data }: Props) {
               </div>
             </div>
           </div>
-          <div className="v2-analysis-row">
-            <V2RiskRadar risk={data.risk} />
+          <div className="v2-analysis-row v2-analysis-row-2">
             <V2DecisionCards decisions={data.decisions} />
             <V2ScenarioCards scenarios={data.scenarios} />
           </div>
