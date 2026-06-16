@@ -54,6 +54,7 @@ export function V2DeployableCapital({ portfolio, strategy }: Props) {
         <span>Торговый капитал</span>
         <strong className="v2-stables-total">{money.format(freeCash)}</strong>
       </div>
+      <div className="v2-alloc-kicker">можно пустить в работу</div>
 
       <div className="v2-alloc-cards">
         {rows.map((row) => {
