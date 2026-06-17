@@ -1,8 +1,44 @@
 INVESTOR CABINET - TECHNICAL ROADMAP
 Version: MVP Core Stabilization Roadmap
 Status: Active Development
-Current stage: Functional Premium MVP -> Stabilization + Risk Core Completion
-Last updated: 2026-05-26
+Current stage: Stage 2 Stabilization → moving into Screens (Decisions, Risk Engine)
+Last updated: 2026-06-17
+
+=== COMPLETED SINCE LAST UPDATE (June 2026) ===
+
+✅ Health Factor — real calculations via computePortfolioHealth() — 5 components vs policy limits
+✅ Data truth patch — invested/PnL/reserve calculated from position rows, not sheet aggregates
+✅ V2 Portfolio Table — block layout (4 blocks per row: Entry|PnL|Current|Status+Share)
+✅ Crypto logos — removed square background artifact, cold-blue breathing glow animation
+✅ New SVG logos — USDC (blue circle + $), ATOM/Cosmos (purple orbital rings)
+✅ ATOM + GOLD LONG playbook cards — fully active with content (attack/risk scores + all blocks)
+✅ Live decisions merge — buildLiveV2Data now merges static fallback decisions for assets
+   missing from the API (ATOM, GOLD LONG) so cards always appear
+✅ Font size bump — 15px base across v2-lab
+✅ Build passes clean ✓
+
+=== CURRENT STAGE PROGRESS ===
+
+Stage 1 Functional Premium MVP:      ~92%  (was 80-85%)
+Stage 2 Stabilization + Risk Core:   ~65%  (was 45-55%)
+  - Data contract:                   ~65%  (was 55%)
+  - API layer:                       ~65%  (stable)
+  - State management:                ~50%  (portfolioHealth centralized)
+  - Risk core:                       ~55%  (Health real, Exposure Engine next)
+  - Frontend modularization:         ~45%  (v2 is modular, App.tsx still large)
+Stage 3 Professional Dashboard:      ~25-35% (unchanged)
+Stage 4 Decision Engine:             ~20%  (data ready, screen is next)
+Stage 5 Automation:                  ~40-50%
+Stage 6-9:                           0-5%
+
+=== NEXT TECHNICAL STEPS ===
+
+1. git push + Vercel deploy (current commit 61579d6)
+2. Build DECISIONS screen in V2 (playbook data already available)
+3. Build RISK ENGINE screen in V2 (Exposure Engine + Position Sizing)
+4. API contract documentation
+
+======================================================
 
 0. Product Definition
 Investor Cabinet is an investor operating system.

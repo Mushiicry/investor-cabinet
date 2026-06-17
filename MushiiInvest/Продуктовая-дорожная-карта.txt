@@ -1,8 +1,36 @@
 КАБИНЕТ ИНВЕСТОРА - ПОЛНАЯ ДОРОЖНАЯ КАРТА ПРОЕКТА
 Версия: Product Roadmap / Master Plan
 Статус: Active Development
-Текущий этап: Functional Premium MVP -> Stabilization + Risk Core Completion
-Дата фиксации: 2026-05-26
+Текущий этап: Stage 2 Stabilization + Risk Core → переход к Stage 3 (Screens)
+Дата последнего обновления: 2026-06-17
+
+=== ЧТО СДЕЛАНО С ПОСЛЕДНЕГО ОБНОВЛЕНИЯ (июнь 2026) ===
+
+✅ Health Factor — реальные расчёты из portfolioHealth.ts (не хардкод)
+✅ Data truth patch — PnL/invested считается из строк позиций, не агрегатов листа
+✅ V2 Portfolio Table — блочный layout (4 блока в строке: Entry|PnL|Current|Status)
+✅ Логотипы монет — убран квадратный фон, cold-blue glow анимация
+✅ SVG логотипы — USDC (синий круг), ATOM/Cosmos (орбитальные кольца)
+✅ Playbook карточки ATOM и GOLD LONG — активны с полным содержимым
+✅ Шрифт увеличен до 15px по всему v2-lab
+✅ MushiiInvest папка добавлена в репозиторий (документация)
+✅ Все изменения закоммичены и готовы к деплою
+
+=== ТЕКУЩИЙ ПРОГРЕСС ПО ЭТАПАМ ===
+
+Stage 1 — Functional Premium MVP:       ~92% (было 80-85%)
+Stage 2 — Stabilization + Risk Core:    ~65% (было 45-55%)
+Stage 3 — Professional Dashboard:       ~25-35% (без изменений)
+Stage 4 — Decision Engine:              ~20% (данные готовы, экран следующий)
+Stage 5 — Automation:                   ~40-50%
+Stage 6-9 — Backend/AI/SaaS/Mobile:    0-5%
+
+=== СЛЕДУЮЩИЙ ШАГ ===
+
+Экран DECISIONS (Screen 3) — данные из playbook уже готовы, нужен UI.
+Затем: RISK ENGINE экран (Screen 11) — ключевой продуктовый слой.
+
+======================================================
 
 0. Главная Формула Проекта
 Кабинет инвестора - это операционная система инвестора.
