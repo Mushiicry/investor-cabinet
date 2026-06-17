@@ -5502,3 +5502,246 @@ strong.v2-rb-val {
     grid-template-columns: 1fr;
   }
 }
+
+/* ══════════════════════════════════════════════
+   MARKET PSYCHOLOGY — Эмоциональный цикл рынка
+   ══════════════════════════════════════════════ */
+
+.v2-mp-card {
+  background: rgba(6, 16, 24, 0.55);
+  border: 1px solid rgba(86, 196, 240, 0.08);
+  border-radius: 14px;
+  padding: 16px 20px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.v2-mp-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(86, 196, 240, 0.012) 3px,
+    rgba(86, 196, 240, 0.012) 4px
+  );
+  pointer-events: none;
+}
+
+/* ─── Header ─── */
+.v2-mp-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v2-mp-hdr-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.v2-mp-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(141, 167, 181, 0.4);
+}
+
+.v2-mp-title-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(200, 228, 245, 0.75);
+  letter-spacing: 0.02em;
+}
+
+.v2-mp-hdr-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.v2-mp-phase-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 20px;
+  padding: 4px 12px;
+}
+
+.v2-mp-phase-n {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(245, 158, 11, 0.9);
+  font-family: "Black Ops One", monospace;
+}
+
+.v2-mp-phase-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(245, 158, 11, 0.9);
+  letter-spacing: 0.08em;
+}
+
+.v2-mp-phase-sub {
+  font-size: 9.5px;
+  color: rgba(245, 158, 11, 0.5);
+  letter-spacing: 0.04em;
+}
+
+.v2-mp-win-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.v2-mp-win-label {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(141, 167, 181, 0.35);
+}
+
+.v2-mp-win-days {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(52, 211, 153, 0.85);
+  font-family: "Black Ops One", monospace;
+  line-height: 1;
+}
+
+/* ─── Body ─── */
+.v2-mp-body {
+  display: grid;
+  grid-template-columns: 1fr 220px 200px;
+  gap: 16px;
+  align-items: start;
+}
+
+/* ─── Curve ─── */
+.v2-mp-curve-col {
+  min-width: 0;
+}
+
+.v2-mp-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+@keyframes v2-mp-dot-pulse {
+  0%, 100% { opacity: 1; r: 4.5px; }
+  50%       { opacity: 0.7; r: 5.5px; }
+}
+
+.v2-mp-cur-dot {
+  filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.75));
+  animation: v2-mp-dot-pulse 2.4s ease-in-out infinite;
+}
+
+/* ─── Why panel ─── */
+.v2-mp-why-col {
+  min-width: 0;
+}
+
+.v2-mp-panel-label {
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(141, 167, 181, 0.4);
+  margin-bottom: 7px;
+}
+
+.v2-mp-bullets {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.v2-mp-bullets li {
+  font-size: 11px;
+  color: rgba(200, 228, 245, 0.65);
+  padding-left: 13px;
+  position: relative;
+  line-height: 1.35;
+}
+
+.v2-mp-bullets li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: rgba(245, 158, 11, 0.55);
+}
+
+/* ─── Actions + Window ─── */
+.v2-mp-actions-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.v2-mp-action {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 8px;
+  background: rgba(86, 196, 240, 0.04);
+  border-radius: 6px;
+  border: 1px solid rgba(86, 196, 240, 0.07);
+}
+
+.v2-mp-action-icon {
+  font-size: 10px;
+  color: rgba(86, 196, 240, 0.55);
+  flex-shrink: 0;
+}
+
+.v2-mp-action-text {
+  font-size: 11px;
+  color: rgba(200, 228, 245, 0.6);
+}
+
+.v2-mp-win-block {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: rgba(52, 211, 153, 0.04);
+  border: 1px solid rgba(52, 211, 153, 0.12);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.v2-mp-win-block-label {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(141, 167, 181, 0.35);
+}
+
+.v2-mp-win-dates {
+  font-size: 11px;
+  color: rgba(200, 228, 245, 0.55);
+}
+
+.v2-mp-win-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(52, 211, 153, 0.85);
+}

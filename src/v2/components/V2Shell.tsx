@@ -6,6 +6,7 @@ import { V2DeployableCapital } from "./V2DeployableCapital";
 import { V2FearGreed } from "./V2FearGreed";
 import { V2FearGreedStrategy } from "./V2FearGreedStrategy";
 import { V2HealthCore } from "./V2HealthCore";
+import { V2MarketPsychology } from "./V2MarketPsychology";
 import { V2PortfolioHealth } from "./V2PortfolioHealth";
 import { V2PortfolioPage } from "./V2PortfolioPage";
 import { V2Sidebar } from "./V2Sidebar";
@@ -70,6 +71,7 @@ export function V2Shell({ data, page, onNavigate }: Props) {
               </div>
             </div>
           </div>
+          <V2MarketPsychology />
         </section>
         )}
       </main>
