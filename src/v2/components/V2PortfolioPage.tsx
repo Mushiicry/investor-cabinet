@@ -124,6 +124,19 @@ function IdentityCard({
   );
 }
 
+function StableCard({ asset, meta }: { asset: string; meta: { network: string; net: string } }) {
+  const logoAsset = asset.replace(" BNB", "").replace(" HL", "");
+  return (
+    <div className="v2-pid v2-pid-stable">
+      <CryptoLogo asset={logoAsset} className="v2-pid-logo" />
+      <div className="v2-pid-stable-info">
+        <span className="v2-pid-name">{fullName(asset)}</span>
+        <span className={`v2-pid-net-tag ${meta.net}`}>{meta.network}</span>
+      </div>
+    </div>
+  );
+}
+
 function ModalBlock({ label, tone, children }: { label: string; tone?: string; children: ReactNode }) {
   return (
     <div className="v2-pb-block">
@@ -291,7 +304,6 @@ export function V2PortfolioPage({ positions, playbook }: Props) {
             </div>
             <div className="v2-port-srow v2-port-stables-head">
               <span />
-              <span />
               <strong className="v2-port-stables-total">{money0.format(stablesTotal)}</strong>
               <span />
               <span />
@@ -302,9 +314,8 @@ export function V2PortfolioPage({ positions, playbook }: Props) {
             const meta = STABLE_META[position.asset] ?? { network: "—", purpose: "—", net: "" };
             return (
               <div className="v2-pline" key={position.asset}>
-                <IdentityCard asset={position.asset} card={null} />
+                <StableCard asset={position.asset} meta={meta} />
                 <div className="v2-port-srow">
-                  <span className={`v2-port-net ${meta.net}`}>{meta.network}</span>
                   <span className="v2-port-purpose">{meta.purpose}</span>
                   <strong>{money.format(position.value)}</strong>
                   <span className="v2-port-share">{position.share.toFixed(1)}%</span>

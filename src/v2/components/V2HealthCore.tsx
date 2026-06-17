@@ -2,6 +2,13 @@ import type { V2Portfolio } from "../InvestorCabinetV2Lab";
 import type { HealthComponentKey, PortfolioHealth } from "../../lib/portfolioHealth";
 import healthReactorImage from "../../assets/health/v2-portfolio-health-reactor.webp";
 
+const STATUS_RU: Record<string, string> = {
+  CONTROL: "КОНТРОЛЬ",
+  BALANCED: "БАЛАНС",
+  RISK: "РИСК",
+};
+const statusRu = (s: string) => STATUS_RU[s] ?? s;
+
 type Props = {
   portfolio: V2Portfolio;
   health: PortfolioHealth;
@@ -81,21 +88,21 @@ export function V2HealthCore({ portfolio, health }: Props) {
           <div className="v2-hud-item hud-health">
             <span className="v2-hud-node" />
             <span className="v2-hud-icon" />
-            <span className="v2-hud-label">Health</span>
+            <span className="v2-hud-label">Здоровье</span>
             <strong>{portfolio.healthFactor} / 100</strong>
             <span className="v2-hud-bars" />
           </div>
           <div className="v2-hud-item hud-status">
             <span className="v2-hud-node" />
             <span className="v2-hud-icon" />
-            <span className="v2-hud-label">Status</span>
-            <strong>{portfolio.healthStatus}</strong>
+            <span className="v2-hud-label">Статус</span>
+            <strong>{statusRu(portfolio.healthStatus)}</strong>
             <span className="v2-hud-bars" />
           </div>
           <div className="v2-hud-item hud-risk">
             <span className="v2-hud-node" />
             <span className="v2-hud-icon" />
-            <span className="v2-hud-label">Risk</span>
+            <span className="v2-hud-label">Уровень</span>
             <strong>{portfolio.riskLevel}</strong>
             <span className="v2-hud-bars" />
           </div>
@@ -109,21 +116,21 @@ export function V2HealthCore({ portfolio, health }: Props) {
         />
         <div className="v2-core-readout" aria-hidden="true">
           <span className="v2-core-score">{portfolio.healthFactor}</span>
-          <span className="v2-core-control">{portfolio.healthStatus}</span>
-          <span className="v2-core-risk">RISK LEVEL, {portfolio.riskLevel.toUpperCase()}</span>
+          <span className="v2-core-control">{statusRu(portfolio.healthStatus)}</span>
+          <span className="v2-core-risk">РИСК · {portfolio.riskLevel}</span>
         </div>
         <div className="v2-health-composition">
-          Health factor built from:
+          Факторы здоровья:
           <span>Резерв · Крипта · Фьючерсы · Концентрация · Диверсификация · Гибкость</span>
         </div>
       </div>
       <span className="v2-sr-only">
-        Portfolio health {portfolio.healthFactor}, {portfolio.healthStatus}, risk level {portfolio.riskLevel}.
+        Здоровье портфеля {portfolio.healthFactor}, {statusRu(portfolio.healthStatus)}, риск {portfolio.riskLevel}.
         Резерв {score("reserve")}, крипта {score("crypto")}, концентрация {score("concentration")}.
       </span>
       <div className="v2-core-footer">
-        <span>Reserve discipline active</span>
-        <span>Emotional trading lock: on</span>
+        <span>Резерв: активен</span>
+        <span>Эмоц. замок: вкл</span>
       </div>
     </section>
   );

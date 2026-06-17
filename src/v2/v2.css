@@ -10,6 +10,36 @@ body:has(.v2-lab) {
   background: #03090d;
 }
 
+/* ── CryptoLogo base (required after App.css removal) ── */
+.crypto-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.crypto-logo-image,
+.crypto-logo-svg,
+.crypto-logo-gold {
+  overflow: hidden;
+  border-radius: 50%;
+  background: rgba(16, 32, 50, 0.5);
+}
+.crypto-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.crypto-logo-fallback {
+  font-size: 0.55em;
+  font-weight: 700;
+  color: rgba(200, 228, 245, 0.7);
+}
+.crypto-logo svg {
+  width: 100%;
+  height: 100%;
+}
+
 .v2-lab {
   min-height: 100vh;
   display: grid;
@@ -159,64 +189,78 @@ body:has(.v2-lab) {
 
 .v2-lastbuys-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(86, 196, 240, 0.07);
 }
 
 .v2-lastbuy-tag {
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(120, 200, 232, 0.8);
+  color: rgba(141, 167, 181, 0.6);
+  background: rgba(86, 196, 240, 0.06);
+  border: 1px solid rgba(86, 196, 240, 0.1);
+  border-radius: 20px;
+  padding: 3px 9px;
+  white-space: nowrap;
 }
 
 .v2-lastbuys-list {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .v2-buy-row {
   display: grid;
-  grid-template-columns: 8px auto 1fr auto auto;
+  grid-template-columns: 6px minmax(36px, auto) 1fr auto auto;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
-  padding: 0 13px;
-  border-radius: 10px;
-  background: rgba(11, 22, 40, 0.5);
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: rgba(11, 22, 40, 0.45);
+  border: 1px solid rgba(86, 196, 240, 0.05);
 }
 
 .v2-buy-row.is-latest {
-  background: linear-gradient(90deg, rgba(108, 200, 232, 0.12), rgba(108, 200, 232, 0.02));
-  box-shadow: inset 0 0 0 1px rgba(108, 200, 232, 0.22);
+  background: linear-gradient(90deg, rgba(86, 196, 240, 0.1), rgba(86, 196, 240, 0.02));
+  border-color: rgba(86, 196, 240, 0.18);
 }
 
 .v2-buy-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: rgba(108, 200, 232, 0.45);
+  background: rgba(108, 200, 232, 0.4);
+  flex-shrink: 0;
 }
 
 .v2-buy-row.is-latest .v2-buy-dot {
   background: #6cc8e8;
-  box-shadow: 0 0 9px rgba(108, 200, 232, 0.8);
+  box-shadow: 0 0 8px rgba(108, 200, 232, 0.75);
 }
 
 .v2-buy-asset {
   font-family: "Black Ops One", system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   color: #eaf5ff;
+  letter-spacing: 0.02em;
 }
 
 .v2-buy-mode {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 9.5px;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #6cc8e8;
+  color: rgba(108, 200, 232, 0.7);
   white-space: nowrap;
 }
 
@@ -3550,7 +3594,7 @@ strong.v2-rb-val {
 
 .v2-port-srow {
   display: grid;
-  grid-template-columns: 1.05fr 1.9fr 0.9fr 0.65fr 1fr;
+  grid-template-columns: 1.9fr 0.9fr 0.65fr 1fr;
   align-items: center;
   text-align: center;
   gap: 8px;
@@ -3648,6 +3692,58 @@ strong.v2-rb-val {
   font-size: 13px;
   font-weight: 700;
   color: rgba(170, 190, 210, 0.82);
+}
+
+/* ── StableCard: logo + name + network tag в одном блоке ── */
+.v2-pid-stable {
+  grid-template-columns: 36px 1fr;
+}
+
+.v2-pid-stable-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.v2-pid-stable-info .v2-pid-name {
+  font-size: 14px;
+}
+
+.v2-pid-net-tag {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid rgba(126, 178, 234, 0.22);
+  color: rgba(170, 190, 210, 0.8);
+  background: rgba(120, 160, 220, 0.08);
+}
+
+.v2-pid-net-tag.is-arb {
+  color: #56d8f5;
+  border-color: rgba(86, 216, 245, 0.35);
+  background: rgba(86, 216, 245, 0.1);
+}
+.v2-pid-net-tag.is-hl {
+  color: #5fe0cf;
+  border-color: rgba(95, 224, 207, 0.35);
+  background: rgba(95, 224, 207, 0.1);
+}
+.v2-pid-net-tag.is-ton {
+  color: #6fb8e0;
+  border-color: rgba(111, 184, 224, 0.35);
+  background: rgba(111, 184, 224, 0.1);
+}
+.v2-pid-net-tag.is-bnb {
+  color: #e8b35a;
+  border-color: rgba(232, 179, 90, 0.35);
+  background: rgba(232, 179, 90, 0.1);
 }
 
 /* ===== Плейбук-карты (справа от строк портфеля) + модалка ===== */

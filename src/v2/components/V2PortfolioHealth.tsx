@@ -36,7 +36,7 @@ export function V2PortfolioHealth({ health }: Props) {
   return (
     <section className="v2-panel v2-ph-panel v2-health-merged">
       <div className="v2-panel-header">
-        <span>Health компоненты</span>
+        <span>Факторы здоровья</span>
       </div>
 
       <div className="v2-health-merged-body">
@@ -50,7 +50,7 @@ export function V2PortfolioHealth({ health }: Props) {
         </div>
 
         <div className="v2-health-radar">
-          <svg viewBox="0 0 100 100" role="img" aria-label="Health компоненты радар">
+          <svg viewBox="0 0 100 100" role="img" aria-label="Факторы здоровья радар">
             <polygon className="v2-radar-grid" points={gridPoints} />
             <polygon
               className="v2-radar-grid mid"
@@ -84,7 +84,7 @@ export function V2PortfolioHealth({ health }: Props) {
               {health.healthFactor}
             </text>
             <text className="v2-radar-caption" x="50" y="58">
-              HEALTH
+              ЗДОРОВЬЕ
             </text>
           </svg>
         </div>

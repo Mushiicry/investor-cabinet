@@ -50,7 +50,7 @@ export function V2FearGreed(_props: Props) {
   return (
     <section className="v2-panel v2-fear">
       <div className="v2-panel-header">
-        <span>Fear &amp; Greed Index</span>
+        <span>Индекс страха / жадности</span>
       </div>
 
       <div className="v2-fg2">

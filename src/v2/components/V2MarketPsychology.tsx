@@ -1,3 +1,5 @@
+import { useFearGreed } from "../../hooks/useFearGreed";
+
 const CURRENT_PHASE = 8;
 
 const PHASES = [
@@ -18,13 +20,6 @@ const PHASES = [
 ];
 
 const BUYING_WINDOW = { from: "10 окт 2026", to: "15 дек 2026", daysUntil: 115 };
-
-const WHY = [
-  "Цена ниже от пика ~42%",
-  "Fear & Greed: 31 (Страх)",
-  "Отскоки слабые, структура не сломана",
-  "Капитуляции ещё не было",
-];
 
 const ACTIONS = [
   { icon: "⊘", text: "Не действуем эмоциями" },
@@ -47,6 +42,17 @@ function dotColor(zone: string, isCurrent: boolean) {
 }
 
 export function V2MarketPsychology() {
+  const fearGreed = useFearGreed();
+  const fgValue = fearGreed.isLoading ? "…" : String(fearGreed.data.value);
+  const fgLabel = fearGreed.data.label;
+
+  const WHY = [
+    "Цена ниже от пика ~42%",
+    `Индекс страха: ${fgValue} (${fgLabel})`,
+    "Отскоки слабые, структура не сломана",
+    "Капитуляции ещё не было",
+  ];
+
   const cur = PHASES[CURRENT_PHASE - 1];
 
   return (
