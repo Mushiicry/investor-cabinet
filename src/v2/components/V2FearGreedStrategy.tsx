@@ -8,10 +8,12 @@ import type {
 } from "../../types/portfolio";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
 
-// Витринные прошлые покупки (история в контракте отсутствует) — для показа 3 транзакций
+// Витринные прошлые покупки (история в контракте отсутствует) — для показа 5 транзакций
 const DEMO_PREV_BUYS: FearGreedStrategyLastBuy[] = [
-  { mode: "cautious", range: "20-29", label: "", asset: "ETH", assetPrice: 2156, buyAmount: 4.89, boughtAt: "2026-05-28T00:00:00" },
-  { mode: "strong", range: "15-19", label: "", asset: "BTC", assetPrice: 64200, buyAmount: 7.51, boughtAt: "2026-05-20T00:00:00" },
+  { mode: "cautious",    range: "20-29", label: "", asset: "ETH", assetPrice: 2156,  buyAmount: 4.89, boughtAt: "2026-05-28T00:00:00" },
+  { mode: "strong",      range: "15-19", label: "", asset: "BTC", assetPrice: 64200, buyAmount: 7.51, boughtAt: "2026-05-20T00:00:00" },
+  { mode: "cautious",    range: "20-29", label: "", asset: "SOL", assetPrice: 138,   buyAmount: 7.51, boughtAt: "2026-05-01T00:00:00" },
+  { mode: "cautious",    range: "20-29", label: "", asset: "ETH", assetPrice: 2400,  buyAmount: 5.20, boughtAt: "2026-04-15T00:00:00" },
 ];
 
 type Props = {
@@ -21,12 +23,11 @@ type Props = {
 };
 
 function formatCooldown(hours: number) {
-  const days = Math.floor(hours / 24);
-  const restHours = hours % 24;
-
-  if (days <= 0) return `${restHours}ч`;
-  if (restHours <= 0) return `${days}д`;
-  return `${days}д ${restHours}ч`;
+  const totalMins = Math.floor(hours * 60);
+  const days = Math.floor(totalMins / (24 * 60));
+  const hh = String(Math.floor((totalMins % (24 * 60)) / 60)).padStart(2, "0");
+  const mm = String(totalMins % 60).padStart(2, "0");
+  return days > 0 ? `${days}:${hh}:${mm}` : `${hh}:${mm}`;
 }
 
 function formatBuyPct(value: number) {
@@ -57,7 +58,7 @@ function getStatusKind(row: FearGreedStrategyRule) {
 }
 
 function getStatusLabel(row: FearGreedStrategyRule) {
-  if (row.cooldownRemainingHours > 0) return `CD ${formatCooldown(row.cooldownRemainingHours)}`;
+  if (row.cooldownRemainingHours > 0) return formatCooldown(row.cooldownRemainingHours);
   if (row.isAvailable) return "Доступно";
   return "Пассивный";
 }
@@ -86,7 +87,12 @@ export function V2FearGreedStrategy({ portfolio, strategy, variant = "full" }: P
       {activeStrategy.rules.map((row) => (
         <div
           key={row.mode}
-          className={`v2-fg-rule v2-fg-rule-${row.mode} ${row.isCurrent ? "is-active" : ""}`.trim()}
+          className={[
+            "v2-fg-rule",
+            `v2-fg-rule-${row.mode}`,
+            row.isCurrent && row.cooldownRemainingHours <= 0 ? "is-active" : "",
+            row.isCurrent && row.cooldownRemainingHours > 0 ? "is-cooldown-row" : "",
+          ].filter(Boolean).join(" ")}
         >
           <div className="v2-fg-rule-range">
             <span className="v2-fg-rule-dot" aria-hidden="true" />
@@ -103,7 +109,7 @@ export function V2FearGreedStrategy({ portfolio, strategy, variant = "full" }: P
     </div>
   );
 
-  const recentBuys = (lastBuy ? [lastBuy, ...DEMO_PREV_BUYS] : DEMO_PREV_BUYS).slice(0, 3);
+  const recentBuys = (lastBuy ? [lastBuy, ...DEMO_PREV_BUYS] : DEMO_PREV_BUYS).slice(0, 5);
 
   const meta = (
     <div className="v2-lastbuys">
