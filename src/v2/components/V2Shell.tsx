@@ -1,6 +1,7 @@
 import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
 import { V2Allocation3D } from "./V2Allocation3D";
 import { V2DecisionsPage } from "./V2DecisionsPage";
+import { V2RiskEnginePage } from "./V2RiskEnginePage";
 import { V2DeployableCapital } from "./V2DeployableCapital";
 import { V2FearGreed } from "./V2FearGreed";
 import { V2FearGreedStrategy } from "./V2FearGreedStrategy";
@@ -25,6 +26,13 @@ export function V2Shell({ data, page, onNavigate }: Props) {
           <V2PortfolioPage positions={data.positions} playbook={data.playbook} />
         ) : page === "decisions" ? (
           <V2DecisionsPage playbook={data.playbook} positions={data.positions} />
+        ) : page === "risk" ? (
+          <V2RiskEnginePage
+            portfolio={data.portfolio}
+            health={data.health}
+            risk={data.risk}
+            allocation={data.allocation}
+          />
         ) : (
         <section className="v2-command-grid" aria-label="Investor Cabinet V2 overview">
           <div className="v2-top-grid">
