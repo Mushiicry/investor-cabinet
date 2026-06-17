@@ -1,6 +1,5 @@
 import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
 import { V2Allocation3D } from "./V2Allocation3D";
-import { V2DecisionsPage } from "./V2DecisionsPage";
 import { V2RiskEnginePage } from "./V2RiskEnginePage";
 import { V2ScenariosPage } from "./V2ScenariosPage";
 import { V2DeployableCapital } from "./V2DeployableCapital";
@@ -25,8 +24,6 @@ export function V2Shell({ data, page, onNavigate }: Props) {
       <main className="v2-main">
         {page === "portfolio" ? (
           <V2PortfolioPage positions={data.positions} playbook={data.playbook} />
-        ) : page === "decisions" ? (
-          <V2DecisionsPage playbook={data.playbook} positions={data.positions} />
         ) : page === "scenarios" ? (
           <V2ScenariosPage playbook={data.playbook} positions={data.positions} />
         ) : page === "risk" ? (

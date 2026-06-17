@@ -3,7 +3,7 @@ import type { V2Page } from "../InvestorCabinetV2Lab";
 
 const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
   {
-    label: "Overview",
+    label: "Обзор",
     page: "overview",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -25,28 +25,21 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
     ),
   },
   {
-    label: "Decisions",
-    page: "decisions",
-    icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M9 1.6l6 3.2v6.4l-6 3.2-6-3.2V4.8l6-3.2z" />
-        <path d="M6.4 9l1.9 1.9L11.8 7" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    label: "Scenarios",
+    label: "Сценарии",
     page: "scenarios",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <circle cx="9" cy="9" r="6.5" />
-        <circle cx="9" cy="9" r="2.6" />
-        <path d="M9 .8v3M9 14.2v3M.8 9h3M14.2 9h3" strokeLinecap="round" />
+        <circle cx="4" cy="9" r="1.6" />
+        <path d="M5.6 9h2.8" strokeLinecap="round" />
+        <circle cx="9" cy="4.5" r="1.6" />
+        <circle cx="9" cy="13.5" r="1.6" />
+        <path d="M8.4 9 6.4 4.5M8.4 9 6.4 13.5" strokeLinecap="round" />
+        <path d="M10.6 4.5H14M10.6 13.5H14" strokeLinecap="round" opacity=".5" />
       </svg>
     ),
   },
   {
-    label: "Risk Engine",
+    label: "Риск",
     page: "risk",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -57,7 +50,7 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
     ),
   },
   {
-    label: "Reports",
+    label: "Отчёты",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <rect x="3" y="2" width="12" height="14" rx="1.6" />
@@ -66,7 +59,7 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
     ),
   },
   {
-    label: "Alerts",
+    label: "Сигналы",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <path d="M9 2a4 4 0 00-4 4c0 4-1.6 5-1.6 5h11.2S13 10 13 6a4 4 0 00-4-4z" />
@@ -75,7 +68,7 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
     ),
   },
   {
-    label: "Settings",
+    label: "Настройки",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <circle cx="9" cy="9" r="2.5" />
