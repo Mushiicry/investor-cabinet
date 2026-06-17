@@ -91,7 +91,7 @@ function DecisionCard({ card }: { card: PlaybookCard }) {
       <div className="v2-dc-head">
         <div className="v2-dc-id">
           <div className="v2-dc-logo">
-            <CryptoLogo asset={card.asset} size={36} />
+            <CryptoLogo asset={card.asset} className="v2-dc-logo-img" />
           </div>
           <div className="v2-dc-name-wrap">
             <span className="v2-dc-asset">{card.asset}</span>

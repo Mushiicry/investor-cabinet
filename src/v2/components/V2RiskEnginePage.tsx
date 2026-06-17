@@ -95,10 +95,9 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
                   </div>
                   <div className="v2-re-comp-bar-wrap">
                     <div
-                      className="v2-re-comp-bar-fill"
-                      style={{ width: `${c.score}%`, background: c.color }}
+                      className={`v2-re-comp-bar-fill ${c.score >= 75 ? "is-good" : c.score >= 50 ? "is-mid" : "is-low"}`}
+                      style={{ width: `${c.score}%` }}
                     />
-                    <div className="v2-re-comp-bar-track" />
                   </div>
                   <span className="v2-re-comp-desc">{c.desc}</span>
                 </div>

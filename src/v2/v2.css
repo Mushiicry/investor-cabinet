@@ -3933,14 +3933,19 @@ strong.v2-rb-val {
   justify-content: center;
 }
 
-.v2-dc-logo .crypto-logo-image,
-.v2-dc-logo .crypto-logo-gold,
-.v2-dc-logo .crypto-logo-svg {
+/* class lands ON the crypto-logo element — same pattern as v2-pid-logo */
+.v2-dc-logo-img.crypto-logo-image,
+.v2-dc-logo-img.crypto-logo-gold,
+.v2-dc-logo-img.crypto-logo-svg,
+.v2-dc-logo-img {
   background: none !important;
+  overflow: visible !important;
+  width: 36px !important;
+  height: 36px !important;
 }
 
-.v2-dc-logo .crypto-logo-img,
-.v2-dc-logo svg {
+.v2-dc-logo-img .crypto-logo-img,
+.v2-dc-logo-img svg {
   animation: v2-logo-breathe 4s ease-in-out infinite;
 }
 
@@ -4161,6 +4166,28 @@ strong.v2-rb-val {
   display: flex;
   flex-direction: column;
   gap: 22px;
+  position: relative;
+}
+
+/* subtle scanline overlay — electric panel feel */
+.v2-re-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(86, 196, 240, 0.012) 0px,
+    transparent 1px,
+    transparent 38px
+  );
+  z-index: 0;
+}
+
+.v2-re-hero,
+.v2-re-body {
+  position: relative;
+  z-index: 1;
 }
 
 /* ─── HERO ─── */
@@ -4225,6 +4252,12 @@ strong.v2-rb-val {
   font-weight: 900;
   line-height: 1;
   color: #e6f7ff;
+  animation: v2-hf-pulse 3s ease-in-out infinite;
+}
+
+@keyframes v2-hf-pulse {
+  0%, 100% { text-shadow: 0 0 8px rgba(86,196,240,0.3); }
+  50%       { text-shadow: 0 0 18px rgba(86,196,240,0.7), 0 0 4px rgba(86,196,240,0.5); }
 }
 
 .v2-re-hf-label {
@@ -4286,6 +4319,25 @@ strong.v2-rb-val {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* electric top-edge flow */
+.v2-re-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(86,196,240,0.7), transparent);
+  animation: v2-card-flow 4s linear infinite;
+}
+
+@keyframes v2-card-flow {
+  0%   { left: -60%; }
+  100% { left: 160%; }
 }
 
 .v2-re-card-head {
@@ -4349,16 +4401,10 @@ strong.v2-rb-val {
 
 .v2-re-comp-bar-wrap {
   position: relative;
-  height: 6px;
-  background: rgba(86, 196, 240, 0.08);
+  height: 5px;
+  background: rgba(86, 196, 240, 0.07);
   border-radius: 3px;
   overflow: hidden;
-}
-
-.v2-re-comp-bar-track {
-  position: absolute;
-  inset: 0;
-  border-radius: 3px;
 }
 
 .v2-re-comp-bar-fill {
@@ -4367,8 +4413,41 @@ strong.v2-rb-val {
   left: 0;
   height: 100%;
   border-radius: 3px;
-  transition: width 0.5s ease;
-  opacity: 0.85;
+  animation: v2-bar-enter 0.8s ease both;
+}
+
+/* cold-blue monochromatic bars — score drives width, class drives subtle tone */
+.v2-re-comp-bar-fill.is-good {
+  background: linear-gradient(90deg, rgba(86,196,240,0.45), rgba(86,196,240,0.9));
+  box-shadow: 0 0 6px rgba(86,196,240,0.35);
+}
+.v2-re-comp-bar-fill.is-mid {
+  background: linear-gradient(90deg, rgba(86,196,240,0.25), rgba(232,179,90,0.65));
+}
+.v2-re-comp-bar-fill.is-low {
+  background: linear-gradient(90deg, rgba(86,196,240,0.15), rgba(248,113,113,0.55));
+}
+
+/* leading-edge scan shimmer */
+.v2-re-comp-bar-fill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45));
+  border-radius: 3px;
+  animation: v2-bar-shimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes v2-bar-enter {
+  from { width: 0 !important; }
+}
+
+@keyframes v2-bar-shimmer {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
 }
 
 .v2-re-comp-desc {
@@ -4684,8 +4763,12 @@ strong.v2-rb-val {
 .v2-re-mini-bar-fill {
   height: 100%;
   border-radius: 2px;
-  transition: width 0.4s ease;
-  opacity: 0.8;
+  animation: v2-bar-enter 1s ease both;
+}
+
+.v2-re-mini-bar-fill[style*="rgb(86, 214"] ,
+.v2-re-mini-bar-fill[style*="#56"] {
+  box-shadow: 0 0 4px rgba(86,196,240,0.4);
 }
 
 .v2-re-radar-val {
