@@ -271,7 +271,7 @@ const buildLiveV2Data = (state: PortfolioState): V2LabData => {
   };
 };
 
-export type V2Page = "overview" | "portfolio";
+export type V2Page = "overview" | "portfolio" | "decisions";
 
 export default function InvestorCabinetV2Lab() {
   const [page, setPage] = useState<V2Page>("overview");

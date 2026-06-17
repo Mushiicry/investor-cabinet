@@ -26,6 +26,7 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
   },
   {
     label: "Decisions",
+    page: "decisions",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <path d="M9 1.6l6 3.2v6.4l-6 3.2-6-3.2V4.8l6-3.2z" />

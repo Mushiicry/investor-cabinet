@@ -3834,3 +3834,320 @@ strong.v2-rb-val {
     gap: 12px;
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   V2 DECISIONS PAGE
+═══════════════════════════════════════════════════ */
+
+.v2-decisions-page {
+  padding: 24px 28px;
+}
+
+.v2-decisions-header {
+  margin-bottom: 28px;
+}
+
+.v2-decisions-title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #56c4f0;
+}
+
+.v2-decisions-sub {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(141, 167, 181, 0.65);
+}
+
+.v2-decisions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+/* ─── DECISION CARD ─── */
+
+.v2-dc-card {
+  background: rgba(7, 22, 35, 0.85);
+  border: 1px solid rgba(86, 196, 240, 0.13);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.25s;
+}
+
+.v2-dc-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.v2-dc-card:hover {
+  border-color: rgba(86, 196, 240, 0.3);
+}
+
+.v2-dc-card:hover::before {
+  opacity: 1;
+}
+
+/* rarity top-border accent */
+.v2-dc-card.dc-rarity-legendary { border-top: 2px solid rgba(255, 200, 50, 0.55); }
+.v2-dc-card.dc-rarity-epic      { border-top: 2px solid rgba(168, 85, 247, 0.55); }
+.v2-dc-card.dc-rarity-rare      { border-top: 2px solid rgba(56, 189, 248, 0.55); }
+.v2-dc-card.dc-rarity-common    { border-top: 2px solid rgba(100, 140, 160, 0.4); }
+.v2-dc-card.dc-rarity-defense   { border-top: 2px solid rgba(52, 211, 153, 0.45); }
+.v2-dc-card.dc-rarity-risk      { border-top: 2px solid rgba(248, 113, 113, 0.5); }
+
+/* ─── CARD HEAD ─── */
+
+.v2-dc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v2-dc-id {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.v2-dc-logo {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.v2-dc-logo .crypto-logo-image,
+.v2-dc-logo .crypto-logo-gold,
+.v2-dc-logo .crypto-logo-svg {
+  background: none !important;
+}
+
+.v2-dc-logo .crypto-logo-img,
+.v2-dc-logo svg {
+  animation: v2-logo-breathe 4s ease-in-out infinite;
+}
+
+.v2-dc-name-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.v2-dc-asset {
+  font-size: 16px;
+  font-weight: 800;
+  color: #e6f7ff;
+  letter-spacing: 0.04em;
+}
+
+.v2-dc-fullname {
+  font-size: 12px;
+  color: rgba(141, 167, 181, 0.6);
+  font-weight: 500;
+}
+
+/* ─── STATUS BADGE ─── */
+
+.v2-dc-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+
+.v2-dc-badge.dc-badge-accumulate {
+  color: #56c4f0;
+  border-color: rgba(86, 196, 240, 0.4);
+  background: rgba(86, 196, 240, 0.08);
+}
+
+.v2-dc-badge.dc-badge-watch {
+  color: #e8b35a;
+  border-color: rgba(232, 179, 90, 0.4);
+  background: rgba(232, 179, 90, 0.08);
+}
+
+.v2-dc-badge.dc-badge-hold {
+  color: #94a8b8;
+  border-color: rgba(148, 168, 184, 0.3);
+  background: rgba(148, 168, 184, 0.06);
+}
+
+.v2-dc-badge.dc-badge-hedge {
+  color: #a78bfa;
+  border-color: rgba(167, 139, 250, 0.4);
+  background: rgba(167, 139, 250, 0.08);
+}
+
+.v2-dc-badge.dc-badge-reserve {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.v2-dc-badge.dc-badge-reduce {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.v2-dc-badge.dc-badge-spec {
+  color: #fb923c;
+  border-color: rgba(251, 146, 60, 0.4);
+  background: rgba(251, 146, 60, 0.08);
+}
+
+/* ─── RARITY ROW ─── */
+
+.v2-dc-rarity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.v2-dc-rarity-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(141, 167, 181, 0.55);
+  font-weight: 600;
+}
+
+.v2-dc-scores {
+  display: flex;
+  gap: 12px;
+}
+
+.v2-dc-score {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.v2-dc-score-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.v2-dc-score.is-attack {
+  color: #56c4f0;
+}
+
+.v2-dc-score.is-attack .v2-dc-score-dot {
+  background: #56c4f0;
+  box-shadow: 0 0 6px rgba(86, 196, 240, 0.6);
+}
+
+.v2-dc-score.is-risk {
+  color: rgba(141, 167, 181, 0.7);
+}
+
+.v2-dc-score.is-risk .v2-dc-score-dot {
+  background: rgba(141, 167, 181, 0.5);
+}
+
+/* ─── FIELD GROUPS ─── */
+
+.v2-dc-thesis,
+.v2-dc-action,
+.v2-dc-trigger {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v2-dc-two-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.v2-dc-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v2-dc-field-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(141, 167, 181, 0.5);
+}
+
+.v2-dc-field-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #c4d8e8;
+  font-weight: 500;
+}
+
+.v2-dc-field-text.is-dim {
+  color: rgba(141, 167, 181, 0.65);
+  font-size: 12.5px;
+}
+
+/* thesis block — slightly highlighted */
+.v2-dc-thesis {
+  background: rgba(86, 196, 240, 0.04);
+  border-left: 2px solid rgba(86, 196, 240, 0.25);
+  padding: 8px 10px;
+  border-radius: 0 6px 6px 0;
+}
+
+/* action — highlighted decision */
+.v2-dc-action {
+  background: rgba(86, 196, 240, 0.06);
+  border: 1px solid rgba(86, 196, 240, 0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.v2-dc-action-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #a8dff5;
+  font-weight: 600;
+}
+
+/* trigger — dimmer, bottom */
+.v2-dc-trigger {
+  border-top: 1px solid rgba(86, 196, 240, 0.08);
+  padding-top: 10px;
+}
+
+@media (max-width: 1200px) {
+  .v2-decisions-grid {
+    grid-template-columns: 1fr;
+  }
+}
