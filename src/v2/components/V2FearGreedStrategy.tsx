@@ -108,8 +108,7 @@ export function V2FearGreedStrategy({ portfolio, strategy, variant = "full" }: P
   const meta = (
     <div className="v2-lastbuys">
       <div className="v2-lastbuys-head">
-        <span className="v2-panel-kicker">Последние покупки</span>
-        <span className="v2-lastbuy-tag">по стратегии · индекс {strategy.currentIndex}</span>
+        <span className="v2-panel-kicker">Последние покупки по стратегии</span>
       </div>
       {recentBuys.length ? (
         <div className="v2-lastbuys-list">
