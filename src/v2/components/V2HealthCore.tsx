@@ -20,7 +20,7 @@ export function V2HealthCore({ portfolio, health }: Props) {
   return (
     <section className="v2-panel v2-health-core" aria-label="Portfolio health factor">
       <div className="v2-health-stage" aria-hidden="true">
-        <div className="v2-reactor-title-cover">ЗДОРОВЬЕ ПОРТФЕЛЯ</div>
+        <div className="v2-reactor-title-ru">ЗДОРОВЬЕ ПОРТФЕЛЯ</div>
         <span className="v2-reactor-orbit orbit-one" />
         <span className="v2-reactor-orbit orbit-two" />
         <span className="v2-reactor-scan" />

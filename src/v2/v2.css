@@ -1802,6 +1802,8 @@ body:has(.v2-lab) {
   max-height: 100%;
   object-fit: contain;
   object-position: center;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, transparent 11%, black 12%);
+  mask-image: linear-gradient(to bottom, transparent 0%, transparent 11%, black 12%);
   filter:
     brightness(1.1)
     saturate(1.1)
@@ -1815,21 +1817,18 @@ body:has(.v2-lab) {
     ringGlow 6.2s ease-in-out infinite;
 }
 
-/* Перекрытие английского "PORTFOLIO HEALTH" из webp поверх него русским текстом */
-.v2-reactor-title-cover {
+/* Русский заголовок реактора — «ЗДОРОВЬЕ ПОРТФЕЛЯ» */
+.v2-reactor-title-ru {
   position: absolute;
   z-index: 10;
-  top: 6%;
+  top: 5%;
   left: 50%;
   transform: translateX(-50%);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(86, 196, 240, 0.85);
-  background: rgba(4, 11, 20, 0.82);
-  padding: 2px 14px 3px;
-  border-radius: 3px;
+  color: rgba(86, 196, 240, 0.8);
   pointer-events: none;
   white-space: nowrap;
 }
