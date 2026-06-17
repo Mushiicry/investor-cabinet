@@ -2,8 +2,8 @@
 
 Версия: Product Roadmap / Master Plan  
 Статус: Active Development  
-Текущий этап: Перенос данных на новый визуал (V2) -> Risk Core Completion  
-Дата фиксации: 2026-06-16
+Текущий этап: V2 экраны завершены — Обзор / Портфель / Сценарии / Риск → следующий: Отчёты  
+Дата фиксации: 2026-06-17
 
 ---
 
@@ -28,6 +28,19 @@
 - модель кэша: Свободные деньги = Фьючи + Стратегия + Спот + Резерв;
 - Fear & Greed лестница и сумма 3 ступеней откупа;
 - резерв = 0 с красным сигналом риска (цель 30% от вложенного).
+
+**V2 экраны — что завершено:**
+
+- ✅ **Обзор** — top metrics, health core reactor, portfolio health bars, fear & greed, allocation 3D, deployable capital;
+- ✅ **Портфель** — live positions table, playbook cards (ATOM/GOLD), CryptoLogo clean;
+- ✅ **Сценарии** — объединён с Decisions; asset rail, thesis+whyHold, expect, branch SVG matrix (BASE/BULL/BEAR), решение, invalidation, action zone, scores; sidebar 7 пунктов RU;
+- ✅ **Риск** — health factor pulse, 5 health-компонентов cold-blue, reserve/exposure/allocation/futures карточки, scanline texture, electric animations.
+
+**V2 экраны — следующие:**
+
+- 🔲 **Отчёты** — equity curve, PnL history, allocation over time (Stage 3);
+- 🔲 **Сигналы** — risk alerts, reserve warnings, macro signals (Stage 5);
+- 🔲 **Настройки** — policy limits editor, risk thresholds.
 
 **Что ещё НЕ перенесено (осознанно mock, отдельный патч):**
 
