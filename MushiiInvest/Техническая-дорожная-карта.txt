@@ -1,7 +1,7 @@
 INVESTOR CABINET - TECHNICAL ROADMAP
 Version: MVP Core Stabilization Roadmap
 Status: Active Development
-Current stage: Stage 2 Stabilization → moving into Screens (Decisions, Risk Engine)
+Current stage: Stage 3 Screens — Decisions done, Risk Engine next
 Last updated: 2026-06-17
 
 === COMPLETED SINCE LAST UPDATE (June 2026) ===
@@ -12,30 +12,33 @@ Last updated: 2026-06-17
 ✅ Crypto logos — removed square background artifact, cold-blue breathing glow animation
 ✅ New SVG logos — USDC (blue circle + $), ATOM/Cosmos (purple orbital rings)
 ✅ ATOM + GOLD LONG playbook cards — fully active with content (attack/risk scores + all blocks)
-✅ Live decisions merge — buildLiveV2Data now merges static fallback decisions for assets
-   missing from the API (ATOM, GOLD LONG) so cards always appear
+✅ Live decisions merge — buildLiveV2Data merges static fallback for assets missing from API
 ✅ Font size bump — 15px base across v2-lab
+✅ DECISIONS screen — V2DecisionsPage.tsx, 2-col card grid, V2Page type extended,
+   V2Shell routing added, V2Sidebar Decisions button enabled (commit e624106)
 ✅ Build passes clean ✓
 
 === CURRENT STAGE PROGRESS ===
 
-Stage 1 Functional Premium MVP:      ~92%  (was 80-85%)
-Stage 2 Stabilization + Risk Core:   ~65%  (was 45-55%)
-  - Data contract:                   ~65%  (was 55%)
+Stage 1 Functional Premium MVP:      ~92%  (unchanged)
+Stage 2 Stabilization + Risk Core:   ~65%  (unchanged)
+  - Data contract:                   ~65%
   - API layer:                       ~65%  (stable)
   - State management:                ~50%  (portfolioHealth centralized)
   - Risk core:                       ~55%  (Health real, Exposure Engine next)
-  - Frontend modularization:         ~45%  (v2 is modular, App.tsx still large)
-Stage 3 Professional Dashboard:      ~25-35% (unchanged)
-Stage 4 Decision Engine:             ~20%  (data ready, screen is next)
+  - Frontend modularization:         ~45%
+Stage 3 Professional Dashboard:      ~35-45% (was 25-35%)
+Stage 4 Decision Engine:             ~45%  (was 20% — screen built)
 Stage 5 Automation:                  ~40-50%
 Stage 6-9:                           0-5%
 
 === NEXT TECHNICAL STEPS ===
 
-1. git push + Vercel deploy (current commit 61579d6)
-2. Build DECISIONS screen in V2 (playbook data already available)
-3. Build RISK ENGINE screen in V2 (Exposure Engine + Position Sizing)
+1. git push + Vercel deploy
+2. Build RISK ENGINE screen — V2RiskEnginePage.tsx
+   Components: reserve breakdown, exposure layer, position sizing, concentration map
+3. Build SCENARIOS screen — V2ScenariosPage.tsx
+   Each asset: base / bull / bear scenarios + invalidation + action zone
 4. API contract documentation
 
 ======================================================

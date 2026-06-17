@@ -14,21 +14,24 @@
 ✅ Playbook карточки ATOM и GOLD LONG — активны с полным содержимым
 ✅ Шрифт увеличен до 15px по всему v2-lab
 ✅ MushiiInvest папка добавлена в репозиторий (документация)
-✅ Все изменения закоммичены и готовы к деплою
+✅ DECISIONS screen (Screen 3) — карточки инвестиционных решений, 2-col grid,
+   каждая карточка: лого + имя, rarity badge, статус, атака/риск, идея,
+   почему держу / что жду, решение (highlighted), пересмотр. Навигация работает.
 
 === ТЕКУЩИЙ ПРОГРЕСС ПО ЭТАПАМ ===
 
-Stage 1 — Functional Premium MVP:       ~92% (было 80-85%)
-Stage 2 — Stabilization + Risk Core:    ~65% (было 45-55%)
-Stage 3 — Professional Dashboard:       ~25-35% (без изменений)
-Stage 4 — Decision Engine:              ~20% (данные готовы, экран следующий)
+Stage 1 — Functional Premium MVP:       ~92% (без изменений)
+Stage 2 — Stabilization + Risk Core:    ~65% (без изменений)
+Stage 3 — Professional Dashboard:       ~35-45% (было 25-35%)
+Stage 4 — Decision Engine:              ~45% (было 20% — экран построен)
 Stage 5 — Automation:                   ~40-50%
 Stage 6-9 — Backend/AI/SaaS/Mobile:    0-5%
 
 === СЛЕДУЮЩИЙ ШАГ ===
 
-Экран DECISIONS (Screen 3) — данные из playbook уже готовы, нужен UI.
-Затем: RISK ENGINE экран (Screen 11) — ключевой продуктовый слой.
+RISK ENGINE экран (Screen 11) — ключевой продуктовый слой.
+Компоненты: Health Factor подробный, Reserve Layer, Exposure Layer, Position Size Layer.
+Затем: SCENARIOS экран (Screen 4) — сценарный анализ по каждому активу.
 
 ======================================================
 
