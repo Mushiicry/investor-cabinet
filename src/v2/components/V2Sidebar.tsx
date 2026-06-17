@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
+import type { V2Page } from "../InvestorCabinetV2Lab";
 
-const navItems: { label: string; icon: ReactNode }[] = [
+const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
   {
     label: "Overview",
+    page: "overview",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <rect x="2" y="2" width="6" height="6" rx="1.5" />
@@ -13,7 +15,8 @@ const navItems: { label: string; icon: ReactNode }[] = [
     ),
   },
   {
-    label: "Portfolio",
+    label: "Портфель",
+    page: "portfolio",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <path d="M9 2v7h7A7 7 0 109 2z" />
@@ -79,7 +82,12 @@ const navItems: { label: string; icon: ReactNode }[] = [
   },
 ];
 
-export function V2Sidebar() {
+type Props = {
+  activePage: V2Page;
+  onNavigate: (page: V2Page) => void;
+};
+
+export function V2Sidebar({ activePage, onNavigate }: Props) {
   return (
     <aside className="v2-sidebar">
       <div className="v2-brand">
@@ -91,17 +99,21 @@ export function V2Sidebar() {
       </div>
 
       <nav className="v2-nav" aria-label="V2 Lab navigation">
-        {navItems.map((item, index) => (
-          <button className={index === 0 ? "v2-nav-item is-active" : "v2-nav-item"} key={item.label} type="button">
-            <span className="v2-nav-icon">{item.icon}</span>
-            <span className="v2-nav-label">{item.label}</span>
-            <span className="v2-nav-dots" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </span>
-          </button>
-        ))}
+        {navItems.map((item) => {
+          const isActive = item.page === activePage;
+          return (
+            <button
+              className={isActive ? "v2-nav-item is-active" : "v2-nav-item"}
+              key={item.label}
+              type="button"
+              disabled={!item.page}
+              onClick={() => item.page && onNavigate(item.page)}
+            >
+              <span className="v2-nav-icon">{item.icon}</span>
+              <span className="v2-nav-label">{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
     </aside>
   );

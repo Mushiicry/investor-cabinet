@@ -1,22 +1,28 @@
-import type { V2LabData } from "../InvestorCabinetV2Lab";
+import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
 import { V2Allocation3D } from "./V2Allocation3D";
 import { V2DeployableCapital } from "./V2DeployableCapital";
 import { V2FearGreed } from "./V2FearGreed";
 import { V2FearGreedStrategy } from "./V2FearGreedStrategy";
 import { V2HealthCore } from "./V2HealthCore";
 import { V2PortfolioHealth } from "./V2PortfolioHealth";
+import { V2PortfolioPage } from "./V2PortfolioPage";
 import { V2Sidebar } from "./V2Sidebar";
 import { V2TopMetrics } from "./V2TopMetrics";
 
 type Props = {
   data: V2LabData;
+  page: V2Page;
+  onNavigate: (page: V2Page) => void;
 };
 
-export function V2Shell({ data }: Props) {
+export function V2Shell({ data, page, onNavigate }: Props) {
   return (
     <div className="v2-lab">
-      <V2Sidebar />
+      <V2Sidebar activePage={page} onNavigate={onNavigate} />
       <main className="v2-main">
+        {page === "portfolio" ? (
+          <V2PortfolioPage positions={data.positions} playbook={data.playbook} />
+        ) : (
         <section className="v2-command-grid" aria-label="Investor Cabinet V2 overview">
           <div className="v2-top-grid">
             <div className="v2-top-left">
@@ -54,6 +60,7 @@ export function V2Shell({ data }: Props) {
             </div>
           </div>
         </section>
+        )}
       </main>
     </div>
   );

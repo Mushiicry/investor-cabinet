@@ -43,10 +43,7 @@ export function V2PortfolioHealth({ health }: Props) {
         <div className="v2-health-list">
           {components.map((component) => (
             <div className="v2-health-row" key={component.key}>
-              <div className="v2-health-meta">
-                <span className="v2-health-name">{component.label}</span>
-                <span className="v2-health-desc">{component.desc}</span>
-              </div>
+              <span className="v2-health-name">{component.label}</span>
               <strong className="v2-health-score">{component.score}</strong>
             </div>
           ))}

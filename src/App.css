@@ -4810,6 +4810,19 @@ select {
   background: radial-gradient(circle at 50% 42%, rgba(255,255,255,0.06), rgba(255,255,255,0.015));
 }
 
+.crypto-logo-svg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.crypto-logo-svg svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .crypto-logo-img {
   display: block;
   width: 100%;

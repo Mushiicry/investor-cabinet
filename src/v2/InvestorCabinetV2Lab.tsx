@@ -1,10 +1,12 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { V2Shell } from "./components/V2Shell";
 import { useInvestorData } from "../hooks/useInvestorData";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
 import { buildPortfolioState } from "../lib/portfolioCalculations";
 import { computePortfolioHealth } from "../lib/portfolioHealth";
 import type { PortfolioHealth } from "../lib/portfolioHealth";
+import { buildPlaybookCards } from "../lib/playbookSelectors";
+import type { PlaybookCard } from "../lib/playbookSelectors";
 import { rawPositions, decisionsData, scenariosData } from "../mocks/portfolioData";
 import type { PortfolioState } from "../types/portfolio";
 import "./v2.css";
@@ -30,10 +32,14 @@ export type V2Portfolio = {
 export type V2Position = {
   asset: string;
   category: string;
-  value: number;
-  share: number;
-  pnlPct: number;
-  status: "HOLD" | "ACCUMULATE" | "WATCH" | "REDUCE";
+  avgEntry: number;
+  currentPrice: number;
+  invested: number;
+  value: number; // текущая стоимость
+  pnl: number;
+  pnlPct: number; // в процентах
+  share: number; // в процентах
+  status: string;
 };
 
 export type V2Risk = {
@@ -82,6 +88,7 @@ export type V2LabData = {
   fearGreedStrategy: PortfolioState["fearGreedStrategy"];
   allocation: Array<{ name: string; share: number; value: number }>;
   health: PortfolioHealth;
+  playbook: PlaybookCard[];
   ticker: Array<{ label: string; value: string; change: number }>;
 };
 
@@ -106,11 +113,11 @@ const mockData: V2LabData = {
     exposureSignal: "No aggressive leverage",
   },
   positions: [
-    { asset: "BTC", category: "Crypto", value: 304682.08, share: 40.4, pnlPct: 0.0648, status: "HOLD" },
-    { asset: "ETH", category: "Crypto", value: 55693.1, share: 7.4, pnlPct: 0.1223, status: "ACCUMULATE" },
-    { asset: "TON", category: "Crypto", value: 14775.88, share: 2, pnlPct: -0.0451, status: "WATCH" },
-    { asset: "SOL", category: "Crypto", value: 13998.29, share: 1.9, pnlPct: -0.0826, status: "ACCUMULATE" },
-    { asset: "USDT", category: "Stables", value: 244.8, share: 32.4, pnlPct: 0, status: "HOLD" },
+    { asset: "ETH", category: "Крипта", avgEntry: 1807.7, currentPrice: 1790.9, invested: 196.2, value: 194.3, pnl: -1.8, pnlPct: -0.9, share: 34.9, status: "ACCUMULATE" },
+    { asset: "SOL", category: "Крипта", avgEntry: 77.6, currentPrice: 74.9, invested: 99.6, value: 96.1, pnl: -3.5, pnlPct: -3.5, share: 17.3, status: "WATCH" },
+    { asset: "TON", category: "Крипта", avgEntry: 1.8, currentPrice: 1.8, invested: 86.8, value: 86.8, pnl: 0, pnlPct: 0.1, share: 15.6, status: "WATCH" },
+    { asset: "USDC", category: "Свободные деньги", avgEntry: 1, currentPrice: 1, invested: 54.6, value: 54.6, pnl: 0, pnlPct: 0, share: 9.8, status: "RESERVE" },
+    { asset: "GOLD LONG", category: "Металлы", avgEntry: 4315.4, currentPrice: 4345.3, invested: 23.9, value: 24.4, pnl: 0.5, pnlPct: 2.1, share: 4.4, status: "HEDGE" },
   ],
   risk: {
     reserve: 82,
@@ -178,6 +185,7 @@ const mockData: V2LabData = {
     largestShare: 0.4,
     categoryShares: [0.627, 0.026, 0.021, 0, 0.324],
   }),
+  playbook: [],
   ticker: [
     { label: "BTC / USD", value: "$69,759.60", change: 0.0152 },
     { label: "ETH / USD", value: "$2,156.00", change: 0.0234 },
@@ -211,6 +219,28 @@ const buildLiveV2Data = (state: PortfolioState): V2LabData => {
     ...mockData,
     fearGreedStrategy: state.fearGreedStrategy,
     health,
+    playbook: buildPlaybookCards(
+      [
+        ...state.decisions,
+        ...decisionsData.filter((d) => !state.decisions.find((ld) => ld.asset === d.asset)),
+      ],
+      [
+        ...state.scenarios,
+        ...scenariosData.filter((s) => !state.scenarios.find((ls) => ls.asset === s.asset)),
+      ]
+    ),
+    positions: state.portfolio.map((position) => ({
+      asset: position.asset,
+      category: position.category,
+      avgEntry: position.avgEntry,
+      currentPrice: position.currentPrice,
+      invested: position.invested,
+      value: position.currentValue,
+      pnl: position.pnl,
+      pnlPct: position.pnlPct,
+      share: position.share,
+      status: position.status,
+    })),
     allocation: state.overview.categories.map((category) => ({
       name: category.name,
       share: category.share,
@@ -241,7 +271,10 @@ const buildLiveV2Data = (state: PortfolioState): V2LabData => {
   };
 };
 
+export type V2Page = "overview" | "portfolio";
+
 export default function InvestorCabinetV2Lab() {
+  const [page, setPage] = useState<V2Page>("overview");
   const fallbackData = useMemo(
     () => buildPortfolioState(rawPositions, decisionsData, scenariosData),
     []
@@ -249,5 +282,5 @@ export default function InvestorCabinetV2Lab() {
   const investorData = useInvestorData(fallbackData);
   const data = useMemo(() => buildLiveV2Data(investorData.data), [investorData.data]);
 
-  return <V2Shell data={data} />;
+  return <V2Shell data={data} page={page} onNavigate={setPage} />;
 }

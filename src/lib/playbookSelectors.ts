@@ -10,6 +10,7 @@ const orderedAssets = [
   "BNB",
   "TON",
   "SOL",
+  "ATOM",
   "TIA",
   "MNT",
   "BTC SHORT",
