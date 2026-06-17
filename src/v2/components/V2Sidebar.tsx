@@ -36,6 +36,7 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
   },
   {
     label: "Scenarios",
+    page: "scenarios",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <circle cx="9" cy="9" r="6.5" />
