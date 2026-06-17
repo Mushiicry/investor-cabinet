@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { percent } from "../../lib/formatters";
 import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
 import type {
@@ -74,7 +75,16 @@ function formatShortDate(value: string) {
   }).format(date);
 }
 
+function useMinuteTick() {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+}
+
 export function V2FearGreedStrategy({ portfolio, strategy, variant = "full" }: Props) {
+  useMinuteTick();
   const activeStrategy = buildFearGreedStrategy(
     strategy.currentIndex,
     portfolio.totalPortfolioValue || strategy.portfolioValue || 0,
