@@ -1815,6 +1815,25 @@ body:has(.v2-lab) {
     ringGlow 6.2s ease-in-out infinite;
 }
 
+/* Перекрытие английского "PORTFOLIO HEALTH" из webp поверх него русским текстом */
+.v2-reactor-title-cover {
+  position: absolute;
+  z-index: 10;
+  top: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(86, 196, 240, 0.85);
+  background: rgba(4, 11, 20, 0.82);
+  padding: 2px 14px 3px;
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 /* HTML-наложение числа здоровья поверх вшитой картинки реактора */
 .v2-core-readout {
   position: absolute;
@@ -3489,10 +3508,11 @@ strong.v2-rb-val {
 .v2-port-cat-name {
   justify-self: start;
   text-align: left;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 950;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: #56e9f5;
 }
 
