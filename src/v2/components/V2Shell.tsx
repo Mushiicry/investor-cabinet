@@ -125,7 +125,7 @@ export function V2Shell({ data, page, onNavigate }: Props) {
                 <V2TopMetrics
                   portfolio={data.portfolio}
                   fearGreedIndex={data.fearGreedStrategy.currentIndex}
-                  fearGreedLabel={data.fearGreedStrategy.zone}
+                  fearGreedLabel={data.fearGreedStrategy.currentMode}
                 />
               </div>
               <div className="v2-hero-reactor">
