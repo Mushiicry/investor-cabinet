@@ -238,11 +238,16 @@ export function V2StarField() {
     let last  = performance.now();
     let raf   = 0;
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const safeCtx = ctx!;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const safeCanvas = canvas!;
+
     function frame(now: number) {
       const dt = Math.min(now - last, 80); // cap delta to avoid jumps
       last = now;
-      ctx.clearRect(0, 0, w, h);
-      for (const s of stars) tick(ctx, s, dt);
+      safeCtx.clearRect(0, 0, w, h);
+      for (const s of stars) tick(safeCtx, s, dt);
       raf = requestAnimationFrame(frame);
     }
 
@@ -251,8 +256,8 @@ export function V2StarField() {
     function onResize() {
       w = window.innerWidth;
       h = window.innerHeight;
-      canvas.width  = w;
-      canvas.height = h;
+      safeCanvas.width  = w;
+      safeCanvas.height = h;
       stars = buildStars(w, h);
     }
     window.addEventListener("resize", onResize, { passive: true });
