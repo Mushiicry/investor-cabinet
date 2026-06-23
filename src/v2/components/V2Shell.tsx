@@ -15,6 +15,7 @@ import { V2BtcDailyChart } from "./V2BtcDailyChart";
 import { V2PortfolioPage } from "./V2PortfolioPage";
 import { V2Sidebar } from "./V2Sidebar";
 import { V2TopMetrics } from "./V2TopMetrics";
+import { V2StarField } from "./V2StarField";
 
 type Props = {
   data: V2LabData;
@@ -35,16 +36,19 @@ export function V2Shell({ data, page, onNavigate }: Props) {
 
   return (
     <div className="v2-lab">
+      {/* Фото-фон космоса */}
       <div style={{
         position: "fixed",
         inset: 0,
-        zIndex: -1,
+        zIndex: -2,
         backgroundImage: 'url("/bg-space.png")',
         backgroundSize: "cover",
         backgroundPosition: "center top",
         backgroundRepeat: "no-repeat",
         backgroundColor: "#00030a",
       }} aria-hidden="true" />
+      {/* Живые звёзды и вспышки поверх фото */}
+      <V2StarField />
       <V2Sidebar
         activePage={page}
         onNavigate={onNavigate}
