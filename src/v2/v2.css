@@ -580,12 +580,18 @@ body:has(.v2-lab) {
   display: flex;
   flex-direction: column;
   padding: 18px;
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
   border-radius: 20px;
   background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
+}
+
+.v2-sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 .v2-brand {
@@ -4022,6 +4028,50 @@ body:has(.v2-lab) {
 
   .v2-fg-strategy-bottom {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ── Короткие экраны: сайдбар сжимается ── */
+@media (max-height: 820px) and (min-width: 769px) {
+  .v2-sidebar {
+    padding: 12px 14px;
+  }
+
+  .v2-brand {
+    padding-bottom: 14px;
+    gap: 8px;
+  }
+
+  .v2-brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .v2-brand-title {
+    font-size: 17px;
+  }
+
+  .v2-nav {
+    gap: 6px;
+    margin-top: 14px;
+  }
+
+  .v2-nav-item {
+    height: 38px;
+    font-size: 12px;
+  }
+
+  .v2-sidebar-level {
+    gap: 6px;
+    padding-top: 10px;
+  }
+
+  .v2-nav-bottom {
+    padding-top: 8px;
+  }
+
+  .v2-sidebar-xp {
+    display: none;
   }
 }
 
