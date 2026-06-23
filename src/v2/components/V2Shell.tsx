@@ -38,7 +38,7 @@ export function V2Shell({ data, page, onNavigate }: Props) {
       <div style={{
         position: "fixed",
         inset: 0,
-        zIndex: 0,
+        zIndex: -1,
         backgroundImage: 'url("/bg-space.png")',
         backgroundSize: "cover",
         backgroundPosition: "center top",
