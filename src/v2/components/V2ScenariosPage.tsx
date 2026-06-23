@@ -60,7 +60,8 @@ function BranchSvg() {
 
 export function V2ScenariosPage({ playbook, positions }: Props) {
   const positionSet = new Set(positions.map((p) => p.asset));
-  const cards = playbook.filter((c) => positionSet.has(c.asset));
+  const filteredCards = playbook.filter((c) => positionSet.has(c.asset));
+  const cards = filteredCards.length > 0 ? filteredCards : playbook;
 
   const [selectedAsset, setSelectedAsset] = useState(cards[0]?.asset ?? "");
   const [animKey, setAnimKey] = useState(0);

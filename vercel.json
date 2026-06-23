@@ -6,7 +6,7 @@
     },
     {
       "source": "/api/fear-greed",
-      "destination": "https://api.alternative.me/fng/?limit=1"
+      "destination": "https://api.alternative.me/fng/?limit=30"
     },
     {
       "source": "/(.*)",
