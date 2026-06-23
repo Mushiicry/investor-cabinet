@@ -9013,12 +9013,40 @@ strong.v2-rb-val {
     min-height: 0;
   }
 
+  .v2-health-core {
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
   .v2-health-stage {
-    min-height: 320px;
+    min-height: 0;
+    height: auto;
+    overflow: visible;
+  }
+
+  .v2-hc-radar-chart {
+    width: 100%;
+  }
+
+  .v2-hc-radar-chart svg {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 !important;
+    margin: 0 !important;
+  }
+
+  .v2-health-stage .v2-hc-radar-chart {
+    position: static;
+    inset: auto;
+    width: 100%;
   }
 
   .v2-health-stage .v2-hc-radar-chart svg {
-    min-height: 300px;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    flex: none;
   }
 
   .v2-hc-radar-strip {
