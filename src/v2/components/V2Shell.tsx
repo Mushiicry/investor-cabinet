@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
 import { V2ReportsPage } from "./V2ReportsPage";
 import { V2SignalsPage } from "./V2SignalsPage";
@@ -11,6 +11,7 @@ import { V2FearGreedStrategy } from "./V2FearGreedStrategy";
 import { V2HealthCore } from "./V2HealthCore";
 import { V2SettingsPage } from "./V2SettingsPage";
 import { V2BtcDailyChart } from "./V2BtcDailyChart";
+import { V2TabBar } from "./V2TabBar";
 
 import { V2PortfolioPage } from "./V2PortfolioPage";
 import { V2Sidebar } from "./V2Sidebar";
@@ -34,8 +35,36 @@ export function V2Shell({ data, page, onNavigate }: Props) {
     localStorage.setItem("mushii-profile-avatar", avatar);
   }
 
+  const criticalCount = useMemo(() => {
+    const { portfolio } = data;
+    let n = 0;
+    if (portfolio.totalPortfolioValue > 0 && portfolio.stableReserve < portfolio.totalPortfolioValue * 0.05) n++;
+    if (portfolio.totalPortfolioValue > 0 && portfolio.reserveShare < 0.10) n++;
+    return n;
+  }, [data.portfolio]);
+
   return (
     <div className="v2-lab">
+      {/* Мобильная шапка (только ≤768px) */}
+      <header className="v2-mob-header">
+        <button className="v2-mob-hamburger" type="button" aria-label="Меню">
+          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <path d="M2 5h14M2 9h14M2 13h14" strokeLinecap="round" />
+          </svg>
+        </button>
+        <div className="v2-mob-brand">
+          <span className="v2-mob-brand-title">MUSHII INVEST</span>
+          <span className="v2-mob-brand-sub">RISK FIRST / PNL SECOND</span>
+        </div>
+        <button className="v2-mob-bell" type="button" aria-label="Уведомления">
+          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
+            <path d="M9 2a4 4 0 00-4 4c0 4-1.6 5-1.6 5h11.2S13 10 13 6a4 4 0 00-4-4z" />
+            <path d="M7.4 14a1.6 1.6 0 003.2 0" strokeLinecap="round" />
+          </svg>
+          {criticalCount > 0 && <span className="v2-mob-bell-badge">{criticalCount}</span>}
+        </button>
+      </header>
+
       {/* Фото-фон космоса */}
       <div style={{
         position: "fixed",
@@ -93,7 +122,11 @@ export function V2Shell({ data, page, onNavigate }: Props) {
           <div className="v2-top-grid">
             <div className="v2-top-left">
               <div className="v2-metrics-area">
-                <V2TopMetrics portfolio={data.portfolio} />
+                <V2TopMetrics
+                  portfolio={data.portfolio}
+                  fearGreedIndex={data.fearGreedStrategy.currentIndex}
+                  fearGreedLabel={data.fearGreedStrategy.zone}
+                />
               </div>
               <div className="v2-hero-reactor">
                 <V2HealthCore portfolio={data.portfolio} health={data.health} />
@@ -128,6 +161,7 @@ export function V2Shell({ data, page, onNavigate }: Props) {
         </section>
         )}
       </main>
+      <V2TabBar activePage={page} onNavigate={onNavigate} criticalCount={criticalCount} />
     </div>
   );
 }

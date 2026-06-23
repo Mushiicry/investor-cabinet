@@ -3,6 +3,8 @@ import type { V2Portfolio } from "../InvestorCabinetV2Lab";
 
 type Props = {
   portfolio: V2Portfolio;
+  fearGreedIndex?: number;
+  fearGreedLabel?: string;
 };
 
 type Metric = {
@@ -14,6 +16,7 @@ type Metric = {
   deltaTone?: string;
   sub?: string;
   subTone?: string;
+  extraClass?: string;
 };
 
 const money = new Intl.NumberFormat("en-US", {
@@ -29,7 +32,7 @@ const signedMoney = (value: number) =>
 const percent = (ratio: number, digits = 2) =>
   `${ratio >= 0 ? "+" : ""}${(ratio * 100).toFixed(digits)}%`;
 
-export function V2TopMetrics({ portfolio }: Props) {
+export function V2TopMetrics({ portfolio, fearGreedIndex, fearGreedLabel }: Props) {
   const pnlTone =
     portfolio.pnlUsd > 0
       ? "top-metric-value-positive"
@@ -67,13 +70,21 @@ export function V2TopMetrics({ portfolio }: Props) {
       tone: portfolio.stableReserve > 0 ? "" : "top-metric-value-negative",
       area: "reserve",
     },
+    ...(fearGreedIndex !== undefined ? [{
+      label: "СТРАХ / ЖАДНОСТЬ",
+      value: String(fearGreedIndex),
+      tone: fearGreedIndex <= 25 ? "top-metric-value-negative" : fearGreedIndex >= 75 ? "top-metric-value-warn" : "",
+      sub: fearGreedLabel ?? "",
+      area: "feargreed",
+      extraClass: "v2-metric--feargreed",
+    }] : []),
   ];
 
   return (
     <header className="v2-topbar">
       <div className="v2-metrics">
         {metrics.map((metric) => (
-          <div className="v2-metric metric-card-beam" style={{ gridArea: metric.area }} key={metric.label}>
+          <div className={`v2-metric metric-card-beam${metric.extraClass ? ` ${metric.extraClass}` : ""}`} style={{ gridArea: metric.area }} key={metric.label}>
             <span className="top-metric-label">{metric.label}</span>
             {metric.value ? (
               <strong className={`top-metric-value ${metric.tone ?? ""}`}>{metric.value}</strong>
