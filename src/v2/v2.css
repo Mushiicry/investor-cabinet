@@ -43,7 +43,7 @@ body:has(.v2-lab) {
 .v2-lab {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 260px minmax(1040px, 1fr);
+  grid-template-columns: 260px 1fr;
   gap: 18px;
   padding: 18px;
   color: #ddefff;
@@ -1157,7 +1157,7 @@ body:has(.v2-lab) {
 
 .v2-top-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 784px;
+  grid-template-columns: minmax(0, 1fr) min(784px, 57%);
   gap: 14px;
   align-items: stretch;
 }
@@ -3981,11 +3981,17 @@ body:has(.v2-lab) {
 
 @media (max-width: 1280px) {
   .v2-lab {
-    grid-template-columns: 220px minmax(900px, 1fr);
+    grid-template-columns: 200px 1fr;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .v2-top-grid {
+    grid-template-columns: minmax(0, 1fr) min(680px, 56%);
   }
 
   .v2-command-grid {
-    grid-template-columns: 260px minmax(420px, 1fr) 360px;
+    grid-template-columns: 1fr;
   }
 
   .top-metric-value {
