@@ -122,11 +122,7 @@ export function V2Shell({ data, page, onNavigate }: Props) {
           <div className="v2-top-grid">
             <div className="v2-top-left">
               <div className="v2-metrics-area">
-                <V2TopMetrics
-                  portfolio={data.portfolio}
-                  fearGreedIndex={data.fearGreedStrategy.currentIndex}
-                  fearGreedLabel={data.fearGreedStrategy.currentMode}
-                />
+                <V2TopMetrics portfolio={data.portfolio} />
               </div>
               <div className="v2-hero-reactor">
                 <V2HealthCore portfolio={data.portfolio} health={data.health} />

@@ -8787,18 +8787,18 @@ strong.v2-rb-val {
     left: 0;
     right: 0;
     z-index: 150;
-    height: 56px;
+    height: 68px;
     padding: 0 14px;
-    background: rgba(0, 3, 10, 0.92);
+    background: rgba(0, 3, 10, 0.95);
     backdrop-filter: blur(20px) saturate(1.4);
     -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    border-bottom: 1px solid rgba(86, 196, 240, 0.1);
+    border-bottom: 1px solid rgba(86, 196, 240, 0.12);
   }
 
   .v2-mob-hamburger,
   .v2-mob-bell {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -8813,31 +8813,31 @@ strong.v2-rb-val {
 
   .v2-mob-hamburger svg,
   .v2-mob-bell svg {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
   }
 
   .v2-mob-brand {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1px;
+    gap: 3px;
   }
 
   .v2-mob-brand-title {
     font-family: "Black Ops One", system-ui, sans-serif;
-    font-size: 13px;
-    letter-spacing: 0.12em;
+    font-size: 20px;
+    letter-spacing: 0.1em;
     color: #56d8f5;
-    text-shadow: 0 0 20px rgba(86, 196, 240, 0.5);
+    text-shadow: 0 0 24px rgba(86, 196, 240, 0.6);
     line-height: 1;
   }
 
   .v2-mob-brand-sub {
-    font-size: 8px;
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 0.08em;
-    color: rgba(150, 173, 187, 0.5);
+    letter-spacing: 0.12em;
+    color: rgba(150, 173, 187, 0.65);
     text-transform: uppercase;
   }
 
@@ -8873,8 +8873,8 @@ strong.v2-rb-val {
   }
 
   .v2-main {
-    padding: calc(56px + 10px) 12px calc(60px + env(safe-area-inset-bottom, 0px) + 8px);
-    gap: 12px;
+    padding: calc(68px + 10px) 12px calc(60px + env(safe-area-inset-bottom, 0px) + 8px);
+    gap: 14px;
   }
 
   /* ── Tab Bar ── */
@@ -8979,29 +8979,50 @@ strong.v2-rb-val {
   }
 
   /* ── Overview: metrics ── */
+  /* ── Метрики: пирамида 3 сверху + 2 снизу ── */
   .v2-metrics {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: auto auto;
     grid-template-areas:
-      "invested   portftoday pnl     "
-      "positions  reserve    feargreed";
-  }
-
-  .v2-metric--feargreed {
-    display: grid;
+      "invested invested positions positions reserve reserve"
+      "portftoday portftoday portftoday pnl pnl pnl";
+    gap: 7px;
   }
 
   .v2-metric {
-    padding: 9px 12px 10px;
-    border-radius: 11px;
+    padding: 10px 10px 11px;
+    border-radius: 12px;
+  }
+
+  .top-metric-label {
+    font-size: 8px !important;
+    letter-spacing: 0.07em;
   }
 
   .top-metric-value {
-    font-size: clamp(1.1rem, 5vw, 1.4rem) !important;
+    font-size: clamp(1rem, 4.5vw, 1.35rem) !important;
   }
 
   .v2-metric-delta {
-    font-size: 14px !important;
-    margin-top: 3px;
+    font-size: 13px !important;
+    margin-top: 2px;
+  }
+
+  /* ── HealthCore: главный герой экрана ── */
+  .v2-hero-reactor {
+    min-height: 0;
+  }
+
+  .v2-health-stage {
+    min-height: 320px;
+  }
+
+  .v2-health-stage .v2-hc-radar-chart svg {
+    min-height: 300px;
+  }
+
+  .v2-hc-radar-strip {
+    display: none;
   }
 
   /* ── Overview: grid stacking ── */
