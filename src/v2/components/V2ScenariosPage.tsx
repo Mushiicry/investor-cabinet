@@ -11,9 +11,15 @@ type Props = {
 const FULL_NAME: Record<string, string> = {
   BTC: "Bitcoin", ETH: "Ethereum", SOL: "Solana", TON: "Toncoin",
   BNB: "BNB Chain", ATOM: "Cosmos", TIA: "Celestia", MNT: "Mantle",
-  USDT: "Tether", USDC: "USD Coin", "GOLD LONG": "Gold Futures",
+  USDT: "Tether", USDC: "USD Coin", "GOLD LONG": "Золото (Long)",
   "BTC LONG": "BTC Long", "BTC SHORT": "BTC Short", "MNT LONG": "MNT Long",
 };
+
+// Краткое отображаемое имя тикера (без служебных суффиксов)
+const TICKER_DISPLAY: Record<string, string> = {
+  "GOLD LONG": "GOLD",
+};
+function displayTicker(asset: string) { return TICKER_DISPLAY[asset] ?? asset; }
 
 const STATUS_TONE: Record<string, string> = {
   ACCUMULATE: "sc-dot-buy",   Накапливать: "sc-dot-buy",
@@ -22,15 +28,28 @@ const STATUS_TONE: Record<string, string> = {
   HEDGE: "sc-dot-hedge",      Хедж:        "sc-dot-hedge",
   RESERVE: "sc-dot-reserve",  Резерв:      "sc-dot-reserve",
   SPECULATION: "sc-dot-spec", Спекуляция:  "sc-dot-spec",
+  WAIT: "sc-dot-watch",       Ждать:       "sc-dot-watch",
+  READY: "sc-dot-buy",        Готово:      "sc-dot-buy",
 };
 
+// Все варианты написания → русский ярлык
 const STATUS_LABEL: Record<string, string> = {
-  ACCUMULATE: "Накапливать", WATCH: "Наблюдать", HOLD: "Держать",
-  HEDGE: "Хедж", RESERVE: "Резерв", SPECULATION: "Спекуляция",
+  ACCUMULATE: "Накапливать", Накапливать: "Накапливать",
+  WATCH:      "Наблюдать",  Наблюдать:   "Наблюдать",
+  HOLD:       "Держать",    Держать:     "Держать",
+  HEDGE:      "Хедж",       Хедж:        "Хедж",
+  RESERVE:    "Резерв",     Резерв:      "Резерв",
+  SPECULATION:"Спекуляция", Спекуляция:  "Спекуляция",
+  WAIT:       "Ждать",      Ждать:       "Ждать",
+  READY:      "Готово",     Готово:      "Готово",
 };
 
-function statusLabel(s: string) { return STATUS_LABEL[s] ?? s; }
-function dotClass(s: string)    { return STATUS_TONE[s] ?? "sc-dot-hold"; }
+function statusLabel(s: string) {
+  return STATUS_LABEL[s] ?? STATUS_LABEL[s.toUpperCase()] ?? s;
+}
+function dotClass(s: string) {
+  return STATUS_TONE[s] ?? STATUS_TONE[s.toUpperCase()] ?? "sc-dot-hold";
+}
 
 function signedPct(v: number) {
   return `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
@@ -113,7 +132,7 @@ export function V2ScenariosPage({ playbook, positions }: Props) {
                 </div>
                 <div className="v2-sc-rail-info">
                   <div className="v2-sc-rail-asset">
-                    <span className="v2-sc-rail-name">{c.asset}</span>
+                    <span className="v2-sc-rail-name">{displayTicker(c.asset)}</span>
                     <span className={`v2-sc-rail-dot ${dotClass(c.status)}`} />
                   </div>
                   <span className="v2-sc-rail-full">{FULL_NAME[c.asset] ?? c.asset}</span>
@@ -139,7 +158,7 @@ export function V2ScenariosPage({ playbook, positions }: Props) {
                 <CryptoLogo asset={card.asset} className="v2-sc-asset-logo-img" />
               </div>
               <div className="v2-sc-asset-names">
-                <span className="v2-sc-asset-ticker">{card.asset}</span>
+                <span className="v2-sc-asset-ticker">{displayTicker(card.asset)}</span>
                 <span className="v2-sc-asset-full">{FULL_NAME[card.asset] ?? card.asset}</span>
               </div>
               <div className={`v2-sc-status-badge ${dotClass(card.status)}`}>
