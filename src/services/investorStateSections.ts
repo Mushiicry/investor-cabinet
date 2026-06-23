@@ -24,25 +24,6 @@ type InvestorStateSectionInput = {
   invested: number;
 };
 
-const CASH_CATEGORY = "Свободные деньги";
-
-// Кэш/резерв = сумма текущей стоимости позиций категории «Свободные деньги»
-function sumCashFromRows(portfolio: PositionCalculated[]): number {
-  return Number(
-    portfolio
-      .filter((position) => position.category === CASH_CATEGORY)
-      .reduce((sum, position) => sum + (position.currentValue || 0), 0)
-      .toFixed(2)
-  );
-}
-
-// Активные позиции = со стоимостью или вложением (закрытые/пустые не считаем)
-function countActivePositions(portfolio: PositionCalculated[]): number {
-  return portfolio.filter(
-    (position) => (position.currentValue || 0) > 0 || (position.invested || 0) > 0
-  ).length;
-}
-
 export function buildOverviewStateFromApi({
   json,
   prev,
@@ -57,10 +38,14 @@ export function buildOverviewStateFromApi({
   const worstAsset = json?.overview?.worstPosition?.asset ?? prev.overview.worstPosition.asset;
   const bestPosition = bestOpenPosition ?? findPosition(portfolio, bestAsset);
   const worstPosition = worstOpenPosition ?? findPosition(portfolio, worstAsset);
-  const hasRows = portfolio.length > 0;
-  const apiPnl = toNumber(json?.overview?.pnl, prev.overview.pnl);
-  const pnl = invested ? portfolioValue - invested : apiPnl;
-  const pnlPct = invested ? pnl / invested : toRatio(json?.overview?.pnlPct, prev.overview.pnlPct);
+  const pnl = toNumber(
+    json?.overview?.pnl,
+    invested ? portfolioValue - invested : prev.overview.pnl
+  );
+  const pnlPct = toRatio(
+    json?.overview?.pnlPct,
+    invested ? pnl / invested : prev.overview.pnlPct
+  );
 
   return {
     ...prev.overview,
@@ -68,9 +53,9 @@ export function buildOverviewStateFromApi({
     portfolioValue,
     pnl,
     pnlPct,
-    reserve: hasRows ? sumCashFromRows(portfolio) : toNumber(json?.overview?.reserve, prev.overview.reserve),
-    positionsCount: hasRows ? countActivePositions(portfolio) : toNumber(json?.overview?.positionsCount, prev.overview.positionsCount),
-    health: toRatio(json?.overview?.health, prev.overview.health),
+    reserve: toNumber(json?.overview?.reserve, prev.overview.reserve),
+    positionsCount: portfolio.filter(item => item.category !== "Свободные деньги").length,
+    health: toNumber(json?.overview?.health, prev.overview.health),
     state: json?.overview?.state ?? prev.overview.state,
     signal: json?.overview?.signal ?? prev.overview.signal,
     action: json?.overview?.action ?? prev.overview.action,
@@ -125,7 +110,7 @@ export function buildRiskStateFromApi({
     metalsShare: categoryExposure.metalsShare,
     futuresShare: categoryExposure.futuresShare,
     cashShare: categoryExposure.cashShare,
-    health: toRatio(json?.risk?.health, prev.risk.health),
+    health: toNumber(json?.risk?.health, prev.risk.health),
     state: json?.risk?.state ?? prev.risk.state,
     signal: json?.risk?.signal ?? prev.risk.signal,
     summary: json?.risk?.summary ?? prev.risk.summary,

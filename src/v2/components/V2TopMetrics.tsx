@@ -37,10 +37,6 @@ export function V2TopMetrics({ portfolio }: Props) {
         ? "top-metric-value-negative"
         : "";
 
-  // Резерв — неприкосновенный запас (отдельный кошелёк USDT в сети BNB, цель 30% от вложено).
-  // Сейчас фактически 0 — это нарушение правила резерва.
-  const reserveHeld = 0;
-
   const metrics: Metric[] = [
     {
       label: "ВЛОЖЕНО",
@@ -66,11 +62,9 @@ export function V2TopMetrics({ portfolio }: Props) {
       area: "pnl",
     },
     {
-      label: "РЕЗЕРВ",
-      value: money.format(reserveHeld),
-      tone: "top-metric-value-negative",
-      sub: "нет резерва · нужно 30% · риск",
-      subTone: "v2-metric-subnote-danger",
+      label: "СВОБОДНЫЕ ДЕНЬГИ",
+      value: money.format(portfolio.stableReserve),
+      tone: portfolio.stableReserve > 0 ? "" : "top-metric-value-negative",
       area: "reserve",
     },
   ];

@@ -42,6 +42,8 @@ function doGet() {
   const risk = ss.getSheetByName("Риск");
   const decisions = ss.getSheetByName("Решения");
   const scenarios = ss.getSheetByName("Сценарии");
+  const history = ss.getSheetByName("История");
+  const transactions = ss.getSheetByName("Транзакции_IMPORT");
   const overviewData = getOverview(overview);
   const portfolioSource = calculations || portfolio;
 
@@ -55,7 +57,9 @@ function doGet() {
     risk: getRisk(risk),
     decisions: getDecisions(decisions),
     scenarios: getScenarios(scenarios),
-    fearGreedStrategy: getFearGreedStrategy(ss, overviewData.invested)
+    history: getHistory(history),
+    transactions: getTransactions(transactions),
+    fearGreedStrategy: getFearGreedStrategyReadOnly(ss, overviewData.invested)
   };
 
   return ContentService
@@ -287,10 +291,146 @@ function getScenarios(sheet) {
       base: row[1],
       bull: row[2],
       bear: row[3],
-      action: row[4],
-      invalidation: row[5],
-      status: row[6]
+      action: row[5],
+      invalidation: row[6],
+      status: ""
     }));
+}
+
+function getHistory(sheet) {
+  if (!sheet) return [];
+
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
+
+  const headers = values[0].map(value => String(value || "").trim());
+  const column = name => headers.indexOf(name);
+  const cell = (row, name) => {
+    const index = column(name);
+    return index >= 0 ? row[index] : "";
+  };
+
+  return values
+    .slice(1)
+    .filter(row => cell(row, "Дата") && cell(row, "Стоимость портфеля") !== "")
+    .map(row => ({
+      date: formatHistoryDate(cell(row, "Дата")),
+      portfolioValue: parseNumber(cell(row, "Стоимость портфеля")),
+      invested: parseNumber(cell(row, "Вложено")),
+      pnl: parseNumber(cell(row, "PnL $")),
+      pnlPct: parseNumber(cell(row, "PnL %")),
+      reserve: parseNumber(cell(row, "Резерв")),
+      positionsCount: parseNumber(cell(row, "Кол-во позиций")),
+      pointType: String(cell(row, "Тип точки") || ""),
+      note: String(cell(row, "Заметка") || ""),
+      trigger: String(cell(row, "Триггер") || ""),
+      source: String(cell(row, "Источник") || ""),
+      comment: String(cell(row, "Комментарий") || "")
+    }));
+}
+
+function formatHistoryDate(value) {
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return value.toISOString();
+  }
+
+  return String(value || "").trim();
+}
+
+function getTransactions(sheet) {
+  if (!sheet) return [];
+
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
+
+  const headers = values[0].map(value => String(value || "").trim());
+  const column = name => headers.indexOf(name);
+  const cell = (row, name) => {
+    const index = column(name);
+    return index >= 0 ? row[index] : "";
+  };
+
+  return values
+    .slice(1)
+    .filter(row => cell(row, "Import ID") || cell(row, "Hash"))
+    .map(row => {
+      const importId = String(cell(row, "Import ID") || "");
+      const note = String(cell(row, "Review Note") || "");
+      const preciseDate = parseFearGreedImportDate(note) ||
+        parseFearGreedImportIdDate(importId) ||
+        parseFearGreedDate(cell(row, "Дата"));
+
+      return {
+        id: importId,
+        status: String(cell(row, "Status") || ""),
+        date: preciseDate ? formatFearGreedDate(preciseDate) : formatHistoryDate(cell(row, "Дата")),
+        asset: String(cell(row, "Актив") || ""),
+        category: String(cell(row, "Категория") || ""),
+        action: String(cell(row, "Действие") || ""),
+        quantity: parseNumber(cell(row, "Количество")),
+        price: parseNumber(cell(row, "Цена")),
+        amount: parseNumber(cell(row, "Сумма")),
+        comment: String(cell(row, "Комментарий") || ""),
+        walletId: String(cell(row, "Wallet ID") || ""),
+        chain: String(cell(row, "Chain") || ""),
+        hash: String(cell(row, "Hash") || ""),
+        direction: String(cell(row, "Direction") || ""),
+        counterparty: String(cell(row, "Counterparty") || ""),
+        rawAsset: String(cell(row, "Raw Asset") || ""),
+        rawAmount: parseNumber(cell(row, "Raw Amount")),
+        note: note
+      };
+    })
+    .sort((a, b) => {
+      const aTime = parseFearGreedDate(a.date);
+      const bTime = parseFearGreedDate(b.date);
+      return (bTime ? bTime.getTime() : 0) - (aTime ? aTime.getTime() : 0);
+    });
+}
+
+function getFearGreedStrategyReadOnly(ss, portfolioValue) {
+  const currentIndex = getFearGreedCurrentIndex(ss);
+  const sheet = ss.getSheetByName("FearGreedRules");
+  const sourceRules = sheet ? readFearGreedRules(sheet) : getDefaultFearGreedRules();
+  const strategyBuys = getFearGreedStrategyBuys(ss, sourceRules, portfolioValue);
+  const rules = applyFearGreedStrategyBuysToRules(sourceRules, strategyBuys);
+  const currentMode = getFearGreedMode(currentIndex, rules);
+  const now = new Date();
+
+  return {
+    currentIndex: currentIndex,
+    currentMode: currentMode,
+    portfolioValue: portfolioValue,
+    lastBuy: strategyBuys.length ? strategyBuys[0] : getFearGreedLastBuyFromRules(rules, portfolioValue),
+    strategyBuys: strategyBuys,
+    history: getFearGreedHistory(ss),
+    rules: rules.map(rule => buildFearGreedRuleState(rule, currentIndex, currentMode, portfolioValue, now))
+  };
+}
+
+function getFearGreedHistory(ss) {
+  const sheet = ss.getSheetByName("FearGreedHistory");
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  const timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone() || "Europe/Moscow";
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues();
+
+  return values
+    .map(row => {
+      const date = parseFearGreedDate(row[0]);
+      const value = parseNumber(row[1]);
+      if (!date || !Number.isFinite(value)) return null;
+
+      return {
+        date: Utilities.formatDate(date, timezone, "yyyy-MM-dd"),
+        value: Math.max(0, Math.min(100, Math.round(value))),
+        label: String(row[2] || ""),
+        source: String(row[3] || "")
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .slice(-365);
 }
 
 function getFearGreedStrategy(ss, portfolioValue) {
@@ -362,45 +502,73 @@ function autoMarkFearGreedFromRecentStrategyImport(ss, rulesSheet, rules, curren
 }
 
 function getFearGreedLastStrategyBuy(ss, rules, portfolioValue) {
+  const buys = getFearGreedStrategyBuys(ss, rules, portfolioValue);
+  return buys.length ? buys[0] : getFearGreedLastBuyFromRules(rules, portfolioValue);
+}
+
+function getFearGreedStrategyBuys(ss, rules, portfolioValue) {
   const importSheet = ss.getSheetByName("Транзакции_IMPORT");
-  if (!importSheet || importSheet.getLastRow() < 2) return getFearGreedLastBuyFromRules(rules, portfolioValue);
+  if (!importSheet || importSheet.getLastRow() < 2) return [];
 
-  const lookbackRows = Math.min(importSheet.getLastRow() - 1, 80);
-  const rows = importSheet.getRange(importSheet.getLastRow() - lookbackRows + 1, 1, lookbackRows, 19).getValues();
+  const rows = importSheet.getRange(2, 1, importSheet.getLastRow() - 1, 19).getValues();
 
-  for (let index = rows.length - 1; index >= 0; index -= 1) {
-    const row = rows[index];
-    const importId = String(row[0] || "");
-    const action = String(row[5] || "").trim();
-    const asset = String(row[3] || "").trim().toUpperCase();
-    const comment = String(row[9] || "");
-    const amount = parseNumber(row[8]);
-    const assetPrice = parseNumber(row[7]);
-    const note = String(row[18] || "");
-    const isStrategySource =
-      importId.indexOf("SOLANA_BALANCE_DELTA") === 0 ||
-      importId.indexOf("SOLANA_SWAP_TX") === 0 ||
-      comment.indexOf("Solana wallet balance delta") >= 0 ||
-      comment.indexOf("Solana wallet transaction") >= 0;
-    if (!isStrategySource || action !== "Покупка" || !asset || !amount) continue;
+  return rows
+    .map(row => {
+      const importId = String(row[0] || "");
+      const action = String(row[5] || "").trim();
+      const asset = String(row[3] || "").trim().toUpperCase();
+      const chain = String(row[11] || "").trim().toUpperCase();
+      const comment = String(row[9] || "");
+      const amount = parseNumber(row[8]);
+      const assetPrice = parseNumber(row[7]);
+      const note = String(row[18] || "");
+      const isTonStrategyBuy =
+        importId.indexOf("TON_BALANCE_DELTA") === 0 ||
+        comment.indexOf("TON wallet balance delta") >= 0;
+      const isSolanaStrategyBuy =
+        importId.indexOf("SOLANA_SWAP_TX") === 0 ||
+        comment.indexOf("Solana wallet transaction") >= 0;
 
-    const boughtAt = parseFearGreedImportDate(note) || parseFearGreedImportIdDate(importId) || parseFearGreedDate(row[2]) || new Date();
-    const matchedRule = getFearGreedRuleForBuyAmount(rules, portfolioValue, amount) ||
-      getFearGreedRuleForBuyDate(rules, boughtAt);
-    if (!matchedRule) continue;
+      if (action !== "Покупка" || !asset || !amount) return null;
+      if (!isTonStrategyBuy && !isSolanaStrategyBuy) return null;
+      if (isTonStrategyBuy && chain && chain !== "TON") return null;
+      if (isSolanaStrategyBuy && chain && chain !== "SOLANA") return null;
 
-    return {
-      mode: matchedRule.mode,
-      range: matchedRule.minIndex + "-" + matchedRule.maxIndex,
-      label: matchedRule.label,
-      asset: asset,
-      assetPrice: roundFearGreed(assetPrice, 4),
-      buyAmount: roundFearGreed(amount, 2),
-      boughtAt: formatFearGreedDate(boughtAt)
-    };
-  }
+      const boughtAt = parseFearGreedImportDate(note) ||
+        parseFearGreedImportIdDate(importId) ||
+        parseFearGreedDate(row[2]);
+      if (!boughtAt) return null;
 
-  return getFearGreedLastBuyFromRules(rules, portfolioValue);
+      const matchedRule = getFearGreedRuleForBuyAmount(rules, portfolioValue, amount) ||
+        getFearGreedRuleForBuyDate(rules, boughtAt);
+      if (!matchedRule) return null;
+
+      return {
+        mode: matchedRule.mode,
+        range: matchedRule.minIndex + "-" + matchedRule.maxIndex,
+        label: matchedRule.label,
+        asset: asset,
+        assetPrice: roundFearGreed(assetPrice, 4),
+        buyAmount: roundFearGreed(amount, 2),
+        boughtAt: formatFearGreedDate(boughtAt)
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => parseFearGreedDate(b.boughtAt).getTime() - parseFearGreedDate(a.boughtAt).getTime())
+    .slice(0, 20);
+}
+
+function applyFearGreedStrategyBuysToRules(rules, strategyBuys) {
+  return rules.map(rule => {
+    const latestBuy = strategyBuys.find(buy => buy.mode === rule.mode);
+    if (!latestBuy) return rule;
+
+    const existingDate = parseFearGreedDate(rule.lastBuyAt);
+    const buyDate = parseFearGreedDate(latestBuy.boughtAt);
+    if (!buyDate || (existingDate && existingDate.getTime() >= buyDate.getTime())) return rule;
+
+    return Object.assign({}, rule, { lastBuyAt: latestBuy.boughtAt });
+  });
 }
 
 function getFearGreedRuleForBuyAmount(rules, portfolioValue, amount) {

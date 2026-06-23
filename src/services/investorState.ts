@@ -2,6 +2,7 @@ import { normalizeHistory } from "../lib/historyNormalizers";
 import { normalizeFearGreedStrategyFromApi } from "../lib/fearGreedStrategy";
 import { normalizeDecisions, normalizeScenarios } from "../lib/playbookNormalizers";
 import { normalizePortfolio, toNumber } from "../lib/portfolioNormalizers";
+import { normalizeTransactions } from "../lib/transactionNormalizers";
 import { getOpenRiskPositions } from "../lib/portfolioSelectors";
 import type { InvestorApiResponse } from "../types/api";
 import type { PortfolioState } from "../types/portfolio";
@@ -13,21 +14,15 @@ import {
 export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: PortfolioState): PortfolioState {
   const portfolio = normalizePortfolio(json?.portfolio, prev.portfolio);
   const history = normalizeHistory(json?.history, prev.history);
+  const transactions = normalizeTransactions(json?.transactions, prev.transactions);
   const decisions = normalizeDecisions(json?.decisions, prev.decisions);
   const scenarios = normalizeScenarios(json?.scenarios, prev.scenarios);
   const openRiskPositions = getOpenRiskPositions(portfolio);
 
-  // Единый источник правды: totals считаем из строк позиций («Расчеты»), а не из
-  // агрегатных ячеек листа (Обзор N6/N7), где фьючерсы учитывались асимметрично.
-  // Фьючерсы приходят в строках по марже как «вложено»; закрытые позиции = 0 и не влияют.
-  const round2 = (value: number) => Number(value.toFixed(2));
-  const hasRows = portfolio.length > 0;
-  const portfolioValue = hasRows
-    ? round2(portfolio.reduce((sum, position) => sum + (position.currentValue || 0), 0))
-    : toNumber(json?.overview?.portfolioValue, prev.overview.portfolioValue);
-  const invested = hasRows
-    ? round2(portfolio.reduce((sum, position) => sum + (position.invested || 0), 0))
-    : toNumber(json?.overview?.invested, prev.overview.invested);
+  // Google Sheets overview is the accounting source of truth. Position rows are
+  // presentation detail and must not silently replace reconciled portfolio totals.
+  const portfolioValue = toNumber(json?.overview?.portfolioValue, prev.overview.portfolioValue);
+  const invested = toNumber(json?.overview?.invested, prev.overview.invested);
   const fearGreedStrategy = normalizeFearGreedStrategyFromApi(
     json?.fearGreedStrategy,
     prev.fearGreedStrategy,
@@ -38,6 +33,7 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
     ...prev,
     portfolio,
     history,
+    transactions,
     decisions,
     scenarios,
     fearGreedStrategy,

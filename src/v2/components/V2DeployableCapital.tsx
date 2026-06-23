@@ -3,6 +3,8 @@ import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
 import type { FearGreedStrategy } from "../../types/portfolio";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
 
+const RESERVE_TARGET_PCT = 0.30;
+
 type Props = {
   portfolio: V2Portfolio;
   strategy: FearGreedStrategy;
@@ -22,18 +24,20 @@ export function V2DeployableCapital({ portfolio, strategy }: Props) {
     strategy.rules
   );
 
-  // Полная сумма незадействованных стейблов (= категория «Свободные деньги» в распределении)
   const freeCash =
     portfolio.stableReserve || portfolio.spotDeployable + portfolio.futuresDeployable;
 
-  // 1. Фьючи — всё свободное USDC на Hyperliquid
   const futuresCash = portfolio.futuresDeployable;
-  // 2. Стратегия — USDC, заложенные на полный цикл откупа в 3 ступени (20-29 / 15-19 / 0-14)
   const strategyCash = activeStrategy.rules
-    .filter((row) => row.buyPct > 0)
+    .filter((row) => row.buyPct > 0 && row.status !== "cooldown")
     .reduce((sum, row) => sum + row.buyAmount, 0);
-  // 3. Спот — всё, что остаётся свободным после фьючерсов и стратегии
   const spotCash = Math.max(freeCash - futuresCash - strategyCash, 0);
+
+  // Чистый резерв — что не распределено ни под фьючи, ни под стратегию, ни под спот
+  const pureReserve = Math.max(freeCash - futuresCash - strategyCash - spotCash, 0);
+  const totalPortfolio = portfolio.totalPortfolioValue || 0;
+  const reserveTarget = totalPortfolio * RESERVE_TARGET_PCT;
+  const reserveShort = pureReserve < reserveTarget;
 
   const rows: Array<{
     label: string;
@@ -80,6 +84,27 @@ export function V2DeployableCapital({ portfolio, strategy }: Props) {
             </div>
           );
         })}
+
+        {/* Строка резерва — всегда показываем, красная варнинг если ниже цели */}
+        <div className={`v2-alloc-card v2-reserve-row ${reserveShort ? "is-danger" : "is-ok"}`}>
+          <span className="v2-alloc-icon v2-reserve-icon" aria-hidden="true">
+            {reserveShort ? "⚠" : "◈"}
+          </span>
+          <div className="v2-alloc-main">
+            <div className="v2-alloc-line">
+              <span className="v2-alloc-name">
+                Резерв
+                <span className="v2-reserve-target"> · цель 30%</span>
+              </span>
+              <strong className="v2-alloc-pct">{money.format(pureReserve)}</strong>
+            </div>
+            {reserveShort && (
+              <div className="v2-reserve-warning">
+                ⚠ Опасно — резерв не сформирован. Нужно {money.format(reserveTarget)}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </section>
   );

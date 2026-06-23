@@ -1,7 +1,7 @@
 import type { PortfolioState } from "../types/portfolio";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
 
-const INVESTOR_DATA_CACHE_KEY = "investor-cabinet:last-live-investor-state";
+const INVESTOR_DATA_CACHE_KEY = "investor-cabinet:last-live-investor-state:v2";
 
 type CachedInvestorState = {
   data: PortfolioState;
@@ -40,6 +40,7 @@ const normalizeCachedPortfolioState = (value: unknown): PortfolioState | null =>
         pnlPct,
       },
       history: Array.isArray(value.history) ? value.history : [],
+      transactions: Array.isArray(value.transactions) ? value.transactions : [],
       fearGreedStrategy: cachedState.fearGreedStrategy ?? buildFearGreedStrategy(50, cachedState.overview.invested),
     };
   }

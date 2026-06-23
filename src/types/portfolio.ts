@@ -163,12 +163,42 @@ export type FearGreedStrategyLastBuy = {
   boughtAt: string;
 };
 
+export type FearGreedHistoryPoint = {
+  date: string;
+  value: number;
+  label: string;
+  source: string;
+};
+
 export type FearGreedStrategy = {
   currentIndex: number;
   currentMode: FearGreedMode;
   portfolioValue: number;
   lastBuy: FearGreedStrategyLastBuy | null;
+  strategyBuys: FearGreedStrategyLastBuy[];
+  history: FearGreedHistoryPoint[];
   rules: FearGreedStrategyRule[];
+};
+
+export type InvestorTransaction = {
+  id: string;
+  status: string;
+  date: string;
+  asset: string;
+  category: string;
+  action: string;
+  quantity: number;
+  price: number;
+  amount: number;
+  comment: string;
+  walletId: string;
+  chain: string;
+  hash: string;
+  direction: string;
+  counterparty: string;
+  rawAsset: string;
+  rawAmount: number;
+  note: string;
 };
 
 export type PortfolioHistoryPoint = {
@@ -193,6 +223,7 @@ export type PortfolioState = {
   decisions: Decision[];
   scenarios: ScenarioCard[];
   history: PortfolioHistoryPoint[];
+  transactions: InvestorTransaction[];
   fearGreedStrategy: FearGreedStrategy;
   updatedAt: string;
 };

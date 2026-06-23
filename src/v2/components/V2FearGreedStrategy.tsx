@@ -4,18 +4,9 @@ import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
 import type {
   FearGreedMode,
   FearGreedStrategy,
-  FearGreedStrategyLastBuy,
   FearGreedStrategyRule,
 } from "../../types/portfolio";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
-
-// Витринные прошлые покупки (история в контракте отсутствует) — для показа 5 транзакций
-const DEMO_PREV_BUYS: FearGreedStrategyLastBuy[] = [
-  { mode: "cautious",    range: "20-29", label: "", asset: "ETH", assetPrice: 2156,  buyAmount: 4.89, boughtAt: "2026-05-28T00:00:00" },
-  { mode: "strong",      range: "15-19", label: "", asset: "BTC", assetPrice: 64200, buyAmount: 7.51, boughtAt: "2026-05-20T00:00:00" },
-  { mode: "cautious",    range: "20-29", label: "", asset: "SOL", assetPrice: 138,   buyAmount: 7.51, boughtAt: "2026-05-01T00:00:00" },
-  { mode: "cautious",    range: "20-29", label: "", asset: "ETH", assetPrice: 2400,  buyAmount: 5.20, boughtAt: "2026-04-15T00:00:00" },
-];
 
 type Props = {
   portfolio: V2Portfolio;
@@ -28,7 +19,7 @@ function formatCooldown(hours: number) {
   const days = Math.floor(totalMins / (24 * 60));
   const hh = String(Math.floor((totalMins % (24 * 60)) / 60)).padStart(2, "0");
   const mm = String(totalMins % 60).padStart(2, "0");
-  return days > 0 ? `${days}:${hh}:${mm}` : `${hh}:${mm}`;
+  return days > 0 ? `${days}д ${hh}:${mm}` : `${hh}:${mm}`;
 }
 
 function formatBuyPct(value: number) {
@@ -85,10 +76,11 @@ function useMinuteTick() {
 
 export function V2FearGreedStrategy({ portfolio, strategy, variant = "full" }: Props) {
   useMinuteTick();
+  const currentIndex = strategy.currentIndex;
   const activeStrategy = buildFearGreedStrategy(
-    strategy.currentIndex,
+    currentIndex,
     portfolio.totalPortfolioValue || strategy.portfolioValue || 0,
-    strategy.rules
+    strategy.rules ?? [],
   );
   const lastBuy = strategy.lastBuy ?? activeStrategy.lastBuy;
 
@@ -100,8 +92,9 @@ export function V2FearGreedStrategy({ portfolio, strategy, variant = "full" }: P
           className={[
             "v2-fg-rule",
             `v2-fg-rule-${row.mode}`,
+            row.isCurrent ? "is-current" : "",
             row.isCurrent && row.cooldownRemainingHours <= 0 ? "is-active" : "",
-            row.isCurrent && row.cooldownRemainingHours > 0 ? "is-cooldown-row" : "",
+            row.cooldownRemainingHours > 0 ? "is-cooldown-row" : "",
           ].filter(Boolean).join(" ")}
         >
           <div className="v2-fg-rule-range">
@@ -119,7 +112,10 @@ export function V2FearGreedStrategy({ portfolio, strategy, variant = "full" }: P
     </div>
   );
 
-  const recentBuys = (lastBuy ? [lastBuy, ...DEMO_PREV_BUYS] : DEMO_PREV_BUYS).slice(0, 5);
+  const recentBuys = (strategy.strategyBuys?.length
+    ? strategy.strategyBuys
+    : lastBuy ? [lastBuy] : [])
+    .slice(0, 4);
 
   const meta = (
     <div className="v2-lastbuys">

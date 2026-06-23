@@ -148,7 +148,7 @@ export function buildPortfolioState(positionsInput: PositionInput[], decisions: 
       pnl,
       pnlPct,
       reserve: risk.reserve,
-      positionsCount: portfolio.length,
+      positionsCount: portfolio.filter((item) => item.category !== "Свободные деньги").length,
       health: risk.health,
       state: risk.state,
       signal: risk.signal,
@@ -163,6 +163,7 @@ export function buildPortfolioState(positionsInput: PositionInput[], decisions: 
     decisions,
     scenarios,
     history: [],
+    transactions: [],
     fearGreedStrategy: buildFearGreedStrategy(50, invested),
     updatedAt: new Date().toISOString(),
   };

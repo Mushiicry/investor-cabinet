@@ -1,4 +1,7 @@
+import { useState } from "react";
 import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
+import { V2ReportsPage } from "./V2ReportsPage";
+import { V2SignalsPage } from "./V2SignalsPage";
 import { V2Allocation3D } from "./V2Allocation3D";
 import { V2RiskEnginePage } from "./V2RiskEnginePage";
 import { V2ScenariosPage } from "./V2ScenariosPage";
@@ -6,8 +9,9 @@ import { V2DeployableCapital } from "./V2DeployableCapital";
 import { V2FearGreed } from "./V2FearGreed";
 import { V2FearGreedStrategy } from "./V2FearGreedStrategy";
 import { V2HealthCore } from "./V2HealthCore";
-import { V2MarketPsychology } from "./V2MarketPsychology";
-import { V2PortfolioHealth } from "./V2PortfolioHealth";
+import { V2SettingsPage } from "./V2SettingsPage";
+import { V2BtcDailyChart } from "./V2BtcDailyChart";
+
 import { V2PortfolioPage } from "./V2PortfolioPage";
 import { V2Sidebar } from "./V2Sidebar";
 import { V2TopMetrics } from "./V2TopMetrics";
@@ -19,11 +23,57 @@ type Props = {
 };
 
 export function V2Shell({ data, page, onNavigate }: Props) {
+  const [profileName,   setProfileName]   = useState(() => localStorage.getItem("mushii-profile-name")   ?? "");
+  const [profileAvatar, setProfileAvatar] = useState(() => localStorage.getItem("mushii-profile-avatar") ?? "");
+
+  function handleSaveProfile(name: string, avatar: string) {
+    setProfileName(name);
+    setProfileAvatar(avatar);
+    localStorage.setItem("mushii-profile-name",   name);
+    localStorage.setItem("mushii-profile-avatar", avatar);
+  }
+
   return (
     <div className="v2-lab">
-      <V2Sidebar activePage={page} onNavigate={onNavigate} />
+      <div style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 0,
+        backgroundImage: 'url("/bg-space.png")',
+        backgroundSize: "cover",
+        backgroundPosition: "center top",
+        backgroundRepeat: "no-repeat",
+        backgroundColor: "#00030a",
+      }} aria-hidden="true" />
+      <V2Sidebar
+        activePage={page}
+        onNavigate={onNavigate}
+        healthFactor={data.portfolio.healthFactor}
+        healthStatus={data.portfolio.healthStatus}
+        portfolio={data.portfolio}
+        health={data.health}
+        profileName={profileName}
+        profileAvatar={profileAvatar}
+      />
       <main className="v2-main">
-        {page === "portfolio" ? (
+        {page === "settings" ? (
+          <V2SettingsPage
+            initialName={profileName}
+            initialAvatar={profileAvatar}
+            onSave={handleSaveProfile}
+          />
+        ) : page === "signals" ? (
+          <V2SignalsPage
+            portfolio={data.portfolio}
+            positions={data.positions}
+            risk={data.risk}
+            health={data.health}
+            fearGreedStrategy={data.fearGreedStrategy}
+            allocation={data.allocation}
+          />
+        ) : page === "reports" ? (
+          <V2ReportsPage history={data.history} transactions={data.transactions} positions={data.positions} />
+        ) : page === "portfolio" ? (
           <V2PortfolioPage positions={data.positions} playbook={data.playbook} />
         ) : page === "scenarios" ? (
           <V2ScenariosPage playbook={data.playbook} positions={data.positions} />
@@ -44,7 +94,6 @@ export function V2Shell({ data, page, onNavigate }: Props) {
               <div className="v2-hero-reactor">
                 <V2HealthCore portfolio={data.portfolio} health={data.health} />
               </div>
-              <V2PortfolioHealth health={data.health} />
             </div>
             <div className="v2-strategy-zone">
               <div className="v2-strategy-top">
@@ -71,7 +120,7 @@ export function V2Shell({ data, page, onNavigate }: Props) {
               </div>
             </div>
           </div>
-          <V2MarketPsychology />
+          <V2BtcDailyChart currentFearGreed={data.fearGreedStrategy.currentIndex} />
         </section>
         )}
       </main>

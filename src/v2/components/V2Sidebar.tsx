@@ -1,5 +1,7 @@
-import type { ReactNode } from "react";
-import type { V2Page } from "../InvestorCabinetV2Lab";
+import { useState, type ReactNode } from "react";
+import type { PortfolioHealth } from "../../lib/portfolioHealth";
+import type { V2Page, V2Portfolio } from "../InvestorCabinetV2Lab";
+import { V2InvestorModal, computeLevel, getLevelTitle } from "./V2InvestorModal";
 
 const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
   {
@@ -51,6 +53,7 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
   },
   {
     label: "Отчёты",
+    page: "reports",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <rect x="3" y="2" width="12" height="14" rx="1.6" />
@@ -60,6 +63,7 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
   },
   {
     label: "Сигналы",
+    page: "signals",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <path d="M9 2a4 4 0 00-4 4c0 4-1.6 5-1.6 5h11.2S13 10 13 6a4 4 0 00-4-4z" />
@@ -69,6 +73,7 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
   },
   {
     label: "Настройки",
+    page: "settings",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <circle cx="9" cy="9" r="2.5" />
@@ -81,13 +86,54 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
 type Props = {
   activePage: V2Page;
   onNavigate: (page: V2Page) => void;
+  healthFactor: number;
+  healthStatus: string;
+  portfolio: V2Portfolio;
+  health: PortfolioHealth;
+  profileName: string;
+  profileAvatar: string;
 };
 
-export function V2Sidebar({ activePage, onNavigate }: Props) {
+const mainNavItems = navItems.filter(i => i.label !== "Настройки");
+const settingsItem  = navItems.find(i => i.label === "Настройки")!;
+
+export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, profileName, profileAvatar }: Props) {
+  const [levelOpen, setLevelOpen] = useState(false);
+  const { level, xpCurrent, xpMax } = computeLevel(healthFactor);
+  const levelTitle = getLevelTitle(level);
+  const xpFillPct = Math.round((xpCurrent / xpMax) * 100);
+  const renderItem = (item: typeof navItems[0]) => {
+    const isActive = item.page === activePage;
+    return (
+      <button
+        className={isActive ? "v2-nav-item is-active" : "v2-nav-item"}
+        key={item.label}
+        type="button"
+        disabled={!item.page}
+        onClick={() => item.page && onNavigate(item.page)}
+      >
+        <span className="v2-nav-icon">{item.icon}</span>
+        <span className="v2-nav-label">{item.label}</span>
+      </button>
+    );
+  };
+
+  const statusColors: Record<string, string> = {
+    CONTROL: "#5af08d",
+    BALANCED: "#e8b35a",
+    RISK: "#ff5d6c",
+  };
+  const statusColor = statusColors[healthStatus] ?? "#5af8ff";
+
   return (
     <aside className="v2-sidebar">
       <div className="v2-brand">
-        <div className="v2-brand-mark">M</div>
+        <div className="v2-brand-mark">
+          {profileAvatar
+            ? <img src={profileAvatar} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+            : "M"
+          }
+        </div>
         <div>
           <div className="v2-brand-title">Mushii Invest</div>
           <div className="v2-brand-subtitle">Risk First / PnL Second</div>
@@ -95,22 +141,41 @@ export function V2Sidebar({ activePage, onNavigate }: Props) {
       </div>
 
       <nav className="v2-nav" aria-label="V2 Lab navigation">
-        {navItems.map((item) => {
-          const isActive = item.page === activePage;
-          return (
-            <button
-              className={isActive ? "v2-nav-item is-active" : "v2-nav-item"}
-              key={item.label}
-              type="button"
-              disabled={!item.page}
-              onClick={() => item.page && onNavigate(item.page)}
-            >
-              <span className="v2-nav-icon">{item.icon}</span>
-              <span className="v2-nav-label">{item.label}</span>
-            </button>
-          );
-        })}
+        {mainNavItems.map(renderItem)}
       </nav>
+
+      <div className="v2-sidebar-level">
+        <div className="v2-level-ring" style={{ borderColor: statusColor + "99", boxShadow: `0 0 20px -4px ${statusColor}66, inset 0 0 14px ${statusColor}10` }}>
+          <span className="v2-level-score" style={{ color: statusColor, textShadow: `0 0 14px ${statusColor}b3` }}>
+            {level}
+          </span>
+          <span className="v2-level-sublabel">УРОВЕНЬ</span>
+        </div>
+        <button className="v2-level-btn" type="button" onClick={() => setLevelOpen(true)}>
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3">
+            <path d="M7 1l1.5 3 3.5.5-2.5 2.5.6 3.5L7 9l-3.1 1.5.6-3.5L2 4.5 5.5 4 7 1z" />
+          </svg>
+          {profileName || "ИНВЕСТОР"} — {levelTitle}
+        </button>
+        <div className="v2-sidebar-xp">
+          <div className="v2-sidebar-xp-track">
+            <span className="v2-sidebar-xp-fill" style={{ width: `${xpFillPct}%` }} />
+          </div>
+          <span className="v2-sidebar-xp-label">{xpCurrent} / {xpMax} XP</span>
+        </div>
+      </div>
+
+      <div className="v2-nav-bottom">
+        {renderItem(settingsItem)}
+      </div>
+
+      {levelOpen && (
+        <V2InvestorModal
+          portfolio={portfolio}
+          health={health}
+          onClose={() => setLevelOpen(false)}
+        />
+      )}
     </aside>
   );
 }

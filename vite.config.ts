@@ -18,7 +18,7 @@ export default defineConfig({
         target: 'https://api.alternative.me',
         changeOrigin: true,
         secure: true,
-        rewrite: () => '/fng/?limit=1',
+        rewrite: () => '/fng/?limit=30',
       },
     },
   },

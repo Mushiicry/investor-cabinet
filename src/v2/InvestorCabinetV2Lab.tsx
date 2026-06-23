@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { V2Shell } from "./components/V2Shell";
 import { useInvestorData } from "../hooks/useInvestorData";
+import { useFearGreed } from "../hooks/useFearGreed";
+import { useLivePrices } from "../hooks/useLivePrices";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
 import { buildPortfolioState } from "../lib/portfolioCalculations";
 import { computePortfolioHealth } from "../lib/portfolioHealth";
@@ -86,6 +88,8 @@ export type V2LabData = {
   decisions: V2Decision[];
   scenarios: V2Scenario[];
   fearGreedStrategy: PortfolioState["fearGreedStrategy"];
+  history: PortfolioState["history"];
+  transactions: PortfolioState["transactions"];
   allocation: Array<{ name: string; share: number; value: number }>;
   health: PortfolioHealth;
   playbook: PlaybookCard[];
@@ -171,6 +175,8 @@ const mockData: V2LabData = {
     },
   ],
   fearGreedStrategy: mockFearGreedStrategy,
+  history: [],
+  transactions: [],
   allocation: [
     { name: "Крипта", share: 0.627, value: 334 },
     { name: "Металлы", share: 0.026, value: 14 },
@@ -206,18 +212,34 @@ const categoryShare = (state: PortfolioState, name: string) =>
   state.overview.categories.find((category) => category.name === name)?.share ?? 0;
 
 const buildLiveV2Data = (state: PortfolioState): V2LabData => {
-  // Реальный Health Factor из долей портфеля (единый прозрачный расчёт)
-  const health = computePortfolioHealth({
+  const computedHealth = computePortfolioHealth({
     cashShare: categoryShare(state, "Свободные деньги"),
     cryptoShare: categoryShare(state, "Крипта"),
     futuresShare: categoryShare(state, "Фьючерсы"),
     largestShare: state.risk.largestRiskShare,
     categoryShares: state.overview.categories.map((category) => category.share),
   });
+  const healthFactor = Math.round(
+    state.overview.health || state.risk.health || computedHealth.healthFactor
+  );
+  const healthStatus: PortfolioHealth["status"] =
+    healthFactor >= 75 ? "CONTROL" : healthFactor >= 55 ? "BALANCED" : "RISK";
+  const health: PortfolioHealth = {
+    ...computedHealth,
+    healthFactor,
+    status: healthStatus,
+    riskLevel: state.overview.state || state.risk.state || computedHealth.riskLevel,
+  };
+  const diversification =
+    health.components.find((component) => component.key === "diversification")?.score ?? 0;
+  const largestRiskShare = state.risk.largestRiskShare;
+  const futuresShare = state.risk.futuresShare;
 
   return {
     ...mockData,
     fearGreedStrategy: state.fearGreedStrategy,
+    history: state.history,
+    transactions: state.transactions,
     health,
     playbook: buildPlaybookCards(
       [
@@ -246,6 +268,15 @@ const buildLiveV2Data = (state: PortfolioState): V2LabData => {
       share: category.share,
       value: category.value,
     })),
+    risk: {
+      reserve: Math.round(state.risk.reserveShare * 100),
+      exposure: Math.round(state.risk.cryptoShare * 100),
+      leverage: Math.round(futuresShare * 100),
+      diversification,
+      volatility: 0,
+      concentration: largestRiskShare > 0.35 ? "HIGH" : largestRiskShare > 0.25 ? "MEDIUM" : "LOW",
+      futuresPressure: futuresShare > 0.1 ? "HIGH" : futuresShare > 0.05 ? "MEDIUM" : "LOW",
+    },
     portfolio: {
       ...mockData.portfolio,
       totalPortfolioValue: state.overview.portfolioValue,
@@ -254,8 +285,8 @@ const buildLiveV2Data = (state: PortfolioState): V2LabData => {
       pnlPct: state.overview.pnlPct,
       stableReserve: state.overview.reserve,
       positionsCount: Math.round(state.overview.positionsCount),
-      healthFactor: health.healthFactor,
-      healthStatus: health.status,
+      healthFactor,
+      healthStatus,
       riskLevel: health.riskLevel,
       deployableCapital: state.risk.deployableCash,
       spotDeployable: state.risk.spotDeployableCash,
@@ -271,7 +302,10 @@ const buildLiveV2Data = (state: PortfolioState): V2LabData => {
   };
 };
 
-export type V2Page = "overview" | "portfolio" | "scenarios" | "risk";
+export type V2Page = "overview" | "portfolio" | "scenarios" | "risk" | "reports" | "signals" | "settings";
+
+// Все активы у которых есть живой источник цены (Hyperliquid / OKX)
+const LIVE_PRICE_ASSETS = ["BTC", "ETH", "SOL", "BNB", "TON", "ATOM", "MNT", "TIA", "APEX", "GRAM"];
 
 export default function InvestorCabinetV2Lab() {
   const [page, setPage] = useState<V2Page>("overview");
@@ -280,7 +314,54 @@ export default function InvestorCabinetV2Lab() {
     []
   );
   const investorData = useInvestorData(fallbackData);
-  const data = useMemo(() => buildLiveV2Data(investorData.data), [investorData.data]);
+  const fearGreedLive = useFearGreed();
+  const livePrices = useLivePrices(LIVE_PRICE_ASSETS);
+
+  const data = useMemo(() => {
+    const base = buildLiveV2Data(investorData.data);
+
+    // Переопределяем цены позиций живыми данными из Binance / OKX / Hyperliquid.
+    // Sheets-цены всегда устаревшие (обновляются вручную).
+    const positions = livePrices.prices && Object.keys(livePrices.prices).length > 0
+      ? base.positions.map((pos) => {
+          const livePrice = livePrices.prices[pos.asset];
+          if (!livePrice || !pos.currentPrice || pos.value === 0) return pos;
+
+          // quantity выводим из текущих Sheets-данных
+          const quantity = pos.value / pos.currentPrice;
+          const liveValue = livePrice * quantity;
+          const livePnl = liveValue - pos.invested;
+          const livePnlPct = pos.invested ? (livePnl / pos.invested) * 100 : 0;
+
+          return { ...pos, currentPrice: livePrice, value: liveValue, pnl: livePnl, pnlPct: livePnlPct };
+        })
+      : base.positions;
+
+    // Always use the live alternative.me value for currentIndex — Sheets field is manual/stale.
+    const liveValue = fearGreedLive.status === "ready" ? fearGreedLive.data.value : null;
+
+    const baseWithPrices = { ...base, positions };
+
+    if (liveValue === null) return baseWithPrices;
+
+    const invested = base.fearGreedStrategy.portfolioValue;
+    const liveStrategy = buildFearGreedStrategy(liveValue, invested, base.fearGreedStrategy.rules);
+
+    const mergedHistory =
+      base.fearGreedStrategy.history.length > 0
+        ? base.fearGreedStrategy.history
+        : fearGreedLive.liveHistory;
+
+    return {
+      ...baseWithPrices,
+      fearGreedStrategy: {
+        ...liveStrategy,
+        lastBuy: base.fearGreedStrategy.lastBuy,
+        strategyBuys: base.fearGreedStrategy.strategyBuys,
+        history: mergedHistory,
+      },
+    };
+  }, [investorData.data, fearGreedLive.status, fearGreedLive.data.value, fearGreedLive.liveHistory, livePrices.prices]);
 
   return <V2Shell data={data} page={page} onNavigate={setPage} />;
 }

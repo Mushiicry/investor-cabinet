@@ -9,20 +9,25 @@ type Props = {
   playbook: PlaybookCard[];
 };
 
-const money = new Intl.NumberFormat("ru-RU", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 1,
-});
-
 const money0 = new Intl.NumberFormat("ru-RU", {
   style: "currency",
   currency: "USD",
   maximumFractionDigits: 0,
 });
 
+function money(value: number): string {
+  const abs = Math.abs(value);
+  const digits = abs < 10 ? 2 : abs < 1000 ? 1 : 0;
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+}
+
 const signedMoney = (value: number) =>
-  `${value > 0 ? "+" : ""}${money.format(value)}`;
+  `${value > 0 ? "+" : ""}${money(value)}`;
 const signedPct = (value: number) => `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
 
 const STATUS_TONE: Record<string, string> = {
@@ -44,7 +49,7 @@ function pnlTone(value: number) {
 const FULL_NAME: Record<string, string> = {
   ETH: "Ethereum",
   SOL: "Solana",
-  TON: "Toncoin",
+  TON: "GRAM",
   ATOM: "Cosmos",
   "BTC LONG": "Bitcoin",
   "MNT LONG": "Mantle",
@@ -268,8 +273,8 @@ export function V2PortfolioPage({ positions, playbook }: Props) {
                       <div className="v2-row-block">
                         <span className="v2-rb-label">Покупка</span>
                         <span className="v2-rb-label">Вложено</span>
-                        <span className="v2-rb-val">{money.format(position.avgEntry)}</span>
-                        <strong className="v2-rb-val">{money.format(position.invested)}</strong>
+                        <span className="v2-rb-val">{money(position.avgEntry)}</span>
+                        <strong className="v2-rb-val">{money(position.invested)}</strong>
                       </div>
                       <div className="v2-row-block">
                         <span className="v2-rb-label">PnL %</span>
@@ -280,8 +285,8 @@ export function V2PortfolioPage({ positions, playbook }: Props) {
                       <div className="v2-row-block">
                         <span className="v2-rb-label">Цена</span>
                         <span className="v2-rb-label">Стоимость</span>
-                        <span className="v2-rb-val">{money.format(position.currentPrice)}</span>
-                        <strong className="v2-rb-val">{money.format(position.value)}</strong>
+                        <span className="v2-rb-val">{money(position.currentPrice)}</span>
+                        <strong className="v2-rb-val">{money(position.value)}</strong>
                       </div>
                       <div className="v2-row-block v2-row-block-last">
                         <span className={`v2-port-status ${STATUS_TONE[position.status] ?? "is-hold"}`}>
@@ -317,7 +322,7 @@ export function V2PortfolioPage({ positions, playbook }: Props) {
                 <StableCard asset={position.asset} meta={meta} />
                 <div className="v2-port-srow">
                   <span className="v2-port-purpose">{meta.purpose}</span>
-                  <strong>{money.format(position.value)}</strong>
+                  <strong>{money(position.value)}</strong>
                   <span className="v2-port-share">{position.share.toFixed(1)}%</span>
                   <span className={`v2-port-status ${STATUS_TONE[position.status] ?? "is-hold"}`}>
                     {position.status}

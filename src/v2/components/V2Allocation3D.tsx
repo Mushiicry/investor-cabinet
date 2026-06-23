@@ -57,9 +57,9 @@ function statusOf(share: number, limit: number | null, kind: LimitKind) {
 }
 
 export function V2Allocation3D({ allocation }: Props) {
-  const sorted = [...allocation].sort(
-    (a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name)
-  );
+  const sorted = [...allocation]
+    .filter((item) => item.name !== "Свободные деньги")
+    .sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
 
   return (
     <section className="v2-panel v2-allocation">
