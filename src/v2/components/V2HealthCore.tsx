@@ -88,6 +88,31 @@ function scaleValuePts(pts: string, factor: number): string {
   }).join(" ");
 }
 
+const SCORE_LABEL: Record<string, string> = {
+  reserve:         "Резерв",
+  crypto:          "Крипта",
+  futures:         "Фьючерсы",
+  concentration:   "Концентрация",
+  diversification: "Диверсификация",
+  flexibility:     "Гибкость",
+};
+
+const ADVICE: Record<string, string> = {
+  reserve:         "Пополните резерв — цель 30% портфеля",
+  crypto:          "Доля крипты выше лимита 60% — зафиксируйте часть",
+  futures:         "Фьючерсная экспозиция выше нормы — уменьшите позицию",
+  concentration:   "Один актив занимает слишком большую долю — снизьте концентрацию",
+  diversification: "Добавьте другой класс активов для лучшего баланса",
+  flexibility:     "Мало свободного кэша — высвободите ликвидность",
+};
+
+function healthInterpretation(score: number): { text: string; color: string } {
+  if (score >= 80) return { text: "Отлично — портфель в полном контроле", color: "#5AEF8D" };
+  if (score >= 65) return { text: "Хорошо — портфель в зоне контроля", color: "#55C7FF" };
+  if (score >= 50) return { text: "Умеренно — есть риски требующие внимания", color: "#FFB84A" };
+  return { text: "Риск — портфель требует корректировки", color: "#FF5D6C" };
+}
+
 type Props = { portfolio: V2Portfolio; health: PortfolioHealth };
 
 export function V2HealthCore({ portfolio, health }: Props) {
@@ -527,6 +552,50 @@ export function V2HealthCore({ portfolio, health }: Props) {
           </svg>
         </div>
       </div>
+
+      {/* ── Расшифровка Health Factor ── */}
+      {(() => {
+        const sorted = [...health.components].sort((a, b) => a.score - b.score);
+        const weak = sorted.filter(c => c.score < 65).slice(0, 2);
+        const strong = sorted.filter(c => c.score >= 75).slice(-1);
+        const interp = healthInterpretation(health.healthFactor);
+        const topAdvice = weak[0] ? ADVICE[weak[0].key] : null;
+
+        return (
+          <div className="v2-hc-insight">
+            <div className="v2-hc-insight-header">
+              <span className="v2-hc-insight-score" style={{ color: interp.color }}>
+                {health.healthFactor}
+              </span>
+              <span className="v2-hc-insight-interp">{interp.text}</span>
+            </div>
+
+            <div className="v2-hc-insight-rows">
+              {strong.map(c => (
+                <div key={c.key} className="v2-hc-insight-row v2-hc-insight-row--ok">
+                  <span className="v2-hc-insight-icon">✓</span>
+                  <span className="v2-hc-insight-name">{SCORE_LABEL[c.key]}</span>
+                  <span className="v2-hc-insight-val">{c.score}</span>
+                </div>
+              ))}
+              {weak.map(c => (
+                <div key={c.key} className="v2-hc-insight-row v2-hc-insight-row--warn">
+                  <span className="v2-hc-insight-icon">⚠</span>
+                  <span className="v2-hc-insight-name">{SCORE_LABEL[c.key]}</span>
+                  <span className="v2-hc-insight-val">{c.score}</span>
+                </div>
+              ))}
+            </div>
+
+            {topAdvice && (
+              <div className="v2-hc-insight-action">
+                <span className="v2-hc-insight-arrow">→</span>
+                {topAdvice}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <span className="v2-sr-only">Здоровье портфеля {portfolio.healthFactor}.</span>
     </section>

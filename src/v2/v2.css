@@ -1740,6 +1740,103 @@ body:has(.v2-lab) {
   letter-spacing: 0.06em;
 }
 
+/* ── Health Factor Insight Panel ── */
+.v2-hc-insight {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  margin: 0 14px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(86,196,240,0.08) 0%, rgba(5,14,28,0.60) 100%);
+  border: 1px solid rgba(86,196,240,0.18);
+  backdrop-filter: blur(10px);
+}
+
+.v2-hc-insight-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.v2-hc-insight-score {
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.v2-hc-insight-interp {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(190, 220, 235, 0.80);
+  text-transform: uppercase;
+}
+
+.v2-hc-insight-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.v2-hc-insight-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.v2-hc-insight-row--ok {
+  color: rgba(90, 239, 141, 0.85);
+}
+
+.v2-hc-insight-row--warn {
+  color: rgba(255, 184, 74, 0.90);
+}
+
+.v2-hc-insight-icon {
+  font-size: 10px;
+  text-align: center;
+}
+
+.v2-hc-insight-name {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+}
+
+.v2-hc-insight-val {
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 0.90;
+}
+
+.v2-hc-insight-action {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(86,196,240,0.12);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(200, 235, 250, 0.75);
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+
+.v2-hc-insight-arrow {
+  color: #56d8f5;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 .v2-health-core {
   isolation: isolate;
   display: flex;
