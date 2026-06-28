@@ -58,7 +58,6 @@ function statusOf(share: number, limit: number | null, kind: LimitKind) {
 
 export function V2Allocation3D({ allocation }: Props) {
   const sorted = [...allocation]
-    .filter((item) => item.name !== "Свободные деньги")
     .sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
 
   return (

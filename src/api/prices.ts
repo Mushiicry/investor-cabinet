@@ -64,6 +64,36 @@ async function fetchHyperliquidPrices(assets: string[]): Promise<Record<string, 
   return result;
 }
 
+// ── Плечо открытых фьючерс-позиций (clearinghouseState, привязан к адресу) ──
+// Возвращает map: COIN (upper) → выставленное плечо.
+export async function fetchHyperliquidLeverage(
+  address: string
+): Promise<Record<string, number>> {
+  if (!address) return {};
+
+  const res = await fetch(HYPERLIQUID_INFO_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "clearinghouseState", user: address }),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Hyperliquid clearinghouseState error: ${res.status}`);
+
+  const data = (await res.json()) as {
+    assetPositions?: { position?: { coin?: string; leverage?: { value?: number } } }[];
+  };
+
+  const result: Record<string, number> = {};
+  for (const ap of data?.assetPositions ?? []) {
+    const coin = ap?.position?.coin;
+    const lev = Number(ap?.position?.leverage?.value);
+    if (coin && Number.isFinite(lev) && lev > 0) {
+      result[String(coin).toUpperCase()] = lev;
+    }
+  }
+  return result;
+}
+
 export async function fetchLivePrices(assets: string[]): Promise<Record<string, number>> {
   const result: Record<string, number> = {};
 

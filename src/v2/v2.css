@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Black+Ops+One&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;0,6..96,700;0,6..96,900;1,6..96,400;1,6..96,700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
 :root {
   color-scheme: dark;
@@ -48,7 +48,7 @@ body:has(.v2-lab) {
   padding: 18px;
   color: #ddefff;
   font-size: 15px;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "Bodoni Moda", Georgia, serif;
   background: transparent;
 }
 
@@ -655,88 +655,77 @@ body:has(.v2-lab) {
 }
 
 /* ── Sidebar investor level widget ── */
-.v2-sidebar-level {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 0 12px;
+/* ── Sidebar profile strip (replaces XP ring) ── */
+.v2-sidebar-profile {
+  padding: 8px 0;
   border-top: 1px solid rgba(92, 231, 245, 0.08);
   border-bottom: 1px solid rgba(92, 231, 245, 0.08);
   margin-bottom: 4px;
 }
 
-.v2-level-ring {
-  position: relative;
-  width: 68px;
-  height: 68px;
+.v2-sidebar-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.18s;
+  text-align: left;
+}
+
+.v2-sidebar-profile-btn:hover {
+  background: rgba(0, 210, 255, 0.06);
+}
+
+.v2-sidebar-profile-dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  border: 1.5px solid rgba(0, 210, 255, 0.55);
-  background: radial-gradient(ellipse at 50% 40%, rgba(0, 180, 255, 0.14), rgba(0, 6, 16, 0.9));
+  flex-shrink: 0;
+}
+
+.v2-sidebar-profile-info {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: 1px;
-  box-shadow:
-    0 0 20px -4px rgba(0, 210, 255, 0.4),
-    inset 0 0 14px rgba(0, 210, 255, 0.06);
-  animation: hudFrameGlow 2.6s ease-in-out infinite;
 }
 
-.v2-level-ring::before {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 210, 255, 0.18);
-  pointer-events: none;
-}
-
-.v2-level-score {
-  font-family: "Black Ops One", system-ui, sans-serif;
-  font-size: 26px;
-  line-height: 1;
-  color: #5af8ff;
-  text-shadow: 0 0 14px rgba(90, 248, 255, 0.7);
-}
-
-.v2-level-sublabel {
-  font-size: 7px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  color: rgba(92, 231, 245, 0.55);
-  text-transform: uppercase;
-}
-
-.v2-level-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+.v2-sidebar-profile-name {
   font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(210, 240, 255, 0.9);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v2-sidebar-profile-title {
+  font-size: 10px;
+  color: rgba(92, 210, 240, 0.55);
   letter-spacing: 0.02em;
-  color: rgba(0, 210, 255, 0.85);
-  text-transform: none;
-  background: rgba(0, 210, 255, 0.05);
-  border: 1px solid rgba(0, 210, 255, 0.22);
-  border-radius: 6px;
-  padding: 5px 10px;
-  cursor: pointer;
-  width: 100%;
-  justify-content: center;
-  transition: background 0.2s, border-color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.v2-level-btn:hover {
-  background: rgba(0, 210, 255, 0.1);
-  border-color: rgba(0, 210, 255, 0.4);
-}
-
-.v2-level-btn svg {
-  width: 12px;
-  height: 12px;
+.v2-sidebar-profile-arrow {
+  width: 10px;
+  height: 10px;
   flex-shrink: 0;
+  color: rgba(92, 210, 240, 0.35);
+  transition: color 0.18s;
+}
+
+.v2-sidebar-profile-btn:hover .v2-sidebar-profile-arrow {
+  color: rgba(92, 210, 240, 0.7);
 }
 
 /* ── Nav glow pulse (active) ── */
@@ -937,25 +926,71 @@ body:has(.v2-lab) {
   display: block;
 }
 
+/* legacy — kept for other usages */
 .v2-metrics {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  grid-template-rows: auto auto;
-  grid-template-areas:
-    "invested invested portftoday portftoday pnl pnl"
-    "positions positions positions reserve reserve reserve";
-  align-items: stretch;
-  gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
 }
 
 .v2-metric-delta {
   font-family: "Black Ops One", system-ui, sans-serif;
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1;
-  margin-top: 6px;
   letter-spacing: 0.01em;
+  color: rgba(170, 205, 225, 0.85);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.v2-metric-delta.top-metric-value-positive { color: rgba(90,240,141,0.90); }
+.v2-metric-delta.top-metric-value-negative { color: rgba(255,93,108,0.90); }
+
+.v2-metric-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.v2-metric-arrow {
+  width: 12px;
+  height: 14px;
+  flex-shrink: 0;
+}
+@keyframes v2ArrowBounceDown {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50%       { transform: translateY(3px); opacity: 0.6; }
+}
+@keyframes v2ArrowBounceUp {
+  0%, 100% { transform: translateY(0); opacity: 1; }
+  50%       { transform: translateY(-3px); opacity: 0.6; }
+}
+.v2-metric-arrow--down { animation: v2ArrowBounceDown 1.4s ease-in-out infinite; }
+.v2-metric-arrow--up   { animation: v2ArrowBounceUp   1.4s ease-in-out infinite; }
+
+.v2-metric-badge {
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255,93,108,0.12);
+  border: 1px solid rgba(255,93,108,0.25);
+  color: #ff5d6c;
+  white-space: nowrap;
+}
+.v2-metric-badge.top-metric-value-positive {
+  background: rgba(90,240,141,0.10);
+  border-color: rgba(90,240,141,0.25);
+  color: #5af08d;
+}
+.v2-metric-badge.top-metric-value-negative {
+  background: rgba(255,93,108,0.12);
+  border-color: rgba(255,93,108,0.25);
+  color: #ff5d6c;
 }
 
 .v2-metric-subnote {
@@ -1018,19 +1053,91 @@ body:has(.v2-lab) {
 }
 
 .top-metric-label {
-  color: #55f3ff;
-  letter-spacing: 0.08em;
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(195, 215, 230, 0.52);
 }
 
 .top-metric-value {
+  font-family: "Libre Baskerville", Georgia, serif;
+  font-size: clamp(1.5rem, 1.65vw, 2.2rem);
+  font-weight: 900;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: -0.02em;
   color: #ffffff;
+  text-shadow: 0 2px 28px rgba(255, 255, 255, 0.10);
+  white-space: nowrap;
+}
+.v2-metric-label-white {
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+/* ── Портфель сегодня — карточка с графиком ── */
+.v2-metric--portfolio {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  text-align: left !important;
+  justify-items: unset !important;
+  gap: 12px;
+  padding: 10px 16px 10px 18px;
+}
+
+.v2-metric-pf-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.v2-metric-pf-label {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.v2-metric-pf-value {
   font-family: "Black Ops One", system-ui, sans-serif;
   font-size: clamp(1.6rem, 1.7vw, 2.4rem);
   font-weight: 400;
   line-height: 1;
   letter-spacing: 0.02em;
-  text-shadow: 0 0 14px rgba(91, 214, 255, 0.28);
+  color: #56c4f0;
+  text-shadow: 0 0 18px rgba(86,196,240,0.35);
   white-space: nowrap;
+}
+
+.v2-metric-pf-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.v2-metric-pf-right {
+  flex-shrink: 0;
+  width: 120px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+}
+
+.v2-metric-sparkline {
+  width: 120px;
+  height: 60px;
+  display: block;
+  overflow: visible;
 }
 
 .top-metric-pnl {
@@ -1163,7 +1270,7 @@ body:has(.v2-lab) {
 
 .v2-top-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) min(784px, 57%);
+  grid-template-columns: minmax(0, 1fr) min(400px, 28%);
   gap: 14px;
   align-items: stretch;
 }
@@ -1192,6 +1299,8 @@ body:has(.v2-lab) {
   width: 100%;
   flex: 1 1 auto;
   display: flex;
+  padding-right: 50px;
+  margin-top: 50px;
 }
 
 .v2-hero-reactor > * {
@@ -1206,6 +1315,9 @@ body:has(.v2-lab) {
   flex-direction: column;
   gap: 14px;
   align-self: start;
+  position: relative;
+  z-index: 5;
+  transform: translateX(-60px);
 }
 
 .v2-strategy-top {
@@ -1221,12 +1333,11 @@ body:has(.v2-lab) {
   height: 250px;
 }
 
-/* Под лесенкой: 2 столбца — распределение средств + распределение стейблов */
+/* Под стратегией: вертикальный стек при узкой колонке */
 .v2-alloc-stables {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .v2-secondary-row {
@@ -1740,6 +1851,433 @@ body:has(.v2-lab) {
   letter-spacing: 0.06em;
 }
 
+/* ── Health core: 3-зонный layout (диагноз | радар | рекомендации) ──
+   Блок на всю ширину: боковые колонки шире, радар крупнее по высоте. */
+.v2-hc-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 1.25fr) minmax(0, 2.3fr) minmax(300px, 1.2fr);
+  align-items: stretch;
+  gap: 14px;
+}
+.v2-hc-layout .v2-health-stage {
+  min-height: 760px;
+}
+
+/* Ряд под блоком здоровья: стратегия DCA + распределение средств */
+/* старый secondary-row (не используется в новой раскладке) */
+.v2-secondary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-top: 90px;
+}
+
+/* ── Распределение средств + кольцо: центровка под радаром ── */
+.v2-alloc-center-row {
+  display: grid;
+  grid-template-columns: minmax(300px, 1.25fr) minmax(0, 2.3fr) minmax(300px, 1.2fr);
+  gap: 14px;
+  margin-top: 50px;
+}
+.v2-alloc-center-inner {
+  grid-column: 2;
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+  border-radius: 14px;
+  background: linear-gradient(160deg,
+    rgba(30,80,160,0.22) 0%,
+    rgba(10,28,68,0.52) 40%,
+    rgba(4,12,30,0.68) 100%);
+  border: 1px solid rgba(86,196,240,0.20);
+  backdrop-filter: blur(18px) saturate(130%);
+  box-shadow:
+    0 1px 0 rgba(180,230,255,0.10) inset,
+    0 8px 40px rgba(0,8,28,0.55),
+    0 0 24px rgba(56,160,240,0.07);
+  overflow: hidden;
+}
+.v2-alloc-center-inner > * {
+  flex: 1;
+  min-width: 0;
+}
+
+/* снимаем индивидуальные фоны/бордеры дочерних виджетов */
+.v2-alloc-center-inner .v2-panel {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  border-radius: 0 !important;
+}
+.v2-alloc-center-inner .v2-aring-wrap {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  border-radius: 0 !important;
+}
+
+/* ── DCA row: выровнен по левой колонке + центр ── */
+.v2-dca-row {
+  display: grid;
+  grid-template-columns: minmax(300px, 1.25fr) minmax(0, 2.3fr) minmax(300px, 1.2fr);
+  gap: 14px;
+}
+.v2-dca-row > * {
+  grid-column: 1 / 3;
+}
+
+/* ── Кольцо распределения ── */
+.v2-aring-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 18px 16px;
+  border-radius: 14px;
+  background: linear-gradient(160deg,
+    rgba(30,80,160,0.22) 0%,
+    rgba(10,28,68,0.52) 40%,
+    rgba(4,12,30,0.68) 100%);
+  border: 1px solid rgba(86,196,240,0.18);
+  backdrop-filter: blur(18px) saturate(130%);
+  box-shadow:
+    0 1px 0 rgba(180,230,255,0.12) inset,
+    0 8px 40px rgba(0,8,28,0.55),
+    0 0 24px rgba(56,160,240,0.08);
+}
+.v2-aring-svg {
+  width: 160px;
+  height: 160px;
+  flex-shrink: 0;
+}
+.v2-aring-total-label {
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  fill: rgba(140,200,230,0.6);
+}
+.v2-aring-total-val {
+  font-family: "Libre Baskerville", Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+  fill: rgba(220,240,255,0.92);
+}
+.v2-aring-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.v2-aring-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(190,220,240,0.85);
+}
+.v2-aring-legend-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.v2-aring-legend-name { flex: 1; min-width: 0; }
+.v2-aring-legend-pct {
+  font-family: "Libre Baskerville", Georgia, serif;
+  font-weight: 700;
+  color: rgba(220,240,255,0.9);
+}
+
+.v2-hc-side {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+  padding: 18px 16px;
+  border-radius: 14px;
+  background:
+    linear-gradient(160deg,
+      rgba(30,80,160,0.22) 0%,
+      rgba(10,28,68,0.52) 40%,
+      rgba(4,12,30,0.68) 100%);
+  border: 1px solid rgba(86,196,240,0.22);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  box-shadow:
+    0 0 0 1px rgba(86,196,240,0.06) inset,
+    0 1px 0 rgba(180,230,255,0.12) inset,
+    0 8px 40px rgba(0,8,28,0.55),
+    0 0 24px rgba(56,160,240,0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+/* блик сверху (стеклянная полоса) */
+.v2-hc-side::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(180,230,255,0.55) 35%,
+    rgba(210,245,255,0.75) 50%,
+    rgba(180,230,255,0.55) 65%,
+    transparent 100%);
+  border-radius: 0 0 50% 50%;
+  pointer-events: none;
+}
+
+/* мягкое свечение внутри снизу */
+.v2-hc-side::after {
+  content: "";
+  position: absolute;
+  bottom: 0; left: 20%; right: 20%;
+  height: 60px;
+  background: radial-gradient(ellipse at 50% 100%,
+    rgba(56,160,240,0.10) 0%,
+    transparent 70%);
+  pointer-events: none;
+}
+
+.v2-hc-side--recommend { text-align: left; margin-right: 36px; align-self: center; }
+.v2-hc-side--diagnosis {
+  justify-content: flex-start;
+  align-self: center;
+  border-left: 2px solid rgba(86,196,240,0.35);
+  box-shadow:
+    0 0 0 1px rgba(86,196,240,0.06) inset,
+    0 1px 0 rgba(180,230,255,0.12) inset,
+    0 8px 40px rgba(0,8,28,0.55),
+    -4px 0 24px rgba(56,160,240,0.12),
+    0 0 24px rgba(56,160,240,0.08);
+}
+
+/* ── Диагноз: body + why под именем ── */
+.v2-hc-diag-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.v2-hc-diag-why {
+  font-size: 12px;
+  line-height: 1.3;
+  color: rgba(160, 200, 225, 0.65);
+}
+
+/* ── Рекомендации: gain + body ── */
+.v2-hc-rec-row {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(200,225,240,0.88);
+  align-items: flex-start;
+}
+.v2-hc-rec-gain {
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 900;
+  color: #5AEF8D;
+  font-family: "Libre Baskerville", Georgia, serif;
+  min-width: 32px;
+}
+.v2-hc-rec-body { display: flex; flex-direction: column; gap: 2px; }
+.v2-hc-rec-action { font-size: 13px; line-height: 1.4; }
+.v2-hc-rec-source { font-size: 11px; color: rgba(150, 195, 225, 0.5); }
+
+/* ── Шкала здоровья портфеля (верх левой колонки) ── */
+.v2-hc-healthbar {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-bottom: 13px;
+  margin-bottom: 13px;
+  border-bottom: 1px solid rgba(86, 196, 240, 0.12);
+}
+.v2-hc-healthbar-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.v2-hc-healthbar-num { white-space: nowrap; }
+.v2-hc-healthbar-headings {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.v2-hc-healthbar-top .v2-hc-detail-btn {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  font-size: 11px;
+}
+.v2-hc-healthbar-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(0, 200, 255, 0.85);
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+.v2-hc-healthbar-num {
+  font-family: "Libre Baskerville", Georgia, serif;
+  font-size: 26px;
+  line-height: 1;
+}
+.v2-hc-healthbar-num span {
+  color: rgba(150, 195, 225, 0.55);
+}
+.v2-hc-healthbar-track {
+  position: relative;
+  height: 9px;
+  border-radius: 999px;
+  margin-top: 5px;
+  background: linear-gradient(90deg,
+    #ff5d6c 0%, #ff8a4a 25%, #e6bf3e 50%, #9ada55 75%, #5aef8d 100%);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+}
+.v2-hc-healthbar-marker {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 17px;
+  border-radius: 3px;
+  background: #ffffff;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 9px rgba(255,255,255,0.85), 0 0 3px rgba(0,0,0,0.6);
+}
+.v2-hc-healthbar-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: rgba(150, 195, 225, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-hc-side-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(140, 205, 240, 0.85);
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+.v2-hc-side-verdict {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.v2-hc-side-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.v2-hc-side--diagnosis .v2-hc-side-list {
+  flex: 1;
+  justify-content: space-between;
+}
+
+/* строки диагноза */
+.v2-hc-diag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+.v2-hc-diag-icon { flex-shrink: 0; font-size: 14px; }
+.v2-hc-diag-name { flex: 1; min-width: 0; color: rgba(200,225,240,0.9); font-size: 15px; font-weight: 600; }
+.v2-hc-diag-val { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 16px; }
+.v2-hc-diag-row--warn .v2-hc-diag-icon,
+.v2-hc-diag-row--warn .v2-hc-diag-val { color: #E6B33A; }
+.v2-hc-diag-row--ok .v2-hc-diag-icon,
+.v2-hc-diag-row--ok .v2-hc-diag-val { color: #5AEF8D; }
+.v2-hc-diag-row--critical {
+  background: rgba(255,60,60,0.08);
+  border-radius: 6px;
+  padding: 4px 6px;
+  border-left: 2px solid rgba(255,80,80,0.6);
+}
+.v2-hc-diag-row--critical .v2-hc-diag-icon { color: #ff5d6c; }
+.v2-hc-diag-row--critical .v2-hc-diag-name { color: #ff8080; font-weight: 600; }
+
+/* строки рекомендаций */
+.v2-hc-rec-row {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(200,225,240,0.88);
+}
+.v2-hc-rec-arrow { color: #56c4f0; flex-shrink: 0; font-weight: 700; }
+.v2-hc-rec-row--ok .v2-hc-rec-arrow { color: #5AEF8D; }
+.v2-hc-rec-row--critical {
+  background: rgba(90,239,141,0.07);
+  border-radius: 6px;
+  padding: 3px 6px;
+  border-left: 2px solid rgba(90,239,141,0.5);
+}
+.v2-hc-rec-row--critical .v2-hc-rec-gain { color: #5AEF8D; }
+.v2-hc-rec-row--critical .v2-hc-rec-action { color: rgba(200,240,215,0.95); font-weight: 600; }
+.v2-hc-rec-row--critical .v2-hc-rec-source { color: rgba(90,239,141,0.6); }
+
+/* footer под радаром: HF + кнопка */
+.v2-hc-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 12px 14px 4px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(86,196,240,0.08) 0%, rgba(5,14,28,0.55) 100%);
+  border: 1px solid rgba(86,196,240,0.16);
+}
+.v2-hc-footer-score { display: flex; align-items: baseline; gap: 9px; }
+.v2-hc-footer-num {
+  font-size: 30px;
+  font-weight: 900;
+  font-family: "Black Ops One", system-ui, sans-serif;
+  line-height: 1;
+}
+.v2-hc-footer-cap {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(150, 195, 225, 0.7);
+}
+.v2-hc-detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(86,196,240,0.35);
+  background: rgba(86,196,240,0.10);
+  color: rgba(210, 240, 255, 0.95);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s, box-shadow 0.18s;
+}
+.v2-hc-detail-btn:hover {
+  background: rgba(86,196,240,0.18);
+  box-shadow: 0 0 16px rgba(86,196,240,0.25);
+}
+.v2-hc-detail-btn svg { width: 12px; height: 12px; }
+
 /* ── Health Factor Insight Panel ── */
 .v2-hc-insight {
   display: flex;
@@ -1796,7 +2334,7 @@ body:has(.v2-lab) {
 }
 
 .v2-hc-insight-row--warn {
-  color: rgba(255, 184, 74, 0.90);
+  color: rgba(230, 179, 58, 0.90);
 }
 
 .v2-hc-insight-icon {
@@ -1834,6 +2372,192 @@ body:has(.v2-lab) {
   color: #56d8f5;
   font-size: 12px;
   flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Chip hover interactive ── */
+.v2-hc-chip-interactive {
+  transition: opacity 0.15s;
+}
+.v2-hc-chip-interactive:hover {
+  opacity: 0.82;
+  filter: brightness(1.18) drop-shadow(0 0 8px rgba(86,196,240,0.55));
+}
+
+/* Красная пульсирующая точка «метрика не сформирована» (напр. резерв = 0) */
+.v2-hc-chip-deadpoint {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: v2HcDeadPulse 1.8s ease-in-out infinite;
+}
+@keyframes v2HcDeadPulse {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 1px rgba(255,93,108,0.6)); }
+  50%      { opacity: 0.45; filter: drop-shadow(0 0 5px rgba(255,93,108,0.95)); }
+}
+
+/* ── Health Detail Modal ── */
+.v2-hdm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 3, 14, 0.72);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  padding: 20px;
+  animation: v2-hdm-in 0.22s ease;
+}
+
+@keyframes v2-hdm-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.v2-hdm-card {
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  border-radius: 20px;
+  background: linear-gradient(155deg, rgba(8,22,52,0.97) 0%, rgba(3,10,28,0.99) 100%);
+  border: 1px solid rgba(86,196,240,0.28);
+  box-shadow: 0 32px 80px rgba(0,0,0,0.75), 0 0 0 1px rgba(86,196,240,0.08) inset, 0 1px 0 rgba(200,240,255,0.08) inset;
+  animation: v2-hdm-slide 0.28s cubic-bezier(0.22,1,0.36,1);
+}
+
+@keyframes v2-hdm-slide {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.v2-hdm-card::-webkit-scrollbar { display: none; }
+
+.v2-hdm-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid rgba(86,196,240,0.12);
+}
+
+.v2-hdm-score-ring {
+  flex-shrink: 0;
+}
+
+.v2-hdm-title-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.v2-hdm-status {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.v2-hdm-title {
+  margin: 4px 0 2px;
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: #ddefff;
+  text-transform: uppercase;
+}
+
+.v2-hdm-subtitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(140, 180, 200, 0.50);
+}
+
+.v2-hdm-close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(86,196,240,0.20);
+  background: rgba(86,196,240,0.06);
+  color: rgba(140,200,230,0.70);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.v2-hdm-close:hover {
+  background: rgba(86,196,240,0.14);
+  color: #ddefff;
+}
+
+.v2-hdm-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.v2-hdm-body {
+  padding: 20px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.v2-hdm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.v2-hdm-section-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(86,196,240,0.70);
+}
+
+.v2-hdm-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: rgba(200, 228, 245, 0.80);
+  letter-spacing: 0.01em;
+}
+
+.v2-hdm-text--why {
+  color: rgba(220, 240, 255, 0.90);
+  font-weight: 500;
+}
+
+.v2-hdm-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.v2-hdm-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(190, 220, 240, 0.80);
+}
+
+.v2-hdm-list-arrow {
+  flex-shrink: 0;
+  font-size: 13px;
   margin-top: 1px;
 }
 
@@ -3179,6 +3903,510 @@ body:has(.v2-lab) {
   font-weight: 900;
 }
 
+/* ══════════════════════════════════════════
+   DCA STRATEGY — unified block
+══════════════════════════════════════════ */
+.v2-dca-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+/* ── Header ── */
+.v2-dca-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid rgba(86,196,240,0.10);
+}
+
+.v2-dca-kicker {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(86,196,240,0.65);
+  margin-bottom: 5px;
+}
+.v2-dca-kicker .v2-dca-abbr-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #56c4f0;
+  border-bottom-color: rgba(86,196,240,0.35);
+}
+
+.v2-dca-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ddefff;
+  line-height: 1.2;
+}
+
+.v2-dca-desc {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: rgba(170,205,225,0.65);
+  max-width: 380px;
+}
+.v2-dca-desc-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: rgba(170,205,225,0.65);
+}
+
+.v2-dca-index-now {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.v2-dca-index-val {
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 46px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  /* блеск — мягкое свечение в цвет числа (золото светится золотом) */
+  text-shadow: 0 0 18px color-mix(in srgb, currentColor 42%, transparent);
+}
+
+.v2-dca-index-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 3px;
+}
+
+.v2-dca-index-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+
+/* ── Zone cards ── */
+.v2-dca-zones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 8px;
+}
+
+.v2-dca-zone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px 11px 14px;
+  border-radius: 8px;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+
+.v2-dca-zone:hover {
+  background: rgba(86,196,240,0.04);
+}
+
+.v2-dca-zone.is-current {
+  border-color: rgba(86,196,240,0.12);
+  background: rgba(86,196,240,0.05);
+}
+.v2-dca-zone.is-current.mode-cautious   { border-color: rgba(230,179,58,0.18); background: rgba(230,179,58,0.05); }
+.v2-dca-zone.is-current.mode-strong     { border-color: rgba(255,140,66,0.20); background: rgba(255,140,66,0.06); }
+.v2-dca-zone.is-current.mode-aggressive { border-color: rgba(255,93,108,0.22); background: rgba(255,93,108,0.06); }
+
+.v2-dca-zone.is-cooldown { opacity: 0.92; }
+
+/* левый акцентный бар */
+.v2-dca-zone-bar {
+  width: 3px;
+  min-height: 36px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  opacity: 0.70;
+  align-self: stretch;
+}
+.v2-dca-zone.is-current .v2-dca-zone-bar { opacity: 1; }
+
+/* название + диапазон */
+.v2-dca-zone-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.v2-dca-zone-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(230,248,255,0.95);
+  letter-spacing: 0.01em;
+  white-space: nowrap; /* «Покупка на 1,5%» / «2%» — всегда в одну строку */
+}
+/* текст тултипа переносится нормально (не растягивает строку заголовка) */
+.v2-dca-zone-title .v2-dca-tip-card {
+  white-space: normal;
+}
+.v2-dca-zone.is-current .v2-dca-zone-title { color: #ffffff; }
+
+.v2-dca-zone-range {
+  font-size: 10px;
+  color: rgba(140,200,235,0.72);
+  letter-spacing: 0.08em;
+}
+
+/* правая часть: % + сумма + статус */
+.v2-dca-zone-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.v2-dca-zone-pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(230,179,58,0.92);
+  width: 36px;
+  text-align: center;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.v2-dca-zone-amount {
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: #ffffff;
+  width: 64px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.v2-dca-zone.is-current .v2-dca-zone-amount { color: #ffffff; font-size: 14px; }
+
+.v2-dca-zone-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 7px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  width: 96px;
+  text-align: center;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.v2-dca-zone-status.is-passive  { color: rgba(140,170,190,0.45); }
+.v2-dca-zone-status.is-cooldown  { background: rgba(230,179,58,0.10); color: #E6B33A; font-variant-numeric: tabular-nums; }
+
+/* "Доступно" — shimmer + pulse + кликабельная ссылка */
+@keyframes v2DcaAvailPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(86,196,240,0.55); }
+  65%  { box-shadow: 0 0 0 8px rgba(86,196,240,0); }
+  100% { box-shadow: 0 0 0 0 rgba(86,196,240,0); }
+}
+@keyframes v2DcaShimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+.v2-dca-zone-status.is-available {
+  background: linear-gradient(90deg,
+    rgba(86,196,240,0.12) 0%,
+    rgba(86,196,240,0.20) 35%,
+    rgba(180,240,255,0.45) 50%,
+    rgba(86,196,240,0.20) 65%,
+    rgba(86,196,240,0.12) 100%
+  );
+  background-size: 300% 100%;
+  color: #7de8ff;
+  border: 1px solid rgba(86,196,240,0.40);
+  cursor: pointer;
+  animation: v2DcaShimmer 2.4s ease-in-out infinite, v2DcaAvailPulse 2.4s ease-out infinite;
+  transition: transform 0.15s, filter 0.18s;
+}
+.v2-dca-zone-status.is-available:hover {
+  transform: scale(1.05);
+  filter: brightness(1.2);
+  text-decoration: none;
+  color: #7de8ff;
+}
+
+/* Cooldown spinner */
+@keyframes v2CdSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.v2-cd-spin {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  animation: v2CdSpin 1.6s linear infinite;
+  opacity: 0.75;
+}
+
+/* ── History button (footer) ── */
+.v2-dca-footer {
+  padding: 10px 16px 14px;
+  border-top: 1px solid rgba(86,196,240,0.07);
+  display: flex;
+  justify-content: center;
+}
+
+.v2-dca-history-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(86,196,240,0.55);
+  background: none;
+  border: none;
+  padding: 5px 0;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.v2-dca-history-btn:hover { color: rgba(86,196,240,0.90); }
+.v2-dca-history-btn svg { width: 10px; height: 10px; flex-shrink: 0; }
+
+/* ── Hover tooltip ── */
+.v2-dca-tip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.v2-dca-tip-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  opacity: 0.55;
+  transition: opacity 0.15s, transform 0.15s;
+  user-select: none;
+}
+
+.v2-dca-tip-wrap:hover .v2-dca-tip-btn,
+.v2-dca-tip-wrap.is-open .v2-dca-tip-btn {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.v2-dca-tip-card {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 200;
+  width: 280px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(8,22,52,0.98) 0%, rgba(3,10,28,0.99) 100%);
+  border: 1px solid rgba(86,196,240,0.28);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.70);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+}
+
+.v2-dca-tip-wrap:hover .v2-dca-tip-card,
+.v2-dca-tip-wrap.is-open .v2-dca-tip-card {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.v2-dca-tip-row {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 6px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  align-items: baseline;
+}
+
+.v2-dca-tip-key {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(86,196,240,0.60);
+  padding-top: 2px;
+}
+
+.v2-dca-tip-row strong {
+  color: rgba(220,245,255,0.95);
+  font-weight: 700;
+}
+
+/* ── DCA abbreviation tooltip ── */
+.v2-dca-abbr-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  cursor: pointer;
+}
+
+.v2-dca-abbr-label {
+  font-weight: 800;
+  color: #ddefff;
+  border-bottom: 1px dashed rgba(86,196,240,0.45);
+  transition: border-color 0.15s;
+}
+.v2-dca-abbr-label sup {
+  font-size: 8px;
+  font-weight: 900;
+  color: rgba(86,196,240,0.70);
+  margin-left: 2px;
+  vertical-align: super;
+}
+.v2-dca-abbr-wrap:hover .v2-dca-abbr-label,
+.v2-dca-abbr-wrap.is-open .v2-dca-abbr-label {
+  border-color: rgba(86,196,240,0.85);
+}
+
+.v2-dca-abbr-card {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 220;
+  width: 300px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(6,18,48,0.99) 0%, rgba(2,8,22,0.99) 100%);
+  border: 1px solid rgba(86,196,240,0.28);
+  box-shadow: 0 16px 50px rgba(0,0,0,0.75);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(195,225,245,0.82);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+}
+.v2-dca-abbr-card strong {
+  font-size: 13px;
+  color: rgba(220,245,255,0.98);
+  font-weight: 800;
+}
+.v2-dca-abbr-wrap:hover .v2-dca-abbr-card,
+.v2-dca-abbr-wrap.is-open .v2-dca-abbr-card {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* ── F&G Index info tooltip ── */
+.v2-dca-fg-tip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.v2-dca-fg-tip-btn {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 900;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+  user-select: none;
+}
+.v2-dca-fg-tip-wrap:hover .v2-dca-fg-tip-btn,
+.v2-dca-fg-tip-wrap.is-open .v2-dca-fg-tip-btn { opacity: 1; }
+
+.v2-dca-fg-tip-card {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 220;
+  width: 296px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(6,18,48,0.99) 0%, rgba(2,8,22,0.99) 100%);
+  border: 1px solid rgba(86,196,240,0.28);
+  box-shadow: 0 16px 50px rgba(0,0,0,0.75);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: rgba(185,215,235,0.82);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+}
+.v2-dca-fg-tip-card strong {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(220,245,255,0.98);
+}
+.v2-dca-fg-tip-card p { margin: 0; }
+.v2-dca-fg-tip-wrap:hover .v2-dca-fg-tip-card,
+.v2-dca-fg-tip-wrap.is-open .v2-dca-fg-tip-card {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.v2-dca-fg-tip-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(86,196,240,0.05);
+  border: 1px solid rgba(86,196,240,0.10);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+
 .v2-fg-strategy-panel {
   display: grid;
   gap: 12px;
@@ -3331,6 +4559,73 @@ body:has(.v2-lab) {
 
 .v2-fg-rule-status.is-passive {
   color: rgba(204, 215, 224, 0.78);
+}
+
+/* ── Mode label + info button ── */
+.v2-fg-rule-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.v2-fg-info-btn {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  font-size: 13px;
+  color: rgba(86, 196, 240, 0.50);
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s, transform 0.15s;
+  flex-shrink: 0;
+}
+
+.v2-fg-info-btn:hover,
+.v2-fg-info-btn.is-open {
+  color: #56d8f5;
+  transform: scale(1.15);
+}
+
+/* ── Expandable explanation block ── */
+.v2-fg-explain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 12px 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(86,196,240,0.07) 0%, rgba(5,14,30,0.60) 100%);
+  border: 1px solid rgba(86,196,240,0.16);
+  animation: v2-explain-in 0.18s ease;
+}
+
+@keyframes v2-explain-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.v2-fg-explain-row {
+  display: grid;
+  grid-template-columns: 68px 1fr;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  align-items: baseline;
+}
+
+.v2-fg-explain-key {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(86,196,240,0.65);
+  padding-top: 2px;
+}
+
+.v2-fg-explain-action {
+  font-weight: 700;
+  color: rgba(220, 245, 255, 0.95);
 }
 
 .v2-fg-strategy-bottom {
@@ -4158,17 +5453,8 @@ body:has(.v2-lab) {
     font-size: 12px;
   }
 
-  .v2-sidebar-level {
-    gap: 6px;
-    padding-top: 10px;
-  }
-
   .v2-nav-bottom {
     padding-top: 8px;
-  }
-
-  .v2-sidebar-xp {
-    display: none;
   }
 }
 
@@ -7404,6 +8690,19 @@ strong.v2-rb-val {
   white-space: nowrap;
 }
 
+/* Бейдж ставки стейкинга (APY) в строке стейкинга */
+.v2-rep-apy-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #5aef8d;
+  background: rgba(90, 239, 141, 0.10);
+  border: 1px solid rgba(90, 239, 141, 0.28);
+}
+
 .v2-rep-tag.is-strategy {
   background: rgba(77, 200, 240, 0.12);
   color: rgba(77, 210, 250, 0.9);
@@ -8828,37 +10127,6 @@ strong.v2-rb-val {
   letter-spacing: 0.03em;
 }
 
-/* ── Sidebar XP bar ── */
-.v2-sidebar-xp {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 4px 6px 0;
-}
-
-.v2-sidebar-xp-track {
-  height: 3px;
-  background: rgba(70,160,220,0.12);
-  border-radius: 2px;
-  overflow: hidden;
-  border: 1px solid rgba(70,160,220,0.15);
-}
-
-.v2-sidebar-xp-fill {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, rgba(70,160,220,0.6), rgba(110,210,255,0.85));
-  border-radius: 2px;
-  box-shadow: 0 0 6px rgba(70,160,220,0.4);
-  transition: width 0.6s cubic-bezier(0.22,1,0.36,1);
-}
-
-.v2-sidebar-xp-label {
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  color: rgba(100,160,220,0.45);
-  text-align: center;
-}
 
 /* ── Reserve warning row ── */
 .v2-reserve-row {
@@ -9134,11 +10402,9 @@ strong.v2-rb-val {
   /* ── Overview: metrics ── */
   /* ── Метрики: пирамида — 3 сверху шире, 2 снизу уже и по центру ── */
   .v2-metrics {
-    grid-template-columns: repeat(6, 1fr);
-    grid-template-rows: auto auto;
-    grid-template-areas:
-      "invested invested positions positions reserve reserve"
-      ". portftoday portftoday pnl pnl .";
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas: "portftoday invested positions reserve";
     gap: 8px;
   }
 
@@ -9559,4 +10825,1192 @@ strong.v2-rb-val {
   .v2-decisions-page {
     padding: 14px 14px;
   }
+
+  /* ── DCA Strategy mobile ── */
+  .v2-dca-panel {
+    padding: 14px 14px 12px;
+  }
+
+  .v2-dca-header {
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .v2-dca-index-now {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,93,108,0.18);
+    background: rgba(255,93,108,0.05);
+    align-self: flex-start;
+  }
+
+  .v2-dca-index-val {
+    font-size: 28px;
+  }
+
+  .v2-dca-index-label {
+    font-size: 11px;
+  }
+
+  .v2-dca-index-sub {
+    font-size: 9px;
+    margin-top: 0;
+  }
+
+  .v2-dca-zone {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .v2-dca-zone-title {
+    font-size: 12px;
+  }
+
+  .v2-dca-zone-right {
+    gap: 8px;
+  }
+
+  .v2-dca-zone-amount {
+    font-size: 12px;
+    min-width: 52px;
+  }
+
+  .v2-dca-zone-status {
+    font-size: 10px;
+    padding: 2px 7px;
+    min-width: 60px;
+  }
+
+  .v2-dca-tip-card {
+    left: auto;
+    right: 0;
+    bottom: calc(100% + 6px);
+    max-width: min(260px, 80vw);
+  }
+}
+
+/* ══════════════════════════════════════════════
+   V2 TOPBAR — hero + 3 compact metrics
+   ══════════════════════════════════════════════ */
+.v2-topbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Две карточки метрик живут в колонке радара (.v2-top-left) и
+   центрируются над ним при любой ширине экрана. gap 30px. */
+.v2-metrics-left {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 249px));
+  justify-content: center;
+  gap: 30px;
+  align-items: stretch;
+}
+
+
+/* ── Merged split metric card (Вложено + Позиции) ── */
+.v2-metric-split {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+  padding: 18px 18px 16px !important;
+  background: linear-gradient(135deg, rgba(18,40,78,0.34) 0%, rgba(6,16,38,0.42) 100%) !important;
+  backdrop-filter: blur(14px) saturate(125%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(125%) !important;
+  border: 1px solid rgba(86,196,240,0.12) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.v2-metric-split-labels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.v2-metric-split-label {
+  color: rgba(140, 205, 240, 0.92) !important;
+  font-size: 20px !important;
+  letter-spacing: 0.04em !important;
+  text-transform: none !important;
+  font-family: "Bodoni Moda", Georgia, serif !important;
+  font-weight: 500 !important;
+}
+
+.v2-metric-split-values {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  align-items: center;
+  text-align: center;
+}
+
+.v2-metric-split-divider {
+  width: 1px;
+  height: 2em;
+  background: rgba(86, 196, 240, 0.15);
+  align-self: center;
+  justify-self: center;
+}
+
+.v2-metric-split-reserve {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.v2-metric-split-reserve .v2-metric-split-reserve-label {
+  padding-bottom: 6px;
+  width: 100%;
+  text-align: center;
+}
+
+.v2-metric-split-reserve .top-metric-value {
+  padding-top: 8px;
+  border-top: 1px solid rgba(86, 196, 240, 0.10);
+  width: 100%;
+  text-align: center;
+  display: block;
+  font-size: 22px !important;
+}
+
+/* Кликабельное значение свободных денег → раскрывает «Торговый капитал» */
+.v2-free-toggle {
+  appearance: none;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(86, 196, 240, 0.10);
+  width: 100%;
+  margin-top: 0;
+  padding: 6px 6px 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  color: inherit;
+  border-radius: 0 0 8px 8px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.v2-free-toggle .top-metric-value {
+  padding-top: 0 !important;
+  border-top: none !important;
+  width: auto !important;
+}
+.v2-free-toggle:hover {
+  background: rgba(86, 196, 240, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(86, 196, 240, 0.20),
+              0 0 16px rgba(86, 196, 240, 0.12);
+}
+.v2-free-toggle-chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: rgba(140, 205, 240, 0.85);
+  opacity: 0.45;
+  transition: transform 0.28s ease, opacity 0.2s ease;
+  animation: v2FreeHint 2.2s ease-in-out infinite;
+}
+.v2-free-toggle:hover .v2-free-toggle-chevron {
+  opacity: 1;
+  animation: v2FreeBounce 0.9s ease-in-out infinite;
+}
+.v2-free-toggle.is-open .v2-free-toggle-chevron {
+  transform: rotate(180deg);
+  opacity: 1;
+  animation: none;
+}
+@keyframes v2FreeHint {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.8; }
+}
+@keyframes v2FreeBounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(3px); }
+}
+
+/* Выезжающая сверху вниз панель «Торговый капитал» */
+.v2-capital-dropdown {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  margin-top: -14px; /* гасит flex-gap колонки, пока закрыто */
+  transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease;
+}
+.v2-capital-dropdown.is-open {
+  max-height: 760px;
+  opacity: 1;
+  margin-top: 0;
+}
+.v2-capital-dropdown-inner {
+  max-width: 528px; /* ширина пары карточек метрик */
+  margin: 0 auto;   /* центрируем под карточками */
+  transform: translateY(-6px);
+  transition: transform 0.35s ease;
+}
+.v2-capital-dropdown.is-open .v2-capital-dropdown-inner {
+  transform: translateY(0);
+}
+
+.v2-metric-split-reserve-label {
+  color: rgba(140, 205, 240, 0.70) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  font-family: "Space Grotesk", system-ui, sans-serif !important;
+  font-weight: 600 !important;
+  white-space: nowrap;
+}
+
+/* ── Portfolio Hero Card ─────────────────────── */
+.v2-phc {
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(18,40,78,0.34) 0%, rgba(6,16,38,0.42) 100%);
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border: 1px solid rgba(86,196,240,0.12);
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+  overflow: hidden;
+  min-height: 150px;
+}
+
+/* Inner row: data left + chart right */
+.v2-phc-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.v2-phc-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.v2-phc-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+/* HUD SVG corner helpers */
+.v2-phc-corner {
+  position: absolute;
+  pointer-events: none;
+  z-index: 4;
+}
+.v2-phc-corner--tl { top: 0;    left: 0;  }
+.v2-phc-corner--tr { top: 0;    right: 0; }
+.v2-phc-corner--bl { bottom: 0; left: 0;  }
+.v2-phc-corner--br { bottom: 0; right: 0; }
+
+/* Left accent bar */
+.v2-phc-bar-left {
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 3px;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(86,196,240,0.7) 30%,
+    rgba(86,196,240,0.9) 50%,
+    rgba(86,196,240,0.7) 70%,
+    transparent 100%);
+  box-shadow: 0 0 10px rgba(86,196,240,0.4);
+  border-radius: 0 2px 2px 0;
+}
+
+/* Edge dot rows */
+.v2-phc-dots {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  pointer-events: none;
+  z-index: 2;
+}
+.v2-phc-dots--top    { top: 3px; }
+.v2-phc-dots--bottom { bottom: 3px; }
+
+.v2-phc-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(86,196,240,0.6);
+  box-shadow: 0 0 4px rgba(86,196,240,0.4);
+}
+
+/* Top row: badge + label */
+.v2-phc-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+/* Octagon badge */
+.v2-phc-badge {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+.v2-phc-badge-letter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.v2-phc-label {
+  font-family: "Bodoni Moda", Georgia, serif;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(140, 205, 240, 0.92);
+  margin-bottom: 14px;
+  display: block;
+}
+
+/* Main value */
+.v2-phc-value-row {
+  display: flex;
+  align-items: baseline;
+  padding-left: 4px;
+  margin: 2px 0 0;
+}
+
+.v2-phc-value {
+  font-family: "Libre Baskerville", Georgia, serif;
+  font-size: clamp(1.5rem, 1.8vw, 2.4rem);
+  font-weight: 900;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  text-shadow: 0 2px 28px rgba(255,255,255,0.10);
+  white-space: nowrap;
+}
+
+.v2-phc-value-currency {
+  font-size: 0.55em;
+  font-weight: 700;
+  vertical-align: 0.18em;
+  margin-right: 0.04em;
+  opacity: 0.75;
+}
+
+/* Chart — compact sparkline */
+.v2-phc-chart-wrap {
+  margin: 6px 0 4px;
+  height: 44px;
+  overflow: hidden;
+}
+
+.v2-phc-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 60px;
+  display: block;
+}
+
+/* Bottom strip */
+.v2-phc-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(86,196,240,0.08);
+  width: 100%;
+  margin-top: auto;
+}
+
+.v2-phc-bottom-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 0 16px;
+}
+.v2-phc-bottom-cell:first-child { padding-left: 4px; }
+
+.v2-phc-bottom-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(86,196,240,0.12);
+  flex-shrink: 0;
+}
+
+.v2-phc-bottom-val {
+  font-family: "Libre Baskerville", Georgia, serif;
+  font-size: 22px;
+  font-weight: 900;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.v2-phc-pos { color: #5af08d; text-shadow: 0 0 12px rgba(90,240,141,0.25); }
+.v2-phc-neg { color: #ff5d6c; text-shadow: 0 0 12px rgba(255,93,108,0.25); }
+
+.v2-phc-pnl-sign {
+  font-size: 0.72em;
+  font-weight: 700;
+  vertical-align: 0.08em;
+  margin: 0 0.05em;
+  opacity: 0.85;
+}
+
+.v2-phc-arrow-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  height: 1.1em;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  font-size: 0.78em;
+  vertical-align: middle;
+  animation: phcArrowPulse 2.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes phcArrowPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+  50%       { opacity: 0.75; box-shadow: 0 0 6px 2px rgba(255,93,108,0.18); }
+}
+
+.v2-phc-arrow-circle.v2-phc-pos {
+  animation: phcArrowPulsePos 2.2s ease-in-out infinite;
+}
+
+@keyframes phcArrowPulsePos {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+  50%       { opacity: 0.75; box-shadow: 0 0 6px 2px rgba(90,240,141,0.18); }
+}
+
+.v2-phc-bottom-sub {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(130,170,200,0.5);
+  white-space: nowrap;
+}
+
+.v2-phc-bottom-icon {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 16px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(86,196,240,0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(86,196,240,0.05);
+}
+.v2-phc-bottom-icon svg {
+  width: 20px;
+  height: 16px;
+}
+
+/* ══════════════════════════════════════════════
+   HUD CORNER FRAME — sci-fi угловые скобки
+   ══════════════════════════════════════════════ */
+.v2-hud-corners {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  border-radius: inherit;
+  background:
+    /* ── top-left H ── */
+    linear-gradient(90deg, rgba(86,196,240,0.65) 16px, transparent 16px)
+      0 0 / 100% 1px no-repeat,
+    /* ── top-left V ── */
+    linear-gradient(180deg, rgba(86,196,240,0.65) 16px, transparent 16px)
+      0 0 / 1px 100% no-repeat,
+    /* ── top-right H ── */
+    linear-gradient(270deg, rgba(86,196,240,0.65) 16px, transparent 16px)
+      100% 0 / 100% 1px no-repeat,
+    /* ── top-right V ── */
+    linear-gradient(180deg, rgba(86,196,240,0.65) 16px, transparent 16px)
+      100% 0 / 1px 100% no-repeat,
+    /* ── bottom-left H ── */
+    linear-gradient(90deg, rgba(86,196,240,0.65) 16px, transparent 16px)
+      0 100% / 100% 1px no-repeat,
+    /* ── bottom-left V ── */
+    linear-gradient(0deg, rgba(86,196,240,0.65) 16px, transparent 16px)
+      0 100% / 1px 100% no-repeat,
+    /* ── bottom-right H ── */
+    linear-gradient(270deg, rgba(86,196,240,0.65) 16px, transparent 16px)
+      100% 100% / 100% 1px no-repeat,
+    /* ── bottom-right V ── */
+    linear-gradient(0deg, rgba(86,196,240,0.65) 16px, transparent 16px)
+      100% 100% / 1px 100% no-repeat;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ЕДИНЫЙ ШРИФТ — ВСЕ ВКЛАДКИ (область контента .v2-main)
+   Текст → "Bodoni Moda" (эталон «Портфель сегодня»)
+   Числа → "Libre Baskerville" (эталон «-$53.20»)
+   Размеры и цвета не трогаем — только семейство шрифта.
+   Сайдбар/лого вне .v2-main — их не затрагиваем.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* SVG (радары, гейджи): тексты используют эти переменные */
+.v2-main {
+  --v2-sans: "Bodoni Moda", Georgia, serif;       /* подписи */
+  --v2-mono: "Libre Baskerville", Georgia, serif; /* числа */
+}
+
+/* Весь HTML-текст → Bodoni (низкая специфичность, числа ниже перебьют) */
+.v2-main
+  :where(span, p, h1, h2, h3, h4, h5, h6, div, button, a, strong, em, b, i, li, label, small, td, th) {
+  font-family: "Bodoni Moda", Georgia, serif !important;
+}
+
+/* Все числовые значения → Libre Baskerville */
+.v2-main .v2-phc-value,
+.v2-main .v2-phc-value-currency,
+.v2-main .v2-phc-bottom-val,
+.v2-main .v2-phc-pnl-sign,
+.v2-main .top-metric-value,
+.v2-main .v2-hc-healthbar-num,
+.v2-main .v2-hc-healthbar-num span,
+.v2-main .v2-hc-healthbar-scale span,
+.v2-main .v2-hc-diag-val,
+.v2-main .v2-hc-footer-num,
+.v2-main .v2-dca-index-val,
+.v2-main .v2-dca-zone-range,
+.v2-main .v2-dca-zone-amount,
+.v2-main .v2-alloc-pct,
+.v2-main .v2-alloc-amount,
+.v2-main .v2-stables-total,
+.v2-main .v2-port-stables-total,
+.v2-main .v2-radar-score,
+.v2-main .v2-health-score,
+.v2-main .v2-dc-score,
+.v2-main .v2-btc-inline-price,
+.v2-main .v2-btc-phase-num,
+.v2-main .v2-btc-window-num,
+.v2-main .v2-buy-amount,
+.v2-main .v2-fg-signal-value,
+.v2-main .v2-im-lvl-num,
+.v2-main .v2-im-stat-val,
+.v2-main .v2-rb-val,
+.v2-main .v2-port-share,
+.v2-main .v2-port-pnl,
+.v2-main .v2-re-comp-score,
+.v2-main .v2-re-deploy-num,
+.v2-main .v2-re-deploy-total,
+.v2-main .v2-re-deploy-val,
+.v2-main .v2-re-hf-num,
+.v2-main .v2-re-radar-val,
+.v2-main .v2-re-reserve-amount,
+.v2-main .v2-re-reserve-pct,
+.v2-main .v2-rep-cell-amount,
+.v2-main .v2-rep-cell-price,
+.v2-main .v2-rep-cell-pnl,
+.v2-main .v2-rep-cell-date,
+.v2-main .v2-rep-kpi-value,
+.v2-main .v2-sc-meta-val,
+.v2-main .v2-sc-score-num,
+.v2-main .v2-sig-hbar-score,
+.v2-main .v2-sig-rule-amount {
+  font-family: "Libre Baskerville", Georgia, serif !important;
+}
+/* ═══════════════════════════════════════════════════════════════
+   V2 HEALTH PAGE — Portfolio Health Engine (Фаза 1)
+   ═══════════════════════════════════════════════════════════════ */
+
+.v2-hp-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px 28px 40px;
+  min-height: 100%;
+}
+
+/* ── Верхний ряд: Score + Diagnosis + Prescription ── */
+.v2-hp-top {
+  display: grid;
+  grid-template-columns: 280px 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+/* ── Общий стиль карточек ── */
+.v2-hp-score-card,
+.v2-hp-diag-card,
+.v2-hp-rx-card,
+.v2-hp-breakdown-card {
+  background: linear-gradient(135deg, rgba(86,196,240,0.07) 0%, rgba(5,14,28,0.70) 100%);
+  border: 1px solid rgba(86,196,240,0.18);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  padding: 22px 24px;
+}
+
+.v2-hp-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(0,200,255,0.85);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+/* ── Score card ── */
+.v2-hp-score-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.v2-hp-score-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(0,200,255,0.8);
+  text-transform: uppercase;
+}
+.v2-hp-ring-svg {
+  width: 200px;
+  height: 200px;
+  filter: drop-shadow(0 0 20px rgba(86,196,240,0.2));
+}
+.v2-hp-score-interp {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.v2-hp-score-sub {
+  font-size: 12px;
+  color: rgba(170,210,235,0.7);
+  line-height: 1.4;
+  max-width: 220px;
+}
+
+/* ── Diagnosis card ── */
+.v2-hp-diag-group {
+  margin-bottom: 16px;
+}
+.v2-hp-diag-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.v2-hp-diag-group-label--ok   { color: #5AEF8D; }
+.v2-hp-diag-group-label--warn { color: #E6B33A; }
+
+.v2-hp-diag-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  padding: 5px 0;
+  line-height: 1.4;
+  color: rgba(210,235,248,0.9);
+}
+.v2-hp-diag-icon { flex-shrink: 0; width: 16px; }
+.v2-hp-diag-row--ok   .v2-hp-diag-icon { color: #5AEF8D; }
+.v2-hp-diag-row--warn .v2-hp-diag-icon { color: #E6B33A; }
+
+/* ── Prescription card ── */
+.v2-hp-rx-kicker {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: rgba(170,210,235,0.55);
+}
+.v2-hp-rx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.v2-hp-rx-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.v2-hp-rx-gain {
+  flex-shrink: 0;
+  min-width: 32px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #5AEF8D;
+  font-family: "Libre Baskerville", Georgia, serif;
+  line-height: 1.2;
+}
+.v2-hp-rx-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.v2-hp-rx-action {
+  font-size: 13px;
+  color: rgba(215,240,255,0.92);
+  line-height: 1.35;
+}
+.v2-hp-rx-source {
+  font-size: 11px;
+  color: rgba(150,195,225,0.55);
+}
+
+/* ── Breakdown card ── */
+.v2-hp-breakdown-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.v2-hp-brows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.v2-hp-brow {
+  display: grid;
+  grid-template-columns: 200px 1fr 52px 36px;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(86,196,240,0.10);
+  background: rgba(86,196,240,0.04);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+  width: 100%;
+}
+.v2-hp-brow:hover {
+  background: rgba(86,196,240,0.09);
+  border-color: rgba(86,196,240,0.25);
+}
+.v2-hp-brow-label {
+  font-size: 13px;
+  color: rgba(210,235,248,0.9);
+}
+.v2-hp-brow-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+  overflow: hidden;
+}
+.v2-hp-brow-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.8s ease;
+}
+.v2-hp-brow-score {
+  font-size: 16px;
+  font-weight: 900;
+  font-family: "Libre Baskerville", Georgia, serif;
+  text-align: right;
+}
+.v2-hp-brow-weight {
+  font-size: 11px;
+  color: rgba(150,195,225,0.45);
+  text-align: right;
+}
+.v2-hp-brow-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px 0;
+  border-top: 1px solid rgba(86,196,240,0.12);
+  font-size: 13px;
+  color: rgba(170,210,235,0.7);
+}
+.v2-hp-brow-total-num {
+  font-size: 22px;
+  font-weight: 900;
+  font-family: "Libre Baskerville", Georgia, serif;
+}
+.v2-hp-brow-hint {
+  font-size: 11px;
+  color: rgba(150,195,225,0.4);
+  text-align: center;
+}
+
+/* ── Diagnosis items: name + score + why ── */
+.v2-hp-diag-name {
+  font-size: 13px;
+  color: rgba(215,240,255,0.92);
+}
+.v2-hp-diag-score {
+  font-weight: 900;
+  font-family: "Libre Baskerville", Georgia, serif;
+  margin-left: 6px;
+}
+.v2-hp-diag-why {
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(160,205,230,0.65);
+  margin-top: 2px;
+}
+
+/* ── Health Simulator button (score card) ── */
+.v2-hp-sim-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(86,196,240,0.28);
+  background: rgba(86,196,240,0.07);
+  color: rgba(200,235,255,0.8);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+  margin-top: 4px;
+}
+.v2-hp-sim-btn:hover {
+  background: rgba(86,196,240,0.14);
+  border-color: rgba(86,196,240,0.5);
+  color: #fff;
+}
+.v2-hp-sim-btn svg { width: 14px; height: 14px; }
+
+/* ── Health Simulator stub modal ── */
+.v2-hp-sim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0,4,16,0.72);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.v2-hp-sim-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 40px 48px;
+  max-width: 440px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(86,196,240,0.09) 0%, rgba(5,14,28,0.92) 100%);
+  border: 1px solid rgba(86,196,240,0.25);
+  text-align: center;
+}
+.v2-hp-sim-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: rgba(0,210,255,0.95);
+}
+.v2-hp-sim-coming {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.v2-hp-sim-icon {
+  width: 56px;
+  height: 56px;
+  color: rgba(86,196,240,0.6);
+}
+.v2-hp-sim-coming > div {
+  font-size: 28px;
+  font-weight: 900;
+  color: rgba(200,235,255,0.5);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.v2-hp-sim-coming p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(170,210,235,0.65);
+  max-width: 340px;
+}
+.v2-hp-sim-close {
+  padding: 10px 28px;
+  border-radius: 10px;
+  border: 1px solid rgba(86,196,240,0.3);
+  background: rgba(86,196,240,0.08);
+  color: rgba(200,235,255,0.85);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.v2-hp-sim-close:hover { background: rgba(86,196,240,0.18); }
+
+/* ══════════════════════════════════════════════════════════════
+   V2 Portfolio Allocation Card — Премиальный блок распределения
+   ══════════════════════════════════════════════════════════════ */
+
+.v2-pac-wrap {
+  width: 100%;
+  padding: 22px 26px 18px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.v2-pac-header {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: rgba(140,190,240,0.50);
+}
+
+.v2-pac-body {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+/* ─── Левая колонка: карточки категорий ─── */
+.v2-pac-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+/* Каждая карточка — glass-панель */
+.v2-pac-card {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  grid-template-rows: auto 4px;
+  column-gap: 10px;
+  row-gap: 6px;
+  align-items: center;
+  padding: 10px 12px 8px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(16,40,90,0.42) 0%, rgba(5,14,38,0.62) 100%);
+  border: 1px solid rgba(86,180,240,0.14);
+  box-shadow: 0 2px 12px rgba(0,3,15,0.40);
+  position: relative;
+  overflow: hidden;
+}
+.v2-pac-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+}
+
+/* Иконка-кружок */
+.v2-pac-card-icon {
+  grid-column: 1;
+  grid-row: 1;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  background: rgba(4,10,28,0.65);
+  flex-shrink: 0;
+}
+
+/* Имя + сумма */
+.v2-pac-card-info {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.v2-pac-card-name {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(215,238,255,0.90);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v2-pac-card-amt {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
+  color: rgba(140,180,225,0.60);
+}
+
+/* Правый блок: % + лимит + статус */
+.v2-pac-card-right {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.v2-pac-card-pct {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.v2-pac-card-limit-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.v2-pac-card-limit-label {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 9px;
+  color: rgba(120,160,205,0.50);
+  letter-spacing: 0.04em;
+}
+
+/* Бейдж статуса */
+.v2-pac-badge {
+  font-style: normal;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.v2-pac-badge.ok   { color: #3ddc84; background: rgba(61,220,132,0.13); }
+.v2-pac-badge.warn { color: #f5b642; background: rgba(245,182,66,0.13); }
+
+/* Прогресс-бар — занимает всю нижнюю строку */
+.v2-pac-bar-track {
+  grid-column: 1 / 4;
+  grid-row: 2;
+  position: relative;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(86,196,240,0.09);
+  overflow: visible;
+}
+.v2-pac-bar-fill {
+  display: block;
+  position: absolute;
+  left: 0; top: 0;
+  height: 100%;
+  border-radius: 2px;
+  max-width: 100%;
+  transition: width 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.v2-pac-bar-tick {
+  position: absolute;
+  top: -4px;
+  width: 2px;
+  height: 11px;
+  background: rgba(232,184,66,0.75);
+  border-radius: 1px;
+  transform: translateX(-50%);
+}
+
+/* ─── Правая колонка: диаграмма ─── */
+.v2-pac-chart-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.v2-pac-svg {
+  width: 310px;
+  height: 310px;
+  overflow: visible;
+}
+
+/* ─── Легенда ─── */
+.v2-pac-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 16px;
+  max-width: 280px;
+  width: 100%;
+}
+
+.v2-pac-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.v2-pac-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.v2-pac-legend-name {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 10px;
+  color: rgba(160,205,235,0.65);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v2-pac-legend-pct {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(200,230,255,0.82);
+}
+
+/* ─── Внутри .v2-alloc-center-inner ─── */
+.v2-alloc-center-inner .v2-pac-wrap {
+  background: none;
+  border: none;
 }

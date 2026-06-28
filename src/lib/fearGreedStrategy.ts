@@ -6,6 +6,7 @@ import type {
   FearGreedStrategyLastBuy,
   FearGreedStrategyRule,
   FearGreedStrategyStatus,
+  InvestorTransaction,
 } from "../types/portfolio";
 
 type RuleBase = {
@@ -200,6 +201,80 @@ const applyStrategyBuysCooldown = (
     };
   });
 };
+
+// ── Auto-detect strategy buys from transaction history ───────────
+// If a buy transaction's amount is within ±25% of a zone's buyPct * invested,
+// it is treated as a strategy buy and starts the cooldown for that zone.
+const BUY_MATCH_TOLERANCE = 0.25;
+
+function isBuyAction(action: string): boolean {
+  const a = action.toLowerCase();
+  return a.includes("покупк") || a === "buy" || a === "покупка";
+}
+
+function matchTransactionToZone(
+  amount: number,
+  invested: number,
+  rules: Partial<FearGreedStrategyRule>[],
+): FearGreedMode | null {
+  for (const rule of rules) {
+    const pct = rule.buyPct ?? 0;
+    if (pct <= 0) continue;
+    const target = pct * invested;
+    if (target <= 0) continue;
+    const diff = Math.abs(amount - target) / target;
+    if (diff <= BUY_MATCH_TOLERANCE) return rule.mode ?? null;
+  }
+  return null;
+}
+
+export function applyTransactionsToCooldown(
+  strategy: FearGreedStrategy,
+  transactions: InvestorTransaction[],
+  invested: number,
+): FearGreedStrategy {
+  if (!transactions.length || !invested) return strategy;
+
+  // Only look at buy transactions from the last 14 days
+  const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  const buys = transactions.filter(tx => {
+    if (!isBuyAction(tx.action)) return false;
+    const t = Date.parse(tx.date);
+    return Number.isFinite(t) && t >= cutoff && tx.amount > 0;
+  });
+
+  if (!buys.length) return strategy;
+
+  // Build a map: mode → latest matching buy date
+  const latestByMode = new Map<FearGreedMode, string>();
+  for (const tx of buys) {
+    const mode = matchTransactionToZone(tx.amount, invested, strategy.rules);
+    if (!mode) continue;
+    const existing = latestByMode.get(mode);
+    if (!existing || Date.parse(tx.date) > Date.parse(existing)) {
+      latestByMode.set(mode, tx.date);
+    }
+  }
+
+  if (!latestByMode.size) return strategy;
+
+  // Merge detected buys into strategy rules
+  const updatedRules = strategy.rules.map(rule => {
+    const detectedAt = latestByMode.get(rule.mode);
+    if (!detectedAt) return rule;
+    const existingTs = toDateTime(rule.lastBuyAt) ?? 0;
+    const detectedTs = Date.parse(detectedAt);
+    if (detectedTs <= existingTs) return rule;
+    // Clear nextAvailableAt so buildFearGreedStrategy recalculates it from new lastBuyAt
+    return { ...rule, lastBuyAt: detectedAt, nextAvailableAt: null };
+  });
+
+  return buildFearGreedStrategy(
+    strategy.currentIndex,
+    strategy.portfolioValue,
+    updatedRules,
+  );
+}
 
 export function normalizeFearGreedStrategyFromApi(
   source: InvestorApiResponse["fearGreedStrategy"],

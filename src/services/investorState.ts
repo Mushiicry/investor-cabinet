@@ -1,5 +1,5 @@
 import { normalizeHistory } from "../lib/historyNormalizers";
-import { normalizeFearGreedStrategyFromApi } from "../lib/fearGreedStrategy";
+import { normalizeFearGreedStrategyFromApi, applyTransactionsToCooldown } from "../lib/fearGreedStrategy";
 import { normalizeDecisions, normalizeScenarios } from "../lib/playbookNormalizers";
 import { normalizePortfolio, toNumber } from "../lib/portfolioNormalizers";
 import { normalizeTransactions } from "../lib/transactionNormalizers";
@@ -23,11 +23,12 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
   // presentation detail and must not silently replace reconciled portfolio totals.
   const portfolioValue = toNumber(json?.overview?.portfolioValue, prev.overview.portfolioValue);
   const invested = toNumber(json?.overview?.invested, prev.overview.invested);
-  const fearGreedStrategy = normalizeFearGreedStrategyFromApi(
+  const fearGreedStrategyRaw = normalizeFearGreedStrategyFromApi(
     json?.fearGreedStrategy,
     prev.fearGreedStrategy,
     invested
   );
+  const fearGreedStrategy = applyTransactionsToCooldown(fearGreedStrategyRaw, transactions, invested);
 
   return {
     ...prev,

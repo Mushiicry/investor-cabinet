@@ -13,10 +13,31 @@ const score = (value: number) => Math.round(clamp01(value) * 100);
 
 // Пороги мягкой деградации
 const COMFORT_CASH = 0.5; // «Гибкость»: комфортная зона кэша
-const CRYPTO_HARD = 0.9; // «Крипта»: 100 при ≤60%, 0 при ≥90%
-const FUTURES_HARD = 0.3; // «Фьючерсы»: 100 при ≤10%, 0 при ≥30%
+const CRYPTO_HARD = 0.9; // «Волатильность»: 100 при ≤60%, 0 при ≥90%
 const CONCENTRATION_SAFE = 0.2; // «Концентрация»: 100 при ≤20%
 const CONCENTRATION_HARD = 0.5; // 0 при ≥50% (лимит на позицию 35%)
+
+// Лимиты плеча по фьючерсам (правило инвестора):
+// мажоры (BTC / золото) — до 3x, всё остальное (альты) — до 2x.
+export const FUTURES_LEVERAGE_LIMIT_MAJOR = 3;
+export const FUTURES_LEVERAGE_LIMIT_ALT = 2;
+
+// Максимум одновременных фьючерс-позиций — превышение сильно режет балл.
+export const MAX_FUTURES_POSITIONS = 3;
+
+export function isMajorFuturesAsset(asset: string): boolean {
+  const a = (asset || "").toUpperCase();
+  return a.includes("BTC") || a.includes("GOLD") || a.includes("XAU");
+}
+
+export function futuresLeverageLimit(asset: string): number {
+  return isMajorFuturesAsset(asset) ? FUTURES_LEVERAGE_LIMIT_MAJOR : FUTURES_LEVERAGE_LIMIT_ALT;
+}
+
+export type FuturesLeg = {
+  asset: string;
+  leverage: number | null; // эффективное плечо, выведенное из данных (null = не определить)
+};
 
 export type HealthComponentKey =
   | "reserve"
@@ -26,6 +47,20 @@ export type HealthComponentKey =
   | "diversification"
   | "flexibility";
 
+export type HealthComponentMeta = {
+  reserveUsd?: number;
+  reserveTargetUsd?: number;
+  worstLeverage?: number;
+  worstLeverageAsset?: string;
+  worstLeverageLimit?: number;
+  leverageBreaches?: { asset: string; leverage: number; limit: number }[];
+  weightScore?: number;
+  leverageScore?: number;
+  countScore?: number;
+  futuresCount?: number;
+  futuresShare?: number;
+};
+
 export type HealthComponent = {
   key: HealthComponentKey;
   label: string;
@@ -33,6 +68,7 @@ export type HealthComponent = {
   color: string;
   desc: string;
   weight: number;
+  meta?: HealthComponentMeta;
 };
 
 export type HealthInput = {
@@ -41,6 +77,9 @@ export type HealthInput = {
   futuresShare: number;
   largestShare: number;
   categoryShares: number[];
+  reserveShare?: number; // выделенный резерв (стейблы) / портфель — Risk First
+  futuresLegs?: FuturesLeg[]; // фьючерс-позиции с выведенным плечом
+  portfolioValue?: number; // для перевода долей в $ в подсказках
 };
 
 export type PortfolioHealth = {
@@ -53,20 +92,63 @@ export type PortfolioHealth = {
 export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   const hhi = input.categoryShares.reduce((sum, value) => sum + value * value, 0);
 
+  // ── Резерв (Risk First): выделенные стейблы относительно цели 30% ──
+  const reserveShare = input.reserveShare ?? input.cashShare;
+  const reserveScore = score(reserveShare / RESERVE_TARGET_SHARE);
+  const reserveUsd = input.portfolioValue ? reserveShare * input.portfolioValue : undefined;
+  const reserveTargetUsd = input.portfolioValue
+    ? RESERVE_TARGET_SHARE * input.portfolioValue
+    : undefined;
+
+  // ── Фьючерсы: min(балл за вес, балл за плечо, балл за число позиций) ──
+  // Вес: градация к лимиту 10% — 100 при 0%, 0 при ≥10% (≤10% уже не «отлично»).
+  const weightScore = score(
+    (MAX_FUTURES_EXPOSURE_SHARE - input.futuresShare) / MAX_FUTURES_EXPOSURE_SHARE
+  );
+  const legs = input.futuresLegs ?? [];
+  const breaches: { asset: string; leverage: number; limit: number }[] = [];
+  let leverageScore = 100; // нет фьючерсов / плечо не определить → не штрафуем
+  let worstLeverage: number | undefined;
+  let worstLeverageAsset: string | undefined;
+  let worstLeverageLimit: number | undefined;
+  for (const leg of legs) {
+    if (leg.leverage == null || !isFinite(leg.leverage)) continue;
+    const limit = futuresLeverageLimit(leg.asset);
+    // 100 при плече ≤ лимита; падает по мере превышения (0 при удвоении лимита)
+    const legScore = score(1 - Math.max(0, leg.leverage - limit) / limit);
+    if (legScore < leverageScore) leverageScore = legScore;
+    if (worstLeverage === undefined || leg.leverage > worstLeverage) {
+      worstLeverage = leg.leverage;
+      worstLeverageAsset = leg.asset;
+      worstLeverageLimit = limit;
+    }
+    if (leg.leverage > limit) {
+      breaches.push({ asset: leg.asset, leverage: leg.leverage, limit });
+    }
+  }
+  // Число позиций: ≤3 — ок; каждая лишняя сильно срезает балл (−50 за позицию).
+  const futuresCount = legs.length;
+  const countScore =
+    futuresCount <= MAX_FUTURES_POSITIONS
+      ? 100
+      : Math.max(0, 100 - (futuresCount - MAX_FUTURES_POSITIONS) * 50);
+  const futuresScore = Math.min(weightScore, leverageScore, countScore);
+
   const components: HealthComponent[] = [
     {
       key: "reserve",
       label: "Резерв",
       color: "#56d8f5",
-      desc: "Кэш относительно цели 30%.",
+      desc: "Выделенный резерв (стейблы) относительно цели 30%.",
       weight: 0.2,
-      score: score(input.cashShare / RESERVE_TARGET_SHARE),
+      score: reserveScore,
+      meta: { reserveUsd, reserveTargetUsd },
     },
     {
       key: "crypto",
-      label: "Крипта",
+      label: "Сопротивление волатильности",
       color: "#ad67ff",
-      desc: "Доля крипты против лимита 60%.",
+      desc: "Экспозиция в волатильных активах против лимита 60%.",
       weight: 0.17,
       score: score((CRYPTO_HARD - input.cryptoShare) / (CRYPTO_HARD - MAX_CRYPTO_EXPOSURE_SHARE)),
     },
@@ -74,9 +156,20 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       key: "futures",
       label: "Фьючерсы",
       color: "#e8b35a",
-      desc: "Малое плечо и вес фьючерсов (≤10%).",
+      desc: "Вес ≤10%, плечо ≤2x альты / ≤3x BTC-золото, не более 3 позиций.",
       weight: 0.15,
-      score: score((FUTURES_HARD - input.futuresShare) / (FUTURES_HARD - MAX_FUTURES_EXPOSURE_SHARE)),
+      score: futuresScore,
+      meta: {
+        weightScore,
+        leverageScore,
+        countScore,
+        futuresCount,
+        futuresShare: input.futuresShare,
+        worstLeverage,
+        worstLeverageAsset,
+        worstLeverageLimit,
+        leverageBreaches: breaches,
+      },
     },
     {
       key: "concentration",

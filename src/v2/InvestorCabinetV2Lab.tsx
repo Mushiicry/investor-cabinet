@@ -3,6 +3,7 @@ import { V2Shell } from "./components/V2Shell";
 import { useInvestorData } from "../hooks/useInvestorData";
 import { useFearGreed } from "../hooks/useFearGreed";
 import { useLivePrices } from "../hooks/useLivePrices";
+import { useHyperliquidLeverage } from "../hooks/useHyperliquidLeverage";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
 import { buildPortfolioState } from "../lib/portfolioCalculations";
 import { computePortfolioHealth } from "../lib/portfolioHealth";
@@ -10,6 +11,7 @@ import type { PortfolioHealth } from "../lib/portfolioHealth";
 import { buildPlaybookCards } from "../lib/playbookSelectors";
 import type { PlaybookCard } from "../lib/playbookSelectors";
 import { rawPositions, decisionsData, scenariosData } from "../mocks/portfolioData";
+import { mergeWithLocalSnapshots } from "../services/dailySnapshotService";
 import type { PortfolioState } from "../types/portfolio";
 import "./v2.css";
 
@@ -211,24 +213,39 @@ const resolveReserveShare = (state: PortfolioState) => {
 const categoryShare = (state: PortfolioState, name: string) =>
   state.overview.categories.find((category) => category.name === name)?.share ?? 0;
 
-const buildLiveV2Data = (state: PortfolioState): V2LabData => {
+const buildLiveV2Data = (
+  state: PortfolioState,
+  leverageByCoin: Record<string, number> = {}
+): V2LabData => {
+  // Реальное выставленное плечо фьючерс-позиций берём с Hyperliquid (по монете).
+  // Монету извлекаем из имени актива ("BTC LONG" → "BTC"). Нет данных → null (не штрафуем).
+  const futuresLegs = state.portfolio
+    .filter((position) => position.category === "Фьючерсы")
+    .map((position) => {
+      const coin = position.asset.trim().split(/\s+/)[0].toUpperCase();
+      const leverage = leverageByCoin[coin] ?? null;
+      return { asset: position.asset, leverage };
+    });
+
   const computedHealth = computePortfolioHealth({
     cashShare: categoryShare(state, "Свободные деньги"),
     cryptoShare: categoryShare(state, "Крипта"),
     futuresShare: categoryShare(state, "Фьючерсы"),
     largestShare: state.risk.largestRiskShare,
     categoryShares: state.overview.categories.map((category) => category.share),
+    reserveShare: resolveReserveShare(state),
+    futuresLegs,
+    portfolioValue: state.overview.portfolioValue,
   });
-  const healthFactor = Math.round(
-    state.overview.health || state.risk.health || computedHealth.healthFactor
-  );
+  // Честный диагноз: используем собственный расчёт, а не сглаженный health из API.
+  const healthFactor = Math.round(computedHealth.healthFactor);
   const healthStatus: PortfolioHealth["status"] =
     healthFactor >= 75 ? "CONTROL" : healthFactor >= 55 ? "BALANCED" : "RISK";
   const health: PortfolioHealth = {
     ...computedHealth,
     healthFactor,
     status: healthStatus,
-    riskLevel: state.overview.state || state.risk.state || computedHealth.riskLevel,
+    riskLevel: computedHealth.riskLevel,
   };
   const diversification =
     health.components.find((component) => component.key === "diversification")?.score ?? 0;
@@ -238,7 +255,7 @@ const buildLiveV2Data = (state: PortfolioState): V2LabData => {
   return {
     ...mockData,
     fearGreedStrategy: state.fearGreedStrategy,
-    history: state.history,
+    history: mergeWithLocalSnapshots(state.history),
     transactions: state.transactions,
     health,
     playbook: buildPlaybookCards(
@@ -302,7 +319,7 @@ const buildLiveV2Data = (state: PortfolioState): V2LabData => {
   };
 };
 
-export type V2Page = "overview" | "portfolio" | "scenarios" | "risk" | "reports" | "signals" | "settings";
+export type V2Page = "overview" | "portfolio" | "scenarios" | "risk" | "reports" | "signals" | "settings" | "health";
 
 // Все активы у которых есть живой источник цены (Hyperliquid / OKX)
 const LIVE_PRICE_ASSETS = ["BTC", "ETH", "SOL", "BNB", "TON", "ATOM", "MNT", "TIA", "APEX", "GRAM"];
@@ -316,9 +333,11 @@ export default function InvestorCabinetV2Lab() {
   const investorData = useInvestorData(fallbackData);
   const fearGreedLive = useFearGreed();
   const livePrices = useLivePrices(LIVE_PRICE_ASSETS);
+  const hlAddress = import.meta.env.VITE_HL_ADDRESS as string | undefined;
+  const hlLeverage = useHyperliquidLeverage(hlAddress);
 
   const data = useMemo(() => {
-    const base = buildLiveV2Data(investorData.data);
+    const base = buildLiveV2Data(investorData.data, hlLeverage.leverage);
 
     // Переопределяем цены позиций живыми данными из Binance / OKX / Hyperliquid.
     // Sheets-цены всегда устаревшие (обновляются вручную).
@@ -361,7 +380,7 @@ export default function InvestorCabinetV2Lab() {
         history: mergedHistory,
       },
     };
-  }, [investorData.data, fearGreedLive.status, fearGreedLive.data.value, fearGreedLive.liveHistory, livePrices.prices]);
+  }, [investorData.data, fearGreedLive.status, fearGreedLive.data.value, fearGreedLive.liveHistory, livePrices.prices, hlLeverage.leverage]);
 
   return <V2Shell data={data} page={page} onNavigate={setPage} />;
 }

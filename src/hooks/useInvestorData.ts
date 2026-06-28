@@ -7,6 +7,7 @@ import {
   writeCachedInvestorState,
 } from "../services/investorDataCache";
 import { buildInvestorStateFromApi } from "../services/investorState";
+import { maybeRecordSnapshot } from "../services/dailySnapshotService";
 import type { DataLoadState } from "../types/dataStatus";
 import type { PortfolioState } from "../types/portfolio";
 
@@ -77,6 +78,14 @@ export function useInvestorData(fallbackData: PortfolioState): InvestorDataResul
         setState((prev) => {
           const loadedAt = new Date().toISOString();
           const data = buildInvestorStateFromApi(json, prev.data);
+
+          // Daily auto-snapshot: runs once per calendar day
+          maybeRecordSnapshot({
+            portfolioValue: data.overview.portfolioValue,
+            invested: data.overview.invested,
+            reserve: data.overview.reserve,
+            positionsCount: data.portfolio.length,
+          });
 
           writeCachedInvestorState(data, loadedAt);
 

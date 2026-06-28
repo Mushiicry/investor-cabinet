@@ -8,6 +8,29 @@ import type {
 } from "../../types/portfolio";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
 
+const MODE_EXPLAIN: Record<string, { when: string; action: string; logic: string }> = {
+  watch: {
+    when: "Индекс страха и жадности: 30–100 (нейтрально или жадность)",
+    action: "Не покупаем. Наблюдаем, держим позиции.",
+    logic: "Цены на среднем или высоком уровне. Покупка сейчас — переплата. Дисциплина: ждём когда рынок даст скидку.",
+  },
+  cautious: {
+    when: "Индекс страха и жадности: 20–29 (страх)",
+    action: "Докупаем небольшую позицию — 1% от портфеля.",
+    logic: "Рынок испуган, но не капитулировал. Первый осторожный шаг накопления. Размер небольшой — сохраняем резерв для более глубоких уровней.",
+  },
+  strong: {
+    when: "Индекс страха и жадности: 15–19 (сильный страх)",
+    action: "Усиливаем покупку — 1.5% от портфеля.",
+    logic: "Давление продавцов усиливается. Второй уровень стратегии: увеличенный размер позиции. Рынок даёт скидку — используем её.",
+  },
+  aggressive: {
+    when: "Индекс страха и жадности: 0–14 (экстремальный страх / капитуляция)",
+    action: "Максимальная покупка — 2% от портфеля.",
+    logic: "Редкий и ценный момент. Рынок в панике, большинство продаёт. Это лучшие точки входа для долгосрочного инвестора с резервом.",
+  },
+};
+
 type Props = {
   portfolio: V2Portfolio;
   strategy: FearGreedStrategy;
@@ -76,6 +99,7 @@ function useMinuteTick() {
 
 export function V2FearGreedStrategy({ portfolio, strategy, variant = "full" }: Props) {
   useMinuteTick();
+  const [expandedMode, setExpandedMode] = useState<string | null>(null);
   const currentIndex = strategy.currentIndex;
   const activeStrategy = buildFearGreedStrategy(
     currentIndex,
@@ -86,29 +110,60 @@ export function V2FearGreedStrategy({ portfolio, strategy, variant = "full" }: P
 
   const ladder = (
     <div className="v2-fg-rule-table" aria-label="Fear and Greed strategy rules">
-      {activeStrategy.rules.map((row) => (
-        <div
-          key={row.mode}
-          className={[
-            "v2-fg-rule",
-            `v2-fg-rule-${row.mode}`,
-            row.isCurrent ? "is-current" : "",
-            row.isCurrent && row.cooldownRemainingHours <= 0 ? "is-active" : "",
-            row.cooldownRemainingHours > 0 ? "is-cooldown-row" : "",
-          ].filter(Boolean).join(" ")}
-        >
-          <div className="v2-fg-rule-range">
-            <span className="v2-fg-rule-dot" aria-hidden="true" />
-            <span>{row.range}</span>
+      {activeStrategy.rules.map((row) => {
+        const explain = MODE_EXPLAIN[row.mode];
+        const isOpen = expandedMode === row.mode;
+        return (
+          <div key={row.mode}>
+            <div
+              className={[
+                "v2-fg-rule",
+                `v2-fg-rule-${row.mode}`,
+                row.isCurrent ? "is-current" : "",
+                row.isCurrent && row.cooldownRemainingHours <= 0 ? "is-active" : "",
+                row.cooldownRemainingHours > 0 ? "is-cooldown-row" : "",
+              ].filter(Boolean).join(" ")}
+            >
+              <div className="v2-fg-rule-range">
+                <span className="v2-fg-rule-dot" aria-hidden="true" />
+                <span>{row.range}</span>
+              </div>
+              <div className="v2-fg-rule-mode">
+                <strong>{getShortModeLabel(row.mode)}</strong>
+                {explain && (
+                  <button
+                    className={`v2-fg-info-btn${isOpen ? " is-open" : ""}`}
+                    onClick={() => setExpandedMode(isOpen ? null : row.mode)}
+                    aria-label={`Объяснение режима ${getShortModeLabel(row.mode)}`}
+                    type="button"
+                  >ⓘ</button>
+                )}
+              </div>
+              <span>{formatBuyPct(row.buyPct)}</span>
+              <span>{formatMoneyDetailed(row.buyAmount)}</span>
+              <span className={`v2-fg-rule-status is-${getStatusKind(row)}`}>
+                {getStatusLabel(row)}
+              </span>
+            </div>
+            {isOpen && explain && (
+              <div className="v2-fg-explain">
+                <div className="v2-fg-explain-row">
+                  <span className="v2-fg-explain-key">Когда</span>
+                  <span>{explain.when}</span>
+                </div>
+                <div className="v2-fg-explain-row">
+                  <span className="v2-fg-explain-key">Действие</span>
+                  <span className="v2-fg-explain-action">{explain.action}</span>
+                </div>
+                <div className="v2-fg-explain-row">
+                  <span className="v2-fg-explain-key">Логика</span>
+                  <span>{explain.logic}</span>
+                </div>
+              </div>
+            )}
           </div>
-          <strong>{getShortModeLabel(row.mode)}</strong>
-          <span>{formatBuyPct(row.buyPct)}</span>
-          <span>{formatMoneyDetailed(row.buyAmount)}</span>
-          <span className={`v2-fg-rule-status is-${getStatusKind(row)}`}>
-            {getStatusLabel(row)}
-          </span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 

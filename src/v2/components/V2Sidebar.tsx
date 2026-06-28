@@ -17,6 +17,16 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
     ),
   },
   {
+    label: "Здоровье",
+    page: "health",
+    icon: (
+      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M9 15.5C5 13.5 2 10.8 2 7.5a4 4 0 016-3.46A4 4 0 0116 7.5c0 3.3-3 6-7 8z" />
+        <path d="M6 9h1.5l1-2.5 1.5 5 1-2.5H13" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     label: "Портфель",
     page: "portfolio",
     icon: (
@@ -99,9 +109,8 @@ const settingsItem  = navItems.find(i => i.label === "Настройки")!;
 
 export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, profileName, profileAvatar }: Props) {
   const [levelOpen, setLevelOpen] = useState(false);
-  const { level, xpCurrent, xpMax } = computeLevel(healthFactor);
+  const { level } = computeLevel(healthFactor);
   const levelTitle = getLevelTitle(level);
-  const xpFillPct = Math.round((xpCurrent / xpMax) * 100);
   const renderItem = (item: typeof navItems[0]) => {
     const isActive = item.page === activePage;
     return (
@@ -144,25 +153,17 @@ export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, 
         {mainNavItems.map(renderItem)}
       </nav>
 
-      <div className="v2-sidebar-level">
-        <div className="v2-level-ring" style={{ borderColor: statusColor + "99", boxShadow: `0 0 20px -4px ${statusColor}66, inset 0 0 14px ${statusColor}10` }}>
-          <span className="v2-level-score" style={{ color: statusColor, textShadow: `0 0 14px ${statusColor}b3` }}>
-            {level}
-          </span>
-          <span className="v2-level-sublabel">УРОВЕНЬ</span>
-        </div>
-        <button className="v2-level-btn" type="button" onClick={() => setLevelOpen(true)}>
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3">
-            <path d="M7 1l1.5 3 3.5.5-2.5 2.5.6 3.5L7 9l-3.1 1.5.6-3.5L2 4.5 5.5 4 7 1z" />
-          </svg>
-          {profileName || "ИНВЕСТОР"} — {levelTitle}
-        </button>
-        <div className="v2-sidebar-xp">
-          <div className="v2-sidebar-xp-track">
-            <span className="v2-sidebar-xp-fill" style={{ width: `${xpFillPct}%` }} />
+      <div className="v2-sidebar-profile">
+        <button className="v2-sidebar-profile-btn" type="button" onClick={() => setLevelOpen(true)}>
+          <span className="v2-sidebar-profile-dot" style={{ background: statusColor, boxShadow: `0 0 8px ${statusColor}99` }} />
+          <div className="v2-sidebar-profile-info">
+            <span className="v2-sidebar-profile-name">{profileName || "ИНВЕСТОР"}</span>
+            <span className="v2-sidebar-profile-title">{levelTitle}</span>
           </div>
-          <span className="v2-sidebar-xp-label">{xpCurrent} / {xpMax} XP</span>
-        </div>
+          <svg className="v2-sidebar-profile-arrow" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3">
+            <path d="M4 2l3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
 
       <div className="v2-nav-bottom">

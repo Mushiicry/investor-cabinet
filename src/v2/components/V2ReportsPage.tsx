@@ -5,6 +5,7 @@ import {
 } from "../../lib/historySelectors";
 import type { InvestorTransaction, PortfolioHistoryPoint } from "../../types/portfolio";
 import type { V2Position } from "../InvestorCabinetV2Lab";
+import { stakingApy } from "../../config/stakingRules";
 
 type Props = {
   history: PortfolioHistoryPoint[];
@@ -49,6 +50,53 @@ function transactionTone(action: string) {
   if (normalized.includes("прод") || normalized.includes("sell")) return "tx-sell";
   if (normalized.includes("перев") || normalized.includes("transfer")) return "tx-transfer";
   return "tx-reinforce";
+}
+
+// Переводы (transfer) в истории сделок не показываем — это не торговые операции.
+function isTransfer(action: string) {
+  const a = (action || "").toLowerCase();
+  return a.includes("перев") || a.includes("transfer");
+}
+
+// Полностью пустая строка — ни количества, ни суммы, ни цены (служебные
+// под-события вроде DepositStake/JettonMint). Не показываем.
+function isEmptyRow(t: InvestorTransaction) {
+  const qty = Number(t.quantity || t.rawAmount || 0);
+  const amount = Number(t.amount || 0);
+  const price = Number(t.price || 0);
+  return !qty && !amount && !price;
+}
+
+function isStaking(action: string) {
+  return /стейк|stak/i.test(action || "");
+}
+
+// Одна покупка/продажа приходит из двух источников: запись BALANCE_DELT
+// (с кол-вом и ценой) и реальный on-chain своп (та же сумма, но кол-во 0,
+// цена пустая). Схлопываем дубли по активу+действию+сумме, оставляя строку
+// с числами (большее количество).
+function dedupeTrades(list: InvestorTransaction[]): InvestorTransaction[] {
+  const seen = new Map<string, number>();
+  const out: InvestorTransaction[] = [];
+  for (const t of list) {
+    const amount = Number(t.amount || 0);
+    const qty = Number(t.quantity || t.rawAmount || 0);
+    if (!amount) {
+      out.push(t);
+      continue;
+    }
+    const key = `${(t.asset || t.rawAsset || "").toUpperCase()}|${(t.action || "").toLowerCase()}|${Math.round(amount * 100)}`;
+    const existingIdx = seen.get(key);
+    if (existingIdx === undefined) {
+      seen.set(key, out.length);
+      out.push(t);
+    } else {
+      const existing = out[existingIdx];
+      const existingQty = Number(existing.quantity || existing.rawAmount || 0);
+      if (qty > existingQty) out[existingIdx] = t; // оставляем строку с числами
+    }
+  }
+  return out;
 }
 
 function EquityCurve({ points }: { points: PortfolioHistoryPoint[] }) {
@@ -199,9 +247,13 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
               </div>
 
               <div className="v2-rep-table-body">
-                {transactions.length === 0 ? (
+                {(() => {
+                  const tradeTransactions = dedupeTrades(
+                    transactions.filter((t) => !isTransfer(t.action) && !isEmptyRow(t))
+                  );
+                  return tradeTransactions.length === 0 ? (
                   <div className="v2-rep-empty">API пока не вернул историю сделок</div>
-                ) : transactions.map((transaction, index) => {
+                ) : tradeTransactions.map((transaction, index) => {
                   const transactionId = transaction.hash || transaction.id;
                   const details = transaction.comment || transaction.note || transaction.counterparty || transactionId;
 
@@ -217,7 +269,21 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
                         {transaction.action || transaction.direction || "—"}
                       </span>
                       <span className="v2-rep-cell-price">{fmtQuantity(transaction.quantity || transaction.rawAmount)}</span>
-                      <span className="v2-rep-cell-price">{transaction.price ? fmtUSD(transaction.price) : "—"}</span>
+                      <span className="v2-rep-cell-price">
+                        {(() => {
+                          const apy = isStaking(transaction.action)
+                            ? stakingApy(transaction.asset || transaction.rawAsset)
+                            : null;
+                          if (apy != null) {
+                            return (
+                              <span className="v2-rep-apy-badge" title="Текущая ставка стейкинга (Tonstakers)">
+                                {(apy * 100).toFixed(2)}% APY
+                              </span>
+                            );
+                          }
+                          return transaction.price ? fmtUSD(transaction.price) : "—";
+                        })()}
+                      </span>
                       <span className="v2-rep-cell-amount">{transaction.amount ? fmtUSD(transaction.amount) : "—"}</span>
                       <span className="v2-rep-cell-fg">{transaction.chain || transaction.walletId || "—"}</span>
                       <span className={`v2-rep-tag ${transaction.status === "APPROVED" ? "is-strategy" : "is-manual"}`}>
@@ -228,7 +294,8 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
                       </span>
                     </div>
                   );
-                })}
+                });
+                })()}
               </div>
             </div>
           </div>

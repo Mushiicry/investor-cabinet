@@ -1,19 +1,21 @@
 import { useMemo, useState } from "react";
 import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
+import type { HealthComponent } from "../../lib/portfolioHealth";
+import { V2HealthDetailModal } from "./V2HealthDetailModal";
 import { V2ReportsPage } from "./V2ReportsPage";
 import { V2SignalsPage } from "./V2SignalsPage";
-import { V2Allocation3D } from "./V2Allocation3D";
 import { V2RiskEnginePage } from "./V2RiskEnginePage";
 import { V2ScenariosPage } from "./V2ScenariosPage";
 import { V2DeployableCapital } from "./V2DeployableCapital";
-import { V2FearGreed } from "./V2FearGreed";
-import { V2FearGreedStrategy } from "./V2FearGreedStrategy";
+import { V2DCAStrategy } from "./V2DCAStrategy";
+import { V2PortfolioAllocationCard } from "./V2PortfolioAllocationCard";
 import { V2HealthCore } from "./V2HealthCore";
 import { V2SettingsPage } from "./V2SettingsPage";
 import { V2BtcDailyChart } from "./V2BtcDailyChart";
 import { V2TabBar } from "./V2TabBar";
 
 import { V2PortfolioPage } from "./V2PortfolioPage";
+import { V2HealthPage } from "./V2HealthPage";
 import { V2Sidebar } from "./V2Sidebar";
 import { V2TopMetrics } from "./V2TopMetrics";
 import { V2StarField } from "./V2StarField";
@@ -27,6 +29,8 @@ type Props = {
 export function V2Shell({ data, page, onNavigate }: Props) {
   const [profileName,   setProfileName]   = useState(() => localStorage.getItem("mushii-profile-name")   ?? "");
   const [profileAvatar, setProfileAvatar] = useState(() => localStorage.getItem("mushii-profile-avatar") ?? "");
+  const [selectedChip, setSelectedChip] = useState<HealthComponent | null>(null);
+  const [capitalOpen, setCapitalOpen] = useState(false);
 
   function handleSaveProfile(name: string, avatar: string) {
     setProfileName(name);
@@ -110,6 +114,11 @@ export function V2Shell({ data, page, onNavigate }: Props) {
           <V2PortfolioPage positions={data.positions} playbook={data.playbook} />
         ) : page === "scenarios" ? (
           <V2ScenariosPage playbook={data.playbook} positions={data.positions} />
+        ) : page === "health" ? (
+          <V2HealthPage
+            portfolio={data.portfolio}
+            health={data.health}
+          />
         ) : page === "risk" ? (
           <V2RiskEnginePage
             portfolio={data.portfolio}
@@ -119,45 +128,55 @@ export function V2Shell({ data, page, onNavigate }: Props) {
           />
         ) : (
         <section className="v2-command-grid" aria-label="Investor Cabinet V2 overview">
-          <div className="v2-top-grid">
-            <div className="v2-top-left">
-              <div className="v2-metrics-area">
-                <V2TopMetrics portfolio={data.portfolio} />
-              </div>
-              <div className="v2-hero-reactor">
-                <V2HealthCore portfolio={data.portfolio} health={data.health} />
-              </div>
-            </div>
-            <div className="v2-strategy-zone">
-              <div className="v2-strategy-top">
-                <div className="v2-right-top">
-                  <V2FearGreed portfolio={data.portfolio} strategy={data.fearGreedStrategy} />
-                </div>
-                <V2FearGreedStrategy
-                  variant="meta"
-                  portfolio={data.portfolio}
-                  strategy={data.fearGreedStrategy}
-                />
-              </div>
-              <V2FearGreedStrategy
-                variant="ladder"
+          <V2TopMetrics
+            portfolio={data.portfolio}
+            history={data.history}
+            capitalOpen={capitalOpen}
+            onToggleCapital={() => setCapitalOpen((v) => !v)}
+          />
+          <div className={`v2-capital-dropdown ${capitalOpen ? "is-open" : ""}`}>
+            <div className="v2-capital-dropdown-inner">
+              <V2DeployableCapital
                 portfolio={data.portfolio}
                 strategy={data.fearGreedStrategy}
               />
-              <div className="v2-alloc-stables">
-                <V2Allocation3D allocation={data.allocation} />
-                <V2DeployableCapital
-                  portfolio={data.portfolio}
-                  strategy={data.fearGreedStrategy}
-                />
-              </div>
             </div>
           </div>
+
+          {/* Блок здоровья — на всю ширину */}
+          <div className="v2-hero-reactor">
+            <V2HealthCore portfolio={data.portfolio} health={data.health} onChipSelect={setSelectedChip} onNavigate={onNavigate} />
+          </div>
+
+          {/* Под радаром: премиальный блок распределения */}
+          <div className="v2-alloc-center-row">
+            <div className="v2-alloc-center-inner">
+              <V2PortfolioAllocationCard allocation={data.allocation} total={data.portfolio.totalPortfolioValue} />
+            </div>
+          </div>
+
+          {/* Ниже: стратегия DCA */}
+          <div className="v2-dca-row">
+            <V2DCAStrategy
+              portfolio={data.portfolio}
+              strategy={data.fearGreedStrategy}
+              onNavigate={onNavigate}
+            />
+          </div>
+
           <V2BtcDailyChart currentFearGreed={data.fearGreedStrategy.currentIndex} />
         </section>
         )}
       </main>
       <V2TabBar activePage={page} onNavigate={onNavigate} criticalCount={criticalCount} />
+
+      {selectedChip && (
+        <V2HealthDetailModal
+          component={selectedChip}
+          portfolio={data.portfolio}
+          onClose={() => setSelectedChip(null)}
+        />
+      )}
     </div>
   );
 }

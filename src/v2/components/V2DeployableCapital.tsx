@@ -27,17 +27,23 @@ export function V2DeployableCapital({ portfolio, strategy }: Props) {
   const freeCash =
     portfolio.stableReserve || portfolio.spotDeployable + portfolio.futuresDeployable;
 
-  const futuresCash = portfolio.futuresDeployable;
-  const strategyCash = activeStrategy.rules
-    .filter((row) => row.buyPct > 0 && row.status !== "cooldown")
-    .reduce((sum, row) => sum + row.buyAmount, 0);
-  const spotCash = Math.max(freeCash - futuresCash - strategyCash, 0);
-
-  // Чистый резерв — что не распределено ни под фьючи, ни под стратегию, ни под спот
-  const pureReserve = Math.max(freeCash - futuresCash - strategyCash - spotCash, 0);
+  // Risk First: резерв наполняется ПЕРВЫМ до цели 30%.
+  // В работу можно пустить только излишек сверх резерва.
   const totalPortfolio = portfolio.totalPortfolioValue || 0;
   const reserveTarget = totalPortfolio * RESERVE_TARGET_PCT;
+  const pureReserve = Math.min(freeCash, reserveTarget);
+  const deployable = Math.max(freeCash - reserveTarget, 0);
   const reserveShort = pureReserve < reserveTarget;
+
+  // Излишек распределяем по корзинам в порядке приоритета.
+  const futuresCash = Math.min(portfolio.futuresDeployable, deployable);
+  const strategyCash = Math.min(
+    activeStrategy.rules
+      .filter((row) => row.buyPct > 0 && row.status !== "cooldown")
+      .reduce((sum, row) => sum + row.buyAmount, 0),
+    Math.max(deployable - futuresCash, 0)
+  );
+  const spotCash = Math.max(deployable - futuresCash - strategyCash, 0);
 
   const rows: Array<{
     label: string;
@@ -56,9 +62,9 @@ export function V2DeployableCapital({ portfolio, strategy }: Props) {
     <section className="v2-panel v2-allocation">
       <div className="v2-panel-header">
         <span>Торговый капитал</span>
-        <strong className="v2-stables-total">{money.format(freeCash)}</strong>
+        <strong className="v2-stables-total">{money.format(deployable)}</strong>
       </div>
-      <div className="v2-alloc-kicker">можно пустить в работу</div>
+      <div className="v2-alloc-kicker">можно пустить в работу сверх резерва</div>
 
       <div className="v2-alloc-cards">
         {rows.map((row) => {
