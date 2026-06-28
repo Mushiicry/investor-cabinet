@@ -59,13 +59,13 @@ function HudCornerBR() {
   );
 }
 
-export function V2TopMetrics({ portfolio, history = [], capitalOpen = false, onToggleCapital }: Props) {
+export function V2TopMetrics({ portfolio, capitalOpen = false, onToggleCapital }: Props) {
   return (
     <header className="v2-topbar">
       {/* Две карточки, отцентрованы над радаром (живут в колонке радара) */}
       <div className="v2-metrics-left">
         {/* ── Hero portfolio card ── */}
-        <V2PortfolioHeroCard portfolio={portfolio} history={history} />
+        <V2PortfolioHeroCard portfolio={portfolio} />
 
         {/* ── Вложено + Позиции — объединённая карточка ── */}
         <div className="v2-metric metric-card-beam v2-metric-split">

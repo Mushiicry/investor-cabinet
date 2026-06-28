@@ -8,7 +8,7 @@ const OUTER_R = 136;
 const VB_OFF = 80;
 const VB_SIZE = 280 + VB_OFF * 2; // 440
 
-const CHIP_W = 89, CHIP_H = 52, GAP = 12, CORNER = 7, CHIP_R = 40;
+const CHIP_W = 89, CHIP_H = 52, GAP = 12, CHIP_R = 40;
 
 const CHIP_LABEL: Record<string, string> = {
   reserve:         "Резерв",
@@ -70,16 +70,6 @@ function chipLayout(idx: number): {
   return                         { rx: vx - GAP - CHIP_W, ry: vy - CHIP_H / 2, vx, vy, ax: vx - GAP, ay: vy };
 }
 
-function octPts(rx: number, ry: number): string {
-  const c = CORNER, w = CHIP_W, h = CHIP_H;
-  return [
-    `${rx+c},${ry}`,     `${rx+w-c},${ry}`,
-    `${rx+w},${ry+c}`,   `${rx+w},${ry+h-c}`,
-    `${rx+w-c},${ry+h}`, `${rx+c},${ry+h}`,
-    `${rx},${ry+h-c}`,   `${rx},${ry+c}`,
-  ].join(" ");
-}
-
 // Scale value polygon toward center by factor (for inner highlight effect)
 function scaleValuePts(pts: string, factor: number): string {
   return pts.split(" ").map(p => {
@@ -97,14 +87,6 @@ const SCORE_LABEL: Record<string, string> = {
   flexibility:     "Гибкость",
 };
 
-const ADVICE: Record<string, string> = {
-  reserve:         "Резерв ниже цели 30% — пополните счёт или снизьте позиции, не покупайте, пока не накопите подушку",
-  crypto:          "Перегруз волатильными активами выше 60% — зафиксируйте часть в стейблы и другие классы",
-  futures:         "Плечо выше лимита (≤2x альты / ≤3x BTC-золото) — сократите фьючерс с самым высоким плечом",
-  concentration:   "Один актив выше лимита 35% — распределите часть в другие позиции",
-  diversification: "Капитал в одном классе — добавьте металлы, акции или стейблы",
-  flexibility:     "Мало ликвидного манёвра — высвободите часть в кэш",
-};
 
 function healthInterpretation(score: number): { text: string; color: string } {
   if (score >= 80) return { text: "Здоров — портфель сбалансирован по всем критериям", color: "#5AEF8D" };
@@ -225,7 +207,6 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
   const weak = sorted.filter(c => c.score < 65).slice(0, 5);
   const strong = sorted.filter(c => c.score >= 75).slice(-2);
   const interp = healthInterpretation(health.healthFactor);
-  const recommendations = weak.map(c => ADVICE[c.key]).filter(Boolean);
 
   return (
     <section className="v2-panel v2-health-core v2-health-core--premium" aria-label="Portfolio health factor">

@@ -54,7 +54,7 @@ export function V2AllocationRing({ allocation, total }: Props) {
     <div className="v2-aring-wrap">
       <svg viewBox="0 0 200 200" className="v2-aring-svg" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          {arcs.map((arc, i) => (
+          {arcs.map((_, i) => (
             <filter key={i} id={`ar-glow-${i}`} x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="2" result="b"/>
               <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
