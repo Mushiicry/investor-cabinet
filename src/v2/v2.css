@@ -1876,7 +1876,7 @@ body:has(.v2-lab) {
 /* ── Распределение средств + кольцо: центровка под радаром ── */
 .v2-alloc-center-row {
   display: grid;
-  grid-template-columns: minmax(300px, 1.25fr) minmax(0, 2.3fr) minmax(300px, 1.2fr);
+  grid-template-columns: minmax(240px, 1.0fr) minmax(0, 2.8fr) minmax(240px, 1.0fr);
   gap: 14px;
   margin-top: 50px;
 }
@@ -1885,7 +1885,7 @@ body:has(.v2-lab) {
   display: flex;
   gap: 0;
   align-items: stretch;
-  border-radius: 14px;
+  border-radius: 18px;
   background: linear-gradient(160deg,
     rgba(30,80,160,0.22) 0%,
     rgba(10,28,68,0.52) 40%,
@@ -1895,7 +1895,7 @@ body:has(.v2-lab) {
   box-shadow:
     0 1px 0 rgba(180,230,255,0.10) inset,
     0 8px 40px rgba(0,8,28,0.55),
-    0 0 24px rgba(56,160,240,0.07);
+    0 0 28px rgba(56,160,240,0.08);
   overflow: hidden;
 }
 .v2-alloc-center-inner > * {
@@ -11790,25 +11790,25 @@ strong.v2-rb-val {
 
 .v2-pac-wrap {
   width: 100%;
-  padding: 22px 26px 18px;
+  padding: 24px 32px 20px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .v2-pac-header {
   font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.20em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(140,190,240,0.50);
+  color: rgba(140,190,240,0.52);
 }
 
 .v2-pac-body {
   display: flex;
-  gap: 20px;
+  gap: 34px;
   align-items: center;
 }
 
@@ -11817,46 +11817,68 @@ strong.v2-rb-val {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
 }
 
 /* Каждая карточка — glass-панель */
 .v2-pac-card {
   display: grid;
-  grid-template-columns: 38px 1fr auto;
+  grid-template-columns: 42px 1fr auto;
   grid-template-rows: auto 4px;
-  column-gap: 10px;
-  row-gap: 6px;
+  column-gap: 11px;
+  row-gap: 7px;
   align-items: center;
-  padding: 10px 12px 8px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(16,40,90,0.42) 0%, rgba(5,14,38,0.62) 100%);
-  border: 1px solid rgba(86,180,240,0.14);
-  box-shadow: 0 2px 12px rgba(0,3,15,0.40);
+  padding: 11px 14px 9px;
+  border-radius: 12px;
+  background: linear-gradient(135deg,
+    rgba(28,60,110,0.28) 0%,
+    rgba(8,18,48,0.38) 100%);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(120,190,255,0.10);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.06) inset,
+    0 4px 18px rgba(0,3,20,0.45);
   position: relative;
   overflow: hidden;
 }
+/* Top glass shine */
 .v2-pac-card::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  height: 40%;
+  background: linear-gradient(180deg,
+    rgba(255,255,255,0.055) 0%,
+    rgba(255,255,255,0) 100%);
+  border-radius: 12px 12px 0 0;
+  pointer-events: none;
+}
+/* Left accent line in card color */
+.v2-pac-card::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 20%; bottom: 20%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--c, #2e7ef5);
+  opacity: 0.55;
+  box-shadow: 0 0 8px var(--glow, rgba(46,126,245,0.6));
 }
 
 /* Иконка-кружок */
 .v2-pac-card-icon {
   grid-column: 1;
   grid-row: 1;
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   border: 1.5px solid;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 16px;
   background: rgba(4,10,28,0.65);
   flex-shrink: 0;
 }
@@ -11872,7 +11894,7 @@ strong.v2-rb-val {
 }
 .v2-pac-card-name {
   font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: rgba(215,238,255,0.90);
   white-space: nowrap;
@@ -11881,7 +11903,7 @@ strong.v2-rb-val {
 }
 .v2-pac-card-amt {
   font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(140,180,225,0.60);
 }
 
@@ -11897,7 +11919,7 @@ strong.v2-rb-val {
 }
 .v2-pac-card-pct {
   font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -11965,17 +11987,18 @@ strong.v2-rb-val {
 }
 
 .v2-pac-svg {
-  width: 310px;
-  height: 310px;
+  width: 360px;
+  height: 360px;
   overflow: visible;
+  flex-shrink: 0;
 }
 
 /* ─── Легенда ─── */
 .v2-pac-legend {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5px 16px;
-  max-width: 280px;
+  gap: 6px 20px;
+  max-width: 310px;
   width: 100%;
 }
 
@@ -11994,7 +12017,7 @@ strong.v2-rb-val {
 
 .v2-pac-legend-name {
   font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(160,205,235,0.65);
   flex: 1;
   white-space: nowrap;
@@ -12004,7 +12027,7 @@ strong.v2-rb-val {
 
 .v2-pac-legend-pct {
   font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: rgba(200,230,255,0.82);
 }
@@ -12014,3 +12037,76 @@ strong.v2-rb-val {
   background: none;
   border: none;
 }
+
+/* ─── Анимации блока распределения ─── */
+
+/* Карточки: появление при монтировании */
+@keyframes v2-pac-card-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.v2-pac-card {
+  animation: v2-pac-card-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition:
+    border-color 0.20s ease,
+    box-shadow   0.20s ease,
+    transform    0.18s ease,
+    background   0.20s ease;
+  cursor: default;
+}
+.v2-pac-card:hover {
+  border-color: color-mix(in srgb, var(--c, #2e7ef5) 45%, transparent);
+  background: linear-gradient(135deg,
+    rgba(28,60,110,0.42) 0%,
+    rgba(8,18,48,0.52) 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.08) inset,
+    0 0 0 1px color-mix(in srgb, var(--c, #2e7ef5) 28%, transparent),
+    0 6px 24px rgba(0,3,20,0.55),
+    0 0 18px color-mix(in srgb, var(--c, #2e7ef5) 10%, transparent);
+  transform: translateX(2px);
+}
+.v2-pac-card:hover .v2-pac-card-icon {
+  box-shadow:
+    0 0 20px var(--glow, rgba(46,126,245,0.7)),
+    inset 0 0 8px rgba(0,0,0,0.5) !important;
+}
+.v2-pac-card:hover::after {
+  opacity: 0.85;
+}
+
+/* Badge warn: мягкий пульс */
+@keyframes v2-badge-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+.v2-pac-badge.warn {
+  animation: v2-badge-pulse 2.4s ease-in-out infinite;
+}
+
+/* SVG: scan sweep по донату */
+@keyframes v2-pac-scan-sweep {
+  0%   { transform: translateX(0px); }
+  100% { transform: translateX(370px); }
+}
+.v2-pac-scan {
+  animation: v2-pac-scan-sweep 4.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: transform;
+}
+
+/* SVG: центральная сумма — тихий пульс */
+@keyframes v2-pac-total-pulse {
+  0%, 100% { opacity: 0.94; }
+  50%       { opacity: 0.72; }
+}
+.v2-pac-total-text {
+  animation: v2-pac-total-pulse 3.8s ease-in-out infinite;
+}
+
+/* Легенда: hover на строке */
+.v2-pac-legend-row {
+  transition: opacity 0.15s ease;
+  cursor: default;
+}
+.v2-pac-legend:hover .v2-pac-legend-row { opacity: 0.45; }
+.v2-pac-legend:hover .v2-pac-legend-row:hover { opacity: 1; }

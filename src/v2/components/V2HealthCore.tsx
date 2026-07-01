@@ -779,7 +779,7 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
               <span>Портфель сбалансирован — удерживайте структуру.</span>
             </div>
           ) : buildCoreRecs(weak, portfolio).map((rec, i) => (
-            <div key={i} className={`v2-hc-rec-row${rec.critical ? " v2-hc-rec-row--critical" : ""}`}>
+            <div key={i} className="v2-hc-rec-row v2-hc-rec-row--critical">
               <span className="v2-hc-rec-gain">+{rec.gain}</span>
               <div className="v2-hc-rec-body">
                 <span className="v2-hc-rec-action">{rec.action}</span>
