@@ -9,8 +9,8 @@ export const INVESTOR_API_URL = "/api/investor";
 export const FEAR_GREED_API_URL = "/api/fear-greed";
 export const FEAR_GREED_FALLBACK_VALUE = 34;
 
-export const INVESTOR_API_TIMEOUT_MS = 8000;
+export const INVESTOR_API_TIMEOUT_MS = 30000;
 export const FEAR_GREED_API_TIMEOUT_MS = 8000;
 
-export const INVESTOR_REFRESH_INTERVAL_MS = 10000;
+export const INVESTOR_REFRESH_INTERVAL_MS = 60000;
 export const FEAR_GREED_REFRESH_INTERVAL_MS = 10 * 60 * 1000;

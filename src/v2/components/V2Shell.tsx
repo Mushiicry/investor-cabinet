@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
 import type { HealthComponent } from "../../lib/portfolioHealth";
 import { V2HealthDetailModal } from "./V2HealthDetailModal";
@@ -26,11 +26,39 @@ type Props = {
   onNavigate: (page: V2Page) => void;
 };
 
+const DESKTOP_DESIGN_WIDTH = 1920;
+const DESKTOP_DESIGN_HEIGHT = 1080;
+const MOBILE_BREAKPOINT = 768;
+
+function getDesktopViewport() {
+  if (window.innerWidth <= MOBILE_BREAKPOINT) {
+    return { scale: 1, logicalHeight: window.innerHeight };
+  }
+
+  const scale = Math.min(
+    1,
+    window.innerWidth / DESKTOP_DESIGN_WIDTH,
+    window.innerHeight / DESKTOP_DESIGN_HEIGHT,
+  );
+
+  return {
+    scale,
+    logicalHeight: window.innerHeight / scale,
+  };
+}
+
 export function V2Shell({ data, page, onNavigate }: Props) {
   const [profileName,   setProfileName]   = useState(() => localStorage.getItem("mushii-profile-name")   ?? "");
   const [profileAvatar, setProfileAvatar] = useState(() => localStorage.getItem("mushii-profile-avatar") ?? "");
   const [selectedChip, setSelectedChip] = useState<HealthComponent | null>(null);
   const [capitalOpen, setCapitalOpen] = useState(false);
+  const [desktopViewport, setDesktopViewport] = useState(getDesktopViewport);
+
+  useEffect(() => {
+    const updateViewport = () => setDesktopViewport(getDesktopViewport());
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, []);
 
   function handleSaveProfile(name: string, avatar: string) {
     setProfileName(name);
@@ -48,7 +76,13 @@ export function V2Shell({ data, page, onNavigate }: Props) {
   }, [data.portfolio]);
 
   return (
-    <div className="v2-lab">
+    <div
+      className="v2-lab"
+      style={{
+        "--v2-desktop-scale": desktopViewport.scale,
+        "--v2-logical-height": `${desktopViewport.logicalHeight}px`,
+      } as CSSProperties}
+    >
       {/* Мобильная шапка (только ≤768px) */}
       <header className="v2-mob-header">
         <button className="v2-mob-hamburger" type="button" aria-label="Меню">
@@ -148,20 +182,19 @@ export function V2Shell({ data, page, onNavigate }: Props) {
             <V2HealthCore portfolio={data.portfolio} health={data.health} onChipSelect={setSelectedChip} onNavigate={onNavigate} />
           </div>
 
-          {/* Под радаром: премиальный блок распределения */}
+          {/* Под радаром: распределение + DCA рядом */}
           <div className="v2-alloc-center-row">
             <div className="v2-alloc-center-inner">
+              <span aria-hidden="true" className="v2-hud-corners" />
               <V2PortfolioAllocationCard allocation={data.allocation} total={data.portfolio.totalPortfolioValue} />
             </div>
-          </div>
-
-          {/* Ниже: стратегия DCA */}
-          <div className="v2-dca-row">
-            <V2DCAStrategy
-              portfolio={data.portfolio}
-              strategy={data.fearGreedStrategy}
-              onNavigate={onNavigate}
-            />
+            <div className="v2-alloc-dca-slot">
+              <V2DCAStrategy
+                portfolio={data.portfolio}
+                strategy={data.fearGreedStrategy}
+                onNavigate={onNavigate}
+              />
+            </div>
           </div>
 
           <V2BtcDailyChart currentFearGreed={data.fearGreedStrategy.currentIndex} />

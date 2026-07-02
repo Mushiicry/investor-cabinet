@@ -22,6 +22,7 @@ import {
   buildExposureWarnings,
   calculateCategoryExposureShares,
   calculateCategoryValue,
+  calculateFuturesMarginShare,
   calculatePortfolioValue,
 } from "./riskExposure";
 import { buildFearGreedStrategy } from "./fearGreedStrategy";
@@ -77,6 +78,7 @@ export function calculateRisk(positions: PositionCalculated[]): Risk {
   const reserve = calculateCategoryValue(positions, "Свободные деньги");
   const reserveShare = portfolioValue ? reserve / portfolioValue : 0;
   const categoryExposure = calculateCategoryExposureShares(positions, portfolioValue);
+  const futuresShare = calculateFuturesMarginShare(positions);
   const workBudget = reserve * RESERVE_WORK_BUDGET_SHARE;
   const futuresDeployableCash = positions
     .filter((item) => item.category === "Свободные деньги" && item.asset.toUpperCase().includes("USDC HL"))
@@ -91,7 +93,10 @@ export function calculateRisk(positions: PositionCalculated[]): Risk {
   const signal = getReserveSignal(reserveShare);
   const summary = getReserveSummary(reserveShare);
   const largestRiskShare = largestRiskAsset ? round(largestRiskAsset.share / 100, 4) : 0;
-  const exposureWarnings = buildExposureWarnings(categoryExposure, largestRiskShare);
+  const exposureWarnings = buildExposureWarnings(
+    { ...categoryExposure, futuresShare },
+    largestRiskShare
+  );
 
   return {
     portfolioValue,
@@ -105,7 +110,7 @@ export function calculateRisk(positions: PositionCalculated[]): Risk {
     cryptoShare: categoryExposure.cryptoShare,
     stocksShare: categoryExposure.stocksShare,
     metalsShare: categoryExposure.metalsShare,
-    futuresShare: categoryExposure.futuresShare,
+    futuresShare,
     cashShare: categoryExposure.cashShare,
     health: round(health, 2),
     state,

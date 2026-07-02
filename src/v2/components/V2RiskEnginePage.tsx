@@ -114,8 +114,9 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
             <div className="v2-re-alloc-list">
               {allocation.map((item) => {
                 const rule = ALLOC_LIMITS[item.name];
-                const over = rule && item.share > rule.limit;
-                const under = rule?.dir === "below" && item.share < rule.limit;
+                const exposureShare = item.name === "Фьючерсы" ? risk.futuresShare : item.share;
+                const over = rule && exposureShare > rule.limit;
+                const under = rule?.dir === "below" && exposureShare < rule.limit;
                 const flagClass = over ? "re-flag-over" : under ? "re-flag-under" : "re-flag-ok";
                 const flagLabel = over ? "ВЫШЕ" : under ? "НИЖЕ" : "OK";
 
@@ -130,7 +131,7 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
                     <div className="v2-re-alloc-bar-wrap">
                       <div
                         className={`v2-re-alloc-bar-fill ${over ? "is-over" : ""}`}
-                        style={{ width: `${Math.min(item.share * 100, 100)}%` }}
+                        style={{ width: `${Math.min(exposureShare * 100, 100)}%` }}
                       />
                       {rule && (
                         <div
@@ -141,7 +142,7 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
                     </div>
                     <div className="v2-re-alloc-nums">
                       <span className={`v2-re-alloc-pct ${over ? "is-over" : ""}`}>
-                        {pct(item.share)}
+                        {pct(exposureShare)}
                       </span>
                       {rule && (
                         <span className="v2-re-alloc-limit">

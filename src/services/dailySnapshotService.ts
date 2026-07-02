@@ -3,6 +3,65 @@ import type { PortfolioHistoryPoint } from "../types/portfolio";
 const STORAGE_KEY = "mushii-daily-snapshots-v1";
 const MAX_SNAPSHOTS = 365;
 
+// ─── Invested floor (baseline) ────────────────────────────────────────────────
+// ВЛОЖЕНО never decreases on its own — it can only grow (new deposits) or be
+// explicitly reduced by the investor when cash is withdrawn from the system.
+// The floor is updated automatically when invested rises above it.
+const INVESTED_FLOOR_KEY = "mushii-invested-floor-v1";
+
+export function getInvestedFloor(): number {
+  try {
+    const raw = localStorage.getItem(INVESTED_FLOOR_KEY);
+    const val = raw ? Number(raw) : 0;
+    return Number.isFinite(val) ? val : 0;
+  } catch { return 0; }
+}
+
+/**
+ * Record an external deposit (cash arriving from outside the system).
+ * Only call this when the investor explicitly adds new capital.
+ */
+export function recordDeposit(amount: number): void {
+  try {
+    const next = getInvestedFloor() + amount;
+    localStorage.setItem(INVESTED_FLOOR_KEY, String(Math.round(next * 100) / 100));
+  } catch { /* localStorage unavailable */ }
+}
+
+/**
+ * Record an external withdrawal (cash leaving the system to personal use).
+ * Only call this when the investor explicitly pulls capital out.
+ */
+export function recordWithdrawal(amount: number): void {
+  try {
+    const next = Math.max(0, getInvestedFloor() - amount);
+    localStorage.setItem(INVESTED_FLOOR_KEY, String(Math.round(next * 100) / 100));
+  } catch { /* localStorage unavailable */ }
+}
+
+/**
+ * Seed the floor once on first load (floor === 0).
+ * After that, only recordDeposit / recordWithdrawal change it.
+ */
+export function seedInvestedFloorIfEmpty(investedRaw: number): void {
+  try {
+    if (getInvestedFloor() === 0 && investedRaw > 0) {
+      localStorage.setItem(INVESTED_FLOOR_KEY, String(Math.round(investedRaw * 100) / 100));
+    }
+  } catch { /* localStorage unavailable */ }
+}
+
+/**
+ * Returns the confirmed external capital baseline.
+ * Trading profits/losses do NOT affect this — only deposits/withdrawals do.
+ * Falls back to investedRaw only if the floor has never been seeded.
+ */
+export function applyInvestedFloor(investedRaw: number): number {
+  const floor = getInvestedFloor();
+  return floor > 0 ? floor : investedRaw;
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 export type DailySnapshot = PortfolioHistoryPoint;
 
 function todayIso(): string {
@@ -58,13 +117,16 @@ export function maybeRecordSnapshot(params: {
   // Already have today's snapshot — skip
   if (existing.some(s => dateKey(s.date) === todayKey)) return;
 
-  const pnl = params.portfolioValue - params.invested;
-  const pnlPct = params.invested > 0 ? pnl / params.invested : 0;
+  // Snapshot follows the accounting basis supplied by Google Sheets.
+  const invested = params.invested;
+
+  const pnl = params.portfolioValue - invested;
+  const pnlPct = invested > 0 ? pnl / invested : 0;
 
   const snapshot: DailySnapshot = {
     date: today,
     portfolioValue: Math.round(params.portfolioValue * 100) / 100,
-    invested: Math.round(params.invested * 100) / 100,
+    invested: Math.round(invested * 100) / 100,
     pnl: Math.round(pnl * 100) / 100,
     pnlPct: Math.round(pnlPct * 10000) / 10000,
     reserve: Math.round(params.reserve * 100) / 100,

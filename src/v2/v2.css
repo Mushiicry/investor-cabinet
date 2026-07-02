@@ -8,6 +8,8 @@ body:has(.v2-lab) {
   margin: 0;
   overflow-x: hidden;
   background: #00030a;
+  display: flex;
+  justify-content: center;
 }
 
 /* ── CryptoLogo base (required after App.css removal) ── */
@@ -41,7 +43,11 @@ body:has(.v2-lab) {
 }
 
 .v2-lab {
-  min-height: 100vh;
+  width: 1920px;
+  min-height: var(--v2-logical-height, 100vh);
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  zoom: var(--v2-desktop-scale, 1);
   display: grid;
   grid-template-columns: 260px 1fr;
   gap: 18px;
@@ -576,7 +582,7 @@ body:has(.v2-lab) {
   position: sticky;
   top: 18px;
   align-self: start;
-  height: calc(100vh - 36px);
+  height: calc(var(--v2-logical-height, 100vh) - 36px);
   display: flex;
   flex-direction: column;
   padding: 18px;
@@ -1873,29 +1879,31 @@ body:has(.v2-lab) {
   margin-top: 90px;
 }
 
-/* ── Распределение средств + кольцо: центровка под радаром ── */
+/* ── Распределение средств + DCA справа: оба в одной строке, одинаковая высота ── */
 .v2-alloc-center-row {
   display: grid;
-  grid-template-columns: minmax(240px, 1.0fr) minmax(0, 2.8fr) minmax(240px, 1.0fr);
+  grid-template-columns: minmax(0, 2.8fr) minmax(0, 2.0fr);
+  align-items: stretch;
   gap: 14px;
   margin-top: 50px;
+  padding-right: 50px;
 }
 .v2-alloc-center-inner {
-  grid-column: 2;
+  grid-column: 1;
+  position: relative;
   display: flex;
   gap: 0;
   align-items: stretch;
   border-radius: 18px;
-  background: linear-gradient(160deg,
-    rgba(30,80,160,0.22) 0%,
-    rgba(10,28,68,0.52) 40%,
-    rgba(4,12,30,0.68) 100%);
-  border: 1px solid rgba(86,196,240,0.20);
-  backdrop-filter: blur(18px) saturate(130%);
+  background: linear-gradient(180deg, rgba(2,8,22,0.82), rgba(1,5,14,0.78));
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid rgba(50,130,255,0.25);
   box-shadow:
-    0 1px 0 rgba(180,230,255,0.10) inset,
-    0 8px 40px rgba(0,8,28,0.55),
-    0 0 28px rgba(56,160,240,0.08);
+    inset 0 1px 0 rgba(90,170,255,0.09),
+    inset 0 0 40px rgba(15,55,200,0.06),
+    0 18px 60px rgba(0,0,0,0.55),
+    0 0 2px rgba(40,110,255,0.12);
   overflow: hidden;
 }
 .v2-alloc-center-inner > * {
@@ -1919,14 +1927,27 @@ body:has(.v2-lab) {
   border-radius: 0 !important;
 }
 
-/* ── DCA row: выровнен по левой колонке + центр ── */
-.v2-dca-row {
-  display: grid;
-  grid-template-columns: minmax(300px, 1.25fr) minmax(0, 2.3fr) minmax(300px, 1.2fr);
-  gap: 14px;
+/* ── DCA-слот: колонка 2 в строке распределения ── */
+.v2-alloc-dca-slot {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
 }
-.v2-dca-row > * {
-  grid-column: 1 / 3;
+.v2-alloc-dca-slot > * {
+  flex: 1;
+  min-height: 0;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(2,8,22,0.82), rgba(1,5,14,0.78)) !important;
+  backdrop-filter: blur(18px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.4) !important;
+  border: 1px solid rgba(50,130,255,0.25) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(90,170,255,0.09),
+    inset 0 0 40px rgba(15,55,200,0.06),
+    0 18px 60px rgba(0,0,0,0.55),
+    0 0 2px rgba(40,110,255,0.12) !important;
 }
 
 /* ── Кольцо распределения ── */
@@ -5377,7 +5398,7 @@ body:has(.v2-lab) {
   }
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 768px) {
   .v2-lab {
     grid-template-columns: 200px 1fr;
     padding: 12px;
@@ -5423,42 +5444,7 @@ body:has(.v2-lab) {
   }
 }
 
-/* ── Короткие экраны: сайдбар сжимается ── */
-@media (max-height: 820px) and (min-width: 769px) {
-  .v2-sidebar {
-    padding: 12px 14px;
-  }
-
-  .v2-brand {
-    padding-bottom: 14px;
-    gap: 8px;
-  }
-
-  .v2-brand-mark {
-    width: 34px;
-    height: 34px;
-  }
-
-  .v2-brand-title {
-    font-size: 17px;
-  }
-
-  .v2-nav {
-    gap: 6px;
-    margin-top: 14px;
-  }
-
-  .v2-nav-item {
-    height: 38px;
-    font-size: 12px;
-  }
-
-  .v2-nav-bottom {
-    padding-top: 8px;
-  }
-}
-
-@media (max-width: 980px) {
+@media (max-width: 768px) {
   .v2-lab {
     grid-template-columns: 1fr;
     padding: 12px;
@@ -6136,7 +6122,7 @@ strong.v2-rb-val {
   color: #d6e4ee;
 }
 
-@media (max-width: 1500px) {
+@media (max-width: 768px) {
   .v2-pline {
     grid-template-columns: 270px minmax(0, 1fr);
     gap: 12px;
@@ -6459,7 +6445,7 @@ strong.v2-rb-val {
   padding-top: 10px;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 768px) {
   .v2-decisions-grid {
     grid-template-columns: 1fr;
   }
@@ -7805,7 +7791,7 @@ strong.v2-rb-val {
   text-align: right;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 768px) {
   .v2-re-body {
     grid-template-columns: 1fr;
   }
@@ -9474,6 +9460,7 @@ strong.v2-rb-val {
    ═══════════════════════════════════════════════════════════════ */
 
 .v2-btc-card {
+  margin-top: 50px;
   background: rgba(3, 9, 18, 0.30);
   border: 1px solid rgba(86, 196, 240, 0.18);
   border-radius: 4px;
@@ -9512,200 +9499,266 @@ strong.v2-rb-val {
   z-index: 3;
 }
 
-/* Phase Hero — current cycle position banner */
+/* ── Phase Hero — 4-panel reference layout ── */
 .v2-btc-phase-hero {
   display: flex;
   align-items: stretch;
-  gap: 0;
   border: 1px solid;
-  border-radius: 10px;
-  padding: 10px 14px;
+  border-radius: 12px;
   flex-shrink: 0;
-  min-height: 72px;
+  overflow: hidden;
 }
 
-.v2-btc-phase-hero-left {
-  flex: 1;
+/* Vertical separators */
+.v2-bph-sep {
+  width: 1px;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+/* Shared section micro-label */
+.v2-bph-meta-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: rgba(110, 155, 190, 0.50);
+  margin-bottom: 4px;
+}
+
+/* ── PANEL 1: Stage ── */
+.v2-bph-stage {
+  flex: 0 0 185px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  gap: 8px;
+  justify-content: center;
 }
 
-.v2-btc-phase-now-label {
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(140, 180, 210, 0.55);
-  margin-bottom: 1px;
-}
-
-.v2-btc-phase-name-row {
+.v2-bph-stage-body {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 12px;
 }
 
-.v2-btc-phase-num {
+.v2-bph-num {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: 1.5px solid;
-  font-size: 13px;
+  font-size: 24px;
   font-weight: 900;
   font-family: "Black Ops One", system-ui, sans-serif;
   flex-shrink: 0;
 }
 
-.v2-btc-phase-name {
-  font-size: 18px;
+.v2-bph-name {
+  font-size: 34px;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   line-height: 1;
 }
 
-.v2-btc-phase-next {
-  font-size: 10px;
-  color: rgba(130, 170, 200, 0.45);
-  letter-spacing: 0.03em;
+.v2-bph-next {
+  font-size: 12px;
+  color: rgba(130, 170, 200, 0.55);
+  letter-spacing: 0.02em;
+}
+
+.v2-bph-next em {
   font-style: normal;
+  color: rgba(155, 195, 220, 0.75);
 }
 
-.v2-btc-phase-next em {
-  font-style: normal;
-  color: rgba(160, 195, 220, 0.60);
-}
-
-.v2-btc-phase-desc {
-  font-size: 11px;
-  color: rgba(160, 200, 225, 0.60);
-  line-height: 1.45;
-  max-width: 420px;
-}
-
-.v2-btc-hero-bullets {
-  list-style: none;
-  margin: 4px 0 0 0;
-  padding: 0;
+/* ── PANEL 2: Why — 4 mini-cards ── */
+.v2-bph-why-panel {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 10px;
 }
 
-.v2-btc-hero-bullets li {
-  font-size: 10.5px;
-  color: rgba(140, 185, 215, 0.58);
-  line-height: 1.4;
-  padding-left: 12px;
-  position: relative;
+.v2-bph-mini-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  flex: 1;
+  align-items: stretch;
 }
 
-.v2-btc-hero-bullets li::before {
-  content: "·";
-  position: absolute;
-  left: 3px;
-  color: rgba(108, 200, 232, 0.50);
-  font-size: 14px;
-  line-height: 1;
-  top: 1px;
+.v2-bph-mini-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(86, 150, 200, 0.12);
+  justify-content: center;
 }
 
-.v2-btc-phase-hero-divider {
-  width: 1px;
-  margin: 0 16px;
+.v2-bph-mini-icon-svg {
+  width: 50px;
+  height: 50px;
+  margin-bottom: 6px;
   flex-shrink: 0;
-  border-radius: 1px;
-  min-height: 40px;
 }
 
-.v2-btc-phase-hero-right {
+.v2-bph-mini-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(120, 165, 200, 0.65);
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+
+.v2-bph-mini-value {
+  font-size: 25px;
+  font-weight: 700;
+  color: rgba(185, 220, 240, 0.85);
+  line-height: 1.1;
+}
+
+.v2-bph-mini-sub {
+  font-size: 11.5px;
+  color: rgba(120, 165, 200, 0.60);
+  line-height: 1.3;
+}
+
+/* ── PANEL 3: Zone ── */
+.v2-bph-zone-panel {
+  flex: 0 0 235px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 7px;
   justify-content: center;
-  min-width: 240px;
+  position: relative;
+  overflow: hidden;
 }
 
-.v2-btc-phase-zone-row {
+.v2-bph-zone-name-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.v2-btc-phase-meta-label {
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(120, 160, 190, 0.45);
+.v2-bph-zone-accent {
+  width: 3px;
+  height: 30px;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
-.v2-btc-zone-chip {
+.v2-bph-zone-name {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.v2-bph-zone-deco {
+  position: absolute;
+  right: 8px;
+  bottom: 4px;
+  font-size: 76px;
+  line-height: 1;
+  opacity: 0.13;
+  pointer-events: none;
+  user-select: none;
+}
+
+.v2-bph-why-zone-label {
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  padding: 3px 9px;
-  border-radius: 4px;
-  border: 1px solid;
+  margin-top: 2px;
 }
 
-.v2-btc-phase-action-block {
+.v2-bph-why-zone-text {
+  font-size: 12.5px;
+  color: rgba(150, 195, 225, 0.68);
+  line-height: 1.55;
+}
+
+/* ── PANEL 4: Strategy ── */
+.v2-bph-strategy-panel {
+  flex: 0 0 220px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
+  justify-content: center;
 }
 
-.v2-btc-phase-action {
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.v2-btc-window-chip {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-  margin-top: 2px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: rgba(52, 211, 153, 0.06);
-  border: 1px solid;
-  width: fit-content;
-}
-
-.v2-btc-window-num {
-  font-family: "Black Ops One", system-ui, sans-serif;
-  font-size: 16px;
-  color: rgba(52, 211, 153, 0.95);
-}
-
-.v2-btc-window-lbl {
+.v2-bph-strategy-header {
   font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: rgba(110, 155, 190, 0.52);
+}
+
+.v2-bph-strategy-action {
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  line-height: 1.6;
+}
+
+/* Big countdown block */
+.v2-bph-countdown-big {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 6px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(52, 211, 153, 0.05);
+  border: 1px solid rgba(52, 211, 153, 0.30);
+  box-shadow: 0 0 32px -10px rgba(52, 211, 153, 0.22),
+              inset 0 1px 0 rgba(52, 211, 153, 0.08);
+}
+
+.v2-bph-cd-num {
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 58px;
+  color: rgba(52, 211, 153, 1.0);
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.v2-bph-cd-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   color: rgba(52, 211, 153, 0.65);
   text-transform: uppercase;
+  line-height: 1.3;
 }
 
 .v2-btc-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
 }
 
 .v2-btc-header-left {
+  grid-column: 2;
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-self: center;
 }
 
 .v2-btc-title {
@@ -9716,17 +9769,19 @@ strong.v2-rb-val {
 }
 
 .v2-btc-tf {
-  font-size: 10px;
-  font-weight: 600;
-  color: rgba(108, 180, 220, 0.5);
-  letter-spacing: 0.06em;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(86, 196, 240, 0.90);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .v2-btc-header-right {
+  grid-column: 3;
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-self: end;
 }
 
 .v2-btc-sep {
@@ -9760,11 +9815,12 @@ strong.v2-rb-val {
 }
 
 .v2-btc-live-label {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.18em;
-  color: rgba(38, 200, 118, 0.75);
+  color: rgba(38, 220, 118, 1.0);
   text-transform: uppercase;
+  text-shadow: 0 0 8px rgba(38, 220, 118, 0.60);
 }
 
 @keyframes v2-btc-blink {
@@ -10284,6 +10340,8 @@ strong.v2-rb-val {
   /* ── Shell layout ── */
   .v2-lab {
     grid-template-columns: 1fr;
+    width: 100%;
+    zoom: 1;
     padding: 0;
     gap: 0;
     min-height: 100svh;
@@ -11428,8 +11486,8 @@ strong.v2-rb-val {
 .v2-main .v2-health-score,
 .v2-main .v2-dc-score,
 .v2-main .v2-btc-inline-price,
-.v2-main .v2-btc-phase-num,
-.v2-main .v2-btc-window-num,
+.v2-main .v2-bph-num,
+.v2-main .v2-bph-cd-num,
 .v2-main .v2-buy-amount,
 .v2-main .v2-fg-signal-value,
 .v2-main .v2-im-lvl-num,
@@ -11874,13 +11932,79 @@ strong.v2-rb-val {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  border: 1.5px solid;
+  border: 1.6px solid var(--icon-c, var(--c));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  background: rgba(4,10,28,0.65);
+  font-size: 18px;
+  color: var(--icon-c, var(--c));
+  background:
+    radial-gradient(circle at 42% 34%, color-mix(in srgb, var(--icon-c) 18%, transparent), transparent 44%),
+    radial-gradient(circle at 50% 70%, color-mix(in srgb, var(--icon-c) 9%, #020713), #01040d 74%);
   flex-shrink: 0;
+  position: relative;
+  isolation: isolate;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--icon-c) 22%, transparent),
+    0 0 8px color-mix(in srgb, var(--icon-c) 55%, transparent),
+    0 0 14px color-mix(in srgb, var(--icon-c) 22%, transparent),
+    inset 0 0 14px rgba(0,0,0,0.76),
+    inset 0 0 8px color-mix(in srgb, var(--icon-c) 12%, transparent);
+}
+
+.v2-pac-card-icon::before,
+.v2-pac-card-icon::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.v2-pac-card-icon::before {
+  inset: 3px;
+  border: 1px solid color-mix(in srgb, var(--icon-c) 28%, transparent);
+  box-shadow: inset 0 0 6px color-mix(in srgb, var(--icon-c) 10%, transparent);
+}
+
+.v2-pac-card-icon::after {
+  inset: -2px;
+  border-top: 1px solid var(--icon-c, var(--c));
+  border-right: 1px solid color-mix(in srgb, var(--icon-c) 34%, transparent);
+  filter: drop-shadow(0 0 2px var(--icon-c, var(--c)));
+  opacity: 0.7;
+}
+
+.v2-pac-card-icon-svg {
+  position: relative;
+  z-index: 1;
+  width: 27px;
+  height: 27px;
+  fill: color-mix(in srgb, currentColor 22%, transparent);
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter:
+    drop-shadow(0 0 2px currentColor)
+    drop-shadow(0 0 6px currentColor);
+}
+
+.v2-pac-card-icon-inner {
+  fill: color-mix(in srgb, currentColor 30%, transparent);
+  stroke-width: 0.9;
+  opacity: 0.88;
+}
+
+.v2-pac-card-icon-text {
+  position: relative;
+  z-index: 1;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1;
+  text-shadow:
+    0 0 2px currentColor,
+    0 0 8px currentColor;
 }
 
 /* Имя + сумма */
@@ -11987,49 +12111,78 @@ strong.v2-rb-val {
 }
 
 .v2-pac-svg {
-  width: 360px;
-  height: 360px;
+  width: 432px;
+  height: 432px;
   overflow: visible;
   flex-shrink: 0;
 }
 
-/* ─── Легенда ─── */
-.v2-pac-legend {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 20px;
-  max-width: 310px;
-  width: 100%;
+/* ─── Orbital HUD behind the diagram ─── */
+.v2-pac-hud {
+  pointer-events: none;
+  opacity: 0.82;
 }
 
-.v2-pac-legend-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+/* Ring 1 — far depth, barely visible */
+.v2-pac-hud-ring--far {
+  fill: none;
+  stroke: rgba(30,90,180,0.10);
+  stroke-width: 0.5;
+  stroke-dasharray: 3 14;
 }
 
-.v2-pac-legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
+/* Ring 2 — outer orbit, sparse dash */
+.v2-pac-hud-orbit {
+  fill: none;
+  stroke: rgba(40,130,220,0.22);
+  stroke-width: 0.7;
+  stroke-dasharray: 2.5 8;
 }
 
-.v2-pac-legend-name {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 11px;
-  color: rgba(160,205,235,0.65);
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* Ring 3 — mid, more solid */
+.v2-pac-hud-ring {
+  fill: none;
+  stroke: rgba(28,108,200,0.32);
+  stroke-width: 0.75;
+  stroke-dasharray: 28 8 3 8;
 }
 
-.v2-pac-legend-pct {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(200,230,255,0.82);
+/* Ring 4 — innermost, crisp */
+.v2-pac-hud-ring--inner {
+  fill: none;
+  stroke: rgba(50,190,255,0.16);
+  stroke-width: 0.55;
+  stroke-dasharray: 1.5 5;
+}
+
+/* Minor ticks — barely visible connectors */
+.v2-pac-hud-tick {
+  stroke: rgba(50,148,236,0.20);
+  stroke-width: 0.55;
+}
+
+/* Major ticks — bright, bridge outer two rings */
+.v2-pac-hud-tick.is-major {
+  stroke: rgba(60,218,255,0.65);
+  stroke-width: 1.1;
+  filter: drop-shadow(0 0 1.5px rgba(0,206,255,0.40));
+}
+
+/* Accent arcs — symmetric pairs, medium brightness */
+.v2-pac-hud-arc {
+  fill: none;
+  stroke: rgba(0,200,255,0.55);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 2px rgba(0,206,255,0.35));
+}
+
+/* Cardinal node dots */
+.v2-pac-hud-node {
+  fill: rgba(82,234,255,0.85);
+  stroke: rgba(220,252,255,0.50);
+  stroke-width: 0.4;
+  filter: drop-shadow(0 0 2px #22d8ff);
 }
 
 /* ─── Внутри .v2-alloc-center-inner ─── */
@@ -12046,12 +12199,13 @@ strong.v2-rb-val {
   to   { opacity: 1; transform: translateX(0); }
 }
 .v2-pac-card {
-  animation: v2-pac-card-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: v2-pac-card-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   transition:
-    border-color 0.20s ease,
-    box-shadow   0.20s ease,
-    transform    0.18s ease,
-    background   0.20s ease;
+    border-color 0.28s ease,
+    box-shadow   0.28s ease,
+    transform    0.32s cubic-bezier(0.16, 1, 0.3, 1),
+    background   0.28s ease,
+    opacity      0.28s ease;
   cursor: default;
 }
 .v2-pac-card:hover {
@@ -12075,6 +12229,84 @@ strong.v2-rb-val {
   opacity: 0.85;
 }
 
+.v2-pac-card.is-muted {
+  opacity: 0.42;
+}
+
+.v2-pac-card.is-active {
+  border-color: color-mix(in srgb, var(--c, #2e7ef5) 68%, transparent);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--c, #2e7ef5) 18%, rgba(28,60,110,0.48)) 0%,
+    rgba(8,18,48,0.58) 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.10) inset,
+    0 0 0 1px color-mix(in srgb, var(--c, #2e7ef5) 42%, transparent),
+    0 7px 28px rgba(0,3,20,0.62),
+    0 0 24px color-mix(in srgb, var(--c, #2e7ef5) 24%, transparent);
+  transform: translateX(6px) scale(1.015);
+}
+
+.v2-pac-card.is-active::after {
+  opacity: 1;
+}
+
+.v2-pac-card.is-active .v2-pac-card-icon {
+  box-shadow:
+    0 0 24px var(--glow, rgba(46,126,245,0.7)),
+    inset 0 0 10px rgba(0,0,0,0.45) !important;
+}
+
+.v2-pac-card.is-active .v2-pac-card-name,
+.v2-pac-card.is-active .v2-pac-card-amt,
+.v2-pac-card.is-active .v2-pac-card-pct {
+  color: rgba(236,249,255,0.98) !important;
+  text-shadow: 0 0 12px var(--glow, rgba(46,126,245,0.7));
+}
+
+.v2-pac-segment {
+  opacity: 1;
+  transition:
+    transform 0.36s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity   0.25s ease,
+    filter    0.25s ease;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+/* Только translate — никакого scale, иначе части группы расходятся под perspective */
+.v2-pac-segment.is-active {
+  transform: translate(var(--seg-dx, 0px), var(--seg-dy, 0px));
+  filter: brightness(1.18) saturate(1.25);
+}
+
+/* Тусклый — только opacity, цвет остаётся родным */
+.v2-pac-segment.is-muted {
+  opacity: 0.35;
+}
+
+/* Светлая обводка вместо тёмной — не создаёт лишних швов */
+.v2-pac-segment-outline {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.28);
+  stroke-width: 1.0;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.v2-pac-segment-hit {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.v2-pac-gap-line {
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+
 /* Badge warn: мягкий пульс */
 @keyframes v2-badge-pulse {
   0%, 100% { opacity: 1; }
@@ -12092,6 +12324,12 @@ strong.v2-rb-val {
 .v2-pac-scan {
   animation: v2-pac-scan-sweep 4.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   will-change: transform;
+  transition: opacity 0.22s ease;
+}
+
+.v2-pac-svg.is-hovering .v2-pac-scan {
+  animation-play-state: paused;
+  opacity: 0;
 }
 
 /* SVG: центральная сумма — тихий пульс */
@@ -12102,11 +12340,3 @@ strong.v2-rb-val {
 .v2-pac-total-text {
   animation: v2-pac-total-pulse 3.8s ease-in-out infinite;
 }
-
-/* Легенда: hover на строке */
-.v2-pac-legend-row {
-  transition: opacity 0.15s ease;
-  cursor: default;
-}
-.v2-pac-legend:hover .v2-pac-legend-row { opacity: 0.45; }
-.v2-pac-legend:hover .v2-pac-legend-row:hover { opacity: 1; }

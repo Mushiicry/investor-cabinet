@@ -51,6 +51,17 @@ export function calculateCategoryExposureShares(
   };
 }
 
+export function calculateFuturesMarginShare(positions: PositionCalculated[]): number {
+  const investedCapital = positions.reduce((sum, item) => sum + item.invested, 0);
+  if (!investedCapital) return 0;
+
+  const futuresInitialMargin = positions
+    .filter((item) => item.category === "Фьючерсы" && item.currentValue > 0)
+    .reduce((sum, item) => sum + item.invested, 0);
+
+  return round(futuresInitialMargin / investedCapital);
+}
+
 export function buildExposureWarnings(
   exposures: CategoryExposureShares,
   largestRiskShare: number

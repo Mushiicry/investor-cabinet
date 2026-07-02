@@ -121,7 +121,8 @@ function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
     case "futures":
       if ((c.meta?.leverageBreaches ?? []).length) return "Плечо превышено";
       if (c.meta?.futuresCount && c.meta.futuresCount > 3) return `${c.meta.futuresCount}/3 позиций — лимит превышен`;
-      return "Вес фьючерсов близок к 10%";
+      if ((c.meta?.futuresShare ?? 0) > 0.1) return "Начальная маржа выше лимита 10%";
+      return `Маржа ${Math.round((c.meta?.futuresShare ?? 0) * 1000) / 10}%, плечо в норме`;
     default:
       return "";
   }
@@ -175,7 +176,7 @@ function buildCoreRecs(weak: HealthComponent[], portfolio: V2Portfolio): CoreRec
         result.push({ action: "Распределить часть крупнейшей позиции", gain: 5, source: "Снизит концентрацию риска → здоровье +5" });
         break;
       case "futures":
-        result.push({ action: "Снизить плечо или закрыть позицию", gain: 5, source: "Уберёт плечевой риск → здоровье +5" });
+        result.push({ action: "Снизить маржу, плечо или число позиций", gain: 5, source: "Уменьшит фьючерсный риск → здоровье +5" });
         break;
     }
   }

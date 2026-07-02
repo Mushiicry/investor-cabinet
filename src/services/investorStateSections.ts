@@ -11,6 +11,7 @@ import {
 import {
   buildExposureWarnings,
   calculateCategoryExposureShares,
+  calculateFuturesMarginShare,
 } from "../lib/riskExposure";
 import type { InvestorApiResponse } from "../types/api";
 import type { PortfolioState, PositionCalculated } from "../types/portfolio";
@@ -86,6 +87,7 @@ export function buildRiskStateFromApi({
   const largestRiskPosition = pickLargestRiskPosition(openRiskPositions);
   const deployableCashBuckets = calculateDeployableCashBuckets(portfolio, portfolioValue);
   const categoryExposure = calculateCategoryExposureShares(portfolio, portfolioValue);
+  const futuresShare = calculateFuturesMarginShare(portfolio);
   const apiFuturesDeployableCash = toNumber(
     json?.risk?.futuresDeployableCash,
     prev.risk.futuresDeployableCash
@@ -93,7 +95,10 @@ export function buildRiskStateFromApi({
   const largestRiskShare = largestRiskPosition
     ? toRatio(largestRiskPosition.share, prev.risk.largestRiskShare)
     : toRatio(json?.risk?.largestRiskShare, prev.risk.largestRiskShare);
-  const exposureWarnings = buildExposureWarnings(categoryExposure, largestRiskShare);
+  const exposureWarnings = buildExposureWarnings(
+    { ...categoryExposure, futuresShare },
+    largestRiskShare
+  );
 
   return {
     ...prev.risk,
@@ -105,10 +110,10 @@ export function buildRiskStateFromApi({
     spotDeployableCash: deployableCashBuckets.spotDeployableCash,
     largestRiskAsset: largestRiskPosition?.asset ?? json?.risk?.largestRiskAsset ?? prev.risk.largestRiskAsset,
     largestRiskShare,
-    cryptoShare: categoryExposure.cryptoShare || toRatio(json?.risk?.cryptoShare, prev.risk.cryptoShare),
+    cryptoShare: categoryExposure.cryptoShare,
     stocksShare: categoryExposure.stocksShare,
     metalsShare: categoryExposure.metalsShare,
-    futuresShare: categoryExposure.futuresShare,
+    futuresShare,
     cashShare: categoryExposure.cashShare,
     health: toNumber(json?.risk?.health, prev.risk.health),
     state: json?.risk?.state ?? prev.risk.state,

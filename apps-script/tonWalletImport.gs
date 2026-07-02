@@ -6,7 +6,7 @@ var IC_MAIN_TRANSACTIONS_SHEET = 'Транзакции';
 var IC_CALCULATIONS_SHEET = 'Расчеты';
 var IC_TON_DEFAULT_LOOKBACK_DAYS = 14;
 var IC_TON_FETCH_LIMIT = 100;
-var IC_TON_STAKED_EXCHANGE_RATE = 35.03 / 31.37;
+var IC_TON_STAKED_MASTER = 'EQC98_qAmNEptUtPc7W6xdHh_ZHrBUFpw5Ft_IzNU20QAJav';
 
 function syncTonWalletImports() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -380,12 +380,13 @@ function IC_TON_readExistingImportIds_(sheet) {
 
 function IC_TON_refreshWalletBalanceSnapshot_(ss, wallets, syncStartedAt) {
   var balanceSheet = IC_TON_getOrCreateBalanceSheet_(ss);
+  var stakedTonRate = IC_TON_fetchStakedTonRate_();
   var rows = [];
 
   wallets.forEach(function(wallet) {
     if (wallet.chain !== 'TON' || wallet.status !== 'ACTIVE') return;
 
-    rows = rows.concat(IC_TON_fetchWalletBalanceRows_(wallet, syncStartedAt));
+    rows = rows.concat(IC_TON_fetchWalletBalanceRows_(wallet, syncStartedAt, stakedTonRate));
   });
 
   balanceSheet.clearContents();
@@ -416,7 +417,7 @@ function IC_TON_getOrCreateBalanceSheet_(ss) {
   return ss.getSheetByName(IC_TON_BALANCES_SHEET) || ss.insertSheet(IC_TON_BALANCES_SHEET);
 }
 
-function IC_TON_fetchWalletBalanceRows_(wallet, syncStartedAt) {
+function IC_TON_fetchWalletBalanceRows_(wallet, syncStartedAt, stakedTonRate) {
   var rows = [];
   var syncAt = Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss");
   var account = IC_TON_fetchJson_('/accounts/' + encodeURIComponent(wallet.address));
@@ -441,8 +442,8 @@ function IC_TON_fetchWalletBalanceRows_(wallet, syncStartedAt) {
     var isStakedTon = IC_TON_isStakedTonAsset_(asset);
     var balanceType = isStakedTon ? 'STAKED' : 'JETTON';
     var portfolioAsset = isStakedTon ? 'TON' : asset;
-    var tonEquivalent = isStakedTon ? quantity * IC_TON_STAKED_EXCHANGE_RATE : quantity;
-    var conversionRate = isStakedTon ? IC_TON_STAKED_EXCHANGE_RATE : 1;
+    var tonEquivalent = isStakedTon ? quantity * stakedTonRate : quantity;
+    var conversionRate = isStakedTon ? stakedTonRate : 1;
     rows.push(IC_TON_balanceRow_(wallet, portfolioAsset, balanceType, tonEquivalent, quantity, conversionRate, 'TonAPI jetton balance', syncAt, asset));
   });
 
@@ -462,7 +463,7 @@ function IC_TON_balanceRow_(wallet, asset, balanceType, quantity, rawQuantity, c
     rawAsset || asset,
     rawQuantity,
     conversionRate,
-    balanceType === 'STAKED' ? 'Manual tsTON/TON rate from Tonstakers screenshot' : '1:1'
+    balanceType === 'STAKED' ? 'Live tsTON/TON rate from TonAPI' : '1:1'
   ];
 }
 
@@ -483,8 +484,22 @@ function IC_TON_syncBalanceSnapshotToCalculations_(ss, syncStartedAt, previousBa
     IC_TON_applyBalanceDeltaCostBasis_(calculationsSheet, importSheet, previousBalances, balances, syncStartedAt);
   }
 
-  IC_TON_setCalculationQuantity_(calculationsSheet, 'TON', balances.TON || 0);
+  IC_TON_setCalculationQuantityPreservingCostBasis_(calculationsSheet, 'TON', balances.TON || 0);
   IC_TON_setCalculationQuantity_(calculationsSheet, 'USDT', balances.USDT || 0);
+}
+
+function IC_TON_fetchStakedTonRate_() {
+  var payload = IC_TON_fetchJson_(
+    '/rates?tokens=' + encodeURIComponent(IC_TON_STAKED_MASTER) + '&currencies=ton'
+  );
+  var tokenRates = payload && payload.rates && payload.rates[IC_TON_STAKED_MASTER];
+  var rate = IC_TON_toNumber_(tokenRates && tokenRates.prices && tokenRates.prices.TON);
+
+  if (rate < 1 || rate > 2) {
+    throw new Error('Unsafe live tsTON/TON rate: ' + rate + '. Sync stopped before writing balances.');
+  }
+
+  return rate;
 }
 
 function IC_TON_readCurrentBalanceTotals_(ss) {
@@ -666,6 +681,21 @@ function IC_TON_setCalculationQuantity_(sheet, asset, quantity) {
   if (!rowIndex) return;
 
   sheet.getRange(rowIndex, 3).setValue(quantity);
+  sheet.getRange(rowIndex, 5).setFormula('=C' + rowIndex + '*D' + rowIndex);
+}
+
+function IC_TON_setCalculationQuantityPreservingCostBasis_(sheet, asset, quantity) {
+  var rowIndex = IC_TON_findAssetRow_(sheet, asset);
+  if (!rowIndex) return;
+
+  var currentQuantity = IC_TON_toNumber_(sheet.getRange(rowIndex, 3).getValue());
+  var currentAvgEntry = IC_TON_toNumber_(sheet.getRange(rowIndex, 4).getValue());
+  var costBasis = currentQuantity * currentAvgEntry;
+  var nextQuantity = Math.max(0, quantity);
+  var nextAvgEntry = nextQuantity ? costBasis / nextQuantity : 0;
+
+  sheet.getRange(rowIndex, 3).setValue(nextQuantity);
+  sheet.getRange(rowIndex, 4).setValue(nextAvgEntry);
   sheet.getRange(rowIndex, 5).setFormula('=C' + rowIndex + '*D' + rowIndex);
 }
 

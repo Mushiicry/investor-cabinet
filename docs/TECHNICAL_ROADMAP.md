@@ -1300,3 +1300,34 @@ Premium Investor Terminal -> Professional Dashboard -> Risk/Decision Engine -> A
 The central rule remains:
 
 Risk first. Discipline first. PnL second.
+
+---
+
+# 21. Patch Log
+
+## 2026-07-03 — Post-Audit Patch (Health Factor + GOLD + false-zero)
+
+Контекст: независимый бухгалтерский аудит системы (кодекс + собственная сверка).
+Формулы расчёта портфеля, точек входа, текущих цен и итога — НЕ трогали, они верны.
+
+Изменения:
+
+- **Build разблокирован.** Удалены неиспользуемые `PHASE_LOGIC` и `BULLET_ITEMS`
+  из `V2BtcDailyChart.tsx` (TS6133) — `npm run build` (`tsc -b`) снова проходит.
+- **Плечо GOLD под контролем.** GOLD остаётся категорией «Металлы», но торгуется
+  с плечом на Hyperliquid (xyz:GOLD). Теперь:
+  - `fetchHyperliquidLeverage` (`api/prices.ts`) дозапрашивает билдер-DEX `xyz`
+    (`clearinghouseState` с `dex`), чтобы получить живое плечо GOLD;
+  - `futuresLegs` (`InvestorCabinetV2Lab.tsx`) включает металл с реальным
+    HL-плечом → плечо GOLD проверяется по правилу ≤3x и учитывается в лимите
+    позиций (макс. 3);
+  - маржа GOLD в лимит 10% пока НЕ входит — точная сумма не зафиксирована
+    (`futuresShare` = BTC/MNT), это следующий шаг.
+- **False-zero на крипте устранён.** `investorStateSections.ts`:
+  `cryptoShare` больше не берёт стейл из API при реальных 0% крипты —
+  считается напрямую из портфеля (как остальные доли).
+- **Health-фактор фьючерсов** (аддитивная модель штрафов от кодекса) сохранён;
+  радар показывает живое значение компонента. Тексты пояснений синхронизированы
+  с новым поведением GOLD.
+
+Проверки: `tsc -b` + `vite build` — зелёные; health-радар рендерится, значения живые.

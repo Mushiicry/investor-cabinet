@@ -53,7 +53,7 @@ function whyLine(c: HealthComponent, portfolio: V2Portfolio): string {
         return `${c.meta.futuresCount} фьючерс-позиции открыты — лимит 3. Каскадная ликвидация становится вероятнее.`;
       if ((c.meta?.leverageBreaches ?? []).length)
         return `Плечо превышено на одной или нескольких позициях. Снизьте до ≤2x альты / ≤3x BTC.`;
-      return `Вес фьючерсов приближается к лимиту 10% от портфеля.`;
+      return `Начальная маржа фьючерсов приближается к лимиту 10% от вложенного капитала.`;
 
     default:
       return "";
@@ -70,7 +70,7 @@ function richDiagnosis(components: HealthComponent[], portfolio: V2Portfolio) {
   }));
   const strong = sorted.filter(c => c.score >= 70).reverse().map<DiagItem>(c => ({
     label: c.label, score: c.score,
-    why: c.key === "futures"     ? "Плечо и число позиций в пределах правил."
+    why: c.key === "futures"     ? "Маржа, плечо и число позиций в пределах правил."
        : c.key === "reserve"     ? `Резерв ${Math.round(portfolio.reserveShare * 100)}% — подушка сформирована.`
        : c.key === "flexibility" ? `Есть ${fmt$(portfolio.deployableCapital)} для маневра.`
        : "В пределах нормы.",
@@ -111,7 +111,7 @@ function buildPrescriptions(components: HealthComponent[], portfolio: V2Portfoli
         result.push({ action: "Не усредняться в актив с долей > 35%", gain: 3, source: c.label });
         break;
       case "futures":
-        result.push({ action: "Снизить плечо: ≤2x альты, ≤3x BTC и золото", gain: 5, source: c.label });
+        result.push({ action: "Снизить плечо: ≤2x альты, ≤3x BTC", gain: 5, source: c.label });
         result.push({ action: "Сократить число позиций до 3 максимум", gain: 4, source: c.label });
         break;
     }

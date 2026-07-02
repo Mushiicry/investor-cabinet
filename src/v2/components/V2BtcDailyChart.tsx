@@ -159,12 +159,6 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
 
   const fgVal = currentFearGreed != null ? Math.round(currentFearGreed) : null;
   const fgLabel = fgVal != null ? getFearGreedLabel(fgVal) : null;
-  const WHY_BULLETS = [
-    "Цена ниже от пика ~42%",
-    fgVal != null ? `Страх и жадность: ${fgVal} (${fgLabel})` : null,
-    "Отскоки слабые, структура не сломана",
-    "Капитуляции ещё не было",
-  ].filter(Boolean) as string[];
 
   if (loading) return (
     <div className="v2-btc-card">
@@ -289,20 +283,23 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
         </div>
       </div>
 
-      {/* ── Current Phase Hero ── */}
+      {/* ── Current Phase Hero — 4-panel reference layout ── */}
       <div
         className="v2-btc-phase-hero"
         style={{
           borderColor: `rgba(${zr},${zg},${zb},0.28)`,
-          background: `rgba(${zr},${zg},${zb},0.04)`,
-          boxShadow: `0 0 36px -14px rgba(${zr},${zg},${zb},0.20), inset 0 0 40px -18px rgba(${zr},${zg},${zb},0.06)`,
+          background: `linear-gradient(180deg, rgba(2,7,18,0.94), rgba(1,4,13,0.92))`,
+          backdropFilter: "blur(14px) saturate(1.3)",
+          WebkitBackdropFilter: "blur(14px) saturate(1.3)",
+          boxShadow: `0 0 36px -12px rgba(${zr},${zg},${zb},0.22), inset 0 0 40px -20px rgba(${zr},${zg},${zb},0.08)`,
         }}
       >
-        <div className="v2-btc-phase-hero-left">
-          <div className="v2-btc-phase-now-label">МЫ СЕЙЧАС ЗДЕСЬ</div>
-          <div className="v2-btc-phase-name-row">
+        {/* ── PANEL 1: Stage ── */}
+        <div className="v2-bph-stage">
+          <div className="v2-bph-meta-label">СТАДИЯ ЦИКЛА</div>
+          <div className="v2-bph-stage-body">
             <span
-              className="v2-btc-phase-num"
+              className="v2-bph-num"
               style={{
                 color: zoneColor,
                 borderColor: `rgba(${zr},${zg},${zb},0.50)`,
@@ -312,55 +309,113 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
             >
               {currentCyclePhase.n}
             </span>
-            <span className="v2-btc-phase-name" style={{ color: zoneColor }}>
+            <span className="v2-bph-name" style={{ color: zoneColor }}>
               {currentCyclePhase.label.toUpperCase()}
             </span>
-            {nextPhase && (
-              <span className="v2-btc-phase-next">
-                → следующая: <em>{nextPhase.label}</em>
-              </span>
-            )}
           </div>
-          {phaseDesc && (
-            <div className="v2-btc-phase-desc">{phaseDesc.what}</div>
-          )}
-          {WHY_BULLETS.length > 0 && (
-            <ul className="v2-btc-hero-bullets">
-              {WHY_BULLETS.map((b, i) => <li key={i}>{b}</li>)}
-            </ul>
+          {nextPhase && (
+            <div className="v2-bph-next">
+              → следующая: <em>{nextPhase.label}</em>
+            </div>
           )}
         </div>
 
-        <div className="v2-btc-phase-hero-divider" style={{ background: `rgba(${zr},${zg},${zb},0.18)` }} />
+        <div className="v2-bph-sep" style={{ background: `rgba(${zr},${zg},${zb},0.16)` }} />
 
-        <div className="v2-btc-phase-hero-right">
-          <div className="v2-btc-phase-zone-row">
-            <span className="v2-btc-phase-meta-label">Зона</span>
-            <span
-              className="v2-btc-zone-chip"
-              style={{
-                background: `rgba(${zr},${zg},${zb},0.12)`,
-                borderColor: `rgba(${zr},${zg},${zb},0.42)`,
-                color: zoneColor,
-              }}
-            >
-              {currentZone.label}
-            </span>
+        {/* ── PANEL 2: Why — 4 mini-cards ── */}
+        <div className="v2-bph-why-panel">
+          <div className="v2-bph-meta-label">ПОЧЕМУ ТАКАЯ СТАДИЯ?</div>
+          <div className="v2-bph-mini-cards">
+
+            {/* Card 1 — Price vs ATH */}
+            <div className="v2-bph-mini-card">
+              <svg className="v2-bph-mini-icon-svg" viewBox="0 0 28 28" fill="none">
+                <path d="M3 8 L10 16 L15 11 L25 20" stroke={zoneColor} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M21 20 L25 20 L25 16" stroke={zoneColor} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <div className="v2-bph-mini-title">Цена ниже ATH</div>
+              <div className="v2-bph-mini-value" style={{ color: zoneColor }}>~42%</div>
+            </div>
+
+            {/* Card 2 — Fear & Greed */}
+            <div className="v2-bph-mini-card">
+              <svg className="v2-bph-mini-icon-svg" viewBox="0 0 28 28" fill="none">
+                <circle cx="14" cy="14" r="10.5" stroke={zoneColor} strokeWidth="2"/>
+                <circle cx="10.5" cy="12.5" r="1.4" fill={zoneColor}/>
+                <circle cx="17.5" cy="12.5" r="1.4" fill={zoneColor}/>
+                <path d="M9.5 19.5 Q14 15.5 18.5 19.5" stroke={zoneColor} strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <div className="v2-bph-mini-title">Страх и жадность</div>
+              <div className="v2-bph-mini-value" style={{ color: zoneColor }}>{fgVal ?? "—"}</div>
+              {fgLabel && <div className="v2-bph-mini-sub">{fgLabel}</div>}
+            </div>
+
+            {/* Card 3 — Bounces */}
+            <div className="v2-bph-mini-card">
+              <svg className="v2-bph-mini-icon-svg" viewBox="0 0 28 28" fill="none">
+                <rect x="3"  y="17" width="5" height="8"  rx="1" fill="rgba(86,196,240,0.50)"/>
+                <rect x="11" y="12" width="5" height="13" rx="1" fill="rgba(86,196,240,0.50)"/>
+                <rect x="19" y="15" width="5" height="10" rx="1" fill="rgba(86,196,240,0.50)"/>
+                <path d="M5.5 13 L14 7 L21.5 11" stroke="rgba(86,196,240,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="3 2"/>
+              </svg>
+              <div className="v2-bph-mini-title">Отскоки слабые</div>
+              <div className="v2-bph-mini-value">Структура</div>
+              <div className="v2-bph-mini-sub">не сломана</div>
+            </div>
+
+            {/* Card 4 — Capitulation */}
+            <div className="v2-bph-mini-card">
+              <svg className="v2-bph-mini-icon-svg" viewBox="0 0 28 28" fill="none">
+                <line x1="7" y1="3" x2="7" y2="26" stroke="rgba(86,196,240,0.70)" strokeWidth="2.2" strokeLinecap="round"/>
+                <path d="M7 4 L23 9.5 L7 17.5 Z" fill="rgba(86,196,240,0.35)" stroke="rgba(86,196,240,0.60)" strokeWidth="1.2" strokeLinejoin="round"/>
+              </svg>
+              <div className="v2-bph-mini-title">Капитуляции</div>
+              <div className="v2-bph-mini-value">ещё не было</div>
+            </div>
+
           </div>
+        </div>
 
+        <div className="v2-bph-sep" style={{ background: `rgba(${zr},${zg},${zb},0.16)` }} />
+
+        {/* ── PANEL 3: Zone ── */}
+        <div className="v2-bph-zone-panel">
+          <div className="v2-bph-meta-label">ТЕКУЩАЯ ЗОНА</div>
+          <div className="v2-bph-zone-name-row">
+            <div className="v2-bph-zone-accent" style={{ background: zoneColor }} />
+            <div className="v2-bph-zone-name" style={{ color: zoneColor }}>
+              {currentZone.label}
+            </div>
+          </div>
+          <div
+            className="v2-bph-why-zone-label"
+            style={{ color: `rgba(${zr},${zg},${zb},0.72)` }}
+          >
+            ПОЧЕМУ {currentZone.label}?
+          </div>
           {phaseDesc && (
-            <div className="v2-btc-phase-action-block">
-              <span className="v2-btc-phase-meta-label">Стратегия</span>
-              <span className="v2-btc-phase-action" style={{ color: `rgba(${zr},${zg},${zb},0.92)` }}>
-                {phaseDesc.action}
-              </span>
+            <div className="v2-bph-why-zone-text">{phaseDesc.what}</div>
+          )}
+          <div className="v2-bph-zone-deco" aria-hidden="true">☠</div>
+        </div>
+
+        <div className="v2-bph-sep" style={{ background: `rgba(${zr},${zg},${zb},0.16)` }} />
+
+        {/* ── PANEL 4: Strategy ── */}
+        <div className="v2-bph-strategy-panel">
+          <div className="v2-bph-strategy-header">ПОКУПКИ ПО СТРАТЕГИИ</div>
+          {phaseDesc && (
+            <div
+              className="v2-bph-strategy-action"
+              style={{ color: `rgba(${zr},${zg},${zb},0.88)` }}
+            >
+              {phaseDesc.action}
             </div>
           )}
-
           {daysToWindow > 0 && (
-            <div className="v2-btc-window-chip">
-              <span className="v2-btc-window-num">{daysToWindow}</span>
-              <span className="v2-btc-window-lbl">дн. до окна покупок</span>
+            <div className="v2-bph-countdown-big">
+              <div className="v2-bph-cd-num">{daysToWindow}</div>
+              <div className="v2-bph-cd-lbl">ДН. ДО ОКНА ПОКУПОК</div>
             </div>
           )}
         </div>

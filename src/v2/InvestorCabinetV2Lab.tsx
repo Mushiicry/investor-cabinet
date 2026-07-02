@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { V2Shell } from "./components/V2Shell";
 import { useInvestorData } from "../hooks/useInvestorData";
 import { useFearGreed } from "../hooks/useFearGreed";
-import { useLivePrices } from "../hooks/useLivePrices";
 import { useHyperliquidLeverage } from "../hooks/useHyperliquidLeverage";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
 import { buildPortfolioState } from "../lib/portfolioCalculations";
@@ -50,6 +49,7 @@ export type V2Risk = {
   reserve: number;
   exposure: number;
   leverage: number;
+  futuresShare: number;
   diversification: number;
   volatility: number;
   concentration: "LOW" | "MEDIUM" | "HIGH";
@@ -129,6 +129,7 @@ const mockData: V2LabData = {
     reserve: 82,
     exposure: 71,
     leverage: 24,
+    futuresShare: 0.24,
     diversification: 67,
     volatility: 58,
     concentration: "MEDIUM",
@@ -219,18 +220,26 @@ const buildLiveV2Data = (
 ): V2LabData => {
   // Реальное выставленное плечо фьючерс-позиций берём с Hyperliquid (по монете).
   // Монету извлекаем из имени актива ("BTC LONG" → "BTC"). Нет данных → null (не штрафуем).
+  // GOLD остаётся категорией «Металлы», но торгуется с плечом на HL — поэтому его плечо
+  // тоже контролируем (строгий лимит ≤3x) и учитываем в лимите позиций. Маржу GOLD в
+  // лимит 10% пока НЕ включаем — точная сумма ещё не зафиксирована (futuresShare = BTC/MNT).
+  const coinOf = (asset: string) => asset.trim().split(/\s+/)[0].toUpperCase();
   const futuresLegs = state.portfolio
-    .filter((position) => position.category === "Фьючерсы")
-    .map((position) => {
-      const coin = position.asset.trim().split(/\s+/)[0].toUpperCase();
-      const leverage = leverageByCoin[coin] ?? null;
-      return { asset: position.asset, leverage };
-    });
+    .filter((position) => {
+      if (position.currentValue <= 0) return false;
+      if (position.category === "Фьючерсы") return true;
+      // Металл с реально выставленным плечом на HL (GOLD) — под контроль плеча.
+      return position.category === "Металлы" && leverageByCoin[coinOf(position.asset)] != null;
+    })
+    .map((position) => ({
+      asset: position.asset,
+      leverage: leverageByCoin[coinOf(position.asset)] ?? null,
+    }));
 
   const computedHealth = computePortfolioHealth({
     cashShare: categoryShare(state, "Свободные деньги"),
     cryptoShare: categoryShare(state, "Крипта"),
-    futuresShare: categoryShare(state, "Фьючерсы"),
+    futuresShare: state.risk.futuresShare,
     largestShare: state.risk.largestRiskShare,
     categoryShares: state.overview.categories.map((category) => category.share),
     reserveShare: resolveReserveShare(state),
@@ -289,6 +298,7 @@ const buildLiveV2Data = (
       reserve: Math.round(state.risk.reserveShare * 100),
       exposure: Math.round(state.risk.cryptoShare * 100),
       leverage: Math.round(futuresShare * 100),
+      futuresShare,
       diversification,
       volatility: 0,
       concentration: largestRiskShare > 0.35 ? "HIGH" : largestRiskShare > 0.25 ? "MEDIUM" : "LOW",
@@ -321,9 +331,6 @@ const buildLiveV2Data = (
 
 export type V2Page = "overview" | "portfolio" | "scenarios" | "risk" | "reports" | "signals" | "settings" | "health";
 
-// Все активы у которых есть живой источник цены (Hyperliquid / OKX)
-const LIVE_PRICE_ASSETS = ["BTC", "ETH", "SOL", "BNB", "TON", "ATOM", "MNT", "TIA", "APEX", "GRAM"];
-
 export default function InvestorCabinetV2Lab() {
   const [page, setPage] = useState<V2Page>("overview");
   const fallbackData = useMemo(
@@ -332,36 +339,16 @@ export default function InvestorCabinetV2Lab() {
   );
   const investorData = useInvestorData(fallbackData);
   const fearGreedLive = useFearGreed();
-  const livePrices = useLivePrices(LIVE_PRICE_ASSETS);
   const hlAddress = import.meta.env.VITE_HL_ADDRESS as string | undefined;
   const hlLeverage = useHyperliquidLeverage(hlAddress);
 
   const data = useMemo(() => {
     const base = buildLiveV2Data(investorData.data, hlLeverage.leverage);
 
-    // Переопределяем цены позиций живыми данными из Binance / OKX / Hyperliquid.
-    // Sheets-цены всегда устаревшие (обновляются вручную).
-    const positions = livePrices.prices && Object.keys(livePrices.prices).length > 0
-      ? base.positions.map((pos) => {
-          const livePrice = livePrices.prices[pos.asset];
-          if (!livePrice || !pos.currentPrice || pos.value === 0) return pos;
-
-          // quantity выводим из текущих Sheets-данных
-          const quantity = pos.value / pos.currentPrice;
-          const liveValue = livePrice * quantity;
-          const livePnl = liveValue - pos.invested;
-          const livePnlPct = pos.invested ? (livePnl / pos.invested) * 100 : 0;
-
-          return { ...pos, currentPrice: livePrice, value: liveValue, pnl: livePnl, pnlPct: livePnlPct };
-        })
-      : base.positions;
-
     // Always use the live alternative.me value for currentIndex — Sheets field is manual/stale.
     const liveValue = fearGreedLive.status === "ready" ? fearGreedLive.data.value : null;
 
-    const baseWithPrices = { ...base, positions };
-
-    if (liveValue === null) return baseWithPrices;
+    if (liveValue === null) return base;
 
     const invested = base.fearGreedStrategy.portfolioValue;
     const liveStrategy = buildFearGreedStrategy(liveValue, invested, base.fearGreedStrategy.rules);
@@ -372,7 +359,7 @@ export default function InvestorCabinetV2Lab() {
         : fearGreedLive.liveHistory;
 
     return {
-      ...baseWithPrices,
+      ...base,
       fearGreedStrategy: {
         ...liveStrategy,
         lastBuy: base.fearGreedStrategy.lastBuy,
@@ -380,7 +367,7 @@ export default function InvestorCabinetV2Lab() {
         history: mergedHistory,
       },
     };
-  }, [investorData.data, fearGreedLive.status, fearGreedLive.data.value, fearGreedLive.liveHistory, livePrices.prices, hlLeverage.leverage]);
+  }, [investorData.data, fearGreedLive.status, fearGreedLive.data.value, fearGreedLive.liveHistory, hlLeverage.leverage]);
 
   return <V2Shell data={data} page={page} onNavigate={setPage} />;
 }

@@ -64,25 +64,32 @@ async function fetchHyperliquidPrices(assets: string[]): Promise<Record<string, 
   return result;
 }
 
-// ── Плечо открытых фьючерс-позиций (clearinghouseState, привязан к адресу) ──
+// Билдер-perp-DEX'ы, где живут доп. инструменты (GOLD торгуется на xyz:GOLD).
+// Их плечо основной clearinghouseState не отдаёт — нужен отдельный запрос с dex.
+const HYPERLIQUID_EXTRA_DEXES = ["xyz"];
+
+type ClearingState = {
+  assetPositions?: { position?: { coin?: string; leverage?: { value?: number } } }[];
+};
+
+// Один запрос clearinghouseState (основной DEX при dex=undefined, иначе билдер-DEX).
 // Возвращает map: COIN (upper) → выставленное плечо.
-export async function fetchHyperliquidLeverage(
-  address: string
+async function fetchClearinghouseLeverage(
+  address: string,
+  dex?: string
 ): Promise<Record<string, number>> {
-  if (!address) return {};
+  const body: Record<string, unknown> = { type: "clearinghouseState", user: address };
+  if (dex) body.dex = dex;
 
   const res = await fetch(HYPERLIQUID_INFO_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "clearinghouseState", user: address }),
+    body: JSON.stringify(body),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Hyperliquid clearinghouseState error: ${res.status}`);
 
-  const data = (await res.json()) as {
-    assetPositions?: { position?: { coin?: string; leverage?: { value?: number } } }[];
-  };
-
+  const data = (await res.json()) as ClearingState;
   const result: Record<string, number> = {};
   for (const ap of data?.assetPositions ?? []) {
     const coin = ap?.position?.coin;
@@ -90,6 +97,26 @@ export async function fetchHyperliquidLeverage(
     if (coin && Number.isFinite(lev) && lev > 0) {
       result[String(coin).toUpperCase()] = lev;
     }
+  }
+  return result;
+}
+
+// ── Плечо открытых фьючерс-позиций (clearinghouseState, привязан к адресу) ──
+// Основной perp-DEX + билдер-DEX'ы (xyz: GOLD). Возвращает map: COIN → плечо.
+// Падение отдельного DEX не ломает остальные (allSettled).
+export async function fetchHyperliquidLeverage(
+  address: string
+): Promise<Record<string, number>> {
+  if (!address) return {};
+
+  const settled = await Promise.allSettled([
+    fetchClearinghouseLeverage(address),
+    ...HYPERLIQUID_EXTRA_DEXES.map((dex) => fetchClearinghouseLeverage(address, dex)),
+  ]);
+
+  const result: Record<string, number> = {};
+  for (const s of settled) {
+    if (s.status === "fulfilled") Object.assign(result, s.value);
   }
   return result;
 }

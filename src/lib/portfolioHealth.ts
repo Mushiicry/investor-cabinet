@@ -100,23 +100,24 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     ? RESERVE_TARGET_SHARE * input.portfolioValue
     : undefined;
 
-  // ── Фьючерсы: min(балл за вес, балл за плечо, балл за число позиций) ──
-  // Вес: градация к лимиту 10% — 100 при 0%, 0 при ≥10% (≤10% уже не «отлично»).
-  const weightScore = score(
-    (MAX_FUTURES_EXPOSURE_SHARE - input.futuresShare) / MAX_FUTURES_EXPOSURE_SHARE
-  );
+  // ── Фьючерсы: 100 без позиций, далее суммируются прозрачные штрафы ──
+  // Лимит 10% считается по начальной марже фьючерсов относительно общего invested.
+  const marginUsage = input.futuresShare / MAX_FUTURES_EXPOSURE_SHARE;
+  const marginPenalty =
+    Math.min(marginUsage, 1) * 20 + Math.max(0, marginUsage - 1) * 50;
+  const weightScore = Math.max(0, Math.round(100 - marginPenalty));
   const legs = input.futuresLegs ?? [];
   const breaches: { asset: string; leverage: number; limit: number }[] = [];
-  let leverageScore = 100; // нет фьючерсов / плечо не определить → не штрафуем
+  let leveragePenalty = 0;
   let worstLeverage: number | undefined;
   let worstLeverageAsset: string | undefined;
   let worstLeverageLimit: number | undefined;
   for (const leg of legs) {
     if (leg.leverage == null || !isFinite(leg.leverage)) continue;
     const limit = futuresLeverageLimit(leg.asset);
-    // 100 при плече ≤ лимита; падает по мере превышения (0 при удвоении лимита)
-    const legScore = score(1 - Math.max(0, leg.leverage - limit) / limit);
-    if (legScore < leverageScore) leverageScore = legScore;
+    const leverageUsage = Math.max(0, leg.leverage) / limit;
+    leveragePenalty +=
+      Math.min(leverageUsage, 1) * 4 + Math.max(0, leverageUsage - 1) * 25;
     if (worstLeverage === undefined || leg.leverage > worstLeverage) {
       worstLeverage = leg.leverage;
       worstLeverageAsset = leg.asset;
@@ -126,13 +127,16 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       breaches.push({ asset: leg.asset, leverage: leg.leverage, limit });
     }
   }
-  // Число позиций: ≤3 — ок; каждая лишняя сильно срезает балл (−50 за позицию).
+  const leverageScore = Math.max(0, Math.round(100 - leveragePenalty));
+  // Каждая позиция несёт базовый риск; сверх лимита 3 включается усиленный штраф.
   const futuresCount = legs.length;
-  const countScore =
-    futuresCount <= MAX_FUTURES_POSITIONS
-      ? 100
-      : Math.max(0, 100 - (futuresCount - MAX_FUTURES_POSITIONS) * 50);
-  const futuresScore = Math.min(weightScore, leverageScore, countScore);
+  const positionPenalty =
+    futuresCount * 5 + Math.max(0, futuresCount - MAX_FUTURES_POSITIONS) * 20;
+  const countScore = Math.max(0, 100 - positionPenalty);
+  const futuresScore = Math.max(
+    0,
+    Math.round(100 - marginPenalty - leveragePenalty - positionPenalty)
+  );
 
   const components: HealthComponent[] = [
     {
@@ -156,7 +160,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       key: "futures",
       label: "Фьючерсы",
       color: "#e8b35a",
-      desc: "Вес ≤10%, плечо ≤2x альты / ≤3x BTC-золото, не более 3 позиций.",
+      desc: "Начальная маржа ≤10% от вложенного капитала, плечо ≤2x альты / ≤3x BTC и золото, не более 3 позиций.",
       weight: 0.15,
       score: futuresScore,
       meta: {
