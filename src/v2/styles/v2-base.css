@@ -1,0 +1,660 @@
+
+:root {
+  color-scheme: dark;
+}
+
+body:has(.v2-lab) {
+  margin: 0;
+  overflow-x: hidden;
+  background: #00030a;
+  display: flex;
+  justify-content: center;
+}
+
+/* ── CryptoLogo base (required after App.css removal) ── */
+.crypto-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.crypto-logo-image,
+.crypto-logo-svg,
+.crypto-logo-gold {
+  overflow: hidden;
+  border-radius: 50%;
+  background: rgba(16, 32, 50, 0.5);
+}
+.crypto-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.crypto-logo-fallback {
+  font-size: 0.55em;
+  font-weight: 700;
+  color: rgba(200, 228, 245, 0.7);
+}
+.crypto-logo svg {
+  width: 100%;
+  height: 100%;
+}
+
+.v2-lab {
+  width: 1920px;
+  min-height: var(--v2-logical-height, 100vh);
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  zoom: var(--v2-desktop-scale, 1);
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 18px;
+  padding: 18px;
+  color: #ddefff;
+  font-size: 15px;
+  font-family: "Bodoni Moda", Georgia, serif;
+  background: transparent;
+}
+
+.v2-number-font {
+  font-family: "Black Ops One", "Avenir Next Condensed", "Arial Black", system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.v2-lab::before,
+.v2-lab::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-repeat: no-repeat;
+}
+
+/* слой 1 — звёзды поярче + пылинки */
+.v2-lab::before {
+  background-image:
+    radial-gradient(1.6px 1.6px at 14% 20%, rgba(205, 238, 255, 0.6), transparent 60%),
+    radial-gradient(1.7px 1.7px at 86% 56%, rgba(205, 238, 255, 0.55), transparent 60%),
+    radial-gradient(1.5px 1.5px at 55% 90%, rgba(205, 238, 255, 0.5), transparent 60%),
+    radial-gradient(1.6px 1.6px at 94% 22%, rgba(205, 238, 255, 0.55), transparent 60%),
+    radial-gradient(1.5px 1.5px at 40% 12%, rgba(205, 238, 255, 0.5), transparent 60%),
+    radial-gradient(1.6px 1.6px at 8% 70%, rgba(205, 238, 255, 0.5), transparent 60%),
+    radial-gradient(1.5px 1.5px at 73% 84%, rgba(205, 238, 255, 0.48), transparent 60%),
+    radial-gradient(1.5px 1.5px at 28% 6%, rgba(205, 238, 255, 0.46), transparent 60%),
+    radial-gradient(1px 1px at 24% 38%, rgba(175, 222, 255, 0.32), transparent 60%),
+    radial-gradient(1px 1px at 70% 12%, rgba(175, 222, 255, 0.3), transparent 60%),
+    radial-gradient(1px 1px at 62% 66%, rgba(175, 222, 255, 0.28), transparent 60%),
+    radial-gradient(1px 1px at 33% 80%, rgba(175, 222, 255, 0.28), transparent 60%),
+    radial-gradient(1px 1px at 90% 78%, rgba(175, 222, 255, 0.26), transparent 60%),
+    radial-gradient(1px 1px at 50% 30%, rgba(175, 222, 255, 0.24), transparent 60%),
+    radial-gradient(0.8px 0.8px at 18% 52%, rgba(175, 222, 255, 0.24), transparent 60%),
+    radial-gradient(0.8px 0.8px at 78% 40%, rgba(175, 222, 255, 0.24), transparent 60%),
+    radial-gradient(0.8px 0.8px at 46% 58%, rgba(175, 222, 255, 0.22), transparent 60%),
+    radial-gradient(0.8px 0.8px at 6% 30%, rgba(175, 222, 255, 0.22), transparent 60%),
+    radial-gradient(0.8px 0.8px at 96% 48%, rgba(175, 222, 255, 0.22), transparent 60%),
+    radial-gradient(0.8px 0.8px at 36% 96%, rgba(175, 222, 255, 0.2), transparent 60%);
+  animation: v2-twinkle-a 6.5s ease-in-out infinite;
+}
+
+/* слой 2 — больше мелких пылинок, мерцает в противофазе */
+.v2-lab::after {
+  background-image:
+    radial-gradient(1.4px 1.4px at 20% 84%, rgba(205, 238, 255, 0.5), transparent 60%),
+    radial-gradient(1.4px 1.4px at 64% 30%, rgba(205, 238, 255, 0.46), transparent 60%),
+    radial-gradient(1.4px 1.4px at 38% 48%, rgba(205, 238, 255, 0.44), transparent 60%),
+    radial-gradient(1.4px 1.4px at 82% 8%, rgba(205, 238, 255, 0.46), transparent 60%),
+    radial-gradient(0.9px 0.9px at 10% 44%, rgba(175, 222, 255, 0.26), transparent 60%),
+    radial-gradient(0.9px 0.9px at 30% 24%, rgba(175, 222, 255, 0.24), transparent 60%),
+    radial-gradient(0.9px 0.9px at 52% 74%, rgba(175, 222, 255, 0.24), transparent 60%),
+    radial-gradient(0.9px 0.9px at 74% 60%, rgba(175, 222, 255, 0.22), transparent 60%),
+    radial-gradient(0.9px 0.9px at 88% 88%, rgba(175, 222, 255, 0.22), transparent 60%),
+    radial-gradient(0.9px 0.9px at 44% 18%, rgba(175, 222, 255, 0.2), transparent 60%),
+    radial-gradient(0.8px 0.8px at 16% 70%, rgba(175, 222, 255, 0.2), transparent 60%),
+    radial-gradient(0.8px 0.8px at 60% 92%, rgba(175, 222, 255, 0.2), transparent 60%),
+    radial-gradient(0.8px 0.8px at 92% 64%, rgba(175, 222, 255, 0.18), transparent 60%),
+    radial-gradient(0.7px 0.7px at 4% 14%, rgba(175, 222, 255, 0.18), transparent 60%),
+    radial-gradient(0.7px 0.7px at 68% 46%, rgba(175, 222, 255, 0.18), transparent 60%),
+    radial-gradient(0.7px 0.7px at 26% 60%, rgba(175, 222, 255, 0.16), transparent 60%);
+  animation: v2-twinkle-b 8.5s ease-in-out infinite;
+}
+
+@keyframes v2-twinkle-a {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@keyframes v2-twinkle-b {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.v2-sidebar,
+.v2-panel,
+.v2-metric,
+.v2-range-switch,
+.v2-ticker {
+  border: 0;
+  background: linear-gradient(180deg, rgba(2, 8, 22, 0.82), rgba(1, 5, 14, 0.78));
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow:
+    0 18px 60px rgba(0, 0, 0, 0.52),
+    0 0 1px rgba(45, 120, 255, 0.14),
+    inset 0 1px 0 rgba(80, 160, 255, 0.06);
+}
+
+/* стеклянная рамка: электрический синий */
+.v2-metric,
+.v2-fear,
+.v2-fg-meta-panel,
+.v2-fg-ladder-panel,
+.v2-allocation,
+.v2-ph-panel {
+  border: 1px solid rgba(50, 130, 255, 0.25);
+  box-shadow:
+    0 18px 60px rgba(0, 0, 0, 0.52),
+    inset 0 0 40px rgba(15, 55, 200, 0.05),
+    0 0 1px rgba(45, 120, 255, 0.15);
+}
+
+.v2-allocation,
+.v2-ph-panel {
+  border-radius: 14px;
+}
+
+.v2-sidebar,
+.v2-metric,
+.v2-fear,
+.v2-fg-meta-panel,
+.v2-fg-ladder-panel,
+.v2-allocation,
+.v2-ph-panel {
+  box-shadow:
+    inset 0 1px 0 rgba(90, 170, 255, 0.09),
+    inset 0 0 40px rgba(15, 55, 200, 0.06),
+    0 18px 60px rgba(0, 0, 0, 0.55),
+    0 0 2px rgba(40, 110, 255, 0.12);
+}
+
+/* компактные панели стратегии */
+.v2-fg-meta-panel,
+.v2-fg-ladder-panel {
+  padding: 14px;
+  border-radius: 14px;
+}
+
+.v2-fg-meta-panel {
+  display: flex;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+/* Последние покупки — только 4 последние подтвержденные операции */
+.v2-lastbuys {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.v2-lastbuys-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(86, 196, 240, 0.07);
+}
+
+.v2-lastbuy-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(141, 167, 181, 0.6);
+  background: rgba(86, 196, 240, 0.06);
+  border: 1px solid rgba(86, 196, 240, 0.1);
+  border-radius: 20px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.v2-lastbuys-list {
+  display: grid;
+  grid-auto-rows: minmax(34px, 1fr);
+  gap: 5px;
+  min-height: 0;
+}
+
+.v2-buy-row {
+  display: grid;
+  grid-template-columns: 6px minmax(36px, auto) 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 0;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: rgba(11, 22, 40, 0.45);
+  border: 1px solid rgba(86, 196, 240, 0.05);
+}
+
+.v2-buy-row.is-latest {
+  background: linear-gradient(90deg, rgba(86, 196, 240, 0.1), rgba(86, 196, 240, 0.02));
+  border-color: rgba(86, 196, 240, 0.18);
+}
+
+.v2-buy-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(108, 200, 232, 0.4);
+  flex-shrink: 0;
+}
+
+.v2-buy-row.is-latest .v2-buy-dot {
+  background: #6cc8e8;
+  box-shadow: 0 0 8px rgba(108, 200, 232, 0.75);
+}
+
+.v2-buy-asset {
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 14px;
+  color: #eaf5ff;
+  letter-spacing: 0.02em;
+}
+
+.v2-buy-mode {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(108, 200, 232, 0.7);
+  white-space: nowrap;
+}
+
+.v2-buy-amount {
+  font-size: 13px;
+  font-weight: 900;
+  color: #eaf1fb;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-buy-date {
+  font-size: 10px;
+  font-weight: 800;
+  color: rgba(150, 173, 187, 0.7);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Allocation — карточки категорий (ледяная палитра) */
+.v2-alloc-kicker {
+  position: relative;
+  z-index: 1;
+  margin-top: 6px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(150, 173, 187, 0.62);
+}
+
+.v2-alloc-cards {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.v2-alloc-card {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 11px;
+  border-radius: 11px;
+  border: 1px solid rgba(45, 120, 255, 0.12);
+  background: linear-gradient(
+    180deg,
+    rgba(13, 26, 46, 0.55),
+    rgba(8, 17, 30, 0.5)
+  );
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+
+.v2-alloc-card:hover {
+  border-color: color-mix(in srgb, var(--c) 45%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--c) 9%, rgba(13, 26, 46, 0.55)),
+    rgba(8, 17, 30, 0.5)
+  );
+}
+
+.v2-alloc-card.is-danger {
+  border-color: rgba(255, 93, 108, 0.35);
+}
+
+.v2-alloc-card.is-danger .v2-alloc-amount {
+  color: rgba(255, 128, 137, 0.9);
+}
+
+.v2-alloc-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--c) 70%, transparent);
+  color: var(--c);
+  background: radial-gradient(
+    circle at 50% 35%,
+    color-mix(in srgb, var(--c) 22%, transparent),
+    transparent 70%
+  );
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--c) 26%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--c) 16%, transparent);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.v2-alloc-main {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.v2-alloc-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.v2-alloc-name {
+  font-size: 13px;
+  font-weight: 900;
+  color: #eaf1fb;
+  letter-spacing: 0.01em;
+}
+
+.v2-alloc-pct {
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--c);
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-alloc-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.v2-alloc-amount {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(170, 190, 210, 0.78);
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-alloc-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: rgba(141, 167, 181, 0.72);
+}
+
+.v2-alloc-status {
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.v2-alloc-status.is-ok {
+  color: #5fe0cf;
+}
+
+.v2-alloc-status.is-high {
+  color: #e8b35a;
+}
+
+.v2-alloc-status.is-low {
+  color: #e8b35a;
+}
+
+.v2-alloc-track {
+  position: relative;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(120, 160, 220, 0.12);
+  overflow: hidden;
+}
+
+.v2-alloc-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--c) 55%, transparent),
+    var(--c)
+  );
+  box-shadow: 0 0 10px color-mix(in srgb, var(--c) 45%, transparent);
+}
+
+/* Хаб стейблов (под реактором) */
+.v2-stables {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 14px;
+  height: 100%;
+}
+
+.v2-stables .v2-stables-total {
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 1;
+  color: #eaf5ff;
+}
+
+.v2-stables-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+  grid-auto-rows: 1fr;
+}
+
+.v2-stables-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 10px;
+  background: rgba(11, 22, 40, 0.5);
+}
+
+.v2-stables-row span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(159, 179, 212, 0.85);
+}
+
+.v2-stables-row strong {
+  font-size: 14px;
+  font-weight: 900;
+  color: #e8f1f8;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-stables-row strong.is-warn {
+  color: #e8b35a;
+}
+
+.v2-fg-meta-panel .v2-fg-strategy-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  height: 100%;
+}
+
+.v2-fg-meta-panel .v2-fg-last-buy-card,
+.v2-fg-meta-panel .v2-fg-cash-card {
+  min-width: 0;
+  min-height: 0;
+  padding: 11px;
+}
+
+.v2-fg-meta-panel .v2-fg-last-buy-title,
+.v2-fg-meta-panel .v2-fg-cash-title-row span {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+
+.v2-fg-meta-panel .v2-fg-cash-title-row strong {
+  font-size: 14px;
+}
+
+.v2-fg-meta-panel .v2-fg-cash-grid {
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.v2-fg-meta-panel .v2-fg-cash-grid div {
+  min-height: 30px;
+  padding: 0 9px;
+}
+
+.v2-fg-meta-panel .v2-fg-cash-grid strong {
+  font-size: 12px;
+}
+
+.v2-fg-meta-panel .v2-fg-last-buy-grid {
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.v2-fg-meta-panel .v2-fg-last-buy-metric {
+  min-height: 0;
+  padding: 9px;
+  gap: 4px;
+}
+
+.v2-fg-meta-panel .v2-fg-last-buy-metric strong {
+  font-size: 12px;
+}
+
+.v2-fg-meta-panel .v2-fg-last-buy-metric em {
+  font-size: 10px;
+}
+
+.v2-fg-meta-panel .v2-fg-last-buy-metric b {
+  font-size: 13px;
+}
+
+.v2-fear {
+  border-radius: 14px;
+}
+
+.v2-sidebar {
+  position: sticky;
+  top: 18px;
+  align-self: start;
+  height: calc(var(--v2-logical-height, 100vh) - 36px);
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  border-radius: 20px;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.v2-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.v2-brand {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(92, 231, 245, 0.18);
+}
+
+.v2-brand-mark,
+.v2-nav-icon,
+.v2-deployable-orb {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(78, 228, 244, 0.45);
+  color: #70f5ff;
+  background: rgba(31, 209, 229, 0.08);
+  box-shadow: inset 0 0 18px rgba(70, 236, 255, 0.12), 0 0 18px rgba(39, 218, 238, 0.12);
+}
+
+.v2-brand-mark {
+  width: 42px;
+  height: 42px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.v2-brand-title {
+  color: #8ff8ff;
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.v2-brand-subtitle,
+.v2-panel-kicker,
+.top-metric-label,
+.v2-table-head,
+.v2-last-update span {
+  color: #55dbe8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.v2-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-top: 22px;
+  flex: 1;
+}
+
+.v2-nav-bottom {
+  padding-top: 12px;
+  border-top: 1px solid rgba(92, 231, 245, 0.08);
+}
