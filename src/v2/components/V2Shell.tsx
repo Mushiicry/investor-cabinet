@@ -118,23 +118,16 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth }: 
         </button>
       </header>
 
-      {/* Фон: nebula-градиенты + фото космоса */}
+      {/* Фото-фон космоса (nebula — в body CSS) */}
       <div style={{
         position: "fixed",
         inset: 0,
         zIndex: -2,
-        backgroundColor: "#00030a",
-        backgroundImage: [
-          "radial-gradient(ellipse 130% 70% at 75% -10%, rgba(14, 65, 185, 0.68), transparent 60%)",
-          "radial-gradient(ellipse 80% 65% at -5% 100%, rgba(6, 100, 112, 0.55), transparent 58%)",
-          "radial-gradient(ellipse 60% 50% at 102% 40%, rgba(38, 10, 88, 0.48), transparent 58%)",
-          "radial-gradient(ellipse 50% 38% at 6% 6%, rgba(12, 42, 110, 0.44), transparent 62%)",
-          "radial-gradient(ellipse 45% 35% at 50% 100%, rgba(4, 60, 80, 0.32), transparent 65%)",
-          'url("/bg-space.png")',
-        ].join(", "),
-        backgroundSize: "auto, auto, auto, auto, auto, cover",
-        backgroundPosition: "0 0, 0 0, 0 0, 0 0, 0 0, center top",
+        backgroundImage: 'url("/bg-space.png")',
+        backgroundSize: "cover",
+        backgroundPosition: "center top",
         backgroundRepeat: "no-repeat",
+        backgroundColor: "#00030a",
       }} aria-hidden="true" />
       {/* Живые звёзды и вспышки поверх фото */}
       <V2StarField />
