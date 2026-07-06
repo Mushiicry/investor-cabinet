@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import type { V2Page, V2Portfolio } from "../InvestorCabinetV2Lab";
 import { V2InvestorModal, computeLevel, getLevelTitle } from "./V2InvestorModal";
+import { useAuth } from "../../hooks/useAuth";
 
 const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
   {
@@ -102,12 +103,14 @@ type Props = {
   health: PortfolioHealth;
   profileName: string;
   profileAvatar: string;
+  onOpenAuth: (tab: "signin" | "signup") => void;
 };
 
 const mainNavItems = navItems.filter(i => i.label !== "Настройки");
 const settingsItem  = navItems.find(i => i.label === "Настройки")!;
 
-export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, profileName, profileAvatar }: Props) {
+export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, profileName, profileAvatar, onOpenAuth }: Props) {
+  const { configured, user, displayName, signOut } = useAuth();
   const [levelOpen, setLevelOpen] = useState(false);
   const { level } = computeLevel(healthFactor);
   const levelTitle = getLevelTitle(level);
@@ -168,6 +171,41 @@ export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, 
 
       <div className="v2-nav-bottom">
         {renderItem(settingsItem)}
+
+        {configured && (
+          user ? (
+            <div className="v2-auth-account">
+              <div className="v2-auth-account-info">
+                <span className="v2-auth-account-name">{displayName || "Аккаунт"}</span>
+                <span className="v2-auth-account-email">{user.email}</span>
+              </div>
+              <button
+                className="v2-auth-btn v2-auth-btn--logout"
+                type="button"
+                onClick={() => signOut()}
+              >
+                Выйти
+              </button>
+            </div>
+          ) : (
+            <div className="v2-auth-actions">
+              <button
+                className="v2-auth-btn v2-auth-btn--signin"
+                type="button"
+                onClick={() => onOpenAuth("signin")}
+              >
+                Вход
+              </button>
+              <button
+                className="v2-auth-btn v2-auth-btn--signup"
+                type="button"
+                onClick={() => onOpenAuth("signup")}
+              >
+                Регистрация
+              </button>
+            </div>
+          )
+        )}
       </div>
 
       {levelOpen && (

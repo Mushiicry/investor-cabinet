@@ -24,6 +24,8 @@ type Props = {
   data: V2LabData;
   page: V2Page;
   onNavigate: (page: V2Page) => void;
+  locked?: boolean;
+  onOpenAuth: (tab: "signin" | "signup") => void;
 };
 
 const DESKTOP_DESIGN_WIDTH = 1920;
@@ -47,7 +49,7 @@ function getDesktopViewport() {
   };
 }
 
-export function V2Shell({ data, page, onNavigate }: Props) {
+export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth }: Props) {
   const [profileName,   setProfileName]   = useState(() => localStorage.getItem("mushii-profile-name")   ?? "");
   const [profileAvatar, setProfileAvatar] = useState(() => localStorage.getItem("mushii-profile-avatar") ?? "");
   const [selectedChip, setSelectedChip] = useState<HealthComponent | null>(null);
@@ -125,8 +127,15 @@ export function V2Shell({ data, page, onNavigate }: Props) {
         health={data.health}
         profileName={profileName}
         profileAvatar={profileAvatar}
+        onOpenAuth={onOpenAuth}
       />
-      <main className="v2-main">
+      <main className={locked ? "v2-main is-locked" : "v2-main"}>
+        {locked && (
+          <div className="v2-lock-hint" aria-hidden="true">
+            <span className="v2-lock-hint-icon">🔒</span>
+            <span>Войдите, чтобы открыть кабинет</span>
+          </div>
+        )}
         {page === "settings" ? (
           <V2SettingsPage
             initialName={profileName}

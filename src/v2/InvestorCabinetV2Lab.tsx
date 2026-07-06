@@ -1,5 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { V2Shell } from "./components/V2Shell";
+import { V2AuthModal } from "./components/V2AuthModal";
+import { useAuth } from "../hooks/useAuth";
+import { isFounderEmail } from "../lib/supabaseClient";
 import { useInvestorData } from "../hooks/useInvestorData";
 import { useFearGreed } from "../hooks/useFearGreed";
 import { useHyperliquidLeverage } from "../hooks/useHyperliquidLeverage";
@@ -205,6 +208,59 @@ const mockData: V2LabData = {
   ],
 };
 
+// Нулевой датасет для не-владельца (напр. жены): та же структура и все виджеты,
+// но личный портфель по нулям — пока не подключены её кошельки. Рыночные данные
+// (BTC-график, Fear & Greed, тикер, фаза цикла) общие и остаются как есть.
+const zeroedHealth = computePortfolioHealth({
+  cashShare: 0,
+  cryptoShare: 0,
+  futuresShare: 0,
+  largestShare: 0,
+  categoryShares: [0, 0, 0, 0, 0],
+});
+
+function buildZeroedV2Data(): V2LabData {
+  return {
+    ...mockData,
+    positions: [],
+    decisions: [],
+    scenarios: [],
+    playbook: [],
+    history: [],
+    transactions: [],
+    fearGreedStrategy: buildFearGreedStrategy(50, 0),
+    allocation: mockData.allocation.map((category) => ({ ...category, share: 0, value: 0 })),
+    health: zeroedHealth,
+    risk: {
+      ...mockData.risk,
+      reserve: 0,
+      exposure: 0,
+      leverage: 0,
+      futuresShare: 0,
+      diversification: 0,
+      volatility: 0,
+      concentration: "LOW",
+      futuresPressure: "LOW",
+    },
+    portfolio: {
+      ...mockData.portfolio,
+      totalPortfolioValue: 0,
+      totalInvested: 0,
+      pnlUsd: 0,
+      pnlPct: 0,
+      stableReserve: 0,
+      positionsCount: 0,
+      healthFactor: zeroedHealth.healthFactor,
+      healthStatus: zeroedHealth.status,
+      riskLevel: zeroedHealth.riskLevel,
+      deployableCapital: 0,
+      spotDeployable: 0,
+      futuresDeployable: 0,
+      reserveShare: 0,
+    },
+  };
+}
+
 const resolveReserveShare = (state: PortfolioState) => {
   if (state.risk.reserveShare) return state.risk.reserveShare;
   if (!state.overview.portfolioValue) return mockData.portfolio.reserveShare;
@@ -332,7 +388,10 @@ const buildLiveV2Data = (
 export type V2Page = "overview" | "portfolio" | "scenarios" | "risk" | "reports" | "signals" | "settings" | "health";
 
 export default function InvestorCabinetV2Lab() {
+  const { configured, user } = useAuth();
   const [page, setPage] = useState<V2Page>("overview");
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authTab, setAuthTab] = useState<"signin" | "signup">("signin");
   const fallbackData = useMemo(
     () => buildPortfolioState(rawPositions, decisionsData, scenariosData),
     []
@@ -342,7 +401,7 @@ export default function InvestorCabinetV2Lab() {
   const hlAddress = import.meta.env.VITE_HL_ADDRESS as string | undefined;
   const hlLeverage = useHyperliquidLeverage(hlAddress);
 
-  const data = useMemo(() => {
+  const liveData = useMemo(() => {
     const base = buildLiveV2Data(investorData.data, hlLeverage.leverage);
 
     // Always use the live alternative.me value for currentIndex — Sheets field is manual/stale.
@@ -369,5 +428,42 @@ export default function InvestorCabinetV2Lab() {
     };
   }, [investorData.data, fearGreedLive.status, fearGreedLive.data.value, fearGreedLive.liveHistory, hlLeverage.leverage]);
 
-  return <V2Shell data={data} page={page} onNavigate={setPage} />;
+  // Пока авторизация не настроена — работаем как раньше (реальные данные, без гейта).
+  // Когда настроена: владелец (совпадение email) видит реальные данные, остальные — нули.
+  const founder = isFounderEmail(user?.email);
+  const zeroedData = useMemo(() => buildZeroedV2Data(), []);
+  const data = !configured || founder ? liveData : zeroedData;
+
+  // Гейт: авторизация настроена и пользователь не вошёл → дашборд заблокирован.
+  const locked = configured && !user;
+
+  // Автооткрытие окна входа, когда дашборд под замком.
+  useEffect(() => {
+    if (locked) setAuthOpen(true);
+  }, [locked]);
+
+  // После успешного входа окно закрываем.
+  useEffect(() => {
+    if (user) setAuthOpen(false);
+  }, [user]);
+
+  const openAuth = (tab: "signin" | "signup") => {
+    setAuthTab(tab);
+    setAuthOpen(true);
+  };
+
+  return (
+    <>
+      <V2Shell
+        data={data}
+        page={page}
+        onNavigate={setPage}
+        locked={locked}
+        onOpenAuth={openAuth}
+      />
+      {authOpen && (
+        <V2AuthModal initialTab={authTab} onClose={() => setAuthOpen(false)} />
+      )}
+    </>
+  );
 }
