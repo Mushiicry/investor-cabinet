@@ -211,13 +211,23 @@ const mockData: V2LabData = {
 // Нулевой датасет для не-владельца (напр. жены): та же структура и все виджеты,
 // но личный портфель по нулям — пока не подключены её кошельки. Рыночные данные
 // (BTC-график, Fear & Greed, тикер, фаза цикла) общие и остаются как есть.
-const zeroedHealth = computePortfolioHealth({
-  cashShare: 0,
-  cryptoShare: 0,
-  futuresShare: 0,
-  largestShare: 0,
-  categoryShares: [0, 0, 0, 0, 0],
-});
+// Здоровье пустого аккаунта тоже по нулям: сохраняем структуру компонентов
+// (лейблы/цвета/описания для радара), но все баллы = 0, пока нет данных.
+const zeroedHealth: PortfolioHealth = (() => {
+  const base = computePortfolioHealth({
+    cashShare: 0,
+    cryptoShare: 0,
+    futuresShare: 0,
+    largestShare: 0,
+    categoryShares: [0, 0, 0, 0, 0],
+  });
+  return {
+    healthFactor: 0,
+    status: "RISK",
+    riskLevel: "Нет данных",
+    components: base.components.map((component) => ({ ...component, score: 0 })),
+  };
+})();
 
 function buildZeroedV2Data(): V2LabData {
   return {
