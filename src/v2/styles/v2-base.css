@@ -3,6 +3,12 @@
   color-scheme: dark;
 }
 
+/* Тёмный фон на самом html — иначе при overscroll / незаполненной высоте снизу
+   проступает дефолтный (серый/белый) фон браузера — «серая полоска внизу». */
+html:has(.v2-lab) {
+  background-color: #00030a;
+}
+
 body:has(.v2-lab) {
   margin: 0;
   overflow-x: hidden;

@@ -193,6 +193,10 @@ type Props = {
 export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Props) {
   const components = health.components;
 
+  // Пустой аккаунт (кошельки ещё не подключены): диагноз/рекомендации не про
+  // «риск портфеля», а призыв подключить кошельки.
+  const isEmpty = portfolio.totalPortfolioValue <= 0;
+
   const valuePts = components
     .map((c, i) => {
       const a = (-90 + i * 60) * (Math.PI / 180);
@@ -207,7 +211,9 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
   const sorted = [...components].sort((a, b) => a.score - b.score);
   const weak = sorted.filter(c => c.score < 65).slice(0, 5);
   const strong = sorted.filter(c => c.score >= 75).slice(-2);
-  const interp = healthInterpretation(health.healthFactor);
+  const interp = isEmpty
+    ? { text: "Подключите кошельки, чтобы увидеть анализ портфеля", color: "#55C7FF" }
+    : healthInterpretation(health.healthFactor);
 
   return (
     <section className="v2-panel v2-health-core v2-health-core--premium" aria-label="Portfolio health factor">
@@ -246,7 +252,16 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
         <div className="v2-hc-side-title">Диагноз</div>
         <div className="v2-hc-side-verdict" style={{ color: interp.color }}>{interp.text}</div>
         <div className="v2-hc-side-list">
-          {portfolio.deployableCapital < 50 && (
+          {isEmpty && (
+            <div className="v2-hc-diag-row">
+              <span className="v2-hc-diag-icon">🔗</span>
+              <div className="v2-hc-diag-body">
+                <span className="v2-hc-diag-name">Кошельки не подключены</span>
+                <span className="v2-hc-diag-why">Подключите свои кошельки, чтобы увидеть здоровье, риск и рекомендации по вашему портфелю.</span>
+              </div>
+            </div>
+          )}
+          {!isEmpty && portfolio.deployableCapital < 50 && (
             <div className="v2-hc-diag-row v2-hc-diag-row--critical">
               <span className="v2-hc-diag-icon">🔴</span>
               <div className="v2-hc-diag-body">
@@ -255,7 +270,7 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
               </div>
             </div>
           )}
-          {strong.map(c => (
+          {!isEmpty && strong.map(c => (
             <div key={c.key} className="v2-hc-diag-row v2-hc-diag-row--ok">
               <span className="v2-hc-diag-icon">✓</span>
               <div className="v2-hc-diag-body">
@@ -265,7 +280,7 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
               <span className="v2-hc-diag-val">{c.score}</span>
             </div>
           ))}
-          {weak.map(c => (
+          {!isEmpty && weak.map(c => (
             <div key={c.key} className="v2-hc-diag-row v2-hc-diag-row--warn">
               <span className="v2-hc-diag-icon">⚠</span>
               <div className="v2-hc-diag-body">
@@ -774,7 +789,15 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
       <aside className="v2-hc-side v2-hc-side--recommend">
         <div className="v2-hc-side-title">Рекомендации</div>
         <div className="v2-hc-side-list">
-          {weak.length === 0 ? (
+          {isEmpty ? (
+            <div className="v2-hc-rec-row v2-hc-rec-row--critical">
+              <span className="v2-hc-rec-gain">1</span>
+              <div className="v2-hc-rec-body">
+                <span className="v2-hc-rec-action">Подключите реальные кошельки</span>
+                <span className="v2-hc-rec-source">Портфель, риск и здоровье появятся автоматически по вашим данным</span>
+              </div>
+            </div>
+          ) : weak.length === 0 ? (
             <div className="v2-hc-rec-row v2-hc-rec-row--ok">
               <span className="v2-hc-rec-arrow">✓</span>
               <span>Портфель сбалансирован — удерживайте структуру.</span>

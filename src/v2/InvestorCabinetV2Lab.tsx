@@ -411,12 +411,22 @@ export default function InvestorCabinetV2Lab() {
   const hlAddress = import.meta.env.VITE_HL_ADDRESS as string | undefined;
   const hlLeverage = useHyperliquidLeverage(hlAddress);
 
-  const liveData = useMemo(() => {
-    const base = buildLiveV2Data(investorData.data, hlLeverage.leverage);
+  const liveBase = useMemo(
+    () => buildLiveV2Data(investorData.data, hlLeverage.leverage),
+    [investorData.data, hlLeverage.leverage]
+  );
+  const zeroedBase = useMemo(() => buildZeroedV2Data(), []);
 
-    // Always use the live alternative.me value for currentIndex — Sheets field is manual/stale.
+  // Личный портфель: владелец (совпадение email) — реальные данные, остальные — нули.
+  // Пока авторизация не настроена — работаем как раньше (реальные данные, без гейта).
+  const founder = isFounderEmail(user?.email);
+  const base = !configured || founder ? liveBase : zeroedBase;
+
+  // Рыночный Fear & Greed всегда живой (реальный BTC-график, реальный индекс) —
+  // даже у пустого аккаунта до подключения кошельков. Личный портфель при этом нули:
+  // invested=0 → суммы покупок по стратегии = $0, но индекс/зона реальные.
+  const data = useMemo(() => {
     const liveValue = fearGreedLive.status === "ready" ? fearGreedLive.data.value : null;
-
     if (liveValue === null) return base;
 
     const invested = base.fearGreedStrategy.portfolioValue;
@@ -436,13 +446,7 @@ export default function InvestorCabinetV2Lab() {
         history: mergedHistory,
       },
     };
-  }, [investorData.data, fearGreedLive.status, fearGreedLive.data.value, fearGreedLive.liveHistory, hlLeverage.leverage]);
-
-  // Пока авторизация не настроена — работаем как раньше (реальные данные, без гейта).
-  // Когда настроена: владелец (совпадение email) видит реальные данные, остальные — нули.
-  const founder = isFounderEmail(user?.email);
-  const zeroedData = useMemo(() => buildZeroedV2Data(), []);
-  const data = !configured || founder ? liveData : zeroedData;
+  }, [base, fearGreedLive.status, fearGreedLive.data.value, fearGreedLive.liveHistory]);
 
   // Гейт: авторизация настроена и пользователь не вошёл → дашборд заблокирован.
   const locked = configured && !user;
