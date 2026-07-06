@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { V2Shell } from "./components/V2Shell";
 import { V2AuthModal } from "./components/V2AuthModal";
 import { useAuth } from "../hooks/useAuth";
-import { isFounderEmail } from "../lib/supabaseClient";
+import { isFounderEmail, isWifeEmail } from "../lib/supabaseClient";
 import { useInvestorData } from "../hooks/useInvestorData";
 import { useFearGreed } from "../hooks/useFearGreed";
 import { useHyperliquidLeverage } from "../hooks/useHyperliquidLeverage";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
+import { INVESTOR_API_URL, WIFE_API_URL } from "../config/constants";
 import { buildPortfolioState } from "../lib/portfolioCalculations";
 import { computePortfolioHealth } from "../lib/portfolioHealth";
 import type { PortfolioHealth } from "../lib/portfolioHealth";
@@ -406,7 +407,12 @@ export default function InvestorCabinetV2Lab() {
     () => buildPortfolioState(rawPositions, decisionsData, scenariosData),
     []
   );
-  const investorData = useInvestorData(fallbackData);
+  const wife = isWifeEmail(user?.email);
+  const investorData = useInvestorData(
+    fallbackData,
+    wife ? WIFE_API_URL : INVESTOR_API_URL,
+    wife ? "wife" : undefined
+  );
   const fearGreedLive = useFearGreed();
   const hlAddress = import.meta.env.VITE_HL_ADDRESS as string | undefined;
   const hlLeverage = useHyperliquidLeverage(hlAddress);
@@ -417,10 +423,9 @@ export default function InvestorCabinetV2Lab() {
   );
   const zeroedBase = useMemo(() => buildZeroedV2Data(), []);
 
-  // Личный портфель: владелец (совпадение email) — реальные данные, остальные — нули.
-  // Пока авторизация не настроена — работаем как раньше (реальные данные, без гейта).
+  // Личный портфель: владелец — реальные данные, жена — свои реальные данные, остальные — нули.
   const founder = isFounderEmail(user?.email);
-  const base = !configured || founder ? liveBase : zeroedBase;
+  const base = !configured || founder || wife ? liveBase : zeroedBase;
 
   // Рыночный Fear & Greed всегда живой (реальный BTC-график, реальный индекс) —
   // даже у пустого аккаунта до подключения кошельков. Личный портфель при этом нули:

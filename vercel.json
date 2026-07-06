@@ -5,6 +5,10 @@
       "destination": "https://script.google.com/macros/s/AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA/exec"
     },
     {
+      "source": "/api/investor-wife",
+      "destination": "https://script.google.com/macros/s/AKfycby_drIkmHUxtBWSSzpnZMxTeMq0qVZX8h1Kvjg5z2knRNxhPLbiXCB6_lmZsQpNQz8/exec"
+    },
+    {
       "source": "/api/fear-greed",
       "destination": "https://api.alternative.me/fng/?limit=30"
     },

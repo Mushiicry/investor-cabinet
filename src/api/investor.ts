@@ -4,8 +4,8 @@ import {
 } from "../config/constants";
 import { fetchJsonWithTimeout } from "../services/http";
 
-export async function fetchInvestorData(): Promise<unknown> {
-  return fetchJsonWithTimeout(INVESTOR_API_URL, {
+export async function fetchInvestorData(apiUrl: string = INVESTOR_API_URL): Promise<unknown> {
+  return fetchJsonWithTimeout(apiUrl, {
     method: "GET",
     cache: "no-store",
     timeoutMs: INVESTOR_API_TIMEOUT_MS,

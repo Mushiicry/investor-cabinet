@@ -2,6 +2,7 @@ import type { PortfolioState } from "../types/portfolio";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
 
 const INVESTOR_DATA_CACHE_KEY = "investor-cabinet:last-live-investor-state:v2";
+const WIFE_DATA_CACHE_KEY    = "investor-cabinet:last-live-investor-state:wife:v1";
 
 type CachedInvestorState = {
   data: PortfolioState;
@@ -48,9 +49,10 @@ const normalizeCachedPortfolioState = (value: unknown): PortfolioState | null =>
   return null;
 };
 
-export function readCachedInvestorState(): CachedInvestorState | null {
+export function readCachedInvestorState(cacheSlot?: "wife"): CachedInvestorState | null {
+  const key = cacheSlot === "wife" ? WIFE_DATA_CACHE_KEY : INVESTOR_DATA_CACHE_KEY;
   try {
-    const rawValue = window.localStorage.getItem(INVESTOR_DATA_CACHE_KEY);
+    const rawValue = window.localStorage.getItem(key);
     if (!rawValue) return null;
 
     const parsed = JSON.parse(rawValue);
@@ -66,12 +68,10 @@ export function readCachedInvestorState(): CachedInvestorState | null {
   }
 }
 
-export function writeCachedInvestorState(data: PortfolioState, cachedAt: string) {
+export function writeCachedInvestorState(data: PortfolioState, cachedAt: string, cacheSlot?: "wife") {
+  const key = cacheSlot === "wife" ? WIFE_DATA_CACHE_KEY : INVESTOR_DATA_CACHE_KEY;
   try {
-    window.localStorage.setItem(
-      INVESTOR_DATA_CACHE_KEY,
-      JSON.stringify({ data, cachedAt })
-    );
+    window.localStorage.setItem(key, JSON.stringify({ data, cachedAt }));
   } catch {
     // Cache is an optimization only. The live/fallback data path must keep working.
   }

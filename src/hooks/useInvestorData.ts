@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchInvestorData } from "../api/investor";
-import { INVESTOR_REFRESH_INTERVAL_MS } from "../config/constants";
+import { INVESTOR_API_URL, INVESTOR_REFRESH_INTERVAL_MS } from "../config/constants";
 import { validateInvestorApiPayload } from "../services/apiValidation";
 import {
   readCachedInvestorState,
@@ -20,9 +20,13 @@ export type InvestorDataResult = DataLoadState<PortfolioState> & {
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown investor data error";
 
-export function useInvestorData(fallbackData: PortfolioState): InvestorDataResult {
+export function useInvestorData(
+  fallbackData: PortfolioState,
+  apiUrl: string = INVESTOR_API_URL,
+  cacheSlot?: "wife"
+): InvestorDataResult {
   const [state, setState] = useState<InvestorDataResult>(() => {
-    const cachedInvestorState = readCachedInvestorState();
+    const cachedInvestorState = readCachedInvestorState(cacheSlot);
 
     return {
       data: cachedInvestorState?.data ?? fallbackData,
@@ -47,7 +51,7 @@ export function useInvestorData(fallbackData: PortfolioState): InvestorDataResul
       }));
 
       try {
-        const validation = validateInvestorApiPayload(await fetchInvestorData());
+        const validation = validateInvestorApiPayload(await fetchInvestorData(apiUrl));
 
         if (!isMounted) return;
 
@@ -79,15 +83,17 @@ export function useInvestorData(fallbackData: PortfolioState): InvestorDataResul
           const loadedAt = new Date().toISOString();
           const data = buildInvestorStateFromApi(json, prev.data);
 
-          // Daily auto-snapshot: runs once per calendar day
-          maybeRecordSnapshot({
-            portfolioValue: data.overview.portfolioValue,
-            invested: data.overview.invested,
-            reserve: data.overview.reserve,
-            positionsCount: data.portfolio.length,
-          });
+          // Daily auto-snapshot: only for main account (not wife's portfolio)
+          if (!cacheSlot) {
+            maybeRecordSnapshot({
+              portfolioValue: data.overview.portfolioValue,
+              invested: data.overview.invested,
+              reserve: data.overview.reserve,
+              positionsCount: data.portfolio.length,
+            });
+          }
 
-          writeCachedInvestorState(data, loadedAt);
+          writeCachedInvestorState(data, loadedAt, cacheSlot);
 
           return {
             data,
@@ -120,7 +126,7 @@ export function useInvestorData(fallbackData: PortfolioState): InvestorDataResul
       isMounted = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [apiUrl, cacheSlot]);
 
   return state;
 }

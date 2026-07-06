@@ -30,3 +30,14 @@ export function isFounderEmail(email: string | null | undefined): boolean {
   if (!email || !FOUNDER_EMAIL) return false;
   return email.trim().toLowerCase() === FOUNDER_EMAIL;
 }
+
+export const WIFE_EMAIL = (
+  (import.meta.env.VITE_WIFE_EMAIL as string | undefined) ?? ""
+)
+  .trim()
+  .toLowerCase();
+
+export function isWifeEmail(email: string | null | undefined): boolean {
+  if (!email || !WIFE_EMAIL) return false;
+  return email.trim().toLowerCase() === WIFE_EMAIL;
+}
