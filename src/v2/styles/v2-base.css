@@ -3,28 +3,17 @@
   color-scheme: dark;
 }
 
-/* Тёмный фон на самом html — иначе при overscroll / незаполненной высоте снизу
-   проступает дефолтный (серый/белый) фон браузера — «серая полоска внизу». */
+/* Предотвращаем overscroll-bounce — иначе снизу проступает серая полоска браузера. */
 html:has(.v2-lab) {
-  background-color: #00030a;
+  overscroll-behavior: none;
 }
 
 body:has(.v2-lab) {
   margin: 0;
   overflow-x: hidden;
+  background: #00030a;
   display: flex;
   justify-content: center;
-  background-color: #00030a;
-  /* nebula atmosphere — painted at root level, always behind everything */
-  background-image:
-    radial-gradient(ellipse 130% 70% at 75% 0%,   rgba(14, 65, 185, 0.60), transparent 60%),
-    radial-gradient(ellipse 80%  65% at 0%  100%,  rgba(6, 100, 112, 0.50), transparent 58%),
-    radial-gradient(ellipse 60%  50% at 100% 40%,  rgba(38, 10, 88,  0.44), transparent 58%),
-    radial-gradient(ellipse 50%  38% at 6%  6%,    rgba(12, 42, 110, 0.40), transparent 62%),
-    radial-gradient(ellipse 45%  35% at 50% 100%,  rgba(4, 60, 80,   0.30), transparent 65%);
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-size: auto;
 }
 
 /* ── CryptoLogo base (required after App.css removal) ── */
