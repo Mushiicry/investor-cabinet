@@ -101,7 +101,6 @@ type Props = {
   healthStatus: string;
   portfolio: V2Portfolio;
   health: PortfolioHealth;
-  profileName: string;
   profileAvatar: string;
   onOpenAuth: (tab: "signin" | "signup") => void;
 };
@@ -109,7 +108,7 @@ type Props = {
 const mainNavItems = navItems.filter(i => i.label !== "Настройки");
 const settingsItem  = navItems.find(i => i.label === "Настройки")!;
 
-export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, profileName, profileAvatar, onOpenAuth }: Props) {
+export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, profileAvatar, onOpenAuth }: Props) {
   const { configured, user, displayName, signOut } = useAuth();
   const [levelOpen, setLevelOpen] = useState(false);
   const { level } = computeLevel(healthFactor);
@@ -160,8 +159,8 @@ export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, 
         <button className="v2-sidebar-profile-btn" type="button" onClick={() => setLevelOpen(true)}>
           <span className="v2-sidebar-profile-dot" style={{ background: statusColor, boxShadow: `0 0 8px ${statusColor}99` }} />
           <div className="v2-sidebar-profile-info">
-            <span className="v2-sidebar-profile-name">{profileName || "ИНВЕСТОР"}</span>
-            <span className="v2-sidebar-profile-title">{levelTitle}</span>
+            <span className="v2-sidebar-profile-name">{levelTitle}</span>
+            <span className="v2-sidebar-profile-title">Уровень {level}</span>
           </div>
           <svg className="v2-sidebar-profile-arrow" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.3">
             <path d="M4 2l3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />

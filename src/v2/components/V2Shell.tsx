@@ -19,6 +19,7 @@ import { V2HealthPage } from "./V2HealthPage";
 import { V2Sidebar } from "./V2Sidebar";
 import { V2TopMetrics } from "./V2TopMetrics";
 import { V2StarField } from "./V2StarField";
+import { useAuth } from "../../hooks/useAuth";
 
 type Props = {
   data: V2LabData;
@@ -50,8 +51,20 @@ function getDesktopViewport() {
 }
 
 export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth }: Props) {
-  const [profileName,   setProfileName]   = useState(() => localStorage.getItem("mushii-profile-name")   ?? "");
-  const [profileAvatar, setProfileAvatar] = useState(() => localStorage.getItem("mushii-profile-avatar") ?? "");
+  const { user } = useAuth();
+  // Профиль (имя/аватар) храним отдельно на каждый аккаунт — чтобы аватар и имя
+  // одного пользователя не показывались другому на том же устройстве.
+  const profileKeySuffix = user ? `:${user.id}` : "";
+  const nameKey   = `mushii-profile-name${profileKeySuffix}`;
+  const avatarKey = `mushii-profile-avatar${profileKeySuffix}`;
+  const [profileName,   setProfileName]   = useState(() => localStorage.getItem(nameKey)   ?? "");
+  const [profileAvatar, setProfileAvatar] = useState(() => localStorage.getItem(avatarKey) ?? "");
+
+  // При смене аккаунта подгружаем его профиль (или пустой у нового пользователя).
+  useEffect(() => {
+    setProfileName(localStorage.getItem(nameKey)   ?? "");
+    setProfileAvatar(localStorage.getItem(avatarKey) ?? "");
+  }, [nameKey, avatarKey]);
   const [selectedChip, setSelectedChip] = useState<HealthComponent | null>(null);
   const [capitalOpen, setCapitalOpen] = useState(false);
   const [desktopViewport, setDesktopViewport] = useState(getDesktopViewport);
@@ -65,8 +78,8 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth }: 
   function handleSaveProfile(name: string, avatar: string) {
     setProfileName(name);
     setProfileAvatar(avatar);
-    localStorage.setItem("mushii-profile-name",   name);
-    localStorage.setItem("mushii-profile-avatar", avatar);
+    localStorage.setItem(nameKey,   name);
+    localStorage.setItem(avatarKey, avatar);
   }
 
   const criticalCount = useMemo(() => {
@@ -125,7 +138,6 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth }: 
         healthStatus={data.portfolio.healthStatus}
         portfolio={data.portfolio}
         health={data.health}
-        profileName={profileName}
         profileAvatar={profileAvatar}
         onOpenAuth={onOpenAuth}
       />
