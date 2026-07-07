@@ -503,7 +503,7 @@ function setupWifeSheets() {
   var wifeSS = SpreadsheetApp.openById(WIFE_SS_ID);
   _createHistorySheet(wifeSS);
   _createTransactionsSheet(wifeSS);
-  SpreadsheetApp.getUi().alert('✅ Готово! Вкладки «История» и «Транзакции» созданы.');
+  Logger.log('✅ Готово: История + Транзакции созданы');
 }
 
 function _styleHeader(sheet, row, ncols) {
