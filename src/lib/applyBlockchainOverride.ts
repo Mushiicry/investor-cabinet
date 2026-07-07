@@ -69,8 +69,8 @@ export function applyBlockchainOverride(
 
   // 6. Recalculate risk snapshot
   const cryptoValue    = r2(catMap["Крипта"] ?? 0);
-  const cryptoShare    = portfolioValue > 0 ? r2(cryptoValue / portfolioValue * 100) : 0;
-  const reserveShare   = portfolioValue > 0 ? r2(reserve / portfolioValue * 100) : 0;
+  const cryptoShare    = portfolioValue > 0 ? r6(cryptoValue / portfolioValue) : 0;
+  const reserveShare   = portfolioValue > 0 ? r6(reserve / portfolioValue) : 0;
 
   return {
     ...state,
