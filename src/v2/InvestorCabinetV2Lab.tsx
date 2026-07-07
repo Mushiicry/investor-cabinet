@@ -4,6 +4,8 @@ import { V2AuthModal } from "./components/V2AuthModal";
 import { useAuth } from "../hooks/useAuth";
 import { isFounderEmail, isWifeEmail } from "../lib/supabaseClient";
 import { useInvestorData } from "../hooks/useInvestorData";
+import { useBlockchainBalances } from "../hooks/useBlockchainBalances";
+import { applyBlockchainOverride } from "../lib/applyBlockchainOverride";
 import { useFearGreed } from "../hooks/useFearGreed";
 import { useHyperliquidLeverage } from "../hooks/useHyperliquidLeverage";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
@@ -413,13 +415,20 @@ export default function InvestorCabinetV2Lab() {
     wife ? WIFE_API_URL : INVESTOR_API_URL,
     wife ? "wife" : undefined
   );
+  const blockchain = useBlockchainBalances(wife);
   const fearGreedLive = useFearGreed();
   const hlAddress = import.meta.env.VITE_HL_ADDRESS as string | undefined;
   const hlLeverage = useHyperliquidLeverage(hlAddress);
 
+  // For wife: overlay live blockchain balances on top of Apps Script sheet data
+  const portfolioData = useMemo(
+    () => wife && blockchain ? applyBlockchainOverride(investorData.data, blockchain) : investorData.data,
+    [wife, blockchain, investorData.data]
+  );
+
   const liveBase = useMemo(
-    () => buildLiveV2Data(investorData.data, hlLeverage.leverage),
-    [investorData.data, hlLeverage.leverage]
+    () => buildLiveV2Data(portfolioData, hlLeverage.leverage),
+    [portfolioData, hlLeverage.leverage]
   );
   const zeroedBase = useMemo(() => buildZeroedV2Data(), []);
 

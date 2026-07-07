@@ -57,6 +57,7 @@ const FULL_NAME: Record<string, string> = {
   USDC: "USD Coin",
   "USDC HL": "USD Coin",
   USDT: "Tether",
+  "USDT ARB": "Tether",
   "USDT BNB": "Tether",
 };
 const fullName = (asset: string) => FULL_NAME[asset] ?? asset;
@@ -65,6 +66,7 @@ const STABLE_META: Record<string, { network: string; purpose: string; net: strin
   USDC: { network: "Arbitrum", purpose: "Спот · добор на DEX", net: "is-arb" },
   "USDC HL": { network: "Hyperliquid", purpose: "Маржа для фьючерсов", net: "is-hl" },
   USDT: { network: "TON", purpose: "Быстрый добор по стратегии", net: "is-ton" },
+  "USDT ARB": { network: "Arbitrum", purpose: "Резерв · Arbitrum", net: "is-arb" },
   "USDT BNB": { network: "BNB Chain", purpose: "Резерв · неприкосновенный", net: "is-bnb" },
 };
 
@@ -130,7 +132,7 @@ function IdentityCard({
 }
 
 function StableCard({ asset, meta }: { asset: string; meta: { network: string; net: string } }) {
-  const logoAsset = asset.replace(" BNB", "").replace(" HL", "");
+  const logoAsset = asset.replace(" BNB", "").replace(" HL", "").replace(" ARB", "");
   return (
     <div className="v2-pid v2-pid-stable">
       <CryptoLogo asset={logoAsset} className="v2-pid-logo" />
