@@ -490,3 +490,63 @@ function r2(n) { return Math.round(n * 100)        / 100;        }
 function r4(n) { return Math.round(n * 10000)       / 10000;      }
 function r6(n) { return Math.round(n * 1000000)     / 1000000;    }
 function r8(n) { return Math.round(n * 100000000)   / 100000000;  }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ОДНОРАЗОВАЯ НАСТРОЙКА — запустить один раз, потом можно удалить
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Создаёт вкладки «История» и «Транзакции» в таблице Полины.
+ * Запустить: выбрать функцию setupWifeSheets → ▶ Run
+ */
+function setupWifeSheets() {
+  var wifeSS = SpreadsheetApp.openById(WIFE_SS_ID);
+  _createHistorySheet(wifeSS);
+  _createTransactionsSheet(wifeSS);
+  SpreadsheetApp.getUi().alert('✅ Готово! Вкладки «История» и «Транзакции» созданы.');
+}
+
+function _styleHeader(sheet, row, ncols) {
+  var r = sheet.getRange(row, 1, 1, ncols);
+  r.setBackground('#1a1a2e');
+  r.setFontColor('#00d4ff');
+  r.setFontWeight('bold');
+  r.setFontSize(10);
+  r.setBorder(false,false,true,false,false,false,'#00d4ff', SpreadsheetApp.BorderStyle.SOLID);
+}
+
+function _createHistorySheet(ss) {
+  var old = ss.getSheetByName('История');
+  if (old) ss.deleteSheet(old);
+  var sh = ss.insertSheet('История');
+
+  var eng = ['date','portfolioValue','invested','pnl','pnlPct','reserve','positionsCount','pointType','note','trigger','source','comment'];
+  var rus = ['Дата','Стоимость портфеля','Вложено','PnL $','PnL %','Резерв','Кол-во позиций','Тип точки','Заметка','Триггер','Источник','Комментарий'];
+  sh.getRange(1,1,1,eng.length).setValues([eng]);
+  sh.getRange(2,1,1,rus.length).setValues([rus]);
+  _styleHeader(sh, 1, eng.length);
+  sh.getRange(2,1,1,rus.length).setBackground('#0a0a1a').setFontColor('#7a7aaa').setFontWeight('bold');
+  sh.setFrozenRows(2);
+
+  var widths = [180,150,120,100,80,100,120,100,200,100,100,250];
+  widths.forEach(function(w,i){ sh.setColumnWidth(i+1,w); });
+  Logger.log('История: создана');
+}
+
+function _createTransactionsSheet(ss) {
+  var old = ss.getSheetByName('Транзакции');
+  if (old) ss.deleteSheet(old);
+  var sh = ss.insertSheet('Транзакции');
+
+  var eng = ['id','date','asset','category','action','quantity','price','amount','chain','hash','status','direction','walletId','counterparty','rawAsset','rawAmount','note','comment'];
+  var rus = ['ID','Дата','Актив','Категория','Действие','Количество','Цена','Сумма $','Сеть','Hash','Статус','Направление','Кошелёк','Контрагент','Исходный актив','Исходная сумма','Заметка','Комментарий'];
+  sh.getRange(1,1,1,eng.length).setValues([eng]);
+  sh.getRange(2,1,1,rus.length).setValues([rus]);
+  _styleHeader(sh, 1, eng.length);
+  sh.getRange(2,1,1,rus.length).setBackground('#0a0a1a').setFontColor('#7a7aaa').setFontWeight('bold');
+  sh.setFrozenRows(2);
+
+  var widths = [80,180,80,120,80,100,100,100,80,280,100,100,120,120,100,100,200,250];
+  widths.forEach(function(w,i){ sh.setColumnWidth(i+1,w); });
+  Logger.log('Транзакции: создана');
+}
