@@ -13,7 +13,7 @@ export default defineConfig({
         secure: true,
         followRedirects: true,
         rewrite: () =>
-          '/macros/s/AKfycby_drIkmHUxtBWSSzpnZMxTeMq0qVZX8h1Kvjg5z2knRNxhPLbiXCB6_lmZsQpNQz8/exec',
+          '/macros/s/AKfycbwPvwu-EMXb9hGCZeRFhr9O8Vvz5-2y1sqn4V4OMsgqNkTs2t3U6zGDw7SVgdPVmrwg/exec',
       },
       '/api/investor': {
         target: 'https://script.google.com',
