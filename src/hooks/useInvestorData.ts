@@ -83,15 +83,14 @@ export function useInvestorData(
           const loadedAt = new Date().toISOString();
           const data = buildInvestorStateFromApi(json, prev.data);
 
-          // Daily auto-snapshot: only for main account (not wife's portfolio)
-          if (!cacheSlot) {
-            maybeRecordSnapshot({
-              portfolioValue: data.overview.portfolioValue,
-              invested: data.overview.invested,
-              reserve: data.overview.reserve,
-              positionsCount: data.portfolio.length,
-            });
-          }
+          // Daily auto-snapshot for both accounts (separate storage slots)
+          maybeRecordSnapshot({
+            portfolioValue: data.overview.portfolioValue,
+            invested: data.overview.invested,
+            reserve: data.overview.reserve,
+            positionsCount: data.portfolio.length,
+            slot: cacheSlot === "wife" ? "wife" : "main",
+          });
 
           writeCachedInvestorState(data, loadedAt, cacheSlot);
 

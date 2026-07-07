@@ -285,7 +285,8 @@ const categoryShare = (state: PortfolioState, name: string) =>
 
 const buildLiveV2Data = (
   state: PortfolioState,
-  leverageByCoin: Record<string, number> = {}
+  leverageByCoin: Record<string, number> = {},
+  slot: import("../services/dailySnapshotService").SnapshotSlot = "main"
 ): V2LabData => {
   // Реальное выставленное плечо фьючерс-позиций берём с Hyperliquid (по монете).
   // Монету извлекаем из имени актива ("BTC LONG" → "BTC"). Нет данных → null (не штрафуем).
@@ -333,7 +334,7 @@ const buildLiveV2Data = (
   return {
     ...mockData,
     fearGreedStrategy: state.fearGreedStrategy,
-    history: mergeWithLocalSnapshots(state.history),
+    history: mergeWithLocalSnapshots(state.history, slot),
     transactions: state.transactions,
     health,
     playbook: buildPlaybookCards(
@@ -427,8 +428,8 @@ export default function InvestorCabinetV2Lab() {
   );
 
   const liveBase = useMemo(
-    () => buildLiveV2Data(portfolioData, hlLeverage.leverage),
-    [portfolioData, hlLeverage.leverage]
+    () => buildLiveV2Data(portfolioData, hlLeverage.leverage, wife ? "wife" : "main"),
+    [portfolioData, hlLeverage.leverage, wife]
   );
   const zeroedBase = useMemo(() => buildZeroedV2Data(), []);
 

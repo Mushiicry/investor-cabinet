@@ -217,11 +217,107 @@ function buildWifePortfolioJson() {
       rules:          []
     },
 
-    history:      [],
-    transactions: [],
+    history:      readHistory(wifeSS),
+    transactions: readTransactions(wifeSS),
     decisions:    [],
     scenarios:    []
   };
+}
+
+// ─── История портфеля (вкладка «История») ────────────────────────────────────
+function readHistory(ss) {
+  var sheet = ss.getSheetByName('История') || ss.getSheetByName('History');
+  if (!sheet) return [];
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+
+  var headers = data[0].map(function(h) { return String(h).trim(); });
+  var rows    = [];
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var get = function(name, alt) {
+      var idx = headers.indexOf(name);
+      if (idx < 0 && alt) idx = headers.indexOf(alt);
+      return idx >= 0 ? row[idx] : '';
+    };
+
+    var dateVal = get('date', 'Дата');
+    var pv      = Number(get('portfolioValue', 'Стоимость портфеля')) || 0;
+    if (!dateVal || !pv) continue;
+
+    var invested = Number(get('invested', 'Вложено'))        || 0;
+    var pnl      = Number(get('pnl', 'PnL $'))              || 0;
+    var pnlPct   = Number(get('pnlPct', 'PnL %'))           || 0;
+    var reserve  = Number(get('reserve', 'Резерв'))         || 0;
+    var cnt      = Number(get('positionsCount', 'Кол-во позиций')) || 0;
+
+    rows.push({
+      date:           String(dateVal instanceof Date ? dateVal.toISOString() : dateVal),
+      portfolioValue: r2(pv),
+      invested:       r2(invested),
+      pnl:            r2(pnl),
+      pnlPct:         Math.abs(pnlPct) > 1 ? r6(pnlPct / 100) : r6(pnlPct),
+      reserve:        r2(reserve),
+      positionsCount: Math.round(cnt),
+      pointType:      String(get('pointType', 'Тип точки') || 'auto'),
+      note:           String(get('note', 'Заметка')         || 'Авто-снимок'),
+      trigger:        String(get('trigger', 'Триггер')      || 'daily'),
+      source:         String(get('source', 'Источник')      || 'sheet'),
+      comment:        String(get('comment', 'Комментарий')  || ''),
+    });
+  }
+
+  return rows;
+}
+
+// ─── История транзакций (вкладка «Транзакции») ────────────────────────────────
+function readTransactions(ss) {
+  var sheet = ss.getSheetByName('Транзакции') || ss.getSheetByName('Transactions');
+  if (!sheet) return [];
+
+  var data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+
+  var headers = data[0].map(function(h) { return String(h).trim(); });
+  var rows    = [];
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var get = function(name) {
+      var idx = headers.indexOf(name);
+      return idx >= 0 ? row[idx] : '';
+    };
+
+    var id   = String(get('id')   || '');
+    var hash = String(get('hash') || '');
+    if (!id && !hash) continue;
+
+    var dateVal = get('date');
+    rows.push({
+      id:           id,
+      status:       String(get('status')      || 'CONFIRMED'),
+      date:         String(dateVal instanceof Date ? dateVal.toISOString() : dateVal),
+      asset:        String(get('asset')       || ''),
+      category:     String(get('category')    || ''),
+      action:       String(get('action')      || ''),
+      quantity:     Number(get('quantity'))   || 0,
+      price:        Number(get('price'))      || 0,
+      amount:       Number(get('amount'))     || 0,
+      comment:      String(get('comment')     || ''),
+      walletId:     String(get('walletId')    || ''),
+      chain:        String(get('chain')       || ''),
+      hash:         hash,
+      direction:    String(get('direction')   || ''),
+      counterparty: String(get('counterparty')|| ''),
+      rawAsset:     String(get('rawAsset')    || ''),
+      rawAmount:    Number(get('rawAmount'))  || 0,
+      note:         String(get('note')        || ''),
+    });
+  }
+
+  return rows;
 }
 
 // ─── Blockchain balance fetcher ───────────────────────────────────────────────

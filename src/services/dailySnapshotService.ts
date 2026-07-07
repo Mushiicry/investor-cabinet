@@ -1,63 +1,48 @@
 import type { PortfolioHistoryPoint } from "../types/portfolio";
 
-const STORAGE_KEY = "mushii-daily-snapshots-v1";
+export type SnapshotSlot = "main" | "wife";
+
+const STORAGE_KEY = (slot: SnapshotSlot = "main") =>
+  slot === "wife" ? "mushii-daily-snapshots-wife-v1" : "mushii-daily-snapshots-v1";
+
 const MAX_SNAPSHOTS = 365;
 
 // ─── Invested floor (baseline) ────────────────────────────────────────────────
-// ВЛОЖЕНО never decreases on its own — it can only grow (new deposits) or be
-// explicitly reduced by the investor when cash is withdrawn from the system.
-// The floor is updated automatically when invested rises above it.
-const INVESTED_FLOOR_KEY = "mushii-invested-floor-v1";
+const INVESTED_FLOOR_KEY = (slot: SnapshotSlot = "main") =>
+  slot === "wife" ? "mushii-invested-floor-wife-v1" : "mushii-invested-floor-v1";
 
-export function getInvestedFloor(): number {
+export function getInvestedFloor(slot: SnapshotSlot = "main"): number {
   try {
-    const raw = localStorage.getItem(INVESTED_FLOOR_KEY);
+    const raw = localStorage.getItem(INVESTED_FLOOR_KEY(slot));
     const val = raw ? Number(raw) : 0;
     return Number.isFinite(val) ? val : 0;
   } catch { return 0; }
 }
 
-/**
- * Record an external deposit (cash arriving from outside the system).
- * Only call this when the investor explicitly adds new capital.
- */
-export function recordDeposit(amount: number): void {
+export function recordDeposit(amount: number, slot: SnapshotSlot = "main"): void {
   try {
-    const next = getInvestedFloor() + amount;
-    localStorage.setItem(INVESTED_FLOOR_KEY, String(Math.round(next * 100) / 100));
+    const next = getInvestedFloor(slot) + amount;
+    localStorage.setItem(INVESTED_FLOOR_KEY(slot), String(Math.round(next * 100) / 100));
   } catch { /* localStorage unavailable */ }
 }
 
-/**
- * Record an external withdrawal (cash leaving the system to personal use).
- * Only call this when the investor explicitly pulls capital out.
- */
-export function recordWithdrawal(amount: number): void {
+export function recordWithdrawal(amount: number, slot: SnapshotSlot = "main"): void {
   try {
-    const next = Math.max(0, getInvestedFloor() - amount);
-    localStorage.setItem(INVESTED_FLOOR_KEY, String(Math.round(next * 100) / 100));
+    const next = Math.max(0, getInvestedFloor(slot) - amount);
+    localStorage.setItem(INVESTED_FLOOR_KEY(slot), String(Math.round(next * 100) / 100));
   } catch { /* localStorage unavailable */ }
 }
 
-/**
- * Seed the floor once on first load (floor === 0).
- * After that, only recordDeposit / recordWithdrawal change it.
- */
-export function seedInvestedFloorIfEmpty(investedRaw: number): void {
+export function seedInvestedFloorIfEmpty(investedRaw: number, slot: SnapshotSlot = "main"): void {
   try {
-    if (getInvestedFloor() === 0 && investedRaw > 0) {
-      localStorage.setItem(INVESTED_FLOOR_KEY, String(Math.round(investedRaw * 100) / 100));
+    if (getInvestedFloor(slot) === 0 && investedRaw > 0) {
+      localStorage.setItem(INVESTED_FLOOR_KEY(slot), String(Math.round(investedRaw * 100) / 100));
     }
   } catch { /* localStorage unavailable */ }
 }
 
-/**
- * Returns the confirmed external capital baseline.
- * Trading profits/losses do NOT affect this — only deposits/withdrawals do.
- * Falls back to investedRaw only if the floor has never been seeded.
- */
-export function applyInvestedFloor(investedRaw: number): number {
-  const floor = getInvestedFloor();
+export function applyInvestedFloor(investedRaw: number, slot: SnapshotSlot = "main"): number {
+  const floor = getInvestedFloor(slot);
   return floor > 0 ? floor : investedRaw;
 }
 // ──────────────────────────────────────────────────────────────────────────────
@@ -80,9 +65,9 @@ function dateKey(isoDate: string): string {
   return isoDate.slice(0, 10); // "YYYY-MM-DD"
 }
 
-function readAll(): DailySnapshot[] {
+function readAll(slot: SnapshotSlot = "main"): DailySnapshot[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY(slot));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -91,13 +76,13 @@ function readAll(): DailySnapshot[] {
   }
 }
 
-function writeAll(snapshots: DailySnapshot[]): void {
+function writeAll(snapshots: DailySnapshot[], slot: SnapshotSlot = "main"): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshots));
+    localStorage.setItem(STORAGE_KEY(slot), JSON.stringify(snapshots));
   } catch {
     // localStorage full — drop oldest
     const trimmed = snapshots.slice(-Math.floor(MAX_SNAPSHOTS / 2));
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed)); } catch { /* ignore */ }
+    try { localStorage.setItem(STORAGE_KEY(slot), JSON.stringify(trimmed)); } catch { /* ignore */ }
   }
 }
 
@@ -106,20 +91,20 @@ export function maybeRecordSnapshot(params: {
   invested: number;
   reserve: number;
   positionsCount: number;
+  slot?: SnapshotSlot;
 }): void {
+  const slot = params.slot ?? "main";
   if (!params.portfolioValue) return;
   if (!isMoscowPast7am()) return;
 
   const today = todayIso();
   const todayKey = dateKey(today);
-  const existing = readAll();
+  const existing = readAll(slot);
 
   // Already have today's snapshot — skip
   if (existing.some(s => dateKey(s.date) === todayKey)) return;
 
-  // Snapshot follows the accounting basis supplied by Google Sheets.
   const invested = params.invested;
-
   const pnl = params.portfolioValue - invested;
   const pnlPct = invested > 0 ? pnl / invested : 0;
 
@@ -142,18 +127,19 @@ export function maybeRecordSnapshot(params: {
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
     .slice(-MAX_SNAPSHOTS);
 
-  writeAll(updated);
+  writeAll(updated, slot);
 }
 
-export function getLocalSnapshots(): DailySnapshot[] {
-  return readAll();
+export function getLocalSnapshots(slot: SnapshotSlot = "main"): DailySnapshot[] {
+  return readAll(slot);
 }
 
 /** Merge API history with local snapshots, dedup by date (API wins for same day) */
 export function mergeWithLocalSnapshots(
   apiHistory: PortfolioHistoryPoint[],
+  slot: SnapshotSlot = "main",
 ): PortfolioHistoryPoint[] {
-  const local = readAll();
+  const local = readAll(slot);
   if (!local.length) return apiHistory;
 
   const apiDates = new Set(apiHistory.map(p => dateKey(p.date)));
