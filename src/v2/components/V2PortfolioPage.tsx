@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import type { ReactNode } from "react";
 import type { V2Position } from "../InvestorCabinetV2Lab";
 import type { PlaybookCard } from "../../lib/playbookSelectors";
+import type { TonStaking } from "../../hooks/useTonStaking";
+import type { CosmosStaking } from "../../hooks/useCosmosStaking";
 import { CryptoLogo } from "../../components/crypto/CryptoLogo";
+import { V2StakingCard } from "./V2StakingCard";
+import { V2CosmosStakingCard } from "./V2CosmosStakingCard";
 
 type Props = {
   positions: V2Position[];
   playbook: PlaybookCard[];
+  staking?: TonStaking | null;
+  cosmosStaking?: CosmosStaking | null;
 };
 
 const money0 = new Intl.NumberFormat("ru-RU", {
@@ -92,16 +98,21 @@ const GROUPS = [
 function IdentityCard({
   asset,
   card,
+  staked,
   onOpen,
 }: {
   asset: string;
   card: PlaybookCard | null;
+  staked?: boolean;
   onOpen?: () => void;
 }) {
   const inner = (
     <>
       <CryptoLogo asset={asset} className="v2-pid-logo" />
-      <span className="v2-pid-name">{fullName(asset)}</span>
+      <span className="v2-pid-name">
+        {fullName(asset)}
+        {staked && <span className="v2-pid-staked" title="В стейке (Tonstakers)">🔒 в стейке</span>}
+      </span>
       {card ? (
         <>
           <span className="v2-pb-stat is-up">
@@ -153,7 +164,15 @@ function ModalBlock({ label, tone, children }: { label: string; tone?: string; c
   );
 }
 
-function PlaybookModal({ card, onClose }: { card: PlaybookCard; onClose: () => void }) {
+function PlaybookModal({
+  card,
+  position,
+  onClose,
+}: {
+  card: PlaybookCard;
+  position: V2Position;
+  onClose: () => void;
+}) {
   return (
     <div className="v2-pb-overlay" onClick={onClose}>
       <div className="v2-pb-modal" onClick={(event) => event.stopPropagation()}>
@@ -164,6 +183,7 @@ function PlaybookModal({ card, onClose }: { card: PlaybookCard; onClose: () => v
             <span className={`v2-port-status ${STATUS_TONE[card.status] ?? "is-hold"}`}>
               {card.status}
             </span>
+            <span className="v2-pb-share">Доля {position.share.toFixed(1)}%</span>
           </div>
           <div className="v2-pb-modal-stats">
             <span className="v2-pb-stat is-up">
@@ -211,8 +231,10 @@ function PlaybookModal({ card, onClose }: { card: PlaybookCard; onClose: () => v
   );
 }
 
-export function V2PortfolioPage({ positions, playbook }: Props) {
-  const [selected, setSelected] = useState<PlaybookCard | null>(null);
+export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking }: Props) {
+  const [selected, setSelected] = useState<{ card: PlaybookCard; position: V2Position } | null>(null);
+  // Какая стейкинг-плашка раскрыта (по тикеру актива): "TON" | "ATOM" | null
+  const [openStake, setOpenStake] = useState<string | null>(null);
 
   const playbookMap = new Map(playbook.map((card) => [card.asset, card]));
   const findPlaybook = (asset: string) =>
@@ -243,20 +265,14 @@ export function V2PortfolioPage({ positions, playbook }: Props) {
                 </div>
                 <div className="v2-port-row v2-port-group-head">
                   <div className="v2-row-block">
-                    <span>Покупка</span>
-                    <span>Вложено</span>
-                  </div>
-                  <div className="v2-row-block">
+                    <span>Ср. вход</span>
                     <span>PnL %</span>
-                    <span>PnL $</span>
+                    <span>Цена</span>
                   </div>
                   <div className="v2-row-block">
-                    <span>Цена</span>
+                    <span>Вложено</span>
+                    <span>PnL $</span>
                     <span>Стоимость</span>
-                  </div>
-                  <div className="v2-row-block v2-row-block-last">
-                    <span>Статус</span>
-                    <span>Доля</span>
                   </div>
                 </div>
               </div>
@@ -264,41 +280,65 @@ export function V2PortfolioPage({ positions, playbook }: Props) {
               {rows.map((position) => {
                 const card = findPlaybook(position.asset);
                 const tone = pnlTone(position.pnl);
-                return (
-                  <div className="v2-pline" key={position.asset}>
+
+                // Стейкинг-плашка: TON (Tonstakers) или ATOM (Cosmos Hub)
+                const tonStaked = !!staking && position.asset === "TON";
+                const atomStaked = !!cosmosStaking && position.asset === "ATOM";
+                const isStaked = tonStaked || atomStaked;
+                const dailyUsd = tonStaked ? staking!.dailyUsd : atomStaked ? cosmosStaking!.dailyUsd : 0;
+                const isOpen = openStake === position.asset;
+
+                const row = (
+                  <div className="v2-pline">
                     <IdentityCard
                       asset={position.asset}
                       card={card}
-                      onOpen={card ? () => setSelected(card) : undefined}
+                      staked={isStaked}
+                      onOpen={card ? () => setSelected({ card, position }) : undefined}
                     />
                     <div className="v2-port-row">
                       <div className="v2-row-block">
-                        <span className="v2-rb-label">Покупка</span>
-                        <span className="v2-rb-label">Вложено</span>
                         <span className="v2-rb-val">{money(position.avgEntry)}</span>
-                        <strong className="v2-rb-val">{money(position.invested)}</strong>
-                      </div>
-                      <div className="v2-row-block">
-                        <span className="v2-rb-label">PnL %</span>
-                        <span className="v2-rb-label">PnL $</span>
                         <span className={`v2-rb-val v2-port-pnl ${tone}`}>{signedPct(position.pnlPct)}</span>
-                        <span className={`v2-rb-val v2-port-pnl ${tone}`}>{signedMoney(position.pnl)}</span>
+                        <span className="v2-rb-val">{money(position.currentPrice)}</span>
                       </div>
                       <div className="v2-row-block">
-                        <span className="v2-rb-label">Цена</span>
-                        <span className="v2-rb-label">Стоимость</span>
-                        <span className="v2-rb-val">{money(position.currentPrice)}</span>
+                        <strong className="v2-rb-val">{money(position.invested)}</strong>
+                        <span className={`v2-rb-val v2-port-pnl ${tone}`}>{signedMoney(position.pnl)}</span>
                         <strong className="v2-rb-val">{money(position.value)}</strong>
-                      </div>
-                      <div className="v2-row-block v2-row-block-last">
-                        <span className={`v2-port-status ${STATUS_TONE[position.status] ?? "is-hold"}`}>
-                          {position.status}
-                        </span>
-                        <span className="v2-port-share">{position.share.toFixed(1)}%</span>
                       </div>
                     </div>
                   </div>
                 );
+
+                // Строка + плашка стейкинга в одном контейнере — чтобы при наведении
+                // на другие монеты вся группа (включая стейкинг) блюрилась.
+                if (isStaked) {
+                  return (
+                    <div className="v2-stake-wrap" key={position.asset}>
+                      {row}
+                      <button
+                        type="button"
+                        className={`v2-stake-toggle ${isOpen ? "is-open" : ""}`}
+                        onClick={() => setOpenStake((v) => (v === position.asset ? null : position.asset))}
+                        aria-expanded={isOpen}
+                      >
+                        <span className="v2-stake-toggle-icon">💎</span>
+                        <span className="v2-stake-toggle-label">Доход со стейкинга</span>
+                        <span className="v2-stake-toggle-val is-up">
+                          +{money(dailyUsd)} / день
+                        </span>
+                        <svg className="v2-stake-toggle-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                          <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                      {isOpen && tonStaked && <V2StakingCard staking={staking!} />}
+                      {isOpen && atomStaked && <V2CosmosStakingCard staking={cosmosStaking!} />}
+                    </div>
+                  );
+                }
+
+                return <Fragment key={position.asset}>{row}</Fragment>;
               })}
             </div>
           );
@@ -336,7 +376,13 @@ export function V2PortfolioPage({ positions, playbook }: Props) {
         </div>
       </div>
 
-      {selected && <PlaybookModal card={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <PlaybookModal
+          card={selected.card}
+          position={selected.position}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </section>
   );
 }

@@ -663,3 +663,43 @@ body:has(.v2-lab) {
   padding-top: 12px;
   border-top: 1px solid rgba(92, 231, 245, 0.08);
 }
+
+/* ── Data-status бейдж (свежесть данных) ── */
+.v2-datastatus {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(120, 160, 200, 0.25);
+  background: rgba(8, 18, 32, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-variant-numeric: tabular-nums;
+}
+.v2-datastatus-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+.v2-datastatus-time {
+  color: rgba(160, 185, 200, 0.6);
+  font-weight: 700;
+}
+.v2-datastatus.is-live  { color: #5af08d; border-color: rgba(90, 240, 141, 0.3); }
+.v2-datastatus.is-cache { color: #7fd8ff; border-color: rgba(127, 216, 255, 0.3); }
+.v2-datastatus.is-stale { color: #e8b35a; border-color: rgba(232, 179, 90, 0.35); }
+.v2-datastatus.is-error { color: #ff5d6c; border-color: rgba(255, 93, 108, 0.35); }
+
+@media (max-width: 768px) {
+  .v2-datastatus { top: 8px; right: 10px; padding: 4px 9px; font-size: 9.5px; }
+}

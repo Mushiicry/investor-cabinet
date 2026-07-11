@@ -521,6 +521,13 @@
   position: relative;
 }
 
+/* Пометка «оценка» у реализованного PnL */
+.v2-rep-est {
+  font-style: normal;
+  color: rgba(250, 190, 90, 0.9);
+  cursor: help;
+}
+
 .v2-rep-kpi-value {
   font-size: 18px;
   font-weight: 800;
@@ -709,7 +716,7 @@
 
 .v2-rep-transaction-table .v2-rep-table-head,
 .v2-rep-transaction-table .v2-rep-row {
-  grid-template-columns: 150px 80px 120px 90px 100px 100px 80px 90px 110px;
+  grid-template-columns: 150px 80px 120px 90px 100px 100px 100px 80px 90px 110px;
 }
 
 .v2-rep-transaction-table .v2-rep-type-chip {
@@ -733,6 +740,7 @@
 .v2-rep-row.tx-take-profit { border-left: 2px solid rgba(250, 180, 50, 0.45); }
 .v2-rep-row.tx-reduce   { border-left: 2px solid rgba(220, 140, 60, 0.35); }
 .v2-rep-row.tx-transfer { border-left: 2px solid rgba(100, 160, 200, 0.35); }
+.v2-rep-row.tx-in       { border-left: 2px solid rgba(52, 211, 153, 0.45); }
 
 /* Cells — все кроме первой колонки (ДАТА) центрируем */
 .v2-rep-row > *:not(:first-child) {
@@ -792,6 +800,14 @@
   background: rgba(77, 160, 200, 0.1);
   color: rgba(100, 180, 220, 0.9);
   border: 1px solid rgba(77, 160, 200, 0.25);
+}
+
+/* Приход (входящий перевод) — зелёный */
+.v2-rep-type-chip.tx-in {
+  background: rgba(52, 211, 153, 0.12);
+  color: rgba(90, 240, 141, 0.95);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  text-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
 }
 
 .v2-rep-cell-asset {

@@ -29,6 +29,37 @@ var SOL_RPC      = 'https://api.mainnet-beta.solana.com';
 // ─────────────────────────────────────────────────────────────────────────────
 
 function doGet(e) {
+  var action = e && e.parameter && e.parameter.action;
+
+  // ?action=fixUsdt — записывает USDT в лист (пробует blockchain fetch)
+  if (action === 'fixUsdt') {
+    try {
+      var res = fixUsdtInSheet(null, null);
+      return ContentService
+        .createTextOutput(JSON.stringify(res))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (err) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ success: false, error: err.message }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  // ?action=fixUsdtNow — записывает USDT напрямую без UrlFetch (значения из blockchain на 08.07.2026)
+  // Запускается один раз для патча. После этого buildWifePortfolioJson сам подтянет live данные.
+  if (action === 'fixUsdtNow') {
+    try {
+      var res = fixUsdtInSheet(406.58, 250.40);
+      return ContentService
+        .createTextOutput(JSON.stringify(res))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (err) {
+      return ContentService
+        .createTextOutput(JSON.stringify({ success: false, error: err.message }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   try {
     var result = buildWifePortfolioJson();
     return ContentService
@@ -90,12 +121,14 @@ function buildWifePortfolioJson() {
     var isStable = (category === 'Кэш / Стейблы') || ticker === 'USDT' || ticker === 'USDC';
 
     // Priority: blockchain live > sheet manual > derived from invested/entry
+    // ВАЖНО: используем > 0, а не >= 0 — ноль от упавшего fetch не должен
+    // перебивать данные листа. Реальный нулевой баланс обработается клиентом.
     var chainQty = blockchain.hasOwnProperty(ticker) ? blockchain[ticker] : -1;
     var sheetQty = toFloat(row[iQty]);
     var quantity;
     var source;
 
-    if (chainQty >= 0) {
+    if (chainQty > 0) {
       quantity = chainQty;
       source   = 'live';
     } else if (sheetQty > 0) {
@@ -112,8 +145,11 @@ function buildWifePortfolioJson() {
     var currentPrice = isStable ? 1.0 : (priceMap[ticker] || avgEntry);
     var currentValue = isStable ? r2(quantity) : r2(quantity * currentPrice);
 
-    // Для стейблов с live данными: invested = текущий баланс (1 USDT = 1$)
-    var effectiveInvested = (isStable && source === 'live') ? r2(quantity) : r2(invested);
+    // Для стейблов: invested = текущий баланс если есть (1 USDT = 1$),
+    // иначе берём из листа как fallback (после fixUsdtInSheet будет заполнено).
+    var effectiveInvested = isStable
+      ? (quantity > 0 ? r2(quantity) : r2(invested))
+      : r2(invested);
 
     var pnl    = isStable ? 0 : r2(currentValue - effectiveInvested);
     var pnlPct = (!isStable && effectiveInvested > 0) ? r2(pnl / effectiveInvested * 100) : 0;
@@ -503,7 +539,7 @@ function setupWifeSheets() {
   var wifeSS = SpreadsheetApp.openById(WIFE_SS_ID);
   _createHistorySheet(wifeSS);
   _createTransactionsSheet(wifeSS);
-  SpreadsheetApp.getUi().alert('✅ Готово! Вкладки «История» и «Транзакции» созданы.');
+  Logger.log('✅ Готово: История + Транзакции созданы');
 }
 
 function _styleHeader(sheet, row, ncols) {
@@ -533,6 +569,108 @@ function _createHistorySheet(ss) {
   Logger.log('История: создана');
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// FIX USDT IN SHEET
+// Вызывается через ?action=fixUsdt или вручную.
+// Фетчит реальные балансы USDT из блокчейна и пишет в главный лист:
+//   quantity = blockchain balance, invested = то же самое (стейблы 1:1)
+// После этого даже если server-side fetch упадёт — в листе будет fallback.
+// ═══════════════════════════════════════════════════════════════════════════════
+function fixUsdtInSheet(overrideArb, overrideTon) {
+  // 1. Получаем реальные балансы (или используем переданные значения)
+  var usdtArb = (overrideArb !== null && overrideArb !== undefined) ? overrideArb : _fetchUsdtArb();
+  var usdtTon = (overrideTon !== null && overrideTon !== undefined) ? overrideTon : _fetchUsdtTon();
+  var totalUsdt = r2(usdtArb + usdtTon);
+
+  Logger.log('fixUsdtInSheet: ARB=' + usdtArb + ' TON=' + usdtTon + ' total=' + totalUsdt);
+
+  // 2. Открываем главный лист
+  var ss = SpreadsheetApp.openById(WIFE_SS_ID);
+  var sheet = ss.getSheets()[0];
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0].map(function(h){ return String(h).trim(); });
+
+  function colIdx(name) {
+    var i = headers.indexOf(name);
+    if (i < 0) throw new Error('Column not found: ' + name);
+    return i;
+  }
+
+  var iAsset    = colIdx('asset');
+  var iQty      = colIdx('quantity');
+  var iInvested = colIdx('invested');
+  var iEntry    = colIdx('avgEntry');
+
+  var updated = [];
+
+  // 3. Ищем USDT строку и обновляем
+  for (var r = 1; r < data.length; r++) {
+    var asset = String(data[r][iAsset] || '').trim().toUpperCase();
+    if (asset === 'USDT') {
+      sheet.getRange(r + 1, iQty + 1).setValue(totalUsdt);
+      sheet.getRange(r + 1, iInvested + 1).setValue(totalUsdt);
+      // avgEntry = 1 если не задан
+      if (!toFloat(data[r][iEntry])) {
+        sheet.getRange(r + 1, iEntry + 1).setValue(1);
+      }
+      updated.push({ row: r + 1, qty: totalUsdt, invested: totalUsdt });
+      Logger.log('fixUsdtInSheet: строка ' + (r+1) + ' обновлена → qty=' + totalUsdt + ' invested=' + totalUsdt);
+    }
+  }
+
+  if (updated.length === 0) {
+    Logger.log('fixUsdtInSheet: строка USDT не найдена');
+    return { success: false, error: 'USDT row not found in sheet', usdtArb: usdtArb, usdtTon: usdtTon };
+  }
+
+  return {
+    success:   true,
+    usdtArb:   usdtArb,
+    usdtTon:   usdtTon,
+    totalUsdt: totalUsdt,
+    updated:   updated,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+// Балансы USDT напрямую (для fixUsdtInSheet — вызывается с правами владельца)
+function _fetchUsdtArb() {
+  try {
+    var padded = '000000000000000000000000' + EVM_ADDRESS.slice(2).toLowerCase();
+    var payload = JSON.stringify({
+      jsonrpc: '2.0', id: 1, method: 'eth_call',
+      params: [{ to: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', data: '0x70a08231' + padded }, 'latest']
+    });
+    var resp = UrlFetchApp.fetch(ARB_RPC, { method: 'post', contentType: 'application/json', payload: payload, muteHttpExceptions: true });
+    var d = JSON.parse(resp.getContentText());
+    var hex = d.result || '0x0';
+    return Math.round(parseInt(hex, 16) / 1e4) / 100; // 6 decimals → 2dp
+  } catch(e) {
+    Logger.log('_fetchUsdtArb error: ' + e.message);
+    return 0;
+  }
+}
+
+function _fetchUsdtTon() {
+  try {
+    var url = 'https://tonapi.io/v2/accounts/' + TON_ADDRESS + '/jettons';
+    var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var d = JSON.parse(resp.getContentText());
+    for (var i = 0; i < (d.balances || []).length; i++) {
+      var b = d.balances[i];
+      var sym = (b.jetton && b.jetton.symbol || '').replace('₮','T');
+      if (sym === 'USDT') {
+        var dec = Number(b.jetton.decimals || 6);
+        return Math.round(Number(b.balance) / Math.pow(10, dec) * 100) / 100;
+      }
+    }
+    return 0;
+  } catch(e) {
+    Logger.log('_fetchUsdtTon error: ' + e.message);
+    return 0;
+  }
+}
+
 function _createTransactionsSheet(ss) {
   var old = ss.getSheetByName('Транзакции');
   if (old) ss.deleteSheet(old);
@@ -549,4 +687,188 @@ function _createTransactionsSheet(ss) {
   var widths = [80,180,80,120,80,100,100,100,80,280,100,100,120,120,100,100,200,250];
   widths.forEach(function(w,i){ sh.setColumnWidth(i+1,w); });
   Logger.log('Транзакции: создана');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BLOCKCHAIN TRANSACTION SYNC
+// Запускается автоматически по триггеру (hourly).
+// Чтобы установить триггер — запусти setupSyncTrigger() вручную 1 раз.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Установка hourly-триггера. Запустить вручную один раз.
+function setupSyncTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'syncTransactions') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('syncTransactions').timeBased().everyHours(1).create();
+  Logger.log('Триггер syncTransactions установлен — каждый час');
+}
+
+// Главная функция синхронизации — пишет новые blockchain-транзакции в лист «Транзакции».
+function syncTransactions() {
+  var ss = SpreadsheetApp.openById(WIFE_SS_ID);
+  var sheet = ss.getSheetByName('Транзакции');
+  if (!sheet) { _createTransactionsSheet(ss); sheet = ss.getSheetByName('Транзакции'); }
+
+  var existingIds = _getExistingTxIds(sheet);
+  var rows = [];
+
+  _fetchArbTokenTransfers(existingIds, rows);
+  _fetchArbEthTransfers(existingIds, rows);
+  _fetchTonTransactions(existingIds, rows);
+  _fetchBtcTransactions(existingIds, rows);
+
+  if (rows.length > 0) {
+    var lastRow = Math.max(sheet.getLastRow(), 2);
+    sheet.getRange(lastRow + 1, 1, rows.length, 18).setValues(rows);
+    Logger.log('syncTransactions: добавлено ' + rows.length + ' новых транзакций');
+  } else {
+    Logger.log('syncTransactions: нет новых транзакций');
+  }
+}
+
+function _getExistingTxIds(sheet) {
+  var ids = {};
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 3) return ids;
+  var data = sheet.getRange(3, 1, lastRow - 2, 1).getValues();
+  data.forEach(function(row) { if (row[0]) ids[String(row[0])] = true; });
+  return ids;
+}
+
+function _fmtDate(dt) {
+  if (!(dt instanceof Date)) dt = new Date(dt);
+  return Utilities.formatDate(dt, 'Europe/Moscow', 'yyyy-MM-dd HH:mm:ss');
+}
+
+function _isStable(symbol) {
+  return ['USDT','USDC','DAI','BUSD','USDE'].indexOf((symbol || '').toUpperCase().replace('₮','T')) >= 0;
+}
+
+function _bcAction(symbol, isIn) {
+  // Стейблы: пришли → продали крипту → «Продажа»; ушли → купили крипту → «Покупка»
+  // Крипта: пришла → «Покупка»; ушла → «Продажа»
+  if (_isStable(symbol)) return isIn ? 'Продажа' : 'Покупка';
+  return isIn ? 'Покупка' : 'Продажа';
+}
+
+function _fetchArbTokenTransfers(existingIds, rows) {
+  try {
+    var url = 'https://arbitrum.blockscout.com/api/v2/addresses/' + EVM_ADDRESS + '/token-transfers?filter=from%7Cto&limit=100';
+    var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var d = JSON.parse(resp.getContentText());
+    var items = d.items || [];
+    items.forEach(function(item) {
+      var hash = item.tx_hash || '';
+      var decimals = Number(item.token && item.token.decimals || 6);
+      var rawQty = Number(item.total && item.total.value || 0);
+      var quantity = rawQty / Math.pow(10, decimals);
+      var symbol = (item.token && item.token.symbol) || 'UNKNOWN';
+      if (quantity < 0.0001 || !hash) return;
+      var id = 'bc:arb_tok:' + hash + ':' + rawQty;
+      if (existingIds[id]) return;
+      var isIn = (item.to && item.to.hash || '').toLowerCase() === EVM_ADDRESS.toLowerCase();
+      var action = _bcAction(symbol, isIn);
+      var amount = _isStable(symbol) ? quantity : 0;
+      rows.push([id, _fmtDate(item.timestamp || new Date()), symbol, 'Крипта', action,
+        quantity, 0, amount, 'ARB', hash, 'CONFIRMED', isIn ? 'IN' : 'OUT',
+        EVM_ADDRESS, isIn ? (item.from && item.from.hash || '') : (item.to && item.to.hash || ''),
+        symbol, quantity, 'blockchain', '']);
+      existingIds[id] = true;
+    });
+  } catch(e) { Logger.log('_fetchArbTokenTransfers error: ' + e.message); }
+}
+
+function _fetchArbEthTransfers(existingIds, rows) {
+  try {
+    var url = 'https://arbitrum.blockscout.com/api/v2/addresses/' + EVM_ADDRESS + '/transactions?filter=to%7Cfrom&limit=50';
+    var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var d = JSON.parse(resp.getContentText());
+    var items = d.items || [];
+    items.forEach(function(item) {
+      var hash = item.hash || '';
+      var ethAmount = parseInt(item.value || '0', 10) / 1e18;
+      if (ethAmount < 0.0001 || !hash) return;
+      var id = 'bc:arb_eth:' + hash;
+      if (existingIds[id]) return;
+      var isIn = (item.to && item.to.hash || '').toLowerCase() === EVM_ADDRESS.toLowerCase();
+      rows.push([id, _fmtDate(item.timestamp || new Date()), 'ETH', 'Крипта', isIn ? 'Покупка' : 'Продажа',
+        ethAmount, 0, 0, 'ARB', hash, item.status === 'ok' ? 'CONFIRMED' : 'PENDING', isIn ? 'IN' : 'OUT',
+        EVM_ADDRESS, isIn ? (item.from && item.from.hash || '') : (item.to && item.to.hash || ''),
+        'ETH', ethAmount, 'blockchain', '']);
+      existingIds[id] = true;
+    });
+  } catch(e) { Logger.log('_fetchArbEthTransfers error: ' + e.message); }
+}
+
+function _fetchTonTransactions(existingIds, rows) {
+  try {
+    var url = 'https://tonapi.io/v2/accounts/' + TON_ADDRESS + '/events?limit=50&subject_only=true';
+    var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var d = JSON.parse(resp.getContentText());
+    var events = d.events || [];
+    events.forEach(function(evt) {
+      var eventId = evt.event_id || String(evt.lt || '');
+      var date = evt.timestamp ? new Date(evt.timestamp * 1000) : new Date();
+      var actions = evt.actions || [];
+      actions.forEach(function(act, i) {
+        var rowId = 'bc:ton:' + eventId + ':' + i;
+        if (existingIds[rowId]) return;
+        if (act.type === 'TonTransfer') {
+          var tt = act.TonTransfer || {};
+          var qty = Number(tt.amount || 0) / 1e9;
+          if (qty < 0.01) return;
+          var isIn = (tt.sender && tt.sender.address || '').toLowerCase() !== TON_ADDRESS.toLowerCase();
+          rows.push([rowId, _fmtDate(date), 'TON', 'Крипта', isIn ? 'Покупка' : 'Продажа',
+            qty, 0, 0, 'TON', eventId, 'CONFIRMED', isIn ? 'IN' : 'OUT',
+            TON_ADDRESS, isIn ? (tt.sender && tt.sender.address || '') : (tt.recipient && tt.recipient.address || ''),
+            'TON', qty, 'blockchain', '']);
+          existingIds[rowId] = true;
+        } else if (act.type === 'JettonTransfer') {
+          var jt = act.JettonTransfer || {};
+          var decimals = Number(jt.jetton && jt.jetton.decimals || 6);
+          var qty = Number(jt.amount || 0) / Math.pow(10, decimals);
+          if (qty < 0.001) return;
+          var symbol = (jt.jetton && jt.jetton.symbol || 'USDT').replace('₮', 'T');
+          var isIn = (jt.sender && jt.sender.address || '').toLowerCase() !== TON_ADDRESS.toLowerCase();
+          var action = _bcAction(symbol, isIn);
+          var amount = _isStable(symbol) ? qty : 0;
+          rows.push([rowId, _fmtDate(date), symbol, 'Крипта', action,
+            qty, 0, amount, 'TON', eventId, 'CONFIRMED', isIn ? 'IN' : 'OUT',
+            TON_ADDRESS, isIn ? (jt.sender && jt.sender.address || '') : (jt.recipient && jt.recipient.address || ''),
+            symbol, qty, 'blockchain', '']);
+          existingIds[rowId] = true;
+        }
+      });
+    });
+  } catch(e) { Logger.log('_fetchTonTransactions error: ' + e.message); }
+}
+
+function _fetchBtcTransactions(existingIds, rows) {
+  try {
+    var url = 'https://blockstream.info/api/address/' + BTC_ADDRESS + '/txs';
+    var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var txs = JSON.parse(resp.getContentText());
+    txs.forEach(function(tx) {
+      var hash = tx.txid || '';
+      if (!hash) return;
+      var id = 'bc:btc:' + hash;
+      if (existingIds[id]) return;
+      var received = (tx.vout || []).reduce(function(sum, out) {
+        return sum + ((out.scriptpubkey_address || '') === BTC_ADDRESS ? Number(out.value || 0) : 0);
+      }, 0);
+      var spent = (tx.vin || []).reduce(function(sum, inp) {
+        return sum + ((inp.prevout && inp.prevout.scriptpubkey_address || '') === BTC_ADDRESS ? Number(inp.prevout && inp.prevout.value || 0) : 0);
+      }, 0);
+      var net = (received - spent) / 1e8;
+      if (Math.abs(net) < 0.000001) return;
+      var isIn = net > 0;
+      var qty = Math.abs(net);
+      var ts = tx.status && tx.status.block_time ? new Date(tx.status.block_time * 1000) : new Date();
+      rows.push([id, _fmtDate(ts), 'BTC', 'Крипта', isIn ? 'Покупка' : 'Продажа',
+        qty, 0, 0, 'BTC', hash, tx.status && tx.status.confirmed ? 'CONFIRMED' : 'PENDING', isIn ? 'IN' : 'OUT',
+        BTC_ADDRESS, '', 'BTC', qty, 'blockchain', '']);
+      existingIds[id] = true;
+    });
+  } catch(e) { Logger.log('_fetchBtcTransactions error: ' + e.message); }
 }

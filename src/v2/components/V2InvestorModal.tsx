@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- хук/хелперы намеренно рядом с компонентом (личный инструмент) */
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { PortfolioHealth, HealthComponent } from "../../lib/portfolioHealth";

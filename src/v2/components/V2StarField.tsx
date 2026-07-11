@@ -238,9 +238,9 @@ export function V2StarField() {
     let last  = performance.now();
     let raf   = 0;
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+     
     const safeCtx = ctx!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+     
     const safeCanvas = canvas!;
 
     function frame(now: number) {

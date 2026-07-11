@@ -83,14 +83,20 @@ export function useInvestorData(
           const loadedAt = new Date().toISOString();
           const data = buildInvestorStateFromApi(json, prev.data);
 
-          // Daily auto-snapshot for both accounts (separate storage slots)
-          maybeRecordSnapshot({
-            portfolioValue: data.overview.portfolioValue,
-            invested: data.overview.invested,
-            reserve: data.overview.reserve,
-            positionsCount: data.portfolio.length,
-            slot: cacheSlot === "wife" ? "wife" : "main",
-          });
+          // Daily auto-snapshot — only main account here; wife snapshot happens
+          // after applyBlockchainOverride so USDT balances are included.
+          if (cacheSlot !== "wife") {
+            const nonStable = data.portfolio.filter(
+              (p) => p.category !== "Свободные деньги"
+            );
+            maybeRecordSnapshot({
+              portfolioValue: data.overview.portfolioValue,
+              invested: data.overview.invested,
+              reserve: data.overview.reserve,
+              positionsCount: nonStable.length,
+              slot: "main",
+            });
+          }
 
           writeCachedInvestorState(data, loadedAt, cacheSlot);
 

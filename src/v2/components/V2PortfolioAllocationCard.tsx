@@ -184,7 +184,9 @@ export function V2PortfolioAllocationCard({ allocation, total }: Props) {
             const lim = cfg.limit ? cfg.limit * 100 : null;
             return (
               <div key={item.name} className={`v2-pac-card${hoveredName === item.name ? " is-active" : ""}${hoveredName && hoveredName !== item.name ? " is-muted" : ""}`}
-                style={{ "--c": cfg.color, "--icon-c": cfg.iconColor, "--glow": cfg.glow, animationDelay: `${idx * 70}ms` } as CSSProperties}>
+                style={{ "--c": cfg.color, "--icon-c": cfg.iconColor, "--glow": cfg.glow, animationDelay: `${idx * 70}ms` } as CSSProperties}
+                onPointerEnter={() => setHoveredName(item.name)}
+                onPointerLeave={() => setHoveredName(null)}>
                 <div className="v2-pac-card-icon">
                   <CategoryGlyph name={item.name} />
                 </div>

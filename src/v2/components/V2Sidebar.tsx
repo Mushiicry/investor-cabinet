@@ -18,22 +18,22 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
     ),
   },
   {
-    label: "Здоровье",
-    page: "health",
-    icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M9 15.5C5 13.5 2 10.8 2 7.5a4 4 0 016-3.46A4 4 0 0116 7.5c0 3.3-3 6-7 8z" />
-        <path d="M6 9h1.5l1-2.5 1.5 5 1-2.5H13" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
     label: "Портфель",
     page: "portfolio",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <path d="M9 2v7h7A7 7 0 109 2z" />
         <path d="M9 9l5 5" opacity=".5" />
+      </svg>
+    ),
+  },
+  {
+    label: "Здоровье",
+    page: "health",
+    icon: (
+      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M9 15.5C5 13.5 2 10.8 2 7.5a4 4 0 016-3.46A4 4 0 0116 7.5c0 3.3-3 6-7 8z" />
+        <path d="M6 9h1.5l1-2.5 1.5 5 1-2.5H13" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },

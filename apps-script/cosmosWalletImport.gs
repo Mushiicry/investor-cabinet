@@ -264,3 +264,162 @@ function IC_COSMOS_toNumber_(value) {
   var parsed = Number(value || 0);
   return Number.isFinite(parsed) ? parsed : 0;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COSMOS TRANSACTION IMPORT (приходы/расходы ATOM → лист «Транзакции_IMPORT»)
+// Запускается вручную или по триггеру: syncCosmosWalletTransactions()
+// Установить триггер один раз: installCosmosWalletTxTrigger()
+// ═══════════════════════════════════════════════════════════════════════════════
+var IC_COSMOS_IMPORT_SHEET = 'Транзакции_IMPORT';
+
+function syncCosmosWalletTransactions() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var walletSheet = IC_COSMOS_getOrCreateWalletSheet_(ss);
+  var importSheet = ss.getSheetByName(IC_COSMOS_IMPORT_SHEET);
+  if (!importSheet) throw new Error('Missing sheet: ' + IC_COSMOS_IMPORT_SHEET);
+
+  var wallets = IC_COSMOS_readWalletConfig_(walletSheet);
+  var existing = IC_COSMOS_readExistingImportIds_(importSheet);
+  var toAppend = [];
+
+  wallets.forEach(function(wallet) {
+    if (wallet.chain !== IC_COSMOS_DEFAULT_CHAIN || wallet.status !== 'ACTIVE') return;
+    IC_COSMOS_fetchTransferTxs_(wallet).forEach(function(tx) {
+      if (existing[tx.importId]) return;
+      existing[tx.importId] = true;
+      toAppend.push(IC_COSMOS_toImportRow_(tx));
+    });
+  });
+
+  if (toAppend.length) {
+    var start = importSheet.getLastRow() + 1;
+    importSheet.getRange(start, 1, toAppend.length, toAppend[0].length).setValues(toAppend);
+  }
+  Logger.log('Cosmos tx import: +' + toAppend.length + ' транзакций');
+  return toAppend.length;
+}
+
+function installCosmosWalletTxTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'syncCosmosWalletTransactions') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('syncCosmosWalletTransactions').timeBased().everyHours(1).create();
+  Logger.log('Триггер syncCosmosWalletTransactions установлен — каждый час');
+}
+
+function IC_COSMOS_readExistingImportIds_(sheet) {
+  var map = {};
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return map;
+  var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  values.forEach(function(r) { if (r[0]) map[String(r[0])] = true; });
+  return map;
+}
+
+// Тянем входящие И исходящие переводы через Cosmos REST tx-search.
+function IC_COSMOS_fetchTransferTxs_(wallet) {
+  var out = [];
+  var seen = {};
+  ['recipient', 'sender'].forEach(function(role) {
+    IC_COSMOS_txSearch_(role, wallet.address).forEach(function(item) {
+      IC_COSMOS_parseTx_(wallet, item).forEach(function(tx) {
+        if (seen[tx.importId]) return;
+        seen[tx.importId] = true;
+        out.push(tx);
+      });
+    });
+  });
+  return out;
+}
+
+// Cosmos SDK v0.50 использует ?query=, старые — ?events=. Пробуем оба.
+function IC_COSMOS_txSearch_(role, address) {
+  var q = "transfer." + role + "='" + address + "'";
+  var base = '/cosmos/tx/v1beta1/txs?order_by=ORDER_BY_DESC&pagination.limit=50&';
+  var attempts = [base + 'query=' + encodeURIComponent(q), base + 'events=' + encodeURIComponent(q)];
+  for (var i = 0; i < attempts.length; i++) {
+    try {
+      var json = IC_COSMOS_fetchJson_(attempts[i]);
+      if (json && Array.isArray(json.tx_responses)) return json.tx_responses;
+    } catch (e) { /* пробуем следующий формат */ }
+  }
+  return [];
+}
+
+function IC_COSMOS_parseTx_(wallet, txResponse) {
+  var rows = [];
+  if (!txResponse || txResponse.code) return rows; // пропускаем неуспешные
+  var hash = String(txResponse.txhash || '');
+  var ts = txResponse.timestamp ? new Date(txResponse.timestamp) : new Date();
+  var dateStr = Utilities.formatDate(ts, 'UTC', "yyyy-MM-dd'T'HH:mm:ss'Z'");
+  var messages = (txResponse.tx && txResponse.tx.body && txResponse.tx.body.messages) || [];
+
+  messages.forEach(function(msg, mi) {
+    var type = String(msg['@type'] || '');
+
+    if (type.indexOf('MsgSend') >= 0) {
+      IC_COSMOS_uatomAmounts_(msg.amount).forEach(function(qty, ci) {
+        rows.push(IC_COSMOS_transferRow_(wallet, hash, dateStr, txResponse.height,
+          msg.from_address, msg.to_address, qty, mi, ci));
+      });
+    } else if (type.indexOf('MsgMultiSend') >= 0) {
+      // Приход: наш адрес среди outputs
+      (msg.outputs || []).forEach(function(o, oi) {
+        if (!IC_COSMOS_addressesMatch_(o.address, wallet.address)) return;
+        IC_COSMOS_uatomAmounts_(o.coins).forEach(function(qty, ci) {
+          rows.push(IC_COSMOS_transferRow_(wallet, hash, dateStr, txResponse.height,
+            (msg.inputs && msg.inputs[0] && msg.inputs[0].address) || '', o.address, qty, mi, 'o' + oi + ci));
+        });
+      });
+    }
+  });
+  return rows;
+}
+
+function IC_COSMOS_uatomAmounts_(coins) {
+  var res = [];
+  (coins || []).forEach(function(coin) {
+    if (String(coin.denom || '') !== 'uatom') return;
+    var qty = Number(coin.amount || 0) / 1e6;
+    if (qty) res.push(qty);
+  });
+  return res;
+}
+
+function IC_COSMOS_transferRow_(wallet, hash, dateStr, height, from, to, qty, mi, ci) {
+  var direction = IC_COSMOS_addressesMatch_(to, wallet.address) ? 'IN'
+    : IC_COSMOS_addressesMatch_(from, wallet.address) ? 'OUT' : 'UNKNOWN';
+  return {
+    importId: ['COSMOS', wallet.address, hash, mi, ci].join(':'),
+    status: 'PENDING',
+    date: dateStr,
+    asset: 'ATOM',
+    category: 'Крипта',
+    action: 'Перевод',
+    quantity: qty,
+    price: '',
+    amount: '',
+    comment: 'Cosmos ATOM transfer imported from public wallet',
+    walletId: wallet.walletId,
+    chain: 'COSMOS',
+    hash: hash,
+    lt: String(height || ''),
+    direction: direction,
+    counterparty: direction === 'IN' ? String(from || '') : String(to || ''),
+    rawAsset: 'uatom',
+    rawAmount: String(Math.round(qty * 1e6)),
+    reviewNote: 'Cosmos ATOM ' + (direction === 'IN' ? 'приход' : 'перевод') + ' imported from public wallet. Review before accounting.'
+  };
+}
+
+function IC_COSMOS_toImportRow_(tx) {
+  return [
+    tx.importId, tx.status, tx.date, tx.asset, tx.category, tx.action,
+    tx.quantity, tx.price, tx.amount, tx.comment, tx.walletId, tx.chain,
+    tx.hash, tx.lt, tx.direction, tx.counterparty, tx.rawAsset, tx.rawAmount, tx.reviewNote
+  ];
+}
+
+function IC_COSMOS_addressesMatch_(a, b) {
+  return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+}

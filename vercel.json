@@ -1,14 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/api/investor",
-      "destination": "https://script.google.com/macros/s/AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA/exec"
-    },
-    {
-      "source": "/api/investor-wife",
-      "destination": "https://script.google.com/macros/s/AKfycbwPvwu-EMXb9hGCZeRFhr9O8Vvz5-2y1sqn4V4OMsgqNkTs2t3U6zGDw7SVgdPVmrwg/exec"
-    },
-    {
       "source": "/api/fear-greed",
       "destination": "https://api.alternative.me/fng/?limit=30"
     },

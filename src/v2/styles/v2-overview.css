@@ -218,6 +218,8 @@
 .v2-hero-reactor {
   min-width: 0;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box; /* padding-right внутри 100% — не даёт горизонтального overflow */
   flex: 1 1 auto;
   display: flex;
   padding-right: 50px;

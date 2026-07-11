@@ -19,6 +19,10 @@ Contains:
 
 Main frontend files:
 
+src/main.tsx
+- React entry point
+- Supabase auth/session bootstrap
+
 src/App.tsx
 - main dashboard logic
 - rendering
@@ -26,6 +30,11 @@ src/App.tsx
 - pages
 - layout
 - portfolio state
+
+src/v2/
+- current V2 dashboard shell and pages
+- active frontend feature work area
+- do not edit during Claude-owned parallel frontend work unless coordinated
 
 src/App.css
 - global styles
@@ -35,13 +44,20 @@ src/App.css
 - overview blocks
 - responsive behavior
 
-src/main.tsx
-- React entry point
-
 src/assets/
 - images
 - icons
 - static assets
+
+src/hooks/
+- data hooks
+- wallet/staking hooks
+- active Claude-owned work area during the 2026-07-11 parallel phase
+
+src/services/
+- API/client services
+- cache/snapshot logic
+- active Claude-owned work area during the 2026-07-11 parallel phase
 
 src/data/
 - fallback local data
@@ -79,6 +95,19 @@ Files:
 SHEETS_STRUCTURE.md
 FORMULAS.md
 API_CONTRACT.md
+
+## Current baseline docs
+
+CODEX_TRACKER_2026-07-11.md
+- current Codex/Claude/user task boundary and progress tracker
+
+SECURITY_BASELINE.md
+- personal-tool security baseline
+- current privacy risks and target API protection model
+
+ACCOUNTING_RULES.md
+- accounting and percent-unit rules
+- BUY/SELL/TRANSFER/IMPORT/SWAP behavior
 
 ---
 

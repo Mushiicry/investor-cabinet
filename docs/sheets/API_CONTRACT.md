@@ -22,6 +22,7 @@ API должен возвращать:
   "history": [],
   "risk": {},
   "fearGreedStrategy": {},
+  "transactions": [],
   "decisions": [],
   "scenarios": [],
   "updatedAt": ""
@@ -32,6 +33,7 @@ API должен возвращать:
 Допустимые fallback-правила frontend:
 - если root response сломан, используется предыдущий state;
 - если `portfolio` не массив, используется предыдущий portfolio state;
+- если `transactions` отсутствует или не массив, используется пустой массив/fallback transactions state;
 - если отдельные числовые поля невалидны, frontend использует fallback values;
 - `success` должен быть boolean, если поле присутствует.
 
@@ -46,9 +48,13 @@ API должен возвращать:
 - строки вида "$100" не использовать.
 
 Проценты в API:
-- `overview.pnlPct`, `overview.health`, `risk.reserveShare`, `risk.largestRiskShare`, `risk.cryptoShare`, `risk.health` приходят как прямые проценты: `82.6`, а не `0.826`;
-- frontend нормализует эти поля в ratio `0..1` там, где это нужно UI;
+- `overview.pnlPct` приходит как decimal fraction: `-0.0004` означает `-0.04%`;
+- `history.pnlPct` должен использовать тот же decimal fraction contract, что и `overview.pnlPct`;
+- `overview.health` и `risk.health` являются score `0..100`, а не ratio;
+- `risk.reserveShare`, `risk.largestRiskShare`, `risk.cryptoShare`, `risk.stocksShare`, `risk.metalsShare`, `risk.futuresShare`, `risk.cashShare` сейчас приходят как прямые проценты: `38.8`, а не `0.388`;
+- frontend нормализует risk share поля в ratio `0..1` там, где это нужно UI;
 - `portfolio.pnlPct` и `portfolio.share` используются таблицей как прямые проценты: `12.2`.
+- `fearGreedStrategy.rules[].buyPct` приходит как decimal fraction: `0.01` означает `1%`.
 
 Текстовые поля:
 - должны приходить строками;
@@ -69,8 +75,11 @@ overview используется:
 
 {
   "portfolioValue": 0,
+  "portfolioLabel": "",
   "invested": 0,
+  "investedLabel": "",
   "pnl": 0,
+  "pnlLabel": "",
   "pnlPct": 0,
   "reserve": 0,
   "positionsCount": 0,
@@ -92,8 +101,11 @@ overview используется:
 
 Нельзя переименовывать:
 - portfolioValue
+- portfolioLabel
 - invested
+- investedLabel
 - pnl
+- pnlLabel
 - pnlPct
 - reserve
 - positionsCount
@@ -107,6 +119,7 @@ overview используется:
 Важно:
 - frontend пересчитывает best/worst по открытым risk positions, если они есть;
 - stale `overview.bestPosition` и `overview.worstPosition` используются только как fallback.
+- `portfolioLabel`, `investedLabel`, `pnlLabel` являются optional display labels; числовые поля остаются source of truth.
 
 
 ---
@@ -122,6 +135,7 @@ Frontend ожидает массив объектов:
 
 {
   "asset": "",
+  "ticker": "",
   "category": "",
   "quantity": 0,
   "avgEntry": 0,
@@ -136,6 +150,10 @@ Frontend ожидает массив объектов:
 
 Нельзя менять naming полей.
 
+Optional display/API compatibility fields:
+- `ticker` допустим как optional alias/symbol field;
+- frontend не должен использовать `ticker` вместо `asset` как главный identity key без отдельного contract patch.
+
 Допустимые category values:
 - "Крипта"
 - "Металлы"
@@ -145,6 +163,7 @@ Frontend ожидает массив объектов:
 
 Допустимый legacy alias:
 - "Кэш / Стейблы" нормализуется во frontend как "Свободные деньги".
+- alias допустим только как совместимость с текущими Sheets/API; целевой API value для cash bucket: "Свободные деньги".
 
 Status values:
 - "Reserve" / "Резерв"
@@ -204,6 +223,7 @@ Deployable cash:
 - `futuresDeployableCash` показывает capital bucket для фьючерсов;
 - `spotDeployableCash` показывает капитал, который можно использовать в spot без нарушения reserve floor.
 - frontend не должен использовать legacy `deployableCash` как fallback для `futuresDeployableCash`.
+- если SITE API временно не отдает `futuresDeployableCash` или `spotDeployableCash`, frontend может вывести fallback из нормализованного portfolio state, но это не должно становиться новым source of truth.
 
 Risk layer важнее PnL layer. Тексты `state`, `signal`, `summary` должны быть дисциплинирующими, а не провоцирующими aggressive trading.
 
