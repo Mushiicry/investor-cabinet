@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { proxyInvestorApi } from "../../api/_investorProxy";
+import { proxyInvestorApi } from "../../api/_investorProxy.js";
 
 type MockResponse = ServerResponse & {
   body?: string;

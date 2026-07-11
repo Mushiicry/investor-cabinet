@@ -8,7 +8,7 @@ const appsScriptIds = (content: string) =>
 describe("local and production API config consistency", () => {
   it("keeps local wife proxy aligned with the serverless wife fallback deployment", () => {
     const viteConfig = read("vite.config.ts");
-    const proxy = read("api/_investorProxy.ts");
+    const proxy = read("api/_investorProxy.js");
     const wifeId = "AKfycbwPvwu-EMXb9hGCZeRFhr9O8Vvz5-2y1sqn4V4OMsgqNkTs2t3U6zGDw7SVgdPVmrwg";
 
     expect(appsScriptIds(viteConfig)).toContain(wifeId);

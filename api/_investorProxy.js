@@ -1,38 +1,30 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
-
-type AccountKind = "main" | "wife";
-
-type SupabaseUser = {
-  email?: string;
-};
-
 const MAIN_APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA/exec";
 
 const WIFE_APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbwPvwu-EMXb9hGCZeRFhr9O8Vvz5-2y1sqn4V4OMsgqNkTs2t3U6zGDw7SVgdPVmrwg/exec";
 
-const getEnv = (name: string) => process.env[name]?.trim() ?? "";
+const getEnv = (name) => process.env[name]?.trim() ?? "";
 
-const getHeader = (req: IncomingMessage, name: string) => {
+const getHeader = (req, name) => {
   const value = req.headers[name.toLowerCase()];
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 };
 
-const sendJson = (res: ServerResponse, status: number, body: Record<string, unknown>) => {
+const sendJson = (res, status, body) => {
   res.statusCode = status;
   res.setHeader("content-type", "application/json; charset=utf-8");
   res.setHeader("cache-control", "no-store");
   res.end(JSON.stringify(body));
 };
 
-const ownerEmailFor = (kind: AccountKind) => {
+const ownerEmailFor = (kind) => {
   const envName = kind === "wife" ? "WIFE_EMAIL" : "FOUNDER_EMAIL";
   const viteEnvName = kind === "wife" ? "VITE_WIFE_EMAIL" : "VITE_FOUNDER_EMAIL";
   return (getEnv(envName) || getEnv(viteEnvName)).toLowerCase();
 };
 
-const targetUrlFor = (kind: AccountKind) => {
+const targetUrlFor = (kind) => {
   if (kind === "wife") {
     return getEnv("WIFE_APPS_SCRIPT_URL") || WIFE_APPS_SCRIPT_URL;
   }
@@ -40,7 +32,7 @@ const targetUrlFor = (kind: AccountKind) => {
   return getEnv("INVESTOR_APPS_SCRIPT_URL") || MAIN_APPS_SCRIPT_URL;
 };
 
-async function verifySupabaseUser(req: IncomingMessage): Promise<SupabaseUser | null> {
+async function verifySupabaseUser(req) {
   const supabaseUrl = getEnv("SUPABASE_URL") || getEnv("VITE_SUPABASE_URL");
   const anonKey = getEnv("SUPABASE_ANON_KEY") || getEnv("VITE_SUPABASE_ANON_KEY");
   const authHeader = getHeader(req, "authorization");
@@ -61,14 +53,10 @@ async function verifySupabaseUser(req: IncomingMessage): Promise<SupabaseUser | 
     return null;
   }
 
-  return response.json() as Promise<SupabaseUser>;
+  return response.json();
 }
 
-export async function proxyInvestorApi(
-  req: IncomingMessage,
-  res: ServerResponse,
-  kind: AccountKind
-) {
+export async function proxyInvestorApi(req, res, kind) {
   if (req.method === "OPTIONS") {
     res.statusCode = 204;
     res.end();
