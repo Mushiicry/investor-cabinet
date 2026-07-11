@@ -167,3 +167,12 @@ Post-Claude mobile/lint work verification:
 - `npm run build`: passed on Vite 8.1.4.
 - `npm audit --omit=dev`: passed with 0 vulnerabilities.
 - serverless API typecheck: passed.
+
+Additional contract coverage:
+- added `test/contracts/accountingRules.test.ts` for BUY/SELL/TRANSFER/SWAP accounting rules.
+- added `test/contracts/configConsistency.test.ts` to prevent wife local/prod deployment drift and direct production rewrites.
+- `npm run test`: passed, 24 tests across 6 files.
+- `npm run lint`: passed.
+- `npm run build`: passed.
+- `npm audit --omit=dev`: passed with 0 vulnerabilities.
+- `npx clasp logs --json`: still blocked with `GCP project ID is not set`.
