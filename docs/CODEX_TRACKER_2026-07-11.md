@@ -1,0 +1,169 @@
+# CODEX TRACKER 2026-07-11
+
+Status: active  
+Scope: Codex-owned isolated audit/fix track  
+Product mode: personal investor operating system, no SaaS/marketing expansion
+
+---
+
+# Ownership Boundary
+
+Codex owns:
+- documentation fixes;
+- API contract documentation;
+- accounting/risk rules documentation;
+- security baseline documentation;
+- read-only verification;
+- isolated tests/fixtures after Claude stabilizes current `src/` changes.
+
+Claude owns for this parallel phase:
+- `src/` frontend feature work;
+- blockchain hooks/cards;
+- build fix already started there;
+- lint cleanup in files he touched;
+- serverless proxy/auth patch;
+- mobile/layout/UI patches;
+- large Apps Script deploy code.
+
+User owns ops:
+- Vercel env changes;
+- Apps Script authorization and redeploy;
+- sensitive Google Sheets formula edits;
+- production deploy approvals.
+
+Rule:
+one file, one agent at a time. Codex does not edit Claude-active `src/`, Apps Script or Vercel routing files in this phase.
+
+---
+
+# Task Board
+
+| ID | Priority | Task | Owner | Status | Files |
+|---|---:|---|---|---|---|
+| C-01 | P0 | Fix percent/unit contract in API docs | Codex | done | `docs/sheets/API_CONTRACT.md` |
+| C-02 | P0 | Add security baseline for personal-tool path | Codex | done | `docs/SECURITY_BASELINE.md` |
+| C-03 | P0 | Add accounting rules baseline | Codex | done | `docs/ACCOUNTING_RULES.md` |
+| C-04 | P0 | Add Codex/Claude/user tracker | Codex | done | `docs/CODEX_TRACKER_2026-07-11.md` |
+| C-05 | P1 | Refresh project map for V2/current ownership | Codex | done | `docs/PROJECT_MAP.md` |
+| C-06 | P1 | API contract fixtures for live `/api/investor` shape | Codex | done | `docs/api-fixtures/investor-live-shape-2026-07-11.json`, `test/contracts/apiShape.fixture.test.ts` |
+| C-07 | P1 | Vitest finance/accounting tests | Codex | done | `test/contracts/*.test.ts` |
+| C-08 | P1 | Dependency audit/fix plan | Codex | done | `package-lock.json` only |
+| C-09 | P1 | Local/prod wife URL verification | Codex | done | `vite.config.ts` aligned to production wife deployment ID |
+| C-10 | P2 | `clasp logs` / GCP log access verification | Codex + User | blocked | GCP project ID must be linked to Apps Script |
+| C-11 | P0 | Vercel serverless auth proxy for investor APIs | Codex | done | `api/`, `src/api/investor.ts`, `vercel.json`, `test/contracts/investorProxy.test.ts` |
+
+---
+
+# Findings To Keep Visible
+
+## Wife API routing
+
+Observed mismatch:
+- local `vite.config.ts` `/api/investor-wife` target uses one Apps Script deployment ID;
+- production `vercel.json` `/api/investor-wife` uses another Apps Script deployment ID.
+
+Impact:
+local and production can read different wife API versions.
+
+Status:
+fixed for local dev proxy by aligning `vite.config.ts` to the production wife Apps Script deployment ID.
+
+## Apps Script UrlFetch authorization
+
+Observed production symptom:
+wife API returned Apps Script permission error for `UrlFetchApp.fetch`.
+
+Required ops action:
+open Apps Script project, run the function that calls `UrlFetchApp`, pass authorization, then redeploy the web app.
+
+## Vercel env
+
+Observed gap:
+`VITE_HL_ADDRESS` was missing in Vercel env during audit.
+
+Required ops action:
+add the env var in Vercel and redeploy.
+
+## Google Sheets formulas
+
+Live sheet check confirmed:
+- `overview.pnlPct` is decimal fraction via `Обзор!D2 = IFERROR(C2/B2;0)`;
+- `FearGreedRules.buyPct` is decimal fraction;
+- `Кэш / Стейблы` still exists as a Sheets/API category alias and must normalize to `Свободные деньги`.
+
+---
+
+# Next Codex Work
+
+1. Keep contract tests green while Claude continues UI/frontend work.
+2. Add deeper accounting tests only after accounting reducer/helper implementation exists.
+3. Re-check wife API after Apps Script authorization/redeploy.
+4. Re-check `clasp logs` after GCP project ID is linked to Apps Script.
+
+---
+
+# Verification Log
+
+## 2026-07-11
+
+Docs patch verification:
+- `npm run build`: passed.
+- `npm run lint`: failed in Claude-active `src/` and V2 hook/component files; no doc-related lint impact.
+- Codex-edited files stayed inside `docs/`.
+
+Dependency verification:
+- `npm audit --omit=dev`: initially found 3 production vulnerabilities in `echarts`, `postcss` and `vite`.
+- `npm audit fix`: changed only `package-lock.json`.
+- `npm audit --omit=dev`: passed with 0 vulnerabilities.
+- `npm run build`: passed after lockfile update.
+- `npm run lint`: still failed in Claude-active `src/` and V2 hook/component files.
+
+Read-only API fixture verification:
+- production `/api/investor`: `200`, about 4.9 seconds, shape captured without private values.
+- direct investor Apps Script endpoint: `200`, same response size and same root keys as production.
+- production `/api/fear-greed`: `200`, about 0.4 seconds.
+- production `/api/investor-wife`: `200`, but payload contains `_chain._errors`.
+- production and local wife Apps Script endpoints both return compatible root shape, but route config still points to different deployment IDs.
+- added sanitized fixture: `docs/api-fixtures/investor-live-shape-2026-07-11.json`.
+- added test plan: `docs/API_CONTRACT_TEST_PLAN.md`.
+- fixture JSON parse check: passed.
+- `npm audit --omit=dev`: passed after fixture/test-plan work.
+- `npm run build`: passed after fixture/test-plan work.
+- `npm run lint`: still failed in Claude-active `src/` and V2 hook/component files.
+
+Executable test harness:
+- added `vitest` dev dependency.
+- added `npm run test`.
+- added `test/contracts/apiShape.fixture.test.ts`.
+- added `test/contracts/portfolioUnits.test.ts`.
+- added `test/contracts/fearGreedStrategy.test.ts`.
+- `npm run test`: passed, 14 tests across 3 files.
+- API contract docs updated for live optional fields: `transactions`, `overview.*Label`, `portfolio[].ticker`.
+
+Post-Claude lint-fix verification:
+- `npm run test`: passed, 14 tests across 3 files.
+- `npm run lint`: passed, 0 errors and 0 warnings.
+- `npm run build`: passed on Vite 8.1.4.
+- `npm audit --omit=dev`: passed with 0 vulnerabilities.
+
+Config/proxy work:
+- aligned local `/api/investor-wife` Vite proxy with production wife Apps Script deployment ID.
+- `npx clasp logs --json`: still blocked with `GCP project ID is not set`.
+- `npx clasp status --json`: works and shows Apps Script files pending push.
+- added Vercel serverless functions for `/api/investor` and `/api/investor-wife`.
+- frontend now forwards Supabase access token in `Authorization` for investor API requests.
+- `vercel.json` no longer rewrites investor APIs directly to Apps Script; API functions handle those routes.
+- added proxy tests for 401, 403 and successful upstream proxy.
+- `npm run test`: passed, 17 tests across 4 files.
+- `npm run lint`: passed, 0 errors and 0 warnings.
+- `npm run build`: passed.
+- `npm audit --omit=dev`: passed with 0 vulnerabilities.
+- serverless API typecheck: passed with `tsc --ignoreConfig`.
+
+Post-Claude mobile/lint work verification:
+- `vite.config.ts` and production serverless fallback now use the same wife Apps Script deployment ID.
+- `npm run test`: passed, 17 tests across 4 files.
+- `npm run lint`: passed, 0 errors and 0 warnings.
+- `npm run build`: passed on Vite 8.1.4.
+- `npm audit --omit=dev`: passed with 0 vulnerabilities.
+- serverless API typecheck: passed.

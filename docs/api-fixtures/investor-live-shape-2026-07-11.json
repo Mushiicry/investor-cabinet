@@ -1,0 +1,213 @@
+{
+  "capturedAt": "2026-07-11",
+  "mode": "sanitized-live-shape",
+  "privacy": "No portfolio values, asset balances, PnL amounts, wallet balances or raw response bodies are stored here.",
+  "sourceEndpoints": {
+    "prodInvestor": {
+      "url": "https://investor-cabinet.vercel.app/api/investor",
+      "status": 200,
+      "elapsedMs": 4887,
+      "bytes": 86582
+    },
+    "scriptInvestor": {
+      "url": "https://script.google.com/macros/s/AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA/exec",
+      "status": 200,
+      "elapsedMs": 4329,
+      "bytes": 86582
+    },
+    "prodWife": {
+      "url": "https://investor-cabinet.vercel.app/api/investor-wife",
+      "status": 200,
+      "elapsedMs": 5087,
+      "bytes": 4420,
+      "hasChainErrors": true
+    },
+    "scriptWifeProd": {
+      "url": "https://script.google.com/macros/s/AKfycbwPvwu-EMXb9hGCZeRFhr9O8Vvz5-2y1sqn4V4OMsgqNkTs2t3U6zGDw7SVgdPVmrwg/exec",
+      "status": 200,
+      "elapsedMs": 3403,
+      "bytes": 4162,
+      "hasChainErrors": true
+    },
+    "scriptWifeLocal": {
+      "url": "https://script.google.com/macros/s/AKfycbxGvJ55cR5f6YVkYO3FlNIjsTH0hJbE8eWlRdvgZXujOkaJo6n57smQ_OIBwjW-l7h8/exec",
+      "status": 200,
+      "elapsedMs": 4063,
+      "bytes": 4218,
+      "hasChainErrors": true
+    },
+    "prodFearGreed": {
+      "url": "https://investor-cabinet.vercel.app/api/fear-greed",
+      "status": 200,
+      "elapsedMs": 365,
+      "bytes": 3078
+    }
+  },
+  "investorApiShape": {
+    "rootKeys": [
+      "decisions",
+      "fearGreedStrategy",
+      "history",
+      "overview",
+      "patch",
+      "portfolio",
+      "risk",
+      "scenarios",
+      "success",
+      "transactions",
+      "updatedAt"
+    ],
+    "overviewKeys": [
+      "action",
+      "bestPosition",
+      "health",
+      "invested",
+      "investedLabel",
+      "pnl",
+      "pnlLabel",
+      "pnlPct",
+      "portfolioLabel",
+      "portfolioValue",
+      "positionsCount",
+      "reserve",
+      "signal",
+      "state",
+      "worstPosition"
+    ],
+    "portfolio": {
+      "type": "array",
+      "length": 14,
+      "itemKeys": [
+        "asset",
+        "avgEntry",
+        "category",
+        "currentPrice",
+        "currentValue",
+        "invested",
+        "pnl",
+        "pnlPct",
+        "quantity",
+        "share",
+        "status",
+        "ticker"
+      ]
+    },
+    "history": {
+      "type": "array",
+      "length": 15,
+      "itemKeys": [
+        "comment",
+        "date",
+        "invested",
+        "note",
+        "pnl",
+        "pnlPct",
+        "pointType",
+        "portfolioValue",
+        "positionsCount",
+        "reserve",
+        "source",
+        "trigger"
+      ]
+    },
+    "riskKeys": [
+      "cryptoShare",
+      "deployableCash",
+      "health",
+      "largestRiskAsset",
+      "largestRiskShare",
+      "portfolioValue",
+      "reserve",
+      "reserveShare",
+      "signal",
+      "state",
+      "summary"
+    ],
+    "fearGreedStrategyKeys": [
+      "currentIndex",
+      "currentMode",
+      "history",
+      "lastBuy",
+      "portfolioValue",
+      "rules",
+      "strategyBuys"
+    ],
+    "decisions": {
+      "type": "array",
+      "length": 8,
+      "itemKeys": [
+        "asset",
+        "expect",
+        "nextAction",
+        "reviewTrigger",
+        "status",
+        "thesis",
+        "whyHold"
+      ]
+    },
+    "scenarios": {
+      "type": "array",
+      "length": 8,
+      "itemKeys": [
+        "action",
+        "asset",
+        "base",
+        "bear",
+        "bull",
+        "invalidation",
+        "status"
+      ]
+    }
+  },
+  "wifeApiShape": {
+    "rootKeys": [
+      "_chain",
+      "decisions",
+      "fearGreedStrategy",
+      "history",
+      "overview",
+      "patch",
+      "portfolio",
+      "risk",
+      "scenarios",
+      "success",
+      "transactions",
+      "updatedAt"
+    ],
+    "chainKeys": [
+      "USDT",
+      "_errors"
+    ],
+    "historyLength": 0,
+    "decisionsLength": 0,
+    "scenariosLength": 0,
+    "portfolioLength": 5
+  },
+  "contractGapsToTest": [
+    {
+      "field": "risk.futuresDeployableCash",
+      "status": "documented target, absent from live investor API on 2026-07-11",
+      "expectedHandling": "frontend selector fallback is allowed, but API remains target source of truth"
+    },
+    {
+      "field": "risk.spotDeployableCash",
+      "status": "documented target, absent from live investor API on 2026-07-11",
+      "expectedHandling": "frontend selector fallback is allowed, but API remains target source of truth"
+    },
+    {
+      "field": "transactions",
+      "status": "present in live root payload, not listed in the original root contract block",
+      "expectedHandling": "contract docs should either mark it optional or define it before tests enforce root strictness"
+    },
+    {
+      "field": "portfolio[].ticker",
+      "status": "present in live investor API, absent from the documented portfolio row shape",
+      "expectedHandling": "contract docs should mark it optional if UI depends on it"
+    },
+    {
+      "field": "overview.*Label",
+      "status": "present in live investor API, absent from the documented overview required shape",
+      "expectedHandling": "contract docs should mark labels optional display fields"
+    }
+  ]
+}
