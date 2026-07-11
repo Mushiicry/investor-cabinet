@@ -145,7 +145,8 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
       .catch(() => setLoading(false));
   }, []);
 
-  const NOW_TS = Date.now();
+  // Date.now() один раз на маунт через ленивый useState — чистый render.
+  const [NOW_TS] = useState(() => Date.now());
 
   const currentZone = BG_ZONES.find(z =>
     NOW_TS >= new Date(z.from).getTime() && NOW_TS < new Date(z.to).getTime()

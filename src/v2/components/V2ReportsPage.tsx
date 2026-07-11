@@ -44,18 +44,28 @@ function fmtQuantity(value: number) {
   }).format(value);
 }
 
-function transactionTone(action: string) {
-  const normalized = action.toLowerCase();
-  if (normalized.includes("покуп") || normalized.includes("buy")) return "tx-buy";
-  if (normalized.includes("прод") || normalized.includes("sell")) return "tx-sell";
-  if (normalized.includes("перев") || normalized.includes("transfer")) return "tx-transfer";
-  return "tx-reinforce";
-}
-
-// Переводы (transfer) в истории сделок не показываем — это не торговые операции.
 function isTransfer(action: string) {
   const a = (action || "").toLowerCase();
   return a.includes("перев") || a.includes("transfer");
+}
+
+// Входящий перевод (приход) — по полю direction = IN.
+function isIncoming(t: InvestorTransaction) {
+  return (t.direction || "").toUpperCase() === "IN";
+}
+
+// Название действия для строки: приход/перевод для трансферов, иначе как есть.
+function displayAction(t: InvestorTransaction): string {
+  if (isTransfer(t.action)) return isIncoming(t) ? "Приход" : "Перевод";
+  return t.action || t.direction || "—";
+}
+
+function transactionTone(t: InvestorTransaction) {
+  const normalized = (t.action || "").toLowerCase();
+  if (normalized.includes("покуп") || normalized.includes("buy")) return "tx-buy";
+  if (normalized.includes("прод") || normalized.includes("sell")) return "tx-sell";
+  if (isTransfer(t.action)) return isIncoming(t) ? "tx-in" : "tx-transfer";
+  return "tx-reinforce";
 }
 
 // Полностью пустая строка — ни количества, ни суммы, ни цены (служебные
@@ -69,6 +79,27 @@ function isEmptyRow(t: InvestorTransaction) {
 
 function isStaking(action: string) {
   return /стейк|stak/i.test(action || "");
+}
+
+function isSell(action: string) {
+  const a = (action || "").toLowerCase();
+  return a.includes("прод") || a.includes("sell");
+}
+
+// Реализованный PnL с продажи: (цена продажи − средняя цена входа) × количество.
+// avgEntry берём текущий из позиций (приближение — исторические лоты не трекаем;
+// на Arbitrum комиссии <$0.01, поэтому считаем до газа).
+function computeRealizedPnl(
+  t: InvestorTransaction,
+  avgByAsset: Map<string, number>,
+): number | null {
+  if (!isSell(t.action)) return null;
+  const asset = (t.asset || t.rawAsset || "").toUpperCase();
+  const avg = avgByAsset.get(asset);
+  const price = Number(t.price || 0);
+  const qty = Number(t.quantity || t.rawAmount || 0);
+  if (!avg || !price || !qty) return null;
+  return (price - avg) * qty;
 }
 
 // Одна покупка/продажа приходит из двух источников: запись BALANCE_DELT
@@ -151,6 +182,37 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
   const latest = summary.latestPoint;
   const changeTone = summary.portfolioValueChange >= 0 ? "is-pos" : "is-neg";
 
+  // Средняя цена входа по каждому активу — для реализованного PnL с продаж.
+  const avgEntryByAsset = useMemo(() => {
+    const m = new Map<string, number>();
+    positions.forEach((p) => {
+      if (p.avgEntry > 0) {
+        const key = p.asset.toUpperCase();
+        const base = p.asset.replace(/ (LONG|SHORT)$/i, "").toUpperCase();
+        m.set(key, p.avgEntry);
+        if (!m.has(base)) m.set(base, p.avgEntry);
+      }
+    });
+    return m;
+  }, [positions]);
+
+  // Итого зафиксировано с продаж (сумма реализованного PnL по всем сделкам-продажам).
+  const totalRealized = useMemo(() => {
+    const trades = dedupeTrades(
+      transactions.filter((t) => !isTransfer(t.action) && !isEmptyRow(t)),
+    );
+    let sum = 0;
+    let has = false;
+    for (const t of trades) {
+      const r = computeRealizedPnl(t, avgEntryByAsset);
+      if (r != null) {
+        sum += r;
+        has = true;
+      }
+    }
+    return has ? sum : null;
+  }, [transactions, avgEntryByAsset]);
+
   return (
     <section className="v2-reports-page" aria-label="Отчёты">
       <div className="v2-rep-kpi-row">
@@ -176,6 +238,14 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
           <span className="v2-rep-kpi-label">Изменение за период</span>
           <strong className={`v2-rep-kpi-value v2-rep-cell-pnl ${changeTone}`}>
             {summary.pointsCount > 1 ? fmtPct(summary.portfolioValueChangePct) : "—"}
+          </strong>
+        </div>
+        <div className="v2-rep-kpi">
+          <span className="v2-rep-kpi-label" title="Оценка по текущей средней цене входа. Для точного налогового/бухгалтерского учёта нужен лотовый (FIFO) расчёт с учётом комиссий.">
+            Зафиксировано с продаж · <em className="v2-rep-est">оценка</em>
+          </span>
+          <strong className={`v2-rep-kpi-value v2-rep-cell-pnl ${totalRealized != null && totalRealized >= 0 ? "is-pos" : "is-neg"}`}>
+            {totalRealized != null ? `≈ ${signedMoney(totalRealized)}` : "—"}
           </strong>
         </div>
       </div>
@@ -241,6 +311,7 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
                 <span>Количество</span>
                 <span>Цена</span>
                 <span>Сумма</span>
+                <span title="Реализованный PnL — оценка по текущей средней цене входа (без лотового учёта и комиссий)">PnL сделки ≈</span>
                 <span>Сеть</span>
                 <span>Статус</span>
                 <span>Транзакция</span>
@@ -248,8 +319,9 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
 
               <div className="v2-rep-table-body">
                 {(() => {
+                  // Показываем сделки И переводы (приход/расход) — не скрываем трансферы.
                   const tradeTransactions = dedupeTrades(
-                    transactions.filter((t) => !isTransfer(t.action) && !isEmptyRow(t))
+                    transactions.filter((t) => !isEmptyRow(t))
                   );
                   return tradeTransactions.length === 0 ? (
                   <div className="v2-rep-empty">API пока не вернул историю сделок</div>
@@ -260,13 +332,13 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
                   return (
                     <div
                       key={`${transaction.id || transaction.hash}-${index}`}
-                      className={`v2-rep-row ${transactionTone(transaction.action)}`}
+                      className={`v2-rep-row ${transactionTone(transaction)}`}
                       title={details}
                     >
                       <span className="v2-rep-cell-date">{fmtDate(transaction.date)}</span>
                       <span className="v2-rep-cell-asset">{transaction.asset || transaction.rawAsset || "—"}</span>
-                      <span className={`v2-rep-type-chip ${transactionTone(transaction.action)}`}>
-                        {transaction.action || transaction.direction || "—"}
+                      <span className={`v2-rep-type-chip ${transactionTone(transaction)}`}>
+                        {displayAction(transaction)}
                       </span>
                       <span className="v2-rep-cell-price">{fmtQuantity(transaction.quantity || transaction.rawAmount)}</span>
                       <span className="v2-rep-cell-price">
@@ -285,6 +357,18 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
                         })()}
                       </span>
                       <span className="v2-rep-cell-amount">{transaction.amount ? fmtUSD(transaction.amount) : "—"}</span>
+                      {(() => {
+                        const realized = computeRealizedPnl(transaction, avgEntryByAsset);
+                        if (realized == null) return <span className="v2-rep-cell-price">—</span>;
+                        return (
+                          <span
+                            className={`v2-rep-cell-pnl ${realized >= 0 ? "is-pos" : "is-neg"}`}
+                            title="Реализованный PnL: (цена продажи − средняя цена входа) × количество"
+                          >
+                            {signedMoney(realized)}
+                          </span>
+                        );
+                      })()}
                       <span className="v2-rep-cell-fg">{transaction.chain || transaction.walletId || "—"}</span>
                       <span className={`v2-rep-tag ${transaction.status === "APPROVED" ? "is-strategy" : "is-manual"}`}>
                         {transaction.status || "—"}

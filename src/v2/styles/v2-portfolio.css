@@ -27,6 +27,21 @@
   max-width: 1460px;
 }
 
+/* Убираем рамку/фон/свечение панели — таблица сливается с фоном страницы.
+   Специфичность .v2-panel.v2-port-table (0,2,0) перебивает оба .v2-panel. */
+.v2-panel.v2-port-table {
+  background: none;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.v2-port-table::before,
+.v2-port-table::after {
+  display: none;
+}
+
 .v2-pline {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
@@ -38,7 +53,7 @@
   margin-top: 6px;
 }
 
-/* Идентификатор-карта в начале строки */
+/* Идентификатор-карта в начале строки — по умолчанию «зажжённая» подсветка */
 .v2-pid {
   display: grid;
   grid-template-columns: 38px 1fr auto auto;
@@ -47,19 +62,56 @@
   padding: 0 14px;
   min-height: 64px;
   border-radius: 12px;
-  border: 1px solid rgba(45, 120, 255, 0.16);
-  background: linear-gradient(180deg, rgba(13, 26, 46, 0.55), rgba(8, 17, 30, 0.5));
+  border: 1px solid rgba(86, 196, 240, 0.34);
+  background: linear-gradient(180deg, rgba(16, 32, 54, 0.6), rgba(8, 17, 30, 0.5));
+  box-shadow: 0 0 14px rgba(86, 196, 240, 0.07);
   text-align: left;
 }
 
 .v2-pid.is-clickable {
   cursor: pointer;
-  transition: border-color 0.2s ease, background 0.2s ease, transform 0.12s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.12s ease,
+    filter 0.25s ease, opacity 0.25s ease, box-shadow 0.2s ease;
+}
+
+/* При наведении на монету — остальные монеты слегка размываются (фокус) */
+.v2-port-table:has(.v2-pid.is-clickable:hover) .v2-pid.is-clickable:not(:hover) {
+  filter: blur(1.6px);
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+/* ...и цифровые ряды остальных монет тоже размываются — чётким остаётся
+   только ряд наведённой монеты (шапки категорий не трогаем). */
+.v2-port-table:has(.v2-pid.is-clickable:hover)
+  .v2-pline:not(:has(.v2-pid.is-clickable:hover))
+  .v2-port-row:not(.v2-port-group-head) {
+  filter: blur(1.6px);
+  opacity: 0.5;
+}
+
+/* Плашка/панель стейкинга принадлежат GRAM: блюрятся при наведении на любую
+   ДРУГУЮ монету, но остаются чёткими при наведении на саму GRAM. */
+.v2-port-table:has(.v2-pid.is-clickable:hover)
+  .v2-stake-wrap:not(:has(.v2-pid.is-clickable:hover)) .v2-stake-toggle,
+.v2-port-table:has(.v2-pid.is-clickable:hover)
+  .v2-stake-wrap:not(:has(.v2-pid.is-clickable:hover)) .v2-stake-card {
+  filter: blur(1.6px);
+  opacity: 0.5;
+}
+
+/* Контейнер GRAM-группы (строка + стейкинг) — спейсинг как у обычных строк */
+.v2-stake-wrap {
+  margin-top: 6px;
+}
+.v2-stake-wrap + .v2-pline {
+  margin-top: 6px;
 }
 
 .v2-pid.is-clickable:hover {
-  border-color: rgba(86, 196, 240, 0.42);
-  background: rgba(86, 196, 240, 0.08);
+  border-color: rgba(86, 196, 240, 0.6);
+  background: rgba(86, 196, 240, 0.1);
+  box-shadow: 0 0 22px rgba(86, 196, 240, 0.22);
   transform: translateX(2px);
 }
 
@@ -128,14 +180,23 @@
 /* ── Блок внутри строки ── */
 .v2-row-block {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto;
+  grid-template-columns: 1fr 1fr 1fr;
   align-items: center;
   justify-items: center;
-  gap: 1px 10px;
+  gap: 10px;
   padding: 8px 18px;
-  flex: 2;
+  flex: 3;
   border-right: 1px solid rgba(86, 196, 240, 0.1);
+}
+
+/* Шапка группы: сохраняем 2 строки (подпись + значение), у активов — одна строка значений */
+.v2-port-group-head .v2-row-block {
+  grid-template-rows: auto;
+}
+
+/* Последний блок в ряду — без правой границы */
+.v2-port-row .v2-row-block:last-child {
+  border-right: none;
 }
 
 .v2-row-block-last {
@@ -157,7 +218,7 @@
 }
 
 .v2-rb-val {
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 800;
   color: #d6e4ee;
   font-variant-numeric: tabular-nums;
@@ -188,8 +249,9 @@ strong.v2-rb-val {
 }
 
 .v2-port-cat-name {
-  justify-self: start;
-  text-align: left;
+  grid-column: 1 / -1;
+  justify-self: center;
+  text-align: center;
   font-size: 16px;
   font-weight: 950;
   letter-spacing: 0.04em;
@@ -201,7 +263,7 @@ strong.v2-rb-val {
 .v2-port-row:not(.v2-port-group-head) {
   border: 1px solid rgba(45, 120, 255, 0.1);
   background: linear-gradient(180deg, rgba(13, 26, 46, 0.5), rgba(8, 17, 30, 0.46));
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, filter 0.25s ease, opacity 0.25s ease;
 }
 
 .v2-port-row:not(.v2-port-group-head):hover {
@@ -233,6 +295,7 @@ strong.v2-rb-val {
 .v2-port-share {
   color: #7fe3ff;
   font-weight: 900;
+  font-size: 18.5px;
 }
 
 .v2-port-status {
@@ -324,6 +387,7 @@ strong.v2-rb-val {
 .v2-port-srow strong {
   color: #eaf1fb;
   font-weight: 900;
+  font-size: 18.5px;
 }
 
 .v2-port-srow .v2-port-asset {
@@ -446,4 +510,295 @@ strong.v2-rb-val {
   color: #e8b35a;
   border-color: rgba(232, 179, 90, 0.35);
   background: rgba(232, 179, 90, 0.1);
+}
+
+/* Плашка-переключатель под монетой GRAM (раскрывает панель стейкинга) */
+.v2-stake-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 850px;
+  max-width: calc(100% - 336px);
+  /* Левый край ровно к колонке «СР. ВХОД»: 320px карточка + 16px gap */
+  margin: 6px 0 0 336px;
+  padding: 11px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(90, 240, 141, 0.26);
+  background: linear-gradient(180deg, rgba(12, 30, 24, 0.5), rgba(8, 20, 16, 0.46));
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, filter 0.25s ease, opacity 0.25s ease;
+  text-align: left;
+}
+
+.v2-stake-toggle:hover {
+  border-color: rgba(90, 240, 141, 0.45);
+  background: rgba(90, 240, 141, 0.07);
+}
+
+.v2-stake-toggle-icon {
+  font-size: 15px;
+}
+
+.v2-stake-toggle-label {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #b6f0cf;
+}
+
+.v2-stake-toggle-val {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 900;
+  color: #5af08d;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-stake-toggle-chevron {
+  width: 15px;
+  height: 15px;
+  color: rgba(90, 240, 141, 0.7);
+  transition: transform 0.22s ease;
+}
+
+.v2-stake-toggle.is-open .v2-stake-toggle-chevron {
+  transform: rotate(180deg);
+}
+
+/* ═══════════════ Карточка стейкинга (tsTON / Tonstakers) ═══════════════ */
+@keyframes v2-stake-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.v2-stake-card {
+  width: 850px;
+  max-width: calc(100% - 336px);
+  /* Левый край ровно к колонке «СР. ВХОД»: 320px карточка + 16px gap */
+  margin: 8px 0 0 336px;
+  box-sizing: border-box;
+  animation: v2-stake-in 0.25s ease;
+  padding: 18px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(90, 240, 141, 0.22);
+  background: linear-gradient(180deg, rgba(12, 30, 24, 0.55), rgba(8, 20, 16, 0.5));
+  box-shadow: 0 0 18px rgba(90, 240, 141, 0.06);
+}
+
+.v2-stake-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.v2-stake-logo {
+  width: 34px;
+  height: 34px;
+}
+
+.v2-stake-title {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.v2-stake-name {
+  font-size: 15px;
+  font-weight: 900;
+  color: #eaf5ff;
+  letter-spacing: 0.02em;
+}
+
+.v2-stake-sub {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(141, 200, 181, 0.7);
+}
+
+.v2-stake-apy {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(90, 240, 141, 0.32);
+  background: rgba(90, 240, 141, 0.1);
+  font-size: 13px;
+  font-weight: 800;
+  color: #5af08d;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ежедневное начисление — крупный акцент */
+.v2-stake-today {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background: rgba(90, 240, 141, 0.06);
+  border: 1px solid rgba(90, 240, 141, 0.14);
+}
+
+.v2-stake-today-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(180, 210, 195, 0.75);
+}
+
+.v2-stake-today-val {
+  margin-left: auto;
+  font-size: 26px;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-stake-today-ton {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-stake-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.v2-stake-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(86, 196, 240, 0.1);
+  background: rgba(13, 26, 46, 0.4);
+}
+
+.v2-stake-cell-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(141, 167, 181, 0.62);
+}
+
+.v2-stake-cell-val {
+  font-size: 17px;
+  font-weight: 900;
+  color: #eaf1fb;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-stake-cell-sub {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(141, 167, 181, 0.8);
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-stake-card .is-up {
+  color: #5af08d;
+}
+
+.v2-stake-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(160, 185, 200, 0.7);
+}
+
+/* Таймер цикла */
+.v2-stake-timer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  margin-bottom: 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(86, 196, 240, 0.14);
+  background: rgba(13, 26, 46, 0.4);
+}
+
+.v2-stake-timer-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(141, 167, 181, 0.7);
+}
+
+.v2-stake-timer-val {
+  margin-left: auto;
+  font-size: 18px;
+  font-weight: 900;
+  color: #8fd8ef;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+/* Мини-график курса */
+.v2-stake-chart {
+  margin-bottom: 6px;
+}
+
+.v2-stake-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.v2-stake-chart-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(141, 167, 181, 0.72);
+}
+
+.v2-stake-chart-range {
+  font-size: 12px;
+  font-weight: 800;
+  color: #5af08d;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-stake-chart-svg {
+  width: 100%;
+  height: 130px;
+  display: block;
+}
+
+.v2-stake-chart-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(141, 167, 181, 0.55);
+}
+
+/* Бейдж «в стейке» на строке актива */
+.v2-pid-staked {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(90, 240, 141, 0.3);
+  background: rgba(90, 240, 141, 0.1);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #5af08d;
+  vertical-align: middle;
+  white-space: nowrap;
 }

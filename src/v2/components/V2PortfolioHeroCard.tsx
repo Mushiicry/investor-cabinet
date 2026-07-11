@@ -88,7 +88,7 @@ export function V2PortfolioHeroCard({ portfolio }: Props) {
           </span>
           <span className="v2-phc-pnl-sign">{trending ? "+" : "−"}</span>
           <span className="v2-phc-value-currency">$</span>
-          {signedMoney(portfolio.pnlUsd).replace(/^[+\-]?\$/, "")}
+          {signedMoney(portfolio.pnlUsd).replace(/^[+-]?\$/, "")}
         </span>
         <div className="v2-phc-bottom-divider" aria-hidden="true" />
         <span className={`v2-phc-bottom-val ${pnlClass}`}>{signedPct(portfolio.pnlPct)}</span>

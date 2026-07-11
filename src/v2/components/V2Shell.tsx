@@ -15,6 +15,8 @@ import { V2BtcDailyChart } from "./V2BtcDailyChart";
 import { V2TabBar } from "./V2TabBar";
 
 import { V2PortfolioPage } from "./V2PortfolioPage";
+import type { TonStaking } from "../../hooks/useTonStaking";
+import type { CosmosStaking } from "../../hooks/useCosmosStaking";
 import { V2HealthPage } from "./V2HealthPage";
 import { V2Sidebar } from "./V2Sidebar";
 import { V2TopMetrics } from "./V2TopMetrics";
@@ -27,6 +29,14 @@ type Props = {
   onNavigate: (page: V2Page) => void;
   locked?: boolean;
   onOpenAuth: (tab: "signin" | "signup") => void;
+  staking?: TonStaking | null;
+  cosmosStaking?: CosmosStaking | null;
+  dataStatus?: {
+    source: "cache" | "fallback" | "live";
+    status: string;
+    lastLoadedAt: string | null;
+    error: string | null;
+  };
 };
 
 const DESKTOP_DESIGN_WIDTH = 1920;
@@ -50,7 +60,29 @@ function getDesktopViewport() {
   };
 }
 
-export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth }: Props) {
+function DataStatusBadge({ dataStatus }: { dataStatus: NonNullable<Props["dataStatus"]> }) {
+  const { source, status, lastLoadedAt, error } = dataStatus;
+  let tone = "is-live";
+  let label = "LIVE";
+  if (error && source === "fallback") { tone = "is-error"; label = "ERROR"; }
+  else if (status === "stale" || (error && source !== "fallback")) { tone = "is-stale"; label = "STALE"; }
+  else if (source === "cache") { tone = "is-cache"; label = "CACHE"; }
+  else if (source === "fallback") { tone = "is-cache"; label = "DEMO"; }
+
+  const time = lastLoadedAt
+    ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(lastLoadedAt))
+    : null;
+
+  return (
+    <div className={`v2-datastatus ${tone}`} title={error ?? `Источник: ${source} · ${status}`}>
+      <span className="v2-datastatus-dot" />
+      <span className="v2-datastatus-label">{label}</span>
+      {time && <span className="v2-datastatus-time">{time}</span>}
+    </div>
+  );
+}
+
+export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, staking, cosmosStaking, dataStatus }: Props) {
   const { user } = useAuth();
   // Профиль (имя/аватар) храним отдельно на каждый аккаунт — чтобы аватар и имя
   // одного пользователя не показывались другому на том же устройстве.
@@ -62,6 +94,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth }: 
 
   // При смене аккаунта подгружаем его профиль (или пустой у нового пользователя).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- синк профиля из localStorage при смене аккаунта
     setProfileName(localStorage.getItem(nameKey)   ?? "");
     setProfileAvatar(localStorage.getItem(avatarKey) ?? "");
   }, [nameKey, avatarKey]);
@@ -83,7 +116,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth }: 
   }
 
   const criticalCount = useMemo(() => {
-    const { portfolio } = data;
+    const portfolio = data.portfolio;
     let n = 0;
     if (portfolio.totalPortfolioValue > 0 && portfolio.stableReserve < portfolio.totalPortfolioValue * 0.05) n++;
     if (portfolio.totalPortfolioValue > 0 && portfolio.reserveShare < 0.10) n++;
@@ -142,6 +175,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth }: 
         onOpenAuth={onOpenAuth}
       />
       <main className={locked ? "v2-main is-locked" : "v2-main"}>
+        {dataStatus && !locked && <DataStatusBadge dataStatus={dataStatus} />}
         {locked && (
           <div className="v2-lock-hint" aria-hidden="true">
             <span className="v2-lock-hint-icon">🔒</span>
@@ -166,7 +200,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth }: 
         ) : page === "reports" ? (
           <V2ReportsPage history={data.history} transactions={data.transactions} positions={data.positions} />
         ) : page === "portfolio" ? (
-          <V2PortfolioPage positions={data.positions} playbook={data.playbook} />
+          <V2PortfolioPage positions={data.positions} playbook={data.playbook} staking={staking} cosmosStaking={cosmosStaking} />
         ) : page === "scenarios" ? (
           <V2ScenariosPage playbook={data.playbook} positions={data.positions} />
         ) : page === "health" ? (

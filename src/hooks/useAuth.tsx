@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- хук/хелперы намеренно рядом с компонентом (личный инструмент) */
 import {
   createContext,
   useContext,
@@ -8,6 +9,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "../lib/supabaseClient";
+import { clearCachedInvestorState } from "../services/investorDataCache";
 
 type AuthResult = { error: string | null };
 
@@ -79,6 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: error?.message ?? null };
     },
     async signOut() {
+      // Чистим кэш портфеля до выхода — чтобы на общем устройстве
+      // финансовые данные не остались в localStorage.
+      clearCachedInvestorState();
       if (!supabase) return;
       await supabase.auth.signOut();
     },

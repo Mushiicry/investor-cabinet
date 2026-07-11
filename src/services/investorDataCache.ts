@@ -76,3 +76,17 @@ export function writeCachedInvestorState(data: PortfolioState, cachedAt: string,
     // Cache is an optimization only. The live/fallback data path must keep working.
   }
 }
+
+/**
+ * Чистит кэш реальных портфельных данных из localStorage.
+ * Вызывать при logout, чтобы на общем устройстве чужие финансы не оставались.
+ * Дневные снимки/invested-floor не трогаем — это не «сырые» данные аккаунта.
+ */
+export function clearCachedInvestorState() {
+  try {
+    window.localStorage.removeItem(INVESTOR_DATA_CACHE_KEY);
+    window.localStorage.removeItem(WIFE_DATA_CACHE_KEY);
+  } catch {
+    // localStorage недоступен — нечего чистить.
+  }
+}

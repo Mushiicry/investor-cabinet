@@ -468,3 +468,16 @@
 .v2-pac-total-text {
   animation: v2-pac-total-pulse 3.8s ease-in-out infinite;
 }
+
+/* ── Мобильная адаптация доната (без desktop-zoom он должен ужиматься сам) ── */
+@media (max-width: 768px) {
+  .v2-pac-svg {
+    width: min(432px, 78vw);
+    height: min(432px, 78vw);
+  }
+  .v2-pac-chart-col {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
+  }
+}

@@ -5,6 +5,9 @@ import { useAuth } from "../hooks/useAuth";
 import { isFounderEmail, isWifeEmail } from "../lib/supabaseClient";
 import { useInvestorData } from "../hooks/useInvestorData";
 import { useBlockchainBalances } from "../hooks/useBlockchainBalances";
+import { useWifeTransactions } from "../hooks/useWifeTransactions";
+import { useTonStaking, MAIN_TON_ADDRESS } from "../hooks/useTonStaking";
+import { useCosmosStaking, MAIN_COSMOS_ADDRESS } from "../hooks/useCosmosStaking";
 import { applyBlockchainOverride } from "../lib/applyBlockchainOverride";
 import { useFearGreed } from "../hooks/useFearGreed";
 import { useHyperliquidLeverage } from "../hooks/useHyperliquidLeverage";
@@ -16,7 +19,7 @@ import type { PortfolioHealth } from "../lib/portfolioHealth";
 import { buildPlaybookCards } from "../lib/playbookSelectors";
 import type { PlaybookCard } from "../lib/playbookSelectors";
 import { rawPositions, decisionsData, scenariosData } from "../mocks/portfolioData";
-import { mergeWithLocalSnapshots } from "../services/dailySnapshotService";
+import { mergeWithLocalSnapshots, maybeRecordSnapshot } from "../services/dailySnapshotService";
 import type { PortfolioState } from "../types/portfolio";
 import "./v2.css";
 
@@ -417,6 +420,7 @@ export default function InvestorCabinetV2Lab() {
     wife ? "wife" : undefined
   );
   const blockchain = useBlockchainBalances(wife);
+  const blockchainTxs = useWifeTransactions(wife);
   const fearGreedLive = useFearGreed();
   const hlAddress = import.meta.env.VITE_HL_ADDRESS as string | undefined;
   const hlLeverage = useHyperliquidLeverage(hlAddress);
@@ -427,6 +431,21 @@ export default function InvestorCabinetV2Lab() {
     [wife, blockchain, investorData.data]
   );
 
+  // Wife snapshot: taken here so USDT from blockchain is included in reserve/portfolioValue
+  useEffect(() => {
+    if (!wife || investorData.status !== "ready" || !portfolioData.overview.portfolioValue) return;
+    const nonStable = portfolioData.portfolio.filter(
+      (p) => p.category !== "Свободные деньги"
+    );
+    maybeRecordSnapshot({
+      portfolioValue: portfolioData.overview.portfolioValue,
+      invested:       portfolioData.overview.invested,
+      reserve:        portfolioData.overview.reserve,
+      positionsCount: nonStable.length,
+      slot:           "wife",
+    });
+  }, [wife, portfolioData, investorData.status]);
+
   const liveBase = useMemo(
     () => buildLiveV2Data(portfolioData, hlLeverage.leverage, wife ? "wife" : "main"),
     [portfolioData, hlLeverage.leverage, wife]
@@ -436,6 +455,11 @@ export default function InvestorCabinetV2Lab() {
   // Личный портфель: владелец — реальные данные, жена — свои реальные данные, остальные — нули.
   const founder = isFounderEmail(user?.email);
   const base = !configured || founder || wife ? liveBase : zeroedBase;
+
+  // Стейкинг TON (tsTON) — только для главного аккаунта (владелец/демо), не для жены.
+  const staking = useTonStaking(MAIN_TON_ADDRESS, !wife && (founder || !configured));
+  // Стейкинг ATOM (Cosmos Hub нативный) — тот же гейт.
+  const cosmosStaking = useCosmosStaking(MAIN_COSMOS_ADDRESS, !wife && (founder || !configured));
 
   // Рыночный Fear & Greed всегда живой (реальный BTC-график, реальный индекс) —
   // даже у пустого аккаунта до подключения кошельков. Личный портфель при этом нули:
@@ -463,16 +487,30 @@ export default function InvestorCabinetV2Lab() {
     };
   }, [base, fearGreedLive.status, fearGreedLive.data.value, fearGreedLive.liveHistory]);
 
+  // Для аккаунта жены: вшиваем blockchain-транзакции поверх API (Google Sheets пустой).
+  // Дедупликация по id — API-запись побеждает при совпадении.
+  const finalData = useMemo(() => {
+    if (!wife || blockchainTxs.length === 0) return data;
+    const apiIds = new Set(data.transactions.map((t) => t.id));
+    const uniqueBlockchain = blockchainTxs.filter((t) => !apiIds.has(t.id));
+    const merged = [...data.transactions, ...uniqueBlockchain].sort(
+      (a, b) => Date.parse(b.date) - Date.parse(a.date)
+    );
+    return { ...data, transactions: merged };
+  }, [wife, data, blockchainTxs]);
+
   // Гейт: авторизация настроена и пользователь не вошёл → дашборд заблокирован.
   const locked = configured && !user;
 
   // Автооткрытие окна входа, когда дашборд под замком.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- реакция на смену auth-состояния
     if (locked) setAuthOpen(true);
   }, [locked]);
 
   // После успешного входа окно закрываем.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- реакция на смену auth-состояния
     if (user) setAuthOpen(false);
   }, [user]);
 
@@ -484,11 +522,19 @@ export default function InvestorCabinetV2Lab() {
   return (
     <>
       <V2Shell
-        data={data}
+        data={finalData}
         page={page}
         onNavigate={setPage}
         locked={locked}
         onOpenAuth={openAuth}
+        staking={staking}
+        cosmosStaking={cosmosStaking}
+        dataStatus={{
+          source: investorData.source,
+          status: investorData.status,
+          lastLoadedAt: investorData.lastLoadedAt,
+          error: investorData.error,
+        }}
       />
       {authOpen && (
         <V2AuthModal initialTab={authTab} onClose={() => setAuthOpen(false)} />

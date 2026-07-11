@@ -101,8 +101,10 @@ export function maybeRecordSnapshot(params: {
   const todayKey = dateKey(today);
   const existing = readAll(slot);
 
-  // Already have today's snapshot — skip
-  if (existing.some(s => dateKey(s.date) === todayKey)) return;
+  // Already have today's snapshot — skip unless it was recorded with bad data (reserve=0)
+  const todayIdx = existing.findIndex(s => dateKey(s.date) === todayKey);
+  if (todayIdx >= 0 && existing[todayIdx].reserve > 0) return;
+  // If today's snapshot has reserve=0, overwrite with correct data below
 
   const invested = params.invested;
   const pnl = params.portfolioValue - invested;
@@ -123,7 +125,11 @@ export function maybeRecordSnapshot(params: {
     comment: "",
   };
 
-  const updated = [...existing, snapshot]
+  // Replace bad today snapshot or append new one
+  const base = todayIdx >= 0
+    ? existing.map((s, i) => (i === todayIdx ? snapshot : s))
+    : [...existing, snapshot];
+  const updated = base
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
     .slice(-MAX_SNAPSHOTS);
 
