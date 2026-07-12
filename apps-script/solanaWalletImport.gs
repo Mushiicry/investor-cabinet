@@ -6,6 +6,11 @@ var IC_SOLANA_DEFAULT_WALLET_ID = 'phantom-solana-main';
 var IC_SOLANA_DEFAULT_CHAIN = 'SOLANA';
 var IC_SOLANA_DEFAULT_ADDRESS = 'E5dwGSC3DKKh4A1Hdpb2BXvcSpoWrfyWWicXq8h1Sus9';
 var IC_SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com';
+var IC_SOLANA_RPC_URLS = [
+  IC_SOLANA_RPC_URL,
+  'https://solana-rpc.publicnode.com',
+  'https://solana.drpc.org'
+];
 var IC_SOLANA_USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 var IC_SOLANA_CHAIN_ID = 101;
 var IC_SOLANA_RECENT_TRANSACTION_LIMIT = 25;
@@ -478,27 +483,65 @@ function IC_SOLANA_fetchSplTokenBalance_(address, mint) {
 }
 
 function IC_SOLANA_rpcCall_(method, params) {
-  var response = UrlFetchApp.fetch(IC_SOLANA_RPC_URL, {
-    method: 'post',
-    contentType: 'application/json',
-    muteHttpExceptions: true,
-    payload: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: method,
-      params: params
-    })
+  var payload = JSON.stringify({
+    jsonrpc: '2.0',
+    id: 1,
+    method: method,
+    params: params
   });
+  var errors = [];
 
-  var statusCode = response.getResponseCode();
-  if (statusCode < 200 || statusCode >= 300) {
-    throw new Error('Solana RPC request failed: ' + statusCode + ' ' + response.getContentText());
+  for (var urlIndex = 0; urlIndex < IC_SOLANA_RPC_URLS.length; urlIndex += 1) {
+    var rpcUrl = IC_SOLANA_RPC_URLS[urlIndex];
+
+    for (var attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        var response = UrlFetchApp.fetch(rpcUrl, {
+          method: 'post',
+          contentType: 'application/json',
+          muteHttpExceptions: true,
+          payload: payload
+        });
+
+        var statusCode = response.getResponseCode();
+        var responseText = response.getContentText();
+        if (statusCode < 200 || statusCode >= 300) {
+          errors.push(rpcUrl + ' HTTP ' + statusCode + ' ' + responseText);
+          if (IC_SOLANA_isRetryableRpcStatus_(statusCode)) {
+            Utilities.sleep(350 * attempt);
+            continue;
+          }
+          break;
+        }
+
+        var json = JSON.parse(responseText);
+        if (json.error) {
+          errors.push(rpcUrl + ' RPC ' + JSON.stringify(json.error));
+          if (IC_SOLANA_isRetryableRpcError_(json.error)) {
+            Utilities.sleep(350 * attempt);
+            continue;
+          }
+          break;
+        }
+
+        return json.result;
+      } catch (error) {
+        errors.push(rpcUrl + ' ' + (error && error.message ? error.message : String(error)));
+        Utilities.sleep(350 * attempt);
+      }
+    }
   }
 
-  var json = JSON.parse(response.getContentText());
-  if (json.error) throw new Error('Solana RPC error: ' + JSON.stringify(json.error));
+  throw new Error('Solana RPC request failed for ' + method + ': ' + errors.join(' | '));
+}
 
-  return json.result;
+function IC_SOLANA_isRetryableRpcStatus_(statusCode) {
+  return statusCode === 408 || statusCode === 409 || statusCode === 425 || statusCode === 429 || statusCode >= 500;
+}
+
+function IC_SOLANA_isRetryableRpcError_(error) {
+  var code = error && Number(error.code);
+  return code === 429 || code === -32005 || code === -32016 || code === -32603;
 }
 
 function IC_SOLANA_readBalanceTotals_(sheet) {
