@@ -1,6 +1,6 @@
 # API CONTRACT TEST PLAN
 
-Status: initial test harness implemented  
+Status: contract and accounting test harness implemented
 Scope: tests/fixtures only, no active V2 UI/hook edits  
 Reference fixture: `docs/api-fixtures/investor-live-shape-2026-07-11.json`
 
@@ -28,7 +28,7 @@ Checked on 2026-07-11:
 - Direct investor Apps Script returned the same response size and same root keys.
 - `https://investor-cabinet.vercel.app/api/fear-greed` returned `200` quickly.
 - `https://investor-cabinet.vercel.app/api/investor-wife` returned `200`, but the payload still contains `_chain._errors`.
-- local and production wife routes still point to different Apps Script deployment IDs.
+- local and production wife routes had pointed to different Apps Script deployment IDs; this was fixed in the follow-up config/proxy work.
 
 Important:
 the fixture stores shape only. It does not store private portfolio values.
@@ -159,5 +159,5 @@ A future test patch is acceptable only if:
 - it does not require live private data in repo fixtures;
 - fixtures are sanitized;
 - `npm run build` passes;
-- `npm run lint` either passes or fails only on pre-existing Claude-active files;
+- `npm run lint` passes;
 - `npm audit --omit=dev` remains clean.
