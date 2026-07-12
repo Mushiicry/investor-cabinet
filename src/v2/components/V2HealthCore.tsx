@@ -1,5 +1,6 @@
 import type { V2Portfolio, V2Page } from "../InvestorCabinetV2Lab";
 import type { HealthComponent, PortfolioHealth } from "../../lib/portfolioHealth";
+import { isEmptyAccount } from "../lib/accountState";
 
 const CX = 140, CY = 140;
 const RADAR_R = 118;
@@ -195,7 +196,7 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
 
   // Пустой аккаунт (кошельки ещё не подключены): диагноз/рекомендации не про
   // «риск портфеля», а призыв подключить кошельки.
-  const isEmpty = portfolio.totalPortfolioValue <= 0;
+  const isEmpty = isEmptyAccount(portfolio);
 
   const valuePts = components
     .map((c, i) => {

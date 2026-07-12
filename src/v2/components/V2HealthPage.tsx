@@ -2,6 +2,7 @@ import type { PortfolioHealth, HealthComponent } from "../../lib/portfolioHealth
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
 import { useState } from "react";
 import { V2HealthDetailModal } from "./V2HealthDetailModal";
+import { isEmptyAccount } from "../lib/accountState";
 
 type Props = {
   portfolio: V2Portfolio;
@@ -177,7 +178,7 @@ export function V2HealthPage({ portfolio, health }: Props) {
   // Пустой/кастдев-аккаунт (кошельки не подключены): 0 — это отсутствие данных,
   // а не «критическое состояние». Показываем спокойный «нет данных» вместо
   // тревожного диагноза и рецептов. Реальный аккаунт (value > 0) не затрагивается.
-  const isEmpty = portfolio.totalPortfolioValue <= 0;
+  const isEmpty = isEmptyAccount(portfolio);
   const interp = isEmpty
     ? { text: "Кошельки не подключены", sub: "Подключите источники данных — оценка здоровья появится автоматически", color: EMPTY_TONE }
     : interpretation(hf);

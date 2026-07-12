@@ -6,6 +6,7 @@ import {
 } from "../../config/riskRules";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
+import { isEmptyAccount } from "../lib/accountState";
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -31,7 +32,7 @@ function computeAlerts(
 
   // Пустой аккаунт (кошельки ещё не подключены): нули — это не «критичный риск»,
   // а отсутствие данных. Не генерим тревожные сигналы для пустого портфеля.
-  if (portfolio.totalPortfolioValue <= 0) {
+  if (isEmptyAccount(portfolio)) {
     return alerts;
   }
 
@@ -196,7 +197,7 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
 
       {/* ── Тревоги ───────────────────────────────────────── */}
       <div className="v2-alerts-row">
-        {portfolio.totalPortfolioValue <= 0 ? (
+        {isEmptyAccount(portfolio) ? (
           <div className="v2-alert-card level-info">
             <div className="v2-alert-level">НЕТ ДАННЫХ</div>
             <div className="v2-alert-title">Кошельки не подключены</div>
