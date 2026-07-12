@@ -278,22 +278,30 @@ function syncCosmosWalletTransactions() {
   var importSheet = ss.getSheetByName(IC_COSMOS_IMPORT_SHEET);
   if (!importSheet) throw new Error('Missing sheet: ' + IC_COSMOS_IMPORT_SHEET);
 
+  // Полный ре-синк: сносим прежние COSMOS-строки (в т.ч. битые полу-записи,
+  // оставшиеся от ошибки валидации), затем импортируем заново начисто.
+  IC_COSMOS_purgeCosmosImportRows_(importSheet);
+
   var wallets = IC_COSMOS_readWalletConfig_(walletSheet);
-  var existing = IC_COSMOS_readExistingImportIds_(importSheet);
+  var seen = {};
   var toAppend = [];
 
   wallets.forEach(function(wallet) {
     if (wallet.chain !== IC_COSMOS_DEFAULT_CHAIN || wallet.status !== 'ACTIVE') return;
     IC_COSMOS_fetchTransferTxs_(wallet).forEach(function(tx) {
-      if (existing[tx.importId]) return;
-      existing[tx.importId] = true;
+      if (seen[tx.importId]) return;
+      seen[tx.importId] = true;
       toAppend.push(IC_COSMOS_toImportRow_(tx));
     });
   });
 
   if (toAppend.length) {
     var start = importSheet.getLastRow() + 1;
-    importSheet.getRange(start, 1, toAppend.length, toAppend[0].length).setValues(toAppend);
+    var range = importSheet.getRange(start, 1, toAppend.length, toAppend[0].length);
+    // Снимаем data-validation с новых строк: колонка Chain (L) ограничена списком
+    // TON/ARB/SOLANA и отклоняет 'COSMOS'. Для сырого импорта валидация не нужна.
+    range.clearDataValidations();
+    range.setValues(toAppend);
   }
   Logger.log('Cosmos tx import: +' + toAppend.length + ' транзакций');
   return toAppend.length;
@@ -305,6 +313,19 @@ function installCosmosWalletTxTrigger() {
   });
   ScriptApp.newTrigger('syncCosmosWalletTransactions').timeBased().everyHours(1).create();
   Logger.log('Триггер syncCosmosWalletTransactions установлен — каждый час');
+}
+
+// Удаляет все прежние COSMOS-строки (importId начинается с 'COSMOS:'),
+// включая битые полу-записи. Идём снизу вверх, чтобы не сбить индексы.
+function IC_COSMOS_purgeCosmosImportRows_(sheet) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  var ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  for (var i = ids.length - 1; i >= 0; i--) {
+    if (String(ids[i][0] || '').indexOf('COSMOS:') === 0) {
+      sheet.deleteRow(i + 2);
+    }
+  }
 }
 
 function IC_COSMOS_readExistingImportIds_(sheet) {

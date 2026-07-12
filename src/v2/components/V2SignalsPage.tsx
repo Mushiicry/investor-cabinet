@@ -29,6 +29,12 @@ function computeAlerts(
 ): Alert[] {
   const alerts: Alert[] = [];
 
+  // Пустой аккаунт (кошельки ещё не подключены): нули — это не «критичный риск»,
+  // а отсутствие данных. Не генерим тревожные сигналы для пустого портфеля.
+  if (portfolio.totalPortfolioValue <= 0) {
+    return alerts;
+  }
+
   // 1. Резерв
   const reservePct = portfolio.reserveShare * 100;
   if (portfolio.stableReserve < portfolio.totalPortfolioValue * 0.05) {
@@ -190,7 +196,13 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
 
       {/* ── Тревоги ───────────────────────────────────────── */}
       <div className="v2-alerts-row">
-        {alerts.length === 0 ? (
+        {portfolio.totalPortfolioValue <= 0 ? (
+          <div className="v2-alert-card level-info">
+            <div className="v2-alert-level">НЕТ ДАННЫХ</div>
+            <div className="v2-alert-title">Кошельки не подключены</div>
+            <div className="v2-alert-detail">Подключите источники данных — сигналы появятся автоматически</div>
+          </div>
+        ) : alerts.length === 0 ? (
           <div className="v2-alert-card level-ok">
             <div className="v2-alert-level">ВСЁ В НОРМЕ</div>
             <div className="v2-alert-title">Нет активных тревог</div>
