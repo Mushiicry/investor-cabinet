@@ -49,8 +49,10 @@ one file, one agent at a time. Codex does not edit Claude-active `src/`, Apps Sc
 | C-07 | P1 | Vitest finance/accounting tests | Codex | done | `test/contracts/*.test.ts` |
 | C-08 | P1 | Dependency audit/fix plan | Codex | done | `package-lock.json` only |
 | C-09 | P1 | Local/prod wife URL verification | Codex | done | `vite.config.ts` aligned to production wife deployment ID |
-| C-10 | P2 | `clasp logs` / GCP log access verification | Codex + User | blocked | GCP project ID must be linked to Apps Script |
+| C-10 | P2 | `clasp logs` / GCP log access verification | Codex + User | done | Apps Script linked to GCP project `shaped-buttress-448017-g2`; `npx clasp logs --json` works |
 | C-11 | P0 | Vercel serverless auth proxy for investor APIs | Codex | done | `api/`, `src/api/investor.ts`, `vercel.json`, `test/contracts/investorProxy.test.ts` |
+| C-12 | P2 | Replace stale daily snapshot trigger | User + Codex | done | removed missing `recordDailySnapshot` trigger; installed `syncInvestorCabinetDailySnapshot` |
+| C-13 | P2 | Install hourly Cosmos transaction trigger | User + Codex | done | `syncCosmosWalletTransactions` time trigger installed; manual run imported 11 tx rows |
 
 ---
 
@@ -97,8 +99,8 @@ Live sheet check confirmed:
 
 1. Keep contract tests green while Claude continues UI/frontend work.
 2. Add deeper accounting tests only after accounting reducer/helper implementation exists.
-3. Re-check wife API after Apps Script authorization/redeploy.
-4. Re-check `clasp logs` after GCP project ID is linked to Apps Script.
+3. Add shared-secret protection for direct Apps Script URLs when ready.
+4. Keep Solana RPC fallback work delegated to Claude until that branch/deploy is finished.
 
 ---
 
@@ -176,3 +178,14 @@ Additional contract coverage:
 - `npm run build`: passed.
 - `npm audit --omit=dev`: passed with 0 vulnerabilities.
 - `npx clasp logs --json`: still blocked with `GCP project ID is not set`.
+
+## 2026-07-12
+
+Ops verification refresh:
+- Apps Script GCP project is linked to `shaped-buttress-448017-g2`.
+- `npx clasp logs --json`: works and returns Cloud Logging entries.
+- wife Apps Script was authorized/redeployed by the user; Vercel env was updated and production redeployed.
+- stale `recordDailySnapshot` trigger failed with `Script function not found: recordDailySnapshot`.
+- stale trigger was removed and replaced with `syncInvestorCabinetDailySnapshot`.
+- `syncCosmosWalletTransactions` hourly trigger was installed; manual run logged `Cosmos tx import: +11 транзакций`.
+- Remaining P0 security gap: direct Apps Script URLs should still be protected by shared secret/rotation.

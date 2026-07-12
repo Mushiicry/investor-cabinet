@@ -97,6 +97,12 @@ Required Vercel env:
 - `INVESTOR_APPS_SCRIPT_URL` recommended;
 - `WIFE_APPS_SCRIPT_URL` recommended.
 
+Planned hardening:
+- add server-only shared secret env in Vercel;
+- Vercel proxy appends the secret to Apps Script upstream requests;
+- Apps Script rejects requests with missing/invalid secret before returning portfolio JSON;
+- rotate Apps Script deployments after secret protection is live, so old public URLs are no longer useful.
+
 ## Google Sheets
 
 Rules:
