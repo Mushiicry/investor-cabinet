@@ -1,6 +1,6 @@
 # CODEX TRACKER 2026-07-11
 
-Status: current through 2026-07-12 ops refresh
+Status: current through 2026-07-13 canonical frontend/apps-script merge
 Scope: Codex-owned isolated audit/fix track  
 Product mode: personal investor operating system, no SaaS/marketing expansion
 
@@ -53,6 +53,8 @@ one file, one agent at a time. Codex does not edit Claude-active `src/`, Apps Sc
 | C-11 | P0 | Vercel serverless auth proxy for investor APIs | Codex | done | `api/`, `src/api/investor.ts`, `vercel.json`, `test/contracts/investorProxy.test.ts` |
 | C-12 | P2 | Replace stale daily snapshot trigger | User + Codex | done | removed missing `recordDailySnapshot` trigger; installed `syncInvestorCabinetDailySnapshot` |
 | C-13 | P2 | Install hourly Cosmos transaction trigger | User + Codex | done | `syncCosmosWalletTransactions` time trigger installed; manual run imported 11 tx rows |
+| C-14 | P1 | Merge canonical frontend/apps-script checkpoint | Claude + User | done | `claude/frontend-appscript-checkpoint-2026-07-12` merged as PR #4 |
+| C-15 | P2 | Close duplicate Codex branches covered by canonical/main | Codex | done | `codex/solana-rpc-fallback-2026-07-11`, `codex/frontend-cosmos-checkpoint-2026-07-11`, `codex/vercel-api-runtime-hotfix-2026-07-11` |
 
 ---
 
@@ -100,7 +102,7 @@ Live sheet check confirmed:
 1. Keep contract tests green while Claude continues UI/frontend work.
 2. Add deeper accounting tests only after accounting reducer/helper implementation exists.
 3. Add shared-secret protection for direct Apps Script URLs when ready.
-4. Keep Solana RPC fallback work delegated to Claude until that branch/deploy is finished.
+4. Do not start parallel `src/v2` segmentation work; Claude owns `claude/segmentation-empty-account-2026-07-13`.
 
 ---
 
@@ -189,3 +191,21 @@ Ops verification refresh:
 - stale trigger was removed and replaced with `syncInvestorCabinetDailySnapshot`.
 - `syncCosmosWalletTransactions` hourly trigger was installed; manual run logged `Cosmos tx import: +11 транзакций`.
 - Remaining P0 security gap: direct Apps Script URLs should still be protected by shared secret/rotation.
+
+## 2026-07-13
+
+Canonical frontend/apps-script merge:
+- `claude/frontend-appscript-checkpoint-2026-07-12` is the canonical source for Signals empty-state, Cosmos self-heal, Solana RPC failover and neutral empty-state work in Risk/Health/allocation/top metrics.
+- Canonical branch was merged to `main` as PR #4.
+- Solana Apps Script changes were pushed with `clasp push` by Claude/user flow.
+- Apps Script deployment URL was not changed during that push.
+- Duplicate Codex branches were not merged because they are covered by canonical/main:
+  - `codex/solana-rpc-fallback-2026-07-11`;
+  - `codex/frontend-cosmos-checkpoint-2026-07-11`;
+  - `codex/vercel-api-runtime-hotfix-2026-07-11`.
+
+Post-merge verification:
+- `npm run test`: passed, 24 tests across 6 files.
+- `npm run lint`: passed.
+- `npm run build`: passed on Vite 8.1.4.
+- `npm audit --omit=dev`: passed with 0 vulnerabilities.
