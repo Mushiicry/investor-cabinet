@@ -48,7 +48,16 @@ function scoreColor(score: number) {
   return "#f87171";
 }
 
+// Нейтральный «нет данных» тон для пустого аккаунта — вместо тревожного красного.
+const EMPTY_TONE = "rgba(150, 170, 190, 0.5)";
+
 export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props) {
+  // Пустой/кастдев-аккаунт (кошельки не подключены): нули — это отсутствие данных,
+  // а не критический риск. Гасим красные тона и флаги, геометрию сохраняем.
+  // Реальный аккаунт (value > 0) идёт по прежней risk-логике без изменений.
+  const isEmpty = portfolio.totalPortfolioValue <= 0;
+  const toneColor = (v: number) => (isEmpty ? EMPTY_TONE : scoreColor(v));
+
   const reservePct = portfolio.reserveShare * 100;
   const reserveTarget = 30;
   const reserveDelta = reservePct - reserveTarget;
@@ -63,9 +72,9 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
           <p className="v2-re-subtitle">Системный контроль рисков портфеля</p>
         </div>
         <div className="v2-re-hero-scores">
-          <div className={`v2-re-hf-badge ${statusClass(health.healthFactor)}`}>
+          <div className={`v2-re-hf-badge ${isEmpty ? "re-status-empty" : statusClass(health.healthFactor)}`}>
             <span className="v2-re-hf-num">{health.healthFactor}</span>
-            <span className="v2-re-hf-label">{health.riskLevel}</span>
+            <span className="v2-re-hf-label">{isEmpty ? "Нет данных" : health.riskLevel}</span>
           </div>
           <div className="v2-re-signal-row">
             <span className="v2-re-sig-chip">{portfolio.exposureMode}</span>
@@ -89,13 +98,13 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
                 <div key={c.key} className="v2-re-comp-row">
                   <div className="v2-re-comp-meta">
                     <span className="v2-re-comp-label">{c.label}</span>
-                    <span className="v2-re-comp-score" style={{ color: scoreColor(c.score) }}>
+                    <span className="v2-re-comp-score" style={{ color: toneColor(c.score) }}>
                       {c.score}
                     </span>
                   </div>
                   <div className="v2-re-comp-bar-wrap">
                     <div
-                      className={`v2-re-comp-bar-fill ${c.score >= 75 ? "is-good" : c.score >= 50 ? "is-mid" : "is-low"}`}
+                      className={`v2-re-comp-bar-fill ${isEmpty ? "is-empty" : c.score >= 75 ? "is-good" : c.score >= 50 ? "is-mid" : "is-low"}`}
                       style={{ width: `${c.score}%` }}
                     />
                   </div>
@@ -115,8 +124,9 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
               {allocation.map((item) => {
                 const rule = ALLOC_LIMITS[item.name];
                 const exposureShare = item.name === "Фьючерсы" ? risk.futuresShare : item.share;
-                const over = rule && exposureShare > rule.limit;
-                const under = rule?.dir === "below" && exposureShare < rule.limit;
+                // Пустой аккаунт: доли по нулям — не считаем это нарушением лимитов.
+                const over = !isEmpty && rule && exposureShare > rule.limit;
+                const under = !isEmpty && rule?.dir === "below" && exposureShare < rule.limit;
                 const flagClass = over ? "re-flag-over" : under ? "re-flag-under" : "re-flag-ok";
                 const flagLabel = over ? "ВЫШЕ" : under ? "НИЖЕ" : "OK";
 
@@ -124,7 +134,7 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
                   <div key={item.name} className="v2-re-alloc-row">
                     <div className="v2-re-alloc-name">
                       <span>{item.name}</span>
-                      {rule && (
+                      {rule && !isEmpty && (
                         <span className={`v2-re-flag ${flagClass}`}>{flagLabel}</span>
                       )}
                     </div>
@@ -168,8 +178,8 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
             </div>
             <div className="v2-re-reserve-hero">
               <span className="v2-re-reserve-pct">{reservePct.toFixed(1)}%</span>
-              <span className={`v2-re-reserve-delta ${reserveStatus === "above" ? "is-pos" : "is-neg"}`}>
-                {reserveDelta >= 0 ? "+" : ""}{reserveDelta.toFixed(1)}% от цели
+              <span className={`v2-re-reserve-delta ${isEmpty ? "is-empty" : reserveStatus === "above" ? "is-pos" : "is-neg"}`}>
+                {isEmpty ? "нет данных" : `${reserveDelta >= 0 ? "+" : ""}${reserveDelta.toFixed(1)}% от цели`}
               </span>
             </div>
             <div className="v2-re-reserve-bar-wrap">
@@ -254,10 +264,10 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
                   <div className="v2-re-mini-bar-wrap">
                     <div
                       className="v2-re-mini-bar-fill"
-                      style={{ width: `${m.value}%`, background: scoreColor(m.value) }}
+                      style={{ width: `${m.value}%`, background: toneColor(m.value) }}
                     />
                   </div>
-                  <span className="v2-re-radar-val" style={{ color: scoreColor(m.value) }}>
+                  <span className="v2-re-radar-val" style={{ color: toneColor(m.value) }}>
                     {m.value}
                   </span>
                 </div>
