@@ -143,6 +143,9 @@ type Props = { allocation: AllocItem[]; total: number };
 
 export function V2PortfolioAllocationCard({ allocation, total }: Props) {
   const [hoveredName, setHoveredName] = useState<string | null>(null);
+  // Пустой аккаунт (кошельки не подключены): доли по нулям — не считаем это
+  // нарушением лимитов, не показываем тревожные бейджи ВЫШЕ/НИЖЕ.
+  const isEmpty = total <= 0;
   const sorted = [...allocation].sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
   const segs   = buildSegs(sorted);
   const faceFront = frontFaces(segs);
@@ -179,7 +182,7 @@ export function V2PortfolioAllocationCard({ allocation, total }: Props) {
         <div className="v2-pac-list">
           {sorted.map((item, idx) => {
             const cfg = CFG[item.name] ?? { glyph: "•", color: "#6f86a6", iconColor: "#7fd8ff", glow: "rgba(111,134,166,0.4)", limit: null, limitKind: "none" as LimitKind, limitLabel: "" };
-            const st  = statusOf(item.share, cfg.limit, cfg.limitKind);
+            const st  = isEmpty ? null : statusOf(item.share, cfg.limit, cfg.limitKind);
             const bar = Math.min(100, item.share * 100);
             const lim = cfg.limit ? cfg.limit * 100 : null;
             return (

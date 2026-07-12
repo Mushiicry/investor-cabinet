@@ -91,7 +91,7 @@ export function V2TopMetrics({ portfolio, capitalOpen = false, onToggleCapital }
               aria-expanded={capitalOpen}
               title="Показать торговый капитал"
             >
-              <MoneyValue value={portfolio.stableReserve} className={portfolio.stableReserve > 0 ? "" : "top-metric-value-negative"} />
+              <MoneyValue value={portfolio.stableReserve} className={portfolio.stableReserve > 0 || portfolio.totalPortfolioValue <= 0 ? "" : "top-metric-value-negative"} />
               <svg className="v2-free-toggle-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

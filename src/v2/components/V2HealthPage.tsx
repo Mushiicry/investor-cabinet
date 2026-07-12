@@ -152,8 +152,8 @@ function ScoreRing({ value, color }: { value: number; color: string }) {
 }
 
 // ── Breakdown row ─────────────────────────────────────────────
-function BreakdownRow({ c, onClick }: { c: HealthComponent; onClick: () => void }) {
-  const color = scoreColor(c.score);
+function BreakdownRow({ c, onClick, empty }: { c: HealthComponent; onClick: () => void; empty?: boolean }) {
+  const color = empty ? EMPTY_TONE : scoreColor(c.score);
   return (
     <button className="v2-hp-brow" type="button" onClick={onClick}>
       <span className="v2-hp-brow-label">{c.label}</span>
@@ -167,13 +167,24 @@ function BreakdownRow({ c, onClick }: { c: HealthComponent; onClick: () => void 
 }
 
 // ── Main ──────────────────────────────────────────────────────
+// Нейтральный тон для пустого аккаунта — спокойный info-голубой, не тревожный красный.
+const EMPTY_TONE = "#55C7FF";
+
 export function V2HealthPage({ portfolio, health }: Props) {
   const [modal, setModal]   = useState<HealthComponent | null>(null);
   const [simOpen, setSimOpen] = useState(false);
   const hf = health.healthFactor;
-  const interp = interpretation(hf);
-  const { weak, strong } = richDiagnosis(health.components, portfolio);
-  const prescriptions = buildPrescriptions(health.components, portfolio);
+  // Пустой/кастдев-аккаунт (кошельки не подключены): 0 — это отсутствие данных,
+  // а не «критическое состояние». Показываем спокойный «нет данных» вместо
+  // тревожного диагноза и рецептов. Реальный аккаунт (value > 0) не затрагивается.
+  const isEmpty = portfolio.totalPortfolioValue <= 0;
+  const interp = isEmpty
+    ? { text: "Кошельки не подключены", sub: "Подключите источники данных — оценка здоровья появится автоматически", color: EMPTY_TONE }
+    : interpretation(hf);
+  const { weak, strong } = isEmpty
+    ? { weak: [] as DiagItem[], strong: [] as DiagItem[] }
+    : richDiagnosis(health.components, portfolio);
+  const prescriptions = isEmpty ? [] : buildPrescriptions(health.components, portfolio);
   const sortedComponents = [...health.components].sort((a, b) => a.score - b.score);
 
   return (
@@ -238,10 +249,17 @@ export function V2HealthPage({ portfolio, health }: Props) {
           )}
 
           {strong.length === 0 && weak.length === 0 && (
-            <div className="v2-hp-diag-row v2-hp-diag-row--ok">
-              <span className="v2-hp-diag-icon">✓</span>
-              <span>Все показатели в норме</span>
-            </div>
+            isEmpty ? (
+              <div className="v2-hp-diag-row">
+                <span className="v2-hp-diag-icon">—</span>
+                <span>Нет данных — подключите кошельки, диагноз появится автоматически</span>
+              </div>
+            ) : (
+              <div className="v2-hp-diag-row v2-hp-diag-row--ok">
+                <span className="v2-hp-diag-icon">✓</span>
+                <span>Все показатели в норме</span>
+              </div>
+            )
           )}
         </div>
 
@@ -253,10 +271,17 @@ export function V2HealthPage({ portfolio, health }: Props) {
           </div>
           <div className="v2-hp-rx-list">
             {prescriptions.length === 0 ? (
-              <div className="v2-hp-rx-row">
-                <span className="v2-hp-rx-gain" style={{ color: "#5AEF8D" }}>✓</span>
-                <span>Портфель в отличной форме — удерживайте структуру</span>
-              </div>
+              isEmpty ? (
+                <div className="v2-hp-rx-row">
+                  <span className="v2-hp-rx-gain" style={{ color: EMPTY_TONE }}>—</span>
+                  <span>Нет данных — подключите источники, рекомендации появятся автоматически</span>
+                </div>
+              ) : (
+                <div className="v2-hp-rx-row">
+                  <span className="v2-hp-rx-gain" style={{ color: "#5AEF8D" }}>✓</span>
+                  <span>Портфель в отличной форме — удерживайте структуру</span>
+                </div>
+              )
             ) : prescriptions.map((p, i) => (
               <div key={i} className="v2-hp-rx-row">
                 <span className="v2-hp-rx-gain">+{p.gain}</span>
@@ -276,7 +301,7 @@ export function V2HealthPage({ portfolio, health }: Props) {
         <div className="v2-hp-card-title">Health Breakdown — из чего складывается оценка</div>
         <div className="v2-hp-brows">
           {sortedComponents.map(c => (
-            <BreakdownRow key={c.key} c={c} onClick={() => setModal(c)} />
+            <BreakdownRow key={c.key} c={c} empty={isEmpty} onClick={() => setModal(c)} />
           ))}
         </div>
         <div className="v2-hp-brow-total">
