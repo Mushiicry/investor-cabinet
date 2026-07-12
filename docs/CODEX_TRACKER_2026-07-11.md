@@ -1,6 +1,6 @@
 # CODEX TRACKER 2026-07-11
 
-Status: active  
+Status: current through 2026-07-12 ops refresh
 Scope: Codex-owned isolated audit/fix track  
 Product mode: personal investor operating system, no SaaS/marketing expansion
 
@@ -16,7 +16,7 @@ Codex owns:
 - read-only verification;
 - isolated tests/fixtures after Claude stabilizes current `src/` changes.
 
-Claude owns for this parallel phase:
+Claude owns for active frontend/blockchain phases:
 - `src/` frontend feature work;
 - blockchain hooks/cards;
 - build fix already started there;
@@ -32,7 +32,7 @@ User owns ops:
 - production deploy approvals.
 
 Rule:
-one file, one agent at a time. Codex does not edit Claude-active `src/`, Apps Script or Vercel routing files in this phase.
+one file, one agent at a time. Codex does not edit Claude-active `src/`, Apps Script or Vercel routing files without a handoff.
 
 ---
 
@@ -150,7 +150,7 @@ Post-Claude lint-fix verification:
 
 Config/proxy work:
 - aligned local `/api/investor-wife` Vite proxy with production wife Apps Script deployment ID.
-- `npx clasp logs --json`: still blocked with `GCP project ID is not set`.
+- Historical at this point: `npx clasp logs --json` was still blocked with `GCP project ID is not set`; resolved on 2026-07-12.
 - `npx clasp status --json`: works and shows Apps Script files pending push.
 - added Vercel serverless functions for `/api/investor` and `/api/investor-wife`.
 - frontend now forwards Supabase access token in `Authorization` for investor API requests.
@@ -177,7 +177,7 @@ Additional contract coverage:
 - `npm run lint`: passed.
 - `npm run build`: passed.
 - `npm audit --omit=dev`: passed with 0 vulnerabilities.
-- `npx clasp logs --json`: still blocked with `GCP project ID is not set`.
+- Historical at this point: `npx clasp logs --json` was still blocked with `GCP project ID is not set`; resolved on 2026-07-12.
 
 ## 2026-07-12
 
