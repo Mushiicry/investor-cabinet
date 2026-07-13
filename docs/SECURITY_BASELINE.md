@@ -150,6 +150,7 @@ Before treating privacy as acceptable for personal use:
 
 - `/api/investor` returns 401/403 without a valid Supabase session.
 - `/api/investor-wife` returns 401/403 without a valid Supabase session.
+- `npm run smoke:api` passes for anonymous production privacy checks.
 - Apps Script direct URLs reject calls without the shared secret.
 - Vercel env contains all required server-side API targets/secrets.
 - Logout clears cached portfolio state.

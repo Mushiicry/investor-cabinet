@@ -42,7 +42,9 @@ Scope: privacy, data reliability, mobile-readiness, maintainability
    - Current follow-up: Solana RPC 429 is treated as a wallet-sync warning, not a failure of the whole cross-chain sync.
 
 7. Live API smoke checks
-   - Add a read-only smoke script for `/api/investor` and `/api/investor-wife`.
+   - `npm run smoke:api` checks `/api/investor` and `/api/investor-wife`.
+   - Without `INVESTOR_SMOKE_BEARER_TOKEN`, the script expects `401 Unauthorized`.
+   - With a valid Supabase bearer token, the script expects live JSON with `success`, `overview`, and `portfolio`.
    - Keep sanitized fixtures for contract tests.
 
 ## P3 — Maintainability
