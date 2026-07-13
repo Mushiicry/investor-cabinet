@@ -1,34 +1,63 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type PluginOption } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { proxyInvestorApi } from './api/_investorProxy.js'
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  server: {
-    proxy: {
-      // Wife route FIRST — prevents /api/investor prefix from matching /api/investor-wife
-      '/api/investor-wife': {
-        target: 'https://script.google.com',
-        changeOrigin: true,
-        secure: true,
-        followRedirects: true,
-        rewrite: () =>
-          '/macros/s/AKfycbwPvwu-EMXb9hGCZeRFhr9O8Vvz5-2y1sqn4V4OMsgqNkTs2t3U6zGDw7SVgdPVmrwg/exec',
-      },
-      '/api/investor': {
-        target: 'https://script.google.com',
-        changeOrigin: true,
-        secure: true,
-        followRedirects: true,
-        rewrite: () =>
-          '/macros/s/AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA/exec',
-      },
-      '/api/fear-greed': {
-        target: 'https://api.alternative.me',
-        changeOrigin: true,
-        secure: true,
-        rewrite: () => '/fng/?limit=30',
+const ENV_KEYS_FOR_LOCAL_PROXY = [
+  'APPS_SCRIPT_SHARED_SECRET',
+  'INVESTOR_APPS_SCRIPT_SHARED_SECRET',
+  'WIFE_APPS_SCRIPT_SHARED_SECRET',
+  'INVESTOR_APPS_SCRIPT_URL',
+  'WIFE_APPS_SCRIPT_URL',
+  'SUPABASE_URL',
+  'SUPABASE_ANON_KEY',
+  'FOUNDER_EMAIL',
+  'WIFE_EMAIL',
+  'VITE_SUPABASE_URL',
+  'VITE_SUPABASE_ANON_KEY',
+  'VITE_FOUNDER_EMAIL',
+  'VITE_WIFE_EMAIL',
+] as const
+
+const loadServerEnvForLocalProxy = (mode: string) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  ENV_KEYS_FOR_LOCAL_PROXY.forEach((key) => {
+    const value = env[key]
+
+    if (!process.env[key] && value) {
+      process.env[key] = value
+    }
+  })
+}
+
+const investorLocalProxy = (): PluginOption => ({
+  name: 'investor-local-auth-proxy',
+  configureServer(server) {
+    server.middlewares.use('/api/investor-wife', (req, res) => {
+      void proxyInvestorApi(req, res, 'wife')
+    })
+
+    server.middlewares.use('/api/investor', (req, res) => {
+      void proxyInvestorApi(req, res, 'main')
+    })
+  },
+})
+
+export default defineConfig(({ mode }) => {
+  loadServerEnvForLocalProxy(mode)
+
+  return {
+    plugins: [react(), tailwindcss(), investorLocalProxy()],
+    server: {
+      proxy: {
+        '/api/fear-greed': {
+          target: 'https://api.alternative.me',
+          changeOrigin: true,
+          secure: true,
+          rewrite: () => '/fng/?limit=30',
+        },
       },
     },
-  },
+  }
 })
