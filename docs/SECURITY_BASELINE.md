@@ -96,12 +96,16 @@ Required Vercel env:
 - `WIFE_EMAIL` or `VITE_WIFE_EMAIL`;
 - `INVESTOR_APPS_SCRIPT_URL` recommended;
 - `WIFE_APPS_SCRIPT_URL` recommended.
+- `APPS_SCRIPT_SHARED_SECRET` recommended for both APIs, or separate:
+  - `INVESTOR_APPS_SCRIPT_SHARED_SECRET`;
+  - `WIFE_APPS_SCRIPT_SHARED_SECRET`.
 
-Planned hardening:
-- add server-only shared secret env in Vercel;
-- Vercel proxy appends the secret to Apps Script upstream requests;
-- Apps Script rejects requests with missing/invalid secret before returning portfolio JSON;
-- rotate Apps Script deployments after secret protection is live, so old public URLs are no longer useful.
+Shared-secret hardening:
+- Vercel proxy appends `apiKey` to Apps Script upstream requests when the server-only env is configured;
+- main Apps Script checks Script Property `INVESTOR_API_SHARED_SECRET`;
+- wife Apps Script checks Script Property `WIFE_API_SHARED_SECRET`;
+- Apps Script keeps backward compatibility while the Script Property is empty, so rollout must be completed by setting those properties;
+- after both Script Properties and Vercel env are live, rotate Apps Script deployments so old public URLs are no longer useful.
 
 ## Google Sheets
 

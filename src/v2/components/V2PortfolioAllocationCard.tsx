@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from "react";
+import { isEmptyAccount } from "../lib/accountState";
 
 type AllocItem = { name: string; share: number; value: number };
 type LimitKind = "max" | "min" | "none";
@@ -145,7 +146,7 @@ export function V2PortfolioAllocationCard({ allocation, total }: Props) {
   const [hoveredName, setHoveredName] = useState<string | null>(null);
   // Пустой аккаунт (кошельки не подключены): доли по нулям — не считаем это
   // нарушением лимитов, не показываем тревожные бейджи ВЫШЕ/НИЖЕ.
-  const isEmpty = total <= 0;
+  const isEmpty = isEmptyAccount({ totalPortfolioValue: total });
   const sorted = [...allocation].sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
   const segs   = buildSegs(sorted);
   const faceFront = frontFaces(segs);

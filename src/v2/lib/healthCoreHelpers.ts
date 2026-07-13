@@ -1,0 +1,188 @@
+// Чистые хелперы и геометрия для V2HealthCore: score->подсказки/цвета,
+// гексагон-радар, раскладка чипов, интерпретация здоровья, диагноз и рекомендации.
+// Вынесено из V2HealthCore.tsx, чтобы компонент отвечал только за render.
+import type { V2Portfolio } from "../InvestorCabinetV2Lab";
+import type { HealthComponent } from "../../lib/portfolioHealth";
+
+export const CX = 140, CY = 140;
+export const RADAR_R = 118;
+export const OUTER_R = 136;
+
+export const VB_OFF = 80;
+export const VB_SIZE = 280 + VB_OFF * 2; // 440
+
+export const CHIP_W = 89, CHIP_H = 52, GAP = 12, CHIP_R = 40;
+
+export const CHIP_LABEL: Record<string, string> = {
+  reserve:         "Резерв",
+  crypto:          "Волатильность",
+  futures:         "Фьючерсы",
+  concentration:   "Концентрация",
+  diversification: "Диверсификация",
+  flexibility:     "Гибкость",
+};
+
+export function scoreHint(s: number): string {
+  if (s >= 75) return "НОРМА";
+  if (s >= 50) return "УМЕРЕННО";
+  if (s >= 30) return "ОСТОРОЖНО";
+  return "РИСК";
+}
+
+export function scoreAlpha(s: number): number {
+  if (s >= 75) return 1;
+  if (s >= 50) return 0.82;
+  if (s >= 30) return 0.62;
+  return 0.42;
+}
+
+export function chipColor(s: number): string {
+  if (s >= 75) return "#5AEF8D";
+  if (s >= 50) return "#55C7FF";
+  if (s >= 30) return "#E6B33A";
+  return "#FF5D6C";
+}
+
+// Hex polygon points centered at CX,CY
+export function hexPts(r: number, startDeg = -90): string {
+  return Array.from({ length: 6 }, (_, i) => {
+    const a = (startDeg + i * 60) * (Math.PI / 180);
+    return `${(CX + r * Math.cos(a)).toFixed(2)},${(CY + r * Math.sin(a)).toFixed(2)}`;
+  }).join(" ");
+}
+
+// Hex points with arbitrary center (for offset shadows)
+export function hexPtsAt(cx: number, cy: number, r: number, startDeg = -90): string {
+  return Array.from({ length: 6 }, (_, i) => {
+    const a = (startDeg + i * 60) * (Math.PI / 180);
+    return `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
+  }).join(" ");
+}
+
+export function chipLayout(idx: number): {
+  rx: number; ry: number;
+  vx: number; vy: number;
+  ax: number; ay: number;
+} {
+  const a = (-90 + idx * 60) * (Math.PI / 180);
+  const vx = CX + OUTER_R * Math.cos(a);
+  const vy = CY + OUTER_R * Math.sin(a);
+  if (idx === 0)          return { rx: vx - CHIP_W / 2, ry: vy - GAP - CHIP_H, vx, vy, ax: vx, ay: vy - GAP };
+  if (idx === 1 || idx === 2) return { rx: vx + GAP,        ry: vy - CHIP_H / 2,   vx, vy, ax: vx + GAP, ay: vy };
+  if (idx === 3)          return { rx: vx - CHIP_W / 2, ry: vy + GAP,          vx, vy, ax: vx, ay: vy + GAP };
+  return                         { rx: vx - GAP - CHIP_W, ry: vy - CHIP_H / 2, vx, vy, ax: vx - GAP, ay: vy };
+}
+
+// Scale value polygon toward center by factor (for inner highlight effect)
+export function scaleValuePts(pts: string, factor: number): string {
+  return pts.split(" ").map(p => {
+    const [x, y] = p.split(",").map(Number);
+    return `${(CX + (x - CX) * factor).toFixed(2)},${(CY + (y - CY) * factor).toFixed(2)}`;
+  }).join(" ");
+}
+
+export const SCORE_LABEL: Record<string, string> = {
+  reserve:         "Резерв",
+  crypto:          "Волатильность",
+  futures:         "Фьючерсы",
+  concentration:   "Концентрация",
+  diversification: "Диверсификация",
+  flexibility:     "Гибкость",
+};
+
+
+export function healthInterpretation(score: number): { text: string; color: string } {
+  if (score >= 80) return { text: "Здоров — портфель сбалансирован по всем критериям", color: "#5AEF8D" };
+  if (score >= 65) return { text: "Удовлетворительно — есть что подтянуть до нормы", color: "#55C7FF" };
+  if (score >= 50) return { text: "Под наблюдением — несколько критериев в зоне риска", color: "#E6B33A" };
+  if (score >= 30) return { text: "Диагноз: риск — портфель требует лечения", color: "#FF8A4A" };
+  return { text: "Диагноз: критично — портфель уязвим к просадке", color: "#FF5D6C" };
+}
+
+export const fmt$ = (v: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
+
+export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
+  const reservePct = Math.round(portfolio.reserveShare * 100);
+  const reserveUsd = portfolio.stableReserve;
+  const targetUsd  = Math.round(portfolio.totalPortfolioValue * 0.30);
+  switch (c.key) {
+    case "reserve":
+      if (c.score <= 0) return `Резерв $0 — подушки нет, нечем откупать`;
+      if (c.score < 50)
+        return `${reservePct}% от цели 30%. Дефицит ${fmt$(Math.max(0, targetUsd - reserveUsd))}`;
+      return `${reservePct}% от цели 30%`;
+    case "flexibility":
+      if (c.score <= 0) return "Свободных денег нет — манёвра нет";
+      return `Свободно ${fmt$(portfolio.deployableCapital)}`;
+    case "diversification":
+      return "Капитал сконцентрирован в одном классе";
+    case "crypto":
+      return "Доля крипты выше лимита 60%";
+    case "concentration":
+      return "Крупнейшая позиция выше лимита 35%";
+    case "futures":
+      if ((c.meta?.leverageBreaches ?? []).length) return "Плечо превышено";
+      if (c.meta?.futuresCount && c.meta.futuresCount > 3) return `${c.meta.futuresCount}/3 позиций — лимит превышен`;
+      if ((c.meta?.futuresShare ?? 0) > 0.1) return "Начальная маржа выше лимита 10%";
+      return `Маржа ${Math.round((c.meta?.futuresShare ?? 0) * 1000) / 10}%, плечо в норме`;
+    default:
+      return "";
+  }
+}
+
+export type CoreRec = { action: string; gain: number; source: string; critical?: boolean };
+
+export function buildCoreRecs(weak: HealthComponent[], portfolio: V2Portfolio): CoreRec[] {
+  const deficit = Math.max(0, portfolio.totalPortfolioValue * 0.30 - portfolio.stableReserve);
+  const result: CoreRec[] = [];
+
+  // ── Критический сигнал: покупательская сила на нуле ──
+  if (portfolio.deployableCapital < 50) {
+    result.push({
+      action: "Пополнить торговый баланс — покупательская сила на нуле",
+      gain: 7,
+      source: "Разблокирует откупы на просадках → здоровье +7",
+      critical: true,
+    });
+  }
+  // ── Критический сигнал: резерв сильно ниже цели ──
+  if (deficit > portfolio.totalPortfolioValue * 0.10) {
+    result.push({
+      action: deficit > 0 ? `Пополнить резерв на ${fmt$(deficit)} до целевых 30%` : "Поддерживать резерв выше 30%",
+      gain: 6,
+      source: "Резерв вернётся к норме → здоровье +6",
+      critical: true,
+    });
+  }
+
+  for (const c of weak.slice(0, 5)) {
+    switch (c.key) {
+      case "reserve":
+        if (!result.some(r => r.source.startsWith("Резерв")))
+          result.push({
+            action: deficit > 0 ? `Пополнить резерв на ${fmt$(deficit)}` : "Поддерживать резерв выше 30%",
+            gain: 6, source: "Резерв вернётся к норме → здоровье +6"
+          });
+        result.push({ action: "Не открывать новые позиции, пока резерв не достигнут", gain: 3, source: "Сохранит подушку и манёвр → здоровье +3" });
+        break;
+      case "flexibility":
+        result.push({ action: "Зафиксировать слабые позиции в кэш", gain: 4, source: "Повысит гибкость капитала → здоровье +4" });
+        break;
+      case "diversification":
+        result.push({ action: "Добавить новый класс (металлы / акции)", gain: 4, source: "Снизит корреляцию портфеля → здоровье +4" });
+        break;
+      case "crypto":
+        result.push({ action: "Зафиксировать часть крипты в стейблы", gain: 5, source: "Снизит волатильность портфеля → здоровье +5" });
+        break;
+      case "concentration":
+        result.push({ action: "Распределить часть крупнейшей позиции", gain: 5, source: "Снизит концентрацию риска → здоровье +5" });
+        break;
+      case "futures":
+        result.push({ action: "Снизить маржу, плечо или число позиций", gain: 5, source: "Уменьшит фьючерсный риск → здоровье +5" });
+        break;
+    }
+  }
+  return result.slice(0, 5);
+}
+

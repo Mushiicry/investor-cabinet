@@ -1,5 +1,6 @@
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import type { V2Portfolio, V2Risk } from "../InvestorCabinetV2Lab";
+import { isEmptyAccount } from "../lib/accountState";
 
 type AllocationItem = { name: string; share: number; value: number };
 
@@ -55,7 +56,7 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
   // Пустой/кастдев-аккаунт (кошельки не подключены): нули — это отсутствие данных,
   // а не критический риск. Гасим красные тона и флаги, геометрию сохраняем.
   // Реальный аккаунт (value > 0) идёт по прежней risk-логике без изменений.
-  const isEmpty = portfolio.totalPortfolioValue <= 0;
+  const isEmpty = isEmptyAccount(portfolio);
   const toneColor = (v: number) => (isEmpty ? EMPTY_TONE : scoreColor(v));
 
   const reservePct = portfolio.reserveShare * 100;

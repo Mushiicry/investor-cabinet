@@ -85,4 +85,26 @@ describe("investor serverless auth proxy", () => {
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
     expect(String(vi.mocked(globalThis.fetch).mock.calls[1][0])).toBe("https://apps-script.example/main");
   });
+
+  it("adds the server-only Apps Script shared secret to upstream requests", async () => {
+    setProxyEnv();
+    process.env.APPS_SCRIPT_SHARED_SECRET = "shared-secret";
+    globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.includes("/auth/v1/user")) {
+        return Response.json({ email: "wife@example.com" });
+      }
+
+      return Response.json({ success: true, overview: {}, portfolio: [] });
+    }) as typeof fetch;
+    const res = mockRes();
+
+    await proxyInvestorApi(mockReq("Bearer token"), res, "wife");
+
+    expect(res.statusCode).toBe(200);
+    const upstreamUrl = new URL(String(vi.mocked(globalThis.fetch).mock.calls[1][0]));
+    expect(upstreamUrl.origin + upstreamUrl.pathname).toBe("https://apps-script.example/wife");
+    expect(upstreamUrl.searchParams.get("apiKey")).toBe("shared-secret");
+  });
 });
