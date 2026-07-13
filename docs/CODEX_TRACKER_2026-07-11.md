@@ -55,6 +55,8 @@ one file, one agent at a time. Codex does not edit Claude-active `src/`, Apps Sc
 | C-13 | P2 | Install hourly Cosmos transaction trigger | User + Codex | done | `syncCosmosWalletTransactions` time trigger installed; manual run imported 11 tx rows |
 | C-14 | P1 | Merge canonical frontend/apps-script checkpoint | Claude + User | done | `claude/frontend-appscript-checkpoint-2026-07-12` merged as PR #4 |
 | C-15 | P2 | Close duplicate Codex branches covered by canonical/main | Codex | done | `codex/solana-rpc-fallback-2026-07-11`, `codex/frontend-cosmos-checkpoint-2026-07-11`, `codex/vercel-api-runtime-hotfix-2026-07-11` |
+| C-16 | P0 | Protect direct Apps Script URLs with shared secret | Codex + User | done | main and wife Apps Script URLs reject no-key calls; Vercel proxy appends server-only `apiKey` |
+| C-17 | P2 | Reduce noisy Apps Script trigger failures | Codex | done | `recordDailySnapshot` compatibility alias; Solana RPC 429 downgraded to wallet-sync warning |
 
 ---
 
@@ -101,8 +103,8 @@ Live sheet check confirmed:
 
 1. Keep contract tests green while Claude continues UI/frontend work.
 2. Add deeper accounting tests only after accounting reducer/helper implementation exists.
-3. Add shared-secret protection for direct Apps Script URLs when ready.
-4. Do not start parallel `src/v2` segmentation work; Claude owns `claude/segmentation-empty-account-2026-07-13`.
+3. Monitor Apps Script executions for remaining non-Solana wallet sync failures.
+4. Do not start broad `src/v2` refactors while mobile shell work is being planned.
 
 ---
 
@@ -209,3 +211,21 @@ Post-merge verification:
 - `npm run lint`: passed.
 - `npm run build`: passed on Vite 8.1.4.
 - `npm audit --omit=dev`: passed with 0 vulnerabilities.
+
+Shared-secret rollout:
+- main Apps Script deployed to existing deployment version 28; deployment URL unchanged.
+- `INVESTOR_API_SHARED_SECRET` configured in Script Properties.
+- wife Apps Script manually updated and deployed to existing deployment version 11; deployment URL unchanged.
+- `WIFE_API_SHARED_SECRET` configured in Script Properties.
+- direct main Apps Script without `apiKey`: `Unauthorized`.
+- direct main Apps Script with `apiKey`: returns portfolio payload.
+- direct wife Apps Script without `apiKey`: `Unauthorized`.
+- direct wife Apps Script with `apiKey`: returns wife portfolio payload.
+- production `/api/investor` without Supabase auth: `401`.
+- production `/api/investor-wife` without Supabase auth: `401`.
+
+Trigger hardening:
+- added `recordDailySnapshot()` compatibility alias to call `syncInvestorCabinetDailySnapshot()`.
+- `removeInvestorCabinetDailySnapshotTrigger()` now removes both current and legacy daily snapshot handlers.
+- cross-chain wallet sync now logs known Solana RPC 429 rate-limit errors as warnings instead of failing the whole trigger.
+- main Apps Script deployed to existing deployment version 29; deployment URL unchanged.

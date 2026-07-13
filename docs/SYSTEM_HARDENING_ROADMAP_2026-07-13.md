@@ -1,6 +1,6 @@
 # System Hardening Roadmap — 2026-07-13
 
-Status: active  
+Status: active; P0 shared-secret rollout complete
 Scope: privacy, data reliability, mobile-readiness, maintainability  
 
 ## P0 — Privacy Boundary
@@ -8,7 +8,10 @@ Scope: privacy, data reliability, mobile-readiness, maintainability
 1. Apps Script shared secret
    - Vercel serverless proxy appends `apiKey` from server-only env.
    - Apps Script rejects direct calls when matching Script Property is configured.
-   - Rotate Apps Script deployment URLs after both sides are live.
+   - Main API verified: direct no-key returns `Unauthorized`; direct with key returns data.
+   - Wife API verified: direct no-key returns `Unauthorized`; direct with key returns data.
+   - Production `/api/investor` and `/api/investor-wife` return `401` without Supabase auth.
+   - Optional later hardening: rotate Apps Script deployment URLs after both sides are live.
 
 2. Local/prod API parity
    - Local development must not silently bypass the serverless auth proxy.
@@ -36,6 +39,7 @@ Scope: privacy, data reliability, mobile-readiness, maintainability
    - Rate-limit and retry RPC calls.
    - Log per-chain health.
    - Keep wallet imports pending/reviewed where accounting impact is ambiguous.
+   - Current follow-up: Solana RPC 429 is treated as a wallet-sync warning, not a failure of the whole cross-chain sync.
 
 7. Live API smoke checks
    - Add a read-only smoke script for `/api/investor` and `/api/investor-wife`.
@@ -46,6 +50,7 @@ Scope: privacy, data reliability, mobile-readiness, maintainability
 8. Documentation refresh
    - Update architecture docs from old rewrite model to Supabase + serverless proxy.
    - Mark V2/segmentation as current baseline.
+   - Record Apps Script direct URL shared-secret rollout status.
 
 9. Legacy cleanup
    - Remove or quarantine old mock login constants.

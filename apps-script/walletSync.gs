@@ -11,34 +11,44 @@ var IC_WALLET_SYNC_TRIGGER_HANDLERS = [
 
 function syncInvestorCabinetWallets() {
   var errors = [];
+  var warnings = [];
 
   IC_WALLET_runSyncStep_('TON wallet import', function() {
     syncTonWalletImports();
-  }, errors);
+  }, errors, warnings);
 
   IC_WALLET_runSyncStep_('Arbitrum wallet balances', function() {
     setupArbitrumWalletImport();
     syncArbitrumWalletBalances();
-  }, errors);
+  }, errors, warnings);
 
   IC_WALLET_runSyncStep_('Solana wallet balances', function() {
     setupSolanaWalletImport();
     syncSolanaWalletBalances();
-  }, errors);
+  }, errors, warnings);
 
   IC_WALLET_runSyncStep_('Cosmos wallet balances', function() {
     setupCosmosWalletImport();
     syncCosmosWalletBalances();
-  }, errors);
+  }, errors, warnings);
 
   IC_WALLET_runSyncStep_('Hyperliquid account state', function() {
     setupHyperliquidAccountImport();
     syncHyperliquidAccountState();
-  }, errors);
+  }, errors, warnings);
 
   if (errors.length) {
     throw new Error('Investor Cabinet wallet sync finished with errors: ' + errors.join(' | '));
   }
+
+  if (warnings.length) {
+    Logger.log('Investor Cabinet wallet sync finished with warnings: ' + warnings.join(' | '));
+  }
+
+  return {
+    success: true,
+    warnings: warnings
+  };
 }
 
 function installInvestorCabinetWalletSyncTrigger() {
@@ -61,10 +71,28 @@ function removeInvestorCabinetWalletSyncTriggers() {
   });
 }
 
-function IC_WALLET_runSyncStep_(label, syncFn, errors) {
+function IC_WALLET_runSyncStep_(label, syncFn, errors, warnings) {
   try {
     syncFn();
   } catch (error) {
-    errors.push(label + ': ' + (error && error.message ? error.message : String(error)));
+    var message = label + ': ' + (error && error.message ? error.message : String(error));
+    if (IC_WALLET_isSoftSyncError_(label, message)) {
+      warnings.push(message);
+      return;
+    }
+    errors.push(message);
   }
+}
+
+function IC_WALLET_isSoftSyncError_(label, message) {
+  if (label !== 'Solana wallet balances') return false;
+
+  return (
+    message.indexOf('Solana RPC request failed') >= 0 &&
+    (
+      message.indexOf('HTTP 429') >= 0 ||
+      message.indexOf('"code":429') >= 0 ||
+      message.indexOf('Too many requests') >= 0
+    )
+  );
 }

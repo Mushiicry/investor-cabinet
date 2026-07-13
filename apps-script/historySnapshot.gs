@@ -2,6 +2,7 @@ var IC_HISTORY_SPREADSHEET_ID = '1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8';
 var IC_HISTORY_SHEET = 'История';
 var IC_FEAR_GREED_HISTORY_SHEET = 'FearGreedHistory';
 var IC_HISTORY_TRIGGER_HANDLER = 'syncInvestorCabinetDailySnapshot';
+var IC_HISTORY_LEGACY_TRIGGER_HANDLERS = ['recordDailySnapshot'];
 
 function syncInvestorCabinetDailySnapshot() {
   var ss = SpreadsheetApp.openById(IC_HISTORY_SPREADSHEET_ID);
@@ -45,6 +46,10 @@ function syncInvestorCabinetDailySnapshot() {
   };
 }
 
+function recordDailySnapshot() {
+  return syncInvestorCabinetDailySnapshot();
+}
+
 function syncFearGreedDailyHistory() {
   var ss = SpreadsheetApp.openById(IC_HISTORY_SPREADSHEET_ID);
   var timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone() || 'Europe/Moscow';
@@ -66,7 +71,11 @@ function setupInvestorCabinetDailySnapshotTrigger() {
 
 function removeInvestorCabinetDailySnapshotTrigger() {
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
-    if (trigger.getHandlerFunction() === IC_HISTORY_TRIGGER_HANDLER) {
+    var handler = trigger.getHandlerFunction();
+    if (
+      handler === IC_HISTORY_TRIGGER_HANDLER ||
+      IC_HISTORY_LEGACY_TRIGGER_HANDLERS.indexOf(handler) >= 0
+    ) {
       ScriptApp.deleteTrigger(trigger);
     }
   });
