@@ -4,9 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 import { proxyInvestorApi } from './api/_investorProxy.js'
 
 const ENV_KEYS_FOR_LOCAL_PROXY = [
-  'APPS_SCRIPT_SHARED_SECRET',
-  'INVESTOR_APPS_SCRIPT_SHARED_SECRET',
-  'WIFE_APPS_SCRIPT_SHARED_SECRET',
   'INVESTOR_APPS_SCRIPT_URL',
   'WIFE_APPS_SCRIPT_URL',
   'SUPABASE_URL',
