@@ -6,12 +6,14 @@ const appsScriptIds = (content: string) =>
   [...content.matchAll(/AKfycb[a-zA-Z0-9_-]+/g)].map((match) => match[0]);
 
 describe("local and production API config consistency", () => {
-  it("keeps local wife proxy aligned with the serverless wife fallback deployment", () => {
+  it("routes local investor APIs through the same serverless proxy implementation", () => {
     const viteConfig = read("vite.config.ts");
     const proxy = read("api/_investorProxy.js");
     const wifeId = "AKfycbwPvwu-EMXb9hGCZeRFhr9O8Vvz5-2y1sqn4V4OMsgqNkTs2t3U6zGDw7SVgdPVmrwg";
 
-    expect(appsScriptIds(viteConfig)).toContain(wifeId);
+    expect(viteConfig).toContain("investor-local-auth-proxy");
+    expect(viteConfig).toContain("proxyInvestorApi");
+    expect(appsScriptIds(viteConfig)).not.toContain(wifeId);
     expect(appsScriptIds(proxy)).toContain(wifeId);
   });
 
