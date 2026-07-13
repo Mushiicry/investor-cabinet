@@ -57,6 +57,7 @@ one file, one agent at a time. Codex does not edit Claude-active `src/`, Apps Sc
 | C-15 | P2 | Close duplicate Codex branches covered by canonical/main | Codex | done | `codex/solana-rpc-fallback-2026-07-11`, `codex/frontend-cosmos-checkpoint-2026-07-11`, `codex/vercel-api-runtime-hotfix-2026-07-11` |
 | C-16 | P0 | Protect direct Apps Script URLs with shared secret | Codex + User | done | main and wife Apps Script URLs reject no-key calls; Vercel proxy appends server-only `apiKey` |
 | C-17 | P2 | Reduce noisy Apps Script trigger failures | Codex | done | `recordDailySnapshot` compatibility alias; Solana RPC 429 downgraded to wallet-sync warning |
+| C-18 | P2 | Add repeatable live investor API smoke check | Codex | done | `npm run smoke:api` verifies anonymous 401 privacy; optional bearer token verifies live JSON shape |
 
 ---
 
@@ -105,6 +106,19 @@ Live sheet check confirmed:
 2. Add deeper accounting tests only after accounting reducer/helper implementation exists.
 3. Monitor Apps Script executions for remaining non-Solana wallet sync failures.
 4. Do not start broad `src/v2` refactors while mobile shell work is being planned.
+
+## Live API smoke check
+
+Command:
+- `npm run smoke:api`
+
+Default behavior:
+- calls production `/api/investor` and `/api/investor-wife`;
+- expects both endpoints to reject anonymous requests with JSON `401 Unauthorized`.
+
+Optional live-shape mode:
+- set `INVESTOR_SMOKE_BEARER_TOKEN` to a valid Supabase access token;
+- the same command expects 2xx JSON with `success`, `overview`, and `portfolio`.
 
 ---
 
