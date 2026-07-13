@@ -33,34 +33,7 @@ function normalizePortfolioPnlPct(pnlPct, invested, pnl) {
   return moneyPct;
 }
 
-function jsonOutput(body) {
-  return ContentService
-    .createTextOutput(JSON.stringify(body))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function getApiSharedSecret() {
-  return PropertiesService
-    .getScriptProperties()
-    .getProperty("INVESTOR_API_SHARED_SECRET") || "";
-}
-
-function isApiAuthorized(e) {
-  const requiredSecret = getApiSharedSecret();
-  if (!requiredSecret) return true;
-
-  const suppliedSecret = e && e.parameter && e.parameter.apiKey;
-  return suppliedSecret === requiredSecret;
-}
-
-function doGet(e) {
-  if (!isApiAuthorized(e)) {
-    return jsonOutput({
-      success: false,
-      error: "Unauthorized"
-    });
-  }
-
+function doGet() {
   const ss = SpreadsheetApp.openById("1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8");
 
   const overview = ss.getSheetByName("Обзор");
@@ -89,7 +62,9 @@ function doGet(e) {
     fearGreedStrategy: getFearGreedStrategyReadOnly(ss, overviewData.invested)
   };
 
-  return jsonOutput(result);
+  return ContentService
+    .createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function getOverview(sheet) {

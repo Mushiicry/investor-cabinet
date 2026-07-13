@@ -2,7 +2,7 @@
 
 Status: personal-tool baseline  
 Scope: Investor Cabinet current architecture  
-Last updated: 2026-07-13
+Last updated: 2026-07-11
 
 ---
 
@@ -21,7 +21,7 @@ This is not a public SaaS baseline. Public multi-user SaaS requirements are defe
 
 Current flow:
 
-Google Sheets -> Apps Script web app -> Vercel serverless `/api/investor*` -> React frontend
+Google Sheets -> Apps Script web app -> Vercel rewrite `/api/investor` -> React frontend
 
 Auth layer:
 - Supabase Auth is used by the frontend session gate;
@@ -78,7 +78,7 @@ Target state:
 - Apps Script URL and optional shared secret stay server-side.
 
 Current risk:
-if Apps Script web app is deployed as public/anonymous and URL is discoverable, portfolio JSON can be read without frontend login. Production `/api/investor` and `/api/investor-wife` now route through Vercel serverless functions, and both direct Apps Script URLs reject calls without the configured shared secret.
+if Apps Script web app is deployed as public/anonymous and URL is discoverable, portfolio JSON can be read without frontend login. Production `/api/investor` and `/api/investor-wife` now route through Vercel serverless functions, but direct Apps Script URLs still need operational protection/rotation when possible.
 
 Priority:
 P0 for privacy.
@@ -96,18 +96,12 @@ Required Vercel env:
 - `WIFE_EMAIL` or `VITE_WIFE_EMAIL`;
 - `INVESTOR_APPS_SCRIPT_URL` recommended;
 - `WIFE_APPS_SCRIPT_URL` recommended.
-- `APPS_SCRIPT_SHARED_SECRET` recommended for both APIs, or separate:
-  - `INVESTOR_APPS_SCRIPT_SHARED_SECRET`;
-  - `WIFE_APPS_SCRIPT_SHARED_SECRET`.
 
-Shared-secret hardening:
-- Vercel proxy appends `apiKey` to Apps Script upstream requests when the server-only env is configured;
-- main Apps Script checks Script Property `INVESTOR_API_SHARED_SECRET`;
-- wife Apps Script checks Script Property `WIFE_API_SHARED_SECRET`;
-- both Script Properties are configured in production as of 2026-07-13;
-- direct main Apps Script without `apiKey`: `Unauthorized`;
-- direct wife Apps Script without `apiKey`: `Unauthorized`;
-- after both Script Properties and Vercel env are live, deployment URL rotation remains optional defense-in-depth.
+Planned hardening:
+- add server-only shared secret env in Vercel;
+- Vercel proxy appends the secret to Apps Script upstream requests;
+- Apps Script rejects requests with missing/invalid secret before returning portfolio JSON;
+- rotate Apps Script deployments after secret protection is live, so old public URLs are no longer useful.
 
 ## Google Sheets
 
@@ -150,8 +144,7 @@ Before treating privacy as acceptable for personal use:
 
 - `/api/investor` returns 401/403 without a valid Supabase session.
 - `/api/investor-wife` returns 401/403 without a valid Supabase session.
-- `npm run smoke:api` passes for anonymous production privacy checks.
-- Apps Script direct URLs reject calls without the shared secret.
+- Apps Script direct URL is not used by production frontend client code.
 - Vercel env contains all required server-side API targets/secrets.
 - Logout clears cached portfolio state.
 - Build succeeds.

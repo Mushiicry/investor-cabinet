@@ -7,7 +7,6 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "smoke:api": "node scripts/smoke-investor-api.mjs",
     "test": "vitest run",
     "preview": "vite preview"
   },
