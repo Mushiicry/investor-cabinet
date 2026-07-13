@@ -87,7 +87,8 @@ Current implementation:
 - browser sends Supabase access token to Vercel `/api/investor` and `/api/investor-wife`;
 - Vercel function validates token through Supabase Auth;
 - Vercel function checks founder/wife email before proxying Apps Script;
-- Apps Script target URLs can be supplied by `INVESTOR_APPS_SCRIPT_URL` and `WIFE_APPS_SCRIPT_URL`.
+- Apps Script target URLs can be supplied by `INVESTOR_APPS_SCRIPT_URL` and `WIFE_APPS_SCRIPT_URL`;
+- local Vite development uses the same `proxyInvestorApi` auth/shared-secret flow instead of direct Apps Script rewrites.
 
 Required Vercel env:
 - `SUPABASE_URL` or `VITE_SUPABASE_URL`;

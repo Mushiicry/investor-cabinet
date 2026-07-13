@@ -16,7 +16,8 @@ Scope: privacy, data reliability, mobile-readiness, maintainability
 2. Local/prod API parity
    - Local development must not silently bypass the serverless auth proxy.
    - Preferred path: `vercel dev` for authenticated API checks.
-   - Alternative path: local Vite proxy mirrors the serverless auth/secret flow.
+   - Current Vite path: local `/api/investor` and `/api/investor-wife` use the same `proxyInvestorApi` Supabase/auth/shared-secret flow as Vercel serverless.
+   - Direct Apps Script deployment IDs must not be reintroduced into `vite.config.ts`.
 
 ## P1 — Mobile Foundation
 

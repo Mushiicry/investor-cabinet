@@ -57,6 +57,7 @@ one file, one agent at a time. Codex does not edit Claude-active `src/`, Apps Sc
 | C-15 | P2 | Close duplicate Codex branches covered by canonical/main | Codex | done | `codex/solana-rpc-fallback-2026-07-11`, `codex/frontend-cosmos-checkpoint-2026-07-11`, `codex/vercel-api-runtime-hotfix-2026-07-11` |
 | C-16 | P0 | Protect direct Apps Script URLs with shared secret | Codex + User | done | main and wife Apps Script URLs reject no-key calls; Vercel proxy appends server-only `apiKey` |
 | C-17 | P2 | Reduce noisy Apps Script trigger failures | Codex | done | `recordDailySnapshot` compatibility alias; Solana RPC 429 downgraded to wallet-sync warning |
+| C-18 | P0 | Align local Vite investor API path with serverless auth proxy | Codex | done | `vite.config.ts` uses `proxyInvestorApi`; direct Apps Script IDs removed from local Vite proxy |
 
 ---
 
@@ -229,3 +230,8 @@ Trigger hardening:
 - `removeInvestorCabinetDailySnapshotTrigger()` now removes both current and legacy daily snapshot handlers.
 - cross-chain wallet sync now logs known Solana RPC 429 rate-limit errors as warnings instead of failing the whole trigger.
 - main Apps Script deployed to existing deployment version 29; deployment URL unchanged.
+
+Local/prod API parity:
+- local Vite `/api/investor` and `/api/investor-wife` now use the same `proxyInvestorApi` Supabase/auth/shared-secret flow as Vercel serverless functions.
+- direct Apps Script deployment IDs were removed from `vite.config.ts`.
+- config consistency test now guards against reintroducing direct Apps Script IDs into the local Vite investor proxy.
