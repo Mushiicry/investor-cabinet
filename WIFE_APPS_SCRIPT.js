@@ -28,7 +28,34 @@ var SOL_RPC      = 'https://api.mainnet-beta.solana.com';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+function wifeJsonOutput(body) {
+  return ContentService
+    .createTextOutput(JSON.stringify(body))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getWifeApiSharedSecret() {
+  return PropertiesService
+    .getScriptProperties()
+    .getProperty('WIFE_API_SHARED_SECRET') || '';
+}
+
+function isWifeApiAuthorized(e) {
+  var requiredSecret = getWifeApiSharedSecret();
+  if (!requiredSecret) return true;
+
+  var suppliedSecret = e && e.parameter && e.parameter.apiKey;
+  return suppliedSecret === requiredSecret;
+}
+
 function doGet(e) {
+  if (!isWifeApiAuthorized(e)) {
+    return wifeJsonOutput({
+      success: false,
+      error: 'Unauthorized'
+    });
+  }
+
   var action = e && e.parameter && e.parameter.action;
 
   // ?action=fixUsdt — записывает USDT в лист (пробует blockchain fetch)

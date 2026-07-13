@@ -32,6 +32,25 @@ const targetUrlFor = (kind) => {
   return getEnv("INVESTOR_APPS_SCRIPT_URL") || MAIN_APPS_SCRIPT_URL;
 };
 
+const sharedSecretFor = (kind) => {
+  const specificName = kind === "wife"
+    ? "WIFE_APPS_SCRIPT_SHARED_SECRET"
+    : "INVESTOR_APPS_SCRIPT_SHARED_SECRET";
+
+  return getEnv(specificName) || getEnv("APPS_SCRIPT_SHARED_SECRET");
+};
+
+const targetUrlWithSecretFor = (kind) => {
+  const targetUrl = new URL(targetUrlFor(kind));
+  const sharedSecret = sharedSecretFor(kind);
+
+  if (sharedSecret) {
+    targetUrl.searchParams.set("apiKey", sharedSecret);
+  }
+
+  return targetUrl.toString();
+};
+
 async function verifySupabaseUser(req) {
   const supabaseUrl = getEnv("SUPABASE_URL") || getEnv("VITE_SUPABASE_URL");
   const anonKey = getEnv("SUPABASE_ANON_KEY") || getEnv("VITE_SUPABASE_ANON_KEY");
@@ -88,7 +107,7 @@ export async function proxyInvestorApi(req, res, kind) {
       return;
     }
 
-    const upstream = await fetch(targetUrlFor(kind), {
+    const upstream = await fetch(targetUrlWithSecretFor(kind), {
       headers: { accept: "application/json" },
       redirect: "follow",
     });
