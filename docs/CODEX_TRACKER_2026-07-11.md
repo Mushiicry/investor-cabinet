@@ -101,7 +101,7 @@ Live sheet check confirmed:
 
 1. Keep contract tests green while Claude continues UI/frontend work.
 2. Add deeper accounting tests only after accounting reducer/helper implementation exists.
-3. Add shared-secret protection for direct Apps Script URLs when ready.
+3. Do not add extra Apps Script URL guards again without explicit approval.
 4. Do not start parallel `src/v2` segmentation work; Claude owns `claude/segmentation-empty-account-2026-07-13`.
 
 ---
