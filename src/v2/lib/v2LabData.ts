@@ -4,7 +4,7 @@
 // (их импортируют компоненты) и подтягиваются сюда как type-only (без runtime-цикла).
 import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
 import { computePortfolioHealth, DIVERSIFIABLE_CLASSES } from "../../lib/portfolioHealth";
-import type { PortfolioHealth } from "../../lib/portfolioHealth";
+import type { HealthInput, PortfolioHealth } from "../../lib/portfolioHealth";
 import { buildPlaybookCards } from "../../lib/playbookSelectors";
 import { decisionsData, scenariosData } from "../../mocks/portfolioData";
 import { mergeWithLocalSnapshots } from "../../services/dailySnapshotService";
@@ -12,6 +12,17 @@ import type { PortfolioState } from "../../types/portfolio";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 
 const mockFearGreedStrategy = buildFearGreedStrategy(42, 710570);
+
+// Входы health вынесены в константу: их же отдаём наружу как healthInput,
+// чтобы симулятор мог пересчитывать здоровье реальным computePortfolioHealth().
+const mockHealthInput: HealthInput = {
+  cashShare: 0.324,
+  cryptoShare: 0.627,
+  futuresShare: 0.021,
+  largestShare: 0.4,
+  // спотовые рисковые классы: Крипта / Металлы / Акции (без кэша и фьючерсов)
+  riskCategoryShares: [0.627, 0.026, 0],
+};
 
 const mockData: V2LabData = {
   portfolio: {
@@ -100,14 +111,8 @@ const mockData: V2LabData = {
     { name: "Акции", share: 0, value: 0 },
     { name: "Свободные деньги", share: 0.324, value: 173 },
   ],
-  health: computePortfolioHealth({
-    cashShare: 0.324,
-    cryptoShare: 0.627,
-    futuresShare: 0.021,
-    largestShare: 0.4,
-    // спотовые рисковые классы: Крипта / Металлы / Акции (без кэша и фьючерсов)
-    riskCategoryShares: [0.627, 0.026, 0],
-  }),
+  health: computePortfolioHealth(mockHealthInput),
+  healthInput: mockHealthInput,
   playbook: [],
   ticker: [
     { label: "BTC / USD", value: "$69,759.60", change: 0.0152 },
@@ -124,14 +129,16 @@ const mockData: V2LabData = {
 // (BTC-график, Fear & Greed, тикер, фаза цикла) общие и остаются как есть.
 // Здоровье пустого аккаунта тоже по нулям: сохраняем структуру компонентов
 // (лейблы/цвета/описания для радара), но все баллы = 0, пока нет данных.
+const zeroedHealthInput: HealthInput = {
+  cashShare: 0,
+  cryptoShare: 0,
+  futuresShare: 0,
+  largestShare: 0,
+  riskCategoryShares: [0, 0, 0],
+};
+
 const zeroedHealth: PortfolioHealth = (() => {
-  const base = computePortfolioHealth({
-    cashShare: 0,
-    cryptoShare: 0,
-    futuresShare: 0,
-    largestShare: 0,
-    riskCategoryShares: [0, 0, 0],
-  });
+  const base = computePortfolioHealth(zeroedHealthInput);
   return {
     healthFactor: 0,
     status: "RISK",
@@ -152,6 +159,7 @@ export function buildZeroedV2Data(): V2LabData {
     fearGreedStrategy: buildFearGreedStrategy(50, 0),
     allocation: mockData.allocation.map((category) => ({ ...category, share: 0, value: 0 })),
     health: zeroedHealth,
+    healthInput: zeroedHealthInput,
     risk: {
       ...mockData.risk,
       reserve: 0,
@@ -214,7 +222,7 @@ export const buildLiveV2Data = (
       leverage: leverageByCoin[coinOf(position.asset)] ?? null,
     }));
 
-  const computedHealth = computePortfolioHealth({
+  const liveHealthInput: HealthInput = {
     cashShare: categoryShare(state, "Свободные деньги"),
     cryptoShare: categoryShare(state, "Крипта"),
     futuresShare: state.risk.futuresShare,
@@ -223,7 +231,8 @@ export const buildLiveV2Data = (
     reserveShare: resolveReserveShare(state),
     futuresLegs,
     portfolioValue: state.overview.portfolioValue,
-  });
+  };
+  const computedHealth = computePortfolioHealth(liveHealthInput);
   // Честный диагноз: используем собственный расчёт, а не сглаженный health из API.
   const healthFactor = Math.round(computedHealth.healthFactor);
   const healthStatus: PortfolioHealth["status"] =
@@ -245,6 +254,7 @@ export const buildLiveV2Data = (
     history: mergeWithLocalSnapshots(state.history, slot),
     transactions: state.transactions,
     health,
+    healthInput: liveHealthInput,
     playbook: buildPlaybookCards(
       [
         ...state.decisions,

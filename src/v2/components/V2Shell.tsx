@@ -207,6 +207,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           <V2HealthPage
             portfolio={data.portfolio}
             health={data.health}
+            healthInput={data.healthInput}
           />
         ) : page === "risk" ? (
           <V2RiskEnginePage

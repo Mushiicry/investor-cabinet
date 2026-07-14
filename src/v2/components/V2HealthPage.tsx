@@ -1,4 +1,5 @@
-import type { PortfolioHealth, HealthComponent } from "../../lib/portfolioHealth";
+import { computePortfolioHealth } from "../../lib/portfolioHealth";
+import type { HealthInput, PortfolioHealth, HealthComponent } from "../../lib/portfolioHealth";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
 import { useMemo, useState } from "react";
 import { V2HealthDetailModal } from "./V2HealthDetailModal";
@@ -7,6 +8,7 @@ import { isEmptyAccount } from "../lib/accountState";
 type Props = {
   portfolio: V2Portfolio;
   health: PortfolioHealth;
+  healthInput: HealthInput; // входы расчёта — для точной симуляции
 };
 
 const fmt$ = (v: number) =>
@@ -172,65 +174,60 @@ function BreakdownRow({ c, onClick, empty }: { c: HealthComponent; onClick: () =
 const EMPTY_TONE = "#55C7FF";
 
 // ── Health Simulator ──────────────────────────────────────────────
-// «Что если»: пересчёт Health по тем же формулам, что и computePortfolioHealth,
-// но от гипотетических долей. Реальные сделки НЕ выполняются.
-// healthFactor = Σ score×weight — берём веса из текущих компонентов.
-const SIM_RESERVE_TARGET = 0.30;   // цель резерва (Risk First)
-const SIM_CRYPTO_HARD = 0.9;       // волатильность: 100 при ≤60%, 0 при ≥90%
-const SIM_CRYPTO_SPAN = 0.30;      // 0.9 − 0.6
-const SIM_CONC_HARD = 0.5;         // концентрация: 0 при ≥50% (лимит позиции 35%)
-const SIM_CONC_SPAN = 0.30;        // 0.5 − 0.2
-const SIM_COMFORT_CASH = 0.5;      // гибкость: комфортный кэш
-
-const clampUnit = (v: number) => Math.max(0, Math.min(1, v));
-const toScore = (v: number) => Math.round(clampUnit(v) * 100);
-// инверсии score → доля (формулы монотонно-линейные, в пределах клампа точны)
-const cryptoFromScore = (s: number) => SIM_CRYPTO_HARD - (s / 100) * SIM_CRYPTO_SPAN;
-const cashFromScore = (s: number) => (s / 100) * SIM_COMFORT_CASH;
-const largestFromScore = (s: number) => SIM_CONC_HARD - (s / 100) * SIM_CONC_SPAN;
-
-type SimLevers = { reserveTarget: number; leverageCut: number; largestTarget: number };
-
-function simulateHealth(components: HealthComponent[], baseReserveShare: number, levers: SimLevers) {
-  const byKey = (k: string) => components.find(c => c.key === k);
-  const get = (k: string) => byKey(k)?.score ?? 0;
-
-  // Резерв ← из крипты (дерискинг волатильных в стейблы)
-  const addReserve = Math.max(0, levers.reserveTarget - baseReserveShare);
-  const newReserveShare = baseReserveShare + addReserve;
-  const newCrypto = Math.max(0, cryptoFromScore(get("crypto")) - addReserve);
-  const newCash = cashFromScore(get("flexibility")) + addReserve;
-
-  const scores: Record<string, number> = {
-    reserve: toScore(newReserveShare / SIM_RESERVE_TARGET),
-    crypto: toScore((SIM_CRYPTO_HARD - newCrypto) / SIM_CRYPTO_SPAN),
-    flexibility: toScore(newCash / SIM_COMFORT_CASH),
-    concentration: toScore((SIM_CONC_HARD - levers.largestTarget) / SIM_CONC_SPAN),
-    diversification: get("diversification"), // консервативно не трогаем
-    futures: get("futures"),
-  };
-
-  // Плечо: снижаем leverage-штраф (из meta фьючерсов)
-  const fMeta = byKey("futures")?.meta;
-  if (fMeta?.leverageScore != null && fMeta.weightScore != null && fMeta.countScore != null) {
-    const leveragePenalty = 100 - fMeta.leverageScore;
-    const newLeverageScore = 100 - leveragePenalty * (1 - levers.leverageCut);
-    scores.futures = Math.max(0, Math.min(100, Math.round(fMeta.weightScore + newLeverageScore + fMeta.countScore - 200)));
-  }
-
-  const healthFactor = Math.round(
-    components.reduce((sum, c) => sum + (scores[c.key] ?? c.score) * c.weight, 0)
-  );
-  const status: PortfolioHealth["status"] = healthFactor >= 75 ? "CONTROL" : healthFactor >= 55 ? "BALANCED" : "RISK";
-  return { healthFactor, status, scores };
-}
-
-const SIM_LABELS: Record<string, string> = {
-  reserve: "Резерв", crypto: "Волатильность", flexibility: "Гибкость",
-  concentration: "Концентрация", futures: "Фьючерсы", diversification: "Диверсификация",
+// «Что если»: строим изменённый HealthInput и гоняем через РЕАЛЬНЫЙ
+// computePortfolioHealth(). Никаких обратных восстановлений из баллов —
+// симуляция точна и не разъедется с движком. Реальные сделки НЕ выполняются.
+//
+// Шесть рычагов покрывают все шесть граней здоровья:
+//   резерв → Резерв + Гибкость | выравнивание классов → Диверсификация + Волатильность
+//   крупнейшая позиция → Концентрация | плечо / маржа / число позиций → Фьючерсы
+type SimLevers = {
+  reserve: number;       // целевая доля резерва (стейблы)
+  rebalance: number;     // 0..1 — выровнять спотовые классы к равным долям
+  largest: number;       // целевая доля крупнейшей позиции
+  leverageCut: number;   // 0..1 — срезать плечо фьючерсов
+  futuresMargin: number; // целевая доля маржи фьючерсов
+  futuresCount: number;  // целевое число фьючерс-позиций
 };
 
-export function V2HealthPage({ portfolio, health }: Props) {
+const sumOf = (xs: number[]) => xs.reduce((sum, v) => sum + v, 0);
+
+function buildSimInput(base: HealthInput, levers: SimLevers): HealthInput {
+  const baseReserve = base.reserveShare ?? base.cashShare;
+  const spot = base.riskCategoryShares;
+  const spotTotal = sumOf(spot);
+
+  // 1) Резерв: капитал перетекает между рисковыми активами и стейблами.
+  const delta = levers.reserve - baseReserve;
+  const newSpotTotal = Math.max(0, spotTotal - delta);
+  const scale = spotTotal > 0 ? newSpotTotal / spotTotal : 0;
+  let newSpot = spot.map((s) => s * scale);
+
+  // 2) Выравнивание: тянем доли классов к равным (при 100% — идеально ровно).
+  const equal = newSpot.length > 0 ? newSpotTotal / newSpot.length : 0;
+  newSpot = newSpot.map((s) => s + levers.rebalance * (equal - s));
+
+  // 3) Фьючерсы: число позиций, плечо на каждой, маржа.
+  const legs = (base.futuresLegs ?? [])
+    .slice(0, Math.max(0, Math.round(levers.futuresCount)))
+    .map((leg) => ({
+      ...leg,
+      leverage: leg.leverage == null ? null : leg.leverage * (1 - levers.leverageCut),
+    }));
+
+  return {
+    ...base,
+    cashShare: Math.max(0, base.cashShare + delta),
+    reserveShare: Math.max(0, levers.reserve),
+    cryptoShare: newSpot[0] ?? 0, // крипта — первый спотовый класс (DIVERSIFIABLE_CLASSES)
+    riskCategoryShares: newSpot,
+    largestShare: Math.max(0, levers.largest),
+    futuresShare: Math.max(0, levers.futuresMargin),
+    futuresLegs: legs,
+  };
+}
+
+export function V2HealthPage({ portfolio, health, healthInput }: Props) {
   const [modal, setModal]   = useState<HealthComponent | null>(null);
   const [simOpen, setSimOpen] = useState(false);
   const hf = health.healthFactor;
@@ -247,14 +244,29 @@ export function V2HealthPage({ portfolio, health }: Props) {
   const prescriptions = isEmpty ? [] : buildPrescriptions(health.components, portfolio);
   const sortedComponents = [...health.components].sort((a, b) => a.score - b.score);
 
-  // ── Симулятор: базовые доли выводим из текущих компонентов ──
-  const concBase = largestFromScore(health.components.find(c => c.key === "concentration")?.score ?? 0);
-  const hasFutures = (health.components.find(c => c.key === "futures")?.meta?.futuresCount ?? 0) > 0;
-  const [levers, setLevers] = useState<SimLevers>({ reserveTarget: portfolio.reserveShare, leverageCut: 0, largestTarget: concBase });
-  const resetLevers = () => setLevers({ reserveTarget: portfolio.reserveShare, leverageCut: 0, largestTarget: concBase });
+  // ── Симулятор: 6 рычагов поверх реальных входов health ──
+  const baseReserve = healthInput.reserveShare ?? healthInput.cashShare;
+  const baseLegs = healthInput.futuresLegs ?? [];
+  const hasFutures = baseLegs.length > 0 || healthInput.futuresShare > 0;
+  const defaultLevers: SimLevers = {
+    reserve: baseReserve,
+    rebalance: 0,
+    largest: healthInput.largestShare,
+    leverageCut: 0,
+    futuresMargin: healthInput.futuresShare,
+    futuresCount: baseLegs.length,
+  };
+  const [levers, setLevers] = useState<SimLevers>(defaultLevers);
+  const resetLevers = () => setLevers(defaultLevers);
+  const setLever = (patch: Partial<SimLevers>) => setLevers((l) => ({ ...l, ...patch }));
+
   const sim = useMemo(
-    () => simulateHealth(health.components, portfolio.reserveShare, levers),
-    [health.components, portfolio.reserveShare, levers]
+    () => computePortfolioHealth(buildSimInput(healthInput, levers)),
+    [healthInput, levers]
+  );
+  const simScores = useMemo(
+    () => Object.fromEntries(sim.components.map((c) => [c.key, c.score])) as Record<string, number>,
+    [sim]
   );
   const simDelta = sim.healthFactor - hf;
   const simInterp = interpretation(sim.healthFactor);
@@ -413,50 +425,92 @@ export function V2HealthPage({ portfolio, health }: Props) {
             </div>
 
             <div className="v2-hp-sim-levers">
+              {/* Резерв → Резерв + Гибкость */}
               <div className="v2-hp-sim-lever">
                 <div className="v2-hp-sim-lever-top">
-                  <span>Резерв (стейблы) из крипты</span>
-                  <span className="v2-hp-sim-lever-val">{(levers.reserveTarget * 100).toFixed(0)}%</span>
+                  <span>Резерв (стейблы)</span>
+                  <span className="v2-hp-sim-lever-val">{(levers.reserve * 100).toFixed(0)}%</span>
                 </div>
-                <input type="range" min="0" max="0.5" step="0.01" value={levers.reserveTarget}
-                  onChange={e => setLevers(l => ({ ...l, reserveTarget: +e.target.value }))} />
+                <input type="range" min="0" max="0.9" step="0.01" value={levers.reserve}
+                  onChange={e => setLever({ reserve: +e.target.value })} />
                 <div className="v2-hp-sim-lever-hint">
-                  {levers.reserveTarget > portfolio.reserveShare
-                    ? `Перевести ~${fmt$((levers.reserveTarget - portfolio.reserveShare) * portfolio.totalPortfolioValue)} волатильных в резерв`
-                    : "Двигай вправо — дерискинг волатильных в стейблы"}
+                  {levers.reserve > 0.6
+                    ? "Выше 60% капитал простаивает — резерв начинает падать"
+                    : levers.reserve > baseReserve
+                      ? `Перевести ~${fmt$((levers.reserve - baseReserve) * portfolio.totalPortfolioValue)} рисковых в стейблы · коридор 30–60%`
+                      : "Коридор 30–60% = 100 баллов"}
                 </div>
               </div>
 
-              {hasFutures && (
-                <div className="v2-hp-sim-lever">
-                  <div className="v2-hp-sim-lever-top">
-                    <span>Снизить плечо фьючерсов</span>
-                    <span className="v2-hp-sim-lever-val">−{(levers.leverageCut * 100).toFixed(0)}%</span>
-                  </div>
-                  <input type="range" min="0" max="1" step="0.05" value={levers.leverageCut}
-                    onChange={e => setLevers(l => ({ ...l, leverageCut: +e.target.value }))} />
-                  <div className="v2-hp-sim-lever-hint">Меньше плечо — ниже риск ликвидации</div>
+              {/* Выравнивание классов → Диверсификация + Волатильность */}
+              <div className="v2-hp-sim-lever">
+                <div className="v2-hp-sim-lever-top">
+                  <span>Выровнять классы (крипта / металлы / акции)</span>
+                  <span className="v2-hp-sim-lever-val">{(levers.rebalance * 100).toFixed(0)}%</span>
                 </div>
-              )}
+                <input type="range" min="0" max="1" step="0.05" value={levers.rebalance}
+                  onChange={e => setLever({ rebalance: +e.target.value })} />
+                <div className="v2-hp-sim-lever-hint">Разложить рисковый капитал поровну — 100% даёт максимум диверсификации</div>
+              </div>
 
+              {/* Крупнейшая позиция → Концентрация */}
               <div className="v2-hp-sim-lever">
                 <div className="v2-hp-sim-lever-top">
                   <span>Крупнейшая позиция</span>
-                  <span className="v2-hp-sim-lever-val">{(levers.largestTarget * 100).toFixed(0)}%</span>
+                  <span className="v2-hp-sim-lever-val">{(levers.largest * 100).toFixed(0)}%</span>
                 </div>
-                <input type="range" min="0.2" max={Math.max(concBase, 0.2)} step="0.01" value={levers.largestTarget}
-                  onChange={e => setLevers(l => ({ ...l, largestTarget: +e.target.value }))} />
-                <div className="v2-hp-sim-lever-hint">Распределить крупнейший актив — ниже концентрация</div>
+                <input type="range" min="0" max={Math.max(healthInput.largestShare, 0.2)} step="0.01" value={levers.largest}
+                  onChange={e => setLever({ largest: +e.target.value })} />
+                <div className="v2-hp-sim-lever-hint">Распределить крупнейший актив — ≤20% даёт 100 баллов</div>
               </div>
+
+              {hasFutures && (
+                <>
+                  {/* Маржа фьючерсов → Фьючерсы (вес) */}
+                  <div className="v2-hp-sim-lever">
+                    <div className="v2-hp-sim-lever-top">
+                      <span>Маржа фьючерсов</span>
+                      <span className="v2-hp-sim-lever-val">{(levers.futuresMargin * 100).toFixed(1)}%</span>
+                    </div>
+                    <input type="range" min="0" max={Math.max(healthInput.futuresShare, 0.1)} step="0.005" value={levers.futuresMargin}
+                      onChange={e => setLever({ futuresMargin: +e.target.value })} />
+                    <div className="v2-hp-sim-lever-hint">Лимит политики — 10% от вложенного капитала</div>
+                  </div>
+
+                  {/* Плечо → Фьючерсы (плечо) */}
+                  <div className="v2-hp-sim-lever">
+                    <div className="v2-hp-sim-lever-top">
+                      <span>Снизить плечо</span>
+                      <span className="v2-hp-sim-lever-val">−{(levers.leverageCut * 100).toFixed(0)}%</span>
+                    </div>
+                    <input type="range" min="0" max="1" step="0.05" value={levers.leverageCut}
+                      onChange={e => setLever({ leverageCut: +e.target.value })} />
+                    <div className="v2-hp-sim-lever-hint">Меньше плечо — ниже риск ликвидации (≤2x альты, ≤3x BTC/золото)</div>
+                  </div>
+
+                  {/* Число позиций → Фьючерсы (количество) */}
+                  {baseLegs.length > 0 && (
+                    <div className="v2-hp-sim-lever">
+                      <div className="v2-hp-sim-lever-top">
+                        <span>Фьючерс-позиций</span>
+                        <span className="v2-hp-sim-lever-val">{Math.round(levers.futuresCount)}</span>
+                      </div>
+                      <input type="range" min="0" max={baseLegs.length} step="1" value={levers.futuresCount}
+                        onChange={e => setLever({ futuresCount: +e.target.value })} />
+                      <div className="v2-hp-sim-lever-hint">Каждая позиция несёт риск — лимит 3</div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="v2-hp-sim-effects">
               {health.components.map(c => {
-                const ns = sim.scores[c.key] ?? c.score;
+                const ns = simScores[c.key] ?? c.score;
                 const d = ns - c.score;
                 return (
                   <div key={c.key} className={`v2-hp-sim-eff ${d > 0 ? "up" : d < 0 ? "down" : "flat"}`}>
-                    <span className="v2-hp-sim-eff-lab">{SIM_LABELS[c.key] ?? c.label}</span>
+                    <span className="v2-hp-sim-eff-lab">{c.label}</span>
                     <span className="v2-hp-sim-eff-val">{c.score}<i>→</i>{ns}</span>
                   </div>
                 );

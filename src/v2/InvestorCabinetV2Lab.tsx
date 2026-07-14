@@ -14,7 +14,7 @@ import { useHyperliquidLeverage } from "../hooks/useHyperliquidLeverage";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
 import { INVESTOR_API_URL, WIFE_API_URL } from "../config/constants";
 import { buildPortfolioState } from "../lib/portfolioCalculations";
-import type { PortfolioHealth } from "../lib/portfolioHealth";
+import type { HealthInput, PortfolioHealth } from "../lib/portfolioHealth";
 import type { PlaybookCard } from "../lib/playbookSelectors";
 import { rawPositions, decisionsData, scenariosData } from "../mocks/portfolioData";
 import { maybeRecordSnapshot } from "../services/dailySnapshotService";
@@ -102,6 +102,7 @@ export type V2LabData = {
   transactions: PortfolioState["transactions"];
   allocation: Array<{ name: string; share: number; value: number }>;
   health: PortfolioHealth;
+  healthInput: HealthInput; // входы расчёта — нужны симулятору Health для честного пересчёта
   playbook: PlaybookCard[];
   ticker: Array<{ label: string; value: string; change: number }>;
 };
