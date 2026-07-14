@@ -4070,8 +4070,9 @@
 .v2-hp-sim-lever input[type="range"]:focus-visible { outline: 2px solid rgba(86,196,240,0.6); outline-offset: 3px; }
 
 .v2-hp-sim-effects { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-.v2-hp-sim-eff { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 10px; border-radius: 8px; background: rgba(120,150,180,0.05); }
-.v2-hp-sim-eff-lab { color: rgba(180,210,230,0.8); }
+.v2-hp-sim-eff { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 5px 10px; border-radius: 8px; background: rgba(120,150,180,0.05); }
+.v2-hp-sim-eff-lab { color: rgba(180,210,230,0.8); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v2-hp-sim-eff-val { flex-shrink: 0; }
 .v2-hp-sim-eff-val { font-variant-numeric: tabular-nums; font-weight: 600; color: rgba(180,210,230,0.65); }
 .v2-hp-sim-eff-val i { color: rgba(150,185,210,0.4); font-style: normal; margin: 0 4px; }
 .v2-hp-sim-eff.up .v2-hp-sim-eff-val { color: #5AEF8D; }

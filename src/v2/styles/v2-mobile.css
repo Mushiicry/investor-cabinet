@@ -1,0 +1,76 @@
+/* ═══════════════════════════════════════════════════════════════
+   V2 Mobile — консолидированные мобильные правила.
+   Импортируется ПОСЛЕДНИМ в v2.css, поэтому гарантированно перебивает
+   базовые desktop-раскладки при равной специфичности. Мобайл обязателен.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  /* ── Верхние карточки метрик: в столбец, полная ширина ──
+     Иначе две карточки жмутся в ~168px и desktop-шрифты клипятся. */
+  .v2-metrics-left {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* ── Блок здоровья: вертикальный стек (диагноз → рекомендации) ──
+     Десктоп-реактор (орбитальный гексагон, min-height 760px) — showpiece
+     для широкого экрана; на мобиле он схлопывается в 0px и ломает раскладку.
+     Скрываем его: балл, health-бар, диагноз и рекомендации остаются. */
+  .v2-hc-layout {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .v2-hc-layout .v2-health-stage {
+    display: none;
+  }
+
+  /* ── Распределение средств + стратегия F&G: в столбец ──
+     Дети несут явные grid-column: 1 / 2 — сбрасываем, иначе grid-column:2
+     создаёт вторую колонку даже при одном треке. */
+  .v2-alloc-center-row {
+    grid-template-columns: 1fr;
+    padding-right: 0;
+    margin-top: 24px;
+  }
+  .v2-alloc-center-row > * {
+    grid-column: 1;
+  }
+  .v2-secondary-row {
+    grid-template-columns: 1fr;
+    margin-top: 24px;
+  }
+
+  /* ── BTC-метрики: мини-карточки в 2 колонки с переносом ── */
+  .v2-bph-mini-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  /* ── Страница «Здоровье»: верхний ряд (Score / Диагноз / Рецепты) в столбец ── */
+  .v2-hp-top {
+    grid-template-columns: 1fr;
+  }
+
+  /* Breakdown-строки: фикс-лейбл 200px не влезает → гибкие колонки */
+  .v2-hp-brow {
+    grid-template-columns: minmax(0, 1.5fr) 1fr 42px 30px;
+    gap: 8px;
+    padding: 9px 10px;
+  }
+
+  /* ── Страница «Risk Engine»: hero и тело в столбец ── */
+  .v2-re-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .v2-re-body {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Сигналы: сетка тревог и основная сетка в столбец ── */
+  .v2-alerts-row,
+  .v2-sig-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
