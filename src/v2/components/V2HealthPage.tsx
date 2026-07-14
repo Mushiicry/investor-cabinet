@@ -1,6 +1,6 @@
 import type { PortfolioHealth, HealthComponent } from "../../lib/portfolioHealth";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { V2HealthDetailModal } from "./V2HealthDetailModal";
 import { isEmptyAccount } from "../lib/accountState";
 
@@ -171,6 +171,65 @@ function BreakdownRow({ c, onClick, empty }: { c: HealthComponent; onClick: () =
 // Нейтральный тон для пустого аккаунта — спокойный info-голубой, не тревожный красный.
 const EMPTY_TONE = "#55C7FF";
 
+// ── Health Simulator ──────────────────────────────────────────────
+// «Что если»: пересчёт Health по тем же формулам, что и computePortfolioHealth,
+// но от гипотетических долей. Реальные сделки НЕ выполняются.
+// healthFactor = Σ score×weight — берём веса из текущих компонентов.
+const SIM_RESERVE_TARGET = 0.30;   // цель резерва (Risk First)
+const SIM_CRYPTO_HARD = 0.9;       // волатильность: 100 при ≤60%, 0 при ≥90%
+const SIM_CRYPTO_SPAN = 0.30;      // 0.9 − 0.6
+const SIM_CONC_HARD = 0.5;         // концентрация: 0 при ≥50% (лимит позиции 35%)
+const SIM_CONC_SPAN = 0.30;        // 0.5 − 0.2
+const SIM_COMFORT_CASH = 0.5;      // гибкость: комфортный кэш
+
+const clampUnit = (v: number) => Math.max(0, Math.min(1, v));
+const toScore = (v: number) => Math.round(clampUnit(v) * 100);
+// инверсии score → доля (формулы монотонно-линейные, в пределах клампа точны)
+const cryptoFromScore = (s: number) => SIM_CRYPTO_HARD - (s / 100) * SIM_CRYPTO_SPAN;
+const cashFromScore = (s: number) => (s / 100) * SIM_COMFORT_CASH;
+const largestFromScore = (s: number) => SIM_CONC_HARD - (s / 100) * SIM_CONC_SPAN;
+
+type SimLevers = { reserveTarget: number; leverageCut: number; largestTarget: number };
+
+function simulateHealth(components: HealthComponent[], baseReserveShare: number, levers: SimLevers) {
+  const byKey = (k: string) => components.find(c => c.key === k);
+  const get = (k: string) => byKey(k)?.score ?? 0;
+
+  // Резерв ← из крипты (дерискинг волатильных в стейблы)
+  const addReserve = Math.max(0, levers.reserveTarget - baseReserveShare);
+  const newReserveShare = baseReserveShare + addReserve;
+  const newCrypto = Math.max(0, cryptoFromScore(get("crypto")) - addReserve);
+  const newCash = cashFromScore(get("flexibility")) + addReserve;
+
+  const scores: Record<string, number> = {
+    reserve: toScore(newReserveShare / SIM_RESERVE_TARGET),
+    crypto: toScore((SIM_CRYPTO_HARD - newCrypto) / SIM_CRYPTO_SPAN),
+    flexibility: toScore(newCash / SIM_COMFORT_CASH),
+    concentration: toScore((SIM_CONC_HARD - levers.largestTarget) / SIM_CONC_SPAN),
+    diversification: get("diversification"), // консервативно не трогаем
+    futures: get("futures"),
+  };
+
+  // Плечо: снижаем leverage-штраф (из meta фьючерсов)
+  const fMeta = byKey("futures")?.meta;
+  if (fMeta?.leverageScore != null && fMeta.weightScore != null && fMeta.countScore != null) {
+    const leveragePenalty = 100 - fMeta.leverageScore;
+    const newLeverageScore = 100 - leveragePenalty * (1 - levers.leverageCut);
+    scores.futures = Math.max(0, Math.min(100, Math.round(fMeta.weightScore + newLeverageScore + fMeta.countScore - 200)));
+  }
+
+  const healthFactor = Math.round(
+    components.reduce((sum, c) => sum + (scores[c.key] ?? c.score) * c.weight, 0)
+  );
+  const status: PortfolioHealth["status"] = healthFactor >= 75 ? "CONTROL" : healthFactor >= 55 ? "BALANCED" : "RISK";
+  return { healthFactor, status, scores };
+}
+
+const SIM_LABELS: Record<string, string> = {
+  reserve: "Резерв", crypto: "Волатильность", flexibility: "Гибкость",
+  concentration: "Концентрация", futures: "Фьючерсы", diversification: "Диверсификация",
+};
+
 export function V2HealthPage({ portfolio, health }: Props) {
   const [modal, setModal]   = useState<HealthComponent | null>(null);
   const [simOpen, setSimOpen] = useState(false);
@@ -188,6 +247,18 @@ export function V2HealthPage({ portfolio, health }: Props) {
   const prescriptions = isEmpty ? [] : buildPrescriptions(health.components, portfolio);
   const sortedComponents = [...health.components].sort((a, b) => a.score - b.score);
 
+  // ── Симулятор: базовые доли выводим из текущих компонентов ──
+  const concBase = largestFromScore(health.components.find(c => c.key === "concentration")?.score ?? 0);
+  const hasFutures = (health.components.find(c => c.key === "futures")?.meta?.futuresCount ?? 0) > 0;
+  const [levers, setLevers] = useState<SimLevers>({ reserveTarget: portfolio.reserveShare, leverageCut: 0, largestTarget: concBase });
+  const resetLevers = () => setLevers({ reserveTarget: portfolio.reserveShare, leverageCut: 0, largestTarget: concBase });
+  const sim = useMemo(
+    () => simulateHealth(health.components, portfolio.reserveShare, levers),
+    [health.components, portfolio.reserveShare, levers]
+  );
+  const simDelta = sim.healthFactor - hf;
+  const simInterp = interpretation(sim.healthFactor);
+
   return (
     <div className="v2-hp-page">
 
@@ -200,19 +271,21 @@ export function V2HealthPage({ portfolio, health }: Props) {
           <ScoreRing value={hf} color={interp.color} />
           <div className="v2-hp-score-interp" style={{ color: interp.color }}>{interp.text}</div>
           <div className="v2-hp-score-sub">{interp.sub}</div>
-          {/* Simulator stub */}
-          <button
-            className="v2-hp-sim-btn"
-            type="button"
-            onClick={() => setSimOpen(true)}
-            title="Health Simulator — скоро"
-          >
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-              <circle cx="7" cy="7" r="5.5" />
-              <path d="M5 7h4M7 5v4" strokeLinecap="round" />
-            </svg>
-            Симулятор Health
-          </button>
+          {/* Health Simulator — открывается только при наличии данных */}
+          {!isEmpty && (
+            <button
+              className="v2-hp-sim-btn"
+              type="button"
+              onClick={() => { resetLevers(); setSimOpen(true); }}
+              title="Открыть симулятор здоровья портфеля"
+            >
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <circle cx="7" cy="7" r="5.5" />
+                <path d="M5 7h4M7 5v4" strokeLinecap="round" />
+              </svg>
+              Симулятор Health
+            </button>
+          )}
         </div>
 
         {/* Diagnosis */}
@@ -312,20 +385,88 @@ export function V2HealthPage({ portfolio, health }: Props) {
         <div className="v2-hp-brow-hint">Нажмите на строку — подробное объяснение и рекомендации</div>
       </div>
 
-      {/* ── Simulator stub modal ── */}
+      {/* ── Health Simulator ── */}
       {simOpen && (
         <div className="v2-hp-sim-overlay" onClick={() => setSimOpen(false)}>
-          <div className="v2-hp-sim-modal" onClick={e => e.stopPropagation()}>
-            <div className="v2-hp-sim-title">Health Simulator</div>
-            <div className="v2-hp-sim-coming">
-              <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5" className="v2-hp-sim-icon">
-                <circle cx="24" cy="24" r="20" />
-                <path d="M24 14v12l7 4" strokeLinecap="round" />
-              </svg>
-              <div>Скоро</div>
-              <p>Симулятор позволит двигать ползунки — продать актив, добавить резерв, снизить плечо — и сразу видеть новый Health Score без реальных сделок.</p>
+          <div className="v2-hp-sim-modal" onClick={e => e.stopPropagation()} role="dialog" aria-label="Симулятор здоровья портфеля">
+            <div className="v2-hp-sim-head">
+              <div>
+                <div className="v2-hp-sim-title">Симулятор Health</div>
+                <div className="v2-hp-sim-note">Гипотетический расчёт — реальные сделки не выполняются</div>
+              </div>
+              <button className="v2-hp-sim-x" onClick={() => setSimOpen(false)} aria-label="Закрыть">✕</button>
             </div>
-            <button className="v2-hp-sim-close" onClick={() => setSimOpen(false)}>Закрыть</button>
+
+            <div className="v2-hp-sim-scoreboard">
+              <div className="v2-hp-sim-score">
+                <span className="v2-hp-sim-score-lab">Сейчас</span>
+                <strong style={{ color: interp.color }}>{hf}</strong>
+              </div>
+              <svg className="v2-hp-sim-arrow" viewBox="0 0 24 12" aria-hidden="true"><path d="M2 6h18m0 0l-5-4m5 4l-5 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <div className="v2-hp-sim-score">
+                <span className="v2-hp-sim-score-lab">Стало</span>
+                <strong style={{ color: simInterp.color }}>{sim.healthFactor}</strong>
+              </div>
+              <div className={`v2-hp-sim-delta ${simDelta > 0 ? "up" : simDelta < 0 ? "down" : "flat"}`}>
+                {simDelta > 0 ? "+" : ""}{simDelta}
+              </div>
+            </div>
+
+            <div className="v2-hp-sim-levers">
+              <div className="v2-hp-sim-lever">
+                <div className="v2-hp-sim-lever-top">
+                  <span>Резерв (стейблы) из крипты</span>
+                  <span className="v2-hp-sim-lever-val">{(levers.reserveTarget * 100).toFixed(0)}%</span>
+                </div>
+                <input type="range" min="0" max="0.5" step="0.01" value={levers.reserveTarget}
+                  onChange={e => setLevers(l => ({ ...l, reserveTarget: +e.target.value }))} />
+                <div className="v2-hp-sim-lever-hint">
+                  {levers.reserveTarget > portfolio.reserveShare
+                    ? `Перевести ~${fmt$((levers.reserveTarget - portfolio.reserveShare) * portfolio.totalPortfolioValue)} волатильных в резерв`
+                    : "Двигай вправо — дерискинг волатильных в стейблы"}
+                </div>
+              </div>
+
+              {hasFutures && (
+                <div className="v2-hp-sim-lever">
+                  <div className="v2-hp-sim-lever-top">
+                    <span>Снизить плечо фьючерсов</span>
+                    <span className="v2-hp-sim-lever-val">−{(levers.leverageCut * 100).toFixed(0)}%</span>
+                  </div>
+                  <input type="range" min="0" max="1" step="0.05" value={levers.leverageCut}
+                    onChange={e => setLevers(l => ({ ...l, leverageCut: +e.target.value }))} />
+                  <div className="v2-hp-sim-lever-hint">Меньше плечо — ниже риск ликвидации</div>
+                </div>
+              )}
+
+              <div className="v2-hp-sim-lever">
+                <div className="v2-hp-sim-lever-top">
+                  <span>Крупнейшая позиция</span>
+                  <span className="v2-hp-sim-lever-val">{(levers.largestTarget * 100).toFixed(0)}%</span>
+                </div>
+                <input type="range" min="0.2" max={Math.max(concBase, 0.2)} step="0.01" value={levers.largestTarget}
+                  onChange={e => setLevers(l => ({ ...l, largestTarget: +e.target.value }))} />
+                <div className="v2-hp-sim-lever-hint">Распределить крупнейший актив — ниже концентрация</div>
+              </div>
+            </div>
+
+            <div className="v2-hp-sim-effects">
+              {health.components.map(c => {
+                const ns = sim.scores[c.key] ?? c.score;
+                const d = ns - c.score;
+                return (
+                  <div key={c.key} className={`v2-hp-sim-eff ${d > 0 ? "up" : d < 0 ? "down" : "flat"}`}>
+                    <span className="v2-hp-sim-eff-lab">{SIM_LABELS[c.key] ?? c.label}</span>
+                    <span className="v2-hp-sim-eff-val">{c.score}<i>→</i>{ns}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="v2-hp-sim-actions">
+              <button className="v2-hp-sim-reset" onClick={resetLevers}>Сбросить</button>
+              <button className="v2-hp-sim-close" onClick={() => setSimOpen(false)}>Закрыть</button>
+            </div>
           </div>
         </div>
       )}

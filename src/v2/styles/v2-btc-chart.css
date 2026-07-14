@@ -3976,19 +3976,19 @@
 .v2-hp-sim-modal {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  padding: 40px 48px;
-  max-width: 440px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, rgba(86,196,240,0.09) 0%, rgba(5,14,28,0.92) 100%);
+  gap: 16px;
+  padding: 22px 24px;
+  width: min(460px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(86,196,240,0.08) 0%, rgba(5,14,28,0.94) 100%);
   border: 1px solid rgba(86,196,240,0.25);
-  text-align: center;
 }
 .v2-hp-sim-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   color: rgba(0,210,255,0.95);
 }
 .v2-hp-sim-coming {
@@ -4027,6 +4027,64 @@
   transition: background 0.18s;
 }
 .v2-hp-sim-close:hover { background: rgba(86,196,240,0.18); }
+
+/* ── Health Simulator — interactive ── */
+.v2-hp-sim-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.v2-hp-sim-note { font-size: 11.5px; color: rgba(160,195,220,0.6); margin-top: 3px; line-height: 1.4; }
+.v2-hp-sim-x { background: none; border: none; color: rgba(180,215,240,0.6); font-size: 15px; cursor: pointer; padding: 2px 7px; border-radius: 6px; line-height: 1; }
+.v2-hp-sim-x:hover { color: #fff; background: rgba(86,196,240,0.12); }
+
+.v2-hp-sim-scoreboard {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 18px; border-radius: 14px;
+  background: rgba(86,196,240,0.05); border: 1px solid rgba(86,196,240,0.14);
+}
+.v2-hp-sim-score { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.v2-hp-sim-score-lab { font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(150,185,210,0.6); }
+.v2-hp-sim-score strong { font-size: 34px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.v2-hp-sim-arrow { width: 24px; height: 12px; color: rgba(150,185,210,0.5); flex-shrink: 0; }
+.v2-hp-sim-delta {
+  margin-left: auto; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums;
+  padding: 5px 12px; border-radius: 999px;
+}
+.v2-hp-sim-delta.up { color: #5AEF8D; background: rgba(90,239,141,0.12); }
+.v2-hp-sim-delta.down { color: #FF5D6C; background: rgba(255,93,108,0.12); }
+.v2-hp-sim-delta.flat { color: rgba(160,195,220,0.6); background: rgba(160,195,220,0.08); }
+
+.v2-hp-sim-levers { display: flex; flex-direction: column; gap: 16px; }
+.v2-hp-sim-lever { display: flex; flex-direction: column; gap: 7px; }
+.v2-hp-sim-lever-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: rgba(210,235,250,0.9); }
+.v2-hp-sim-lever-val { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 700; color: #56c4f0; font-variant-numeric: tabular-nums; }
+.v2-hp-sim-lever-hint { font-size: 11px; color: rgba(160,195,220,0.55); line-height: 1.4; }
+.v2-hp-sim-lever input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 5px; border-radius: 999px;
+  background: rgba(86,196,240,0.18); outline: none; cursor: pointer;
+}
+.v2-hp-sim-lever input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: #56c4f0; box-shadow: 0 0 8px rgba(86,196,240,0.6); cursor: pointer; border: 2px solid #0a1120;
+}
+.v2-hp-sim-lever input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%; background: #56c4f0; border: 2px solid #0a1120; cursor: pointer;
+}
+.v2-hp-sim-lever input[type="range"]:focus-visible { outline: 2px solid rgba(86,196,240,0.6); outline-offset: 3px; }
+
+.v2-hp-sim-effects { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.v2-hp-sim-eff { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 10px; border-radius: 8px; background: rgba(120,150,180,0.05); }
+.v2-hp-sim-eff-lab { color: rgba(180,210,230,0.8); }
+.v2-hp-sim-eff-val { font-variant-numeric: tabular-nums; font-weight: 600; color: rgba(180,210,230,0.65); }
+.v2-hp-sim-eff-val i { color: rgba(150,185,210,0.4); font-style: normal; margin: 0 4px; }
+.v2-hp-sim-eff.up .v2-hp-sim-eff-val { color: #5AEF8D; }
+.v2-hp-sim-eff.down .v2-hp-sim-eff-val { color: #FF5D6C; }
+
+.v2-hp-sim-actions { display: flex; gap: 10px; }
+.v2-hp-sim-reset {
+  padding: 10px 18px; border-radius: 10px; border: 1px solid rgba(86,196,240,0.2);
+  background: transparent; color: rgba(180,215,240,0.8); font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background 0.18s;
+}
+.v2-hp-sim-reset:hover { background: rgba(86,196,240,0.08); }
+.v2-hp-sim-actions .v2-hp-sim-close { flex: 1; }
 
 /* ══════════════════════════════════════════════════════════════
    V2 Portfolio Allocation Card — Премиальный блок распределения
