@@ -1,6 +1,6 @@
 # CODEX TRACKER 2026-07-11
 
-Status: current through 2026-07-13 canonical frontend/apps-script merge
+Status: current through 2026-07-14 incident recovery/docs refresh
 Scope: Codex-owned isolated audit/fix track  
 Product mode: personal investor operating system, no SaaS/marketing expansion
 
@@ -101,7 +101,7 @@ Live sheet check confirmed:
 
 1. Keep contract tests green while Claude continues UI/frontend work.
 2. Add deeper accounting tests only after accounting reducer/helper implementation exists.
-3. Do not add extra Apps Script URL guards again without explicit approval.
+3. Do not add Apps Script-side auth layers or smoke wrappers; authorization stays in Vercel proxy only.
 4. Do not start parallel `src/v2` segmentation work; Claude owns `claude/segmentation-empty-account-2026-07-13`.
 
 ---
@@ -190,7 +190,7 @@ Ops verification refresh:
 - stale `recordDailySnapshot` trigger failed with `Script function not found: recordDailySnapshot`.
 - stale trigger was removed and replaced with `syncInvestorCabinetDailySnapshot`.
 - `syncCosmosWalletTransactions` hourly trigger was installed; manual run logged `Cosmos tx import: +11 транзакций`.
-- Remaining P0 security gap: direct Apps Script URLs should still be protected by shared secret/rotation.
+- Later recovery cancelled the Apps Script-side authorization approach; final rule is documented in the 2026-07-14 entry.
 
 ## 2026-07-13
 
@@ -209,3 +209,13 @@ Post-merge verification:
 - `npm run lint`: passed.
 - `npm run build`: passed on Vite 8.1.4.
 - `npm audit --omit=dev`: passed with 0 vulnerabilities.
+
+## 2026-07-14
+
+Main-account incident recovery:
+- Incident closed: Apps Script URL guard was removed from live deployment by redeploying from broken `@29` to restored `@30`.
+- Apps Script deployment URL was preserved.
+- Root cause: `git revert` changed repository state only; Apps Script production code does not change until `clasp push` and web-app redeploy.
+- Local dev-proxy fix is committed in `main` as `7f0dfce`.
+- Branch hygiene completed: local branch list contains only `main`.
+- Abandoned hardening roadmap is cancelled; do not revive that approach without an explicit product decision.

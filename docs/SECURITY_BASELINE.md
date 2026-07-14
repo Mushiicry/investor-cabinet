@@ -2,7 +2,7 @@
 
 Status: personal-tool baseline  
 Scope: Investor Cabinet current architecture  
-Last updated: 2026-07-11
+Last updated: 2026-07-14
 
 ---
 
@@ -21,15 +21,16 @@ This is not a public SaaS baseline. Public multi-user SaaS requirements are defe
 
 Current flow:
 
-Google Sheets -> Apps Script web app -> Vercel rewrite `/api/investor` -> React frontend
+Google Sheets -> Apps Script web app -> Vercel serverless proxy -> React frontend
 
 Auth layer:
-- Supabase Auth is used by the frontend session gate;
-- portfolio data is still served by Apps Script/Vercel API path;
-- Supabase is not yet the portfolio database.
+- authorization is a single server-side layer in Vercel;
+- browser calls `/api/investor` and `/api/investor-wife` with a Supabase bearer token;
+- `api/_investorProxy.js` validates the Supabase token and owner email before proxying Apps Script;
+- Apps Script remains an upstream data adapter, not an auth layer.
 
 Important implication:
-frontend auth alone does not protect the raw Apps Script endpoint if that endpoint is publicly callable.
+do not add a second Apps Script-side authorization layer for the current personal-tool baseline.
 
 ---
 
@@ -71,17 +72,12 @@ Allowed:
 
 ## API Access
 
-Target state:
+Rule:
 - browser calls only Vercel API routes;
-- Vercel serverless route validates Supabase session;
-- server-side route calls Apps Script;
-- Apps Script URL and optional shared secret stay server-side.
-
-Current risk:
-if Apps Script web app is deployed as public/anonymous and URL is discoverable, portfolio JSON can be read without frontend login. Production `/api/investor` and `/api/investor-wife` now route through Vercel serverless functions, but direct Apps Script URLs still need operational protection/rotation when possible.
-
-Priority:
-P0 for privacy.
+- `api/_investorProxy.js` validates the Supabase bearer token through Supabase Auth;
+- `api/_investorProxy.js` checks founder/wife email before proxying Apps Script;
+- server-side route calls Apps Script through `INVESTOR_APPS_SCRIPT_URL` and `WIFE_APPS_SCRIPT_URL`;
+- no additional Apps Script-side authorization layer is part of this baseline.
 
 Current implementation:
 - browser sends Supabase access token to Vercel `/api/investor` and `/api/investor-wife`;
@@ -96,12 +92,6 @@ Required Vercel env:
 - `WIFE_EMAIL` or `VITE_WIFE_EMAIL`;
 - `INVESTOR_APPS_SCRIPT_URL` recommended;
 - `WIFE_APPS_SCRIPT_URL` recommended.
-
-Planned hardening:
-- add server-only shared secret env in Vercel;
-- Vercel proxy appends the secret to Apps Script upstream requests;
-- Apps Script rejects requests with missing/invalid secret before returning portfolio JSON;
-- rotate Apps Script deployments after secret protection is live, so old public URLs are no longer useful.
 
 ## Google Sheets
 
@@ -145,7 +135,7 @@ Before treating privacy as acceptable for personal use:
 - `/api/investor` returns 401/403 without a valid Supabase session.
 - `/api/investor-wife` returns 401/403 without a valid Supabase session.
 - Apps Script direct URL is not used by production frontend client code.
-- Vercel env contains all required server-side API targets/secrets.
+- Vercel env contains all required server-side API targets and owner emails.
 - Logout clears cached portfolio state.
 - Build succeeds.
 - Lint has no security-relevant ignored errors.
