@@ -11,3 +11,9 @@ export const RESERVE_TARGET_SHARE = 0.3;
 export const MAX_CRYPTO_EXPOSURE_SHARE = 0.6;
 export const MAX_FUTURES_EXPOSURE_SHARE = 0.1;
 export const MAX_SINGLE_RISK_ASSET_SHARE = 0.35;
+
+// Верхняя граница коридора резерва. Резерв — это подушка и опциональность,
+// но капитал сверх этой доли уже просто простаивает: инвестор не инвестирует.
+// В диапазоне [RESERVE_TARGET_SHARE, RESERVE_BAND_MAX_SHARE] резерв = 100 баллов,
+// выше — балл линейно падает до 0 при 100% в кэше.
+export const RESERVE_BAND_MAX_SHARE = 0.6;

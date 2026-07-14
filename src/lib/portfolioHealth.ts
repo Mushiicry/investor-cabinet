@@ -1,6 +1,7 @@
 import {
   MAX_CRYPTO_EXPOSURE_SHARE,
   MAX_FUTURES_EXPOSURE_SHARE,
+  RESERVE_BAND_MAX_SHARE,
   RESERVE_TARGET_SHARE,
 } from "../config/riskRules";
 
@@ -71,12 +72,63 @@ export type HealthComponent = {
   meta?: HealthComponentMeta;
 };
 
+// Спотовые рисковые классы, по которым меряется диверсификация.
+// Кэш/стейблы и фьючерсы сюда НЕ входят — см. computeDiversificationScore.
+export const DIVERSIFIABLE_CLASSES = ["Крипта", "Металлы", "Акции"] as const;
+
+/**
+ * Диверсификация: насколько ровно разложен РИСКОВЫЙ капитал по спотовым классам.
+ *
+ * Кэш/стейблы исключены: подушка — это не «концентрация». Прежняя формула считала
+ * HHI по всем классам вместе с кэшем и потому наказывала за резерв — компоненты
+ * «Гибкость» (хочет много кэша) и «Диверсификация» воевали друг с другом.
+ *
+ * Фьючерсы исключены: это плечевой оверлей, он оценивается отдельным компонентом.
+ * Включать их значило бы требовать ~25% во фьючерсах ради 100 баллов — прямой
+ * конфликт с компонентом «Фьючерсы», который за это же штрафует.
+ *
+ * Нормализация: 100 = капитал ровно разложен по всем спотовым классам (HHI = 1/n),
+ * 0 = всё в одном классе (HHI = 1). Без нормализации потолок был 80 — сотня была
+ * недостижима by design, а вместе с ней и Health = 100.
+ */
+/**
+ * Резерв — это КОРИДОР, а не «чем больше, тем лучше».
+ *
+ * < 30%  — подушки не хватает: линейный рост балла до 100.
+ * 30–60% — дисциплинированная зона: 100 баллов.
+ * > 60%  — капитал простаивает: инвестор перестал инвестировать. Балл линейно
+ *          падает до 0 при 100% в кэше.
+ *
+ * Без верхней границы модель выдавала 100/100 за портфель «94% кэша + по 2% в трёх
+ * классах» — вырожденный оптимум, при котором «идеальное здоровье» = не инвестировать.
+ * Резерв даёт опциональность, но сверх коридора это уже не подушка, а простой.
+ */
+export function computeReserveScore(reserveShare: number): number {
+  if (reserveShare <= 0) return 0;
+  if (reserveShare < RESERVE_TARGET_SHARE) return score(reserveShare / RESERVE_TARGET_SHARE);
+  if (reserveShare <= RESERVE_BAND_MAX_SHARE) return 100;
+  return score((1 - reserveShare) / (1 - RESERVE_BAND_MAX_SHARE));
+}
+
+export function computeDiversificationScore(riskShares: number[]): number {
+  const n = riskShares.length;
+  const total = riskShares.reduce((sum, value) => sum + value, 0);
+  if (n < 2 || total <= 0) return 0;
+
+  const hhi = riskShares.reduce((sum, value) => {
+    const weight = value / total;
+    return sum + weight * weight;
+  }, 0);
+
+  return score((1 - hhi) / (1 - 1 / n));
+}
+
 export type HealthInput = {
   cashShare: number; // 0..1
   cryptoShare: number;
   futuresShare: number;
   largestShare: number;
-  categoryShares: number[];
+  riskCategoryShares: number[]; // доли спотовых рисковых классов (DIVERSIFIABLE_CLASSES)
   reserveShare?: number; // выделенный резерв (стейблы) / портфель — Risk First
   futuresLegs?: FuturesLeg[]; // фьючерс-позиции с выведенным плечом
   portfolioValue?: number; // для перевода долей в $ в подсказках
@@ -90,11 +142,9 @@ export type PortfolioHealth = {
 };
 
 export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
-  const hhi = input.categoryShares.reduce((sum, value) => sum + value * value, 0);
-
-  // ── Резерв (Risk First): выделенные стейблы относительно цели 30% ──
+  // ── Резерв (Risk First): коридор 30–60%, см. computeReserveScore ──
   const reserveShare = input.reserveShare ?? input.cashShare;
-  const reserveScore = score(reserveShare / RESERVE_TARGET_SHARE);
+  const reserveScore = computeReserveScore(reserveShare);
   const reserveUsd = input.portfolioValue ? reserveShare * input.portfolioValue : undefined;
   const reserveTargetUsd = input.portfolioValue
     ? RESERVE_TARGET_SHARE * input.portfolioValue
@@ -143,7 +193,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       key: "reserve",
       label: "Резерв",
       color: "#56d8f5",
-      desc: "Выделенный резерв (стейблы) относительно цели 30%.",
+      desc: "Выделенный резерв (стейблы). Коридор 30–60% = 100 баллов; выше — штраф за простаивающий капитал.",
       weight: 0.2,
       score: reserveScore,
       meta: { reserveUsd, reserveTargetUsd },
@@ -189,9 +239,9 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       key: "diversification",
       label: "Диверсификация",
       color: "#5fe0cf",
-      desc: "Распределение по классам активов.",
+      desc: "Насколько ровно разложен рисковый капитал по спотовым классам (крипта / металлы / акции). Кэш и фьючерсы не учитываются.",
       weight: 0.15,
-      score: score(1 - hhi),
+      score: computeDiversificationScore(input.riskCategoryShares),
     },
     {
       key: "flexibility",

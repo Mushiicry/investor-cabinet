@@ -3,7 +3,7 @@
 // а конструирование данных жило отдельно. Типы остаются в InvestorCabinetV2Lab
 // (их импортируют компоненты) и подтягиваются сюда как type-only (без runtime-цикла).
 import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
-import { computePortfolioHealth } from "../../lib/portfolioHealth";
+import { computePortfolioHealth, DIVERSIFIABLE_CLASSES } from "../../lib/portfolioHealth";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import { buildPlaybookCards } from "../../lib/playbookSelectors";
 import { decisionsData, scenariosData } from "../../mocks/portfolioData";
@@ -105,7 +105,8 @@ const mockData: V2LabData = {
     cryptoShare: 0.627,
     futuresShare: 0.021,
     largestShare: 0.4,
-    categoryShares: [0.627, 0.026, 0.021, 0, 0.324],
+    // спотовые рисковые классы: Крипта / Металлы / Акции (без кэша и фьючерсов)
+    riskCategoryShares: [0.627, 0.026, 0],
   }),
   playbook: [],
   ticker: [
@@ -129,7 +130,7 @@ const zeroedHealth: PortfolioHealth = (() => {
     cryptoShare: 0,
     futuresShare: 0,
     largestShare: 0,
-    categoryShares: [0, 0, 0, 0, 0],
+    riskCategoryShares: [0, 0, 0],
   });
   return {
     healthFactor: 0,
@@ -218,7 +219,7 @@ export const buildLiveV2Data = (
     cryptoShare: categoryShare(state, "Крипта"),
     futuresShare: state.risk.futuresShare,
     largestShare: state.risk.largestRiskShare,
-    categoryShares: state.overview.categories.map((category) => category.share),
+    riskCategoryShares: DIVERSIFIABLE_CLASSES.map((name) => categoryShare(state, name)),
     reserveShare: resolveReserveShare(state),
     futuresLegs,
     portfolioValue: state.overview.portfolioValue,
