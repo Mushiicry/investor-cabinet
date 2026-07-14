@@ -73,4 +73,103 @@
   .v2-sig-main-grid {
     grid-template-columns: 1fr;
   }
+
+  /* ── Настройки: карточки в столбец (3 фикс-колонки не влезают) ── */
+  .v2-settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Сценарии: рейл активов — паддинги внутрь ширины, тач-скролл ──
+     width:100% + горизонтальные паддинги при content-box давали 398px > вьюпорта. */
+  .v2-sc-rail {
+    box-sizing: border-box;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Портфель: блоки метрик позиции в стек + подписи значений ──
+     На десктопе колонки объясняет шапка группы (.v2-port-group-head),
+     на мобиле она скрыта — без подписей цифры нечитаемы, а 2 блока
+     по 3 значения в ряд клипались. Каждое значение — колонка с лейблом. */
+  .v2-port-row {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    gap: 4px;
+  }
+  .v2-row-block {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .v2-row-block .v2-rb-val {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 13px;
+    min-width: 0;
+  }
+  .v2-row-block .v2-rb-val::before {
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(150, 185, 210, 0.55);
+  }
+  .v2-port-row .v2-row-block:nth-child(1) .v2-rb-val:nth-child(1)::before { content: "вход"; }
+  .v2-port-row .v2-row-block:nth-child(1) .v2-rb-val:nth-child(2)::before { content: "pnl %"; }
+  .v2-port-row .v2-row-block:nth-child(1) .v2-rb-val:nth-child(3)::before { content: "сейчас"; }
+  .v2-port-row .v2-row-block:nth-child(2) .v2-rb-val:nth-child(1)::before { content: "вложено"; }
+  .v2-port-row .v2-row-block:nth-child(2) .v2-rb-val:nth-child(2)::before { content: "pnl $"; }
+  .v2-port-row .v2-row-block:nth-child(2) .v2-rb-val:nth-child(3)::before { content: "стоимость"; }
+
+  /* ── Обзор: компактная полоса всех 6 компонент здоровья ──
+     Десктоп-реактор скрыт на мобиле; диагноз показывает только слабые и
+     сильные стороны — средние (напр. Концентрация 69) выпадали. Полоса
+     гарантирует те же 6 цифр, что и орбитальные датчики на десктопе. */
+  .v2-hc-mobile-scores {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 10px;
+  }
+}
+
+/* Полоса компонент — только мобила; на десктопе те же данные в реакторе */
+@media (min-width: 769px) {
+  .v2-hc-mobile-scores {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .v2-hc-mscore {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 7px 9px;
+    border-radius: 9px;
+    border: 1px solid rgba(86, 196, 240, 0.10);
+    background: rgba(86, 196, 240, 0.04);
+    cursor: pointer;
+    text-align: left;
+  }
+  .v2-hc-mscore-label {
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(150, 185, 210, 0.65);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .v2-hc-mscore-val {
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
 }
