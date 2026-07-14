@@ -7,6 +7,7 @@ import {
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import { isEmptyAccount } from "../lib/accountState";
+import { getMarketPsychology } from "../lib/marketPsychology";
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -171,6 +172,8 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
   );
 
   const alerts = computeAlerts(portfolio, positions, allocation, currentFG);
+  // Поведенческий гид: живой F&G + тренд по истории → эмоция рынка и дисциплина.
+  const psychology = getMarketPsychology(currentFG, fearGreedStrategy.history);
   const criticalCount = alerts.filter((a) => a.level === "critical").length;
   const fgZone = getFGZone(currentFG);
   const currentRule = liveStrategy.rules.find((r) => r.isCurrent);
@@ -245,6 +248,37 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
           </div>
           <div className="v2-fg-bar-labels">
             <span>Страх</span><span>Нейтрально</span><span>Жадность</span>
+          </div>
+
+          {/* ── Психология рынка: не прогноз, а поведенческий гид ── */}
+          <div className="v2-psy-block">
+            <div className="v2-psy-head">
+              <span className="v2-psy-emotion" style={{ color: psychology.color }}>
+                {psychology.emotion}
+                {psychology.trend !== "flat" && (
+                  <span className="v2-psy-trend" aria-label={psychology.trend === "rising" ? "индекс растёт" : "индекс падает"}>
+                    {psychology.trend === "rising" ? "↗" : "↘"}
+                  </span>
+                )}
+              </span>
+              <span className="v2-psy-stance" style={{ borderColor: `${psychology.color}55`, color: psychology.color }}>
+                {psychology.stanceLabel}
+              </span>
+            </div>
+            <div className="v2-psy-rows">
+              <div className="v2-psy-row">
+                <span className="v2-psy-row-k">Рынок чувствует</span>
+                <span className="v2-psy-row-v">{psychology.feels}</span>
+              </div>
+              <div className="v2-psy-row">
+                <span className="v2-psy-row-k">Дисциплина делает</span>
+                <span className="v2-psy-row-v">{psychology.disciplined}</span>
+              </div>
+              <div className="v2-psy-row is-danger">
+                <span className="v2-psy-row-k">Опасно сейчас</span>
+                <span className="v2-psy-row-v">{psychology.dangerous}</span>
+              </div>
+            </div>
           </div>
 
           <div className="v2-sig-divider" />

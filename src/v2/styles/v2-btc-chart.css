@@ -1251,6 +1251,61 @@
   flex-shrink: 0;
 }
 
+/* ── Психология рынка (панель «Рынок» на Сигналах) ─────────────
+   Поведенческий гид от живого F&G: эмоция + тренд, что чувствует
+   рынок / что делает дисциплина / что опасно. Не прогноз. */
+.v2-psy-block {
+  margin: 10px 16px 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(86, 196, 240, 0.10);
+  background: rgba(86, 196, 240, 0.035);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.v2-psy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.v2-psy-emotion {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.v2-psy-trend { font-size: 13px; opacity: 0.85; }
+.v2-psy-stance {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.v2-psy-rows { display: flex; flex-direction: column; gap: 8px; }
+.v2-psy-row { display: flex; flex-direction: column; gap: 2px; }
+.v2-psy-row-k {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(150, 185, 210, 0.6);
+}
+.v2-psy-row-v {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(205, 230, 245, 0.88);
+}
+.v2-psy-row.is-danger .v2-psy-row-k { color: rgba(240, 130, 120, 0.75); }
+.v2-psy-row.is-danger .v2-psy-row-v { color: rgba(240, 170, 160, 0.9); }
+
 /* ── Market panel ───────────────────────────────────────────── */
 .v2-sig-market {
   padding: 0;
