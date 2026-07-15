@@ -125,6 +125,11 @@
   .v2-hero-reactor {
     padding-right: 0 !important;
   }
+  /* Карточка рекомендаций несла margin-right:36px (десктоп) → была 330px уже
+     остальных блоков. Убираем — та же ширина, что диагноз и распределение. */
+  .v2-hc-side--recommend {
+    margin-right: 0 !important;
+  }
   /* Гексагон-реактор — на всю ширину карточки, ближе к краям экрана */
   .v2-hc-layout .v2-health-stage .v2-hc-radar-chart svg,
   .v2-hc-radar-chart svg {
