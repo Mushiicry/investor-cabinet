@@ -87,13 +87,15 @@
     overflow-x: hidden;
   }
 
-  /* Шапка BTC-графика: 3 колонки (1fr auto 1fr) не влезают в 390px */
+  /* Шапка BTC-графика: 3 колонки (1fr auto 1fr) не влезают в 390px и текст
+     BTC-цены налезал на «ЭМОЦИОНАЛЬНЫЙ ЦИКЛ». В столбец (!important — базовое
+     правило по неясной причине перебивало обычную специфичность). */
   .v2-btc-header {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
-  }
-  .v2-btc-header-right {
-    justify-self: start;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 4px !important;
+    text-align: center;
   }
 
   /* ── Верхние карточки метрик: в столбец, полная ширина ──
@@ -116,6 +118,18 @@
     min-height: 0;
     height: auto;
     overflow: visible;
+  }
+  /* ГЛАВНАЯ причина «левого края»: у .v2-hero-reactor padding-right:50px
+     (на десктопе — место под правый столбец). На мобиле убираем → блок
+     здоровья, диагноз и РЕКОМЕНДАЦИИ занимают всю ширину, как распределение. */
+  .v2-hero-reactor {
+    padding-right: 0 !important;
+  }
+  /* Гексагон-реактор — на всю ширину карточки, ближе к краям экрана */
+  .v2-hc-layout .v2-health-stage .v2-hc-radar-chart svg,
+  .v2-hc-radar-chart svg {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   /* ── Карточка «Распределение средств»: донат по центру + легенда снизу ──
@@ -165,6 +179,20 @@
   .v2-bph-mini-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+
+  /* DCA-тултип «?»: на десктопе — absolute сбоку от кнопки (left:22px, 280px),
+     на мобиле у правого края вылезал за экран. Делаем фиксированным поповером
+     по центру над таб-баром — всегда в пределах экрана. */
+  .v2-dca-tip-card {
+    position: fixed !important;
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
+    transform: translateX(-50%) !important;
+    width: min(320px, 92vw) !important;
+    max-width: 92vw !important;
   }
 
   /* Панель «СТАДИЯ ЦИКЛА»: флекс-ряд (фаза | зона) не влезает — правая колонка
