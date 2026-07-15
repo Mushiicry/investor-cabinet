@@ -200,6 +200,22 @@
     max-width: 92vw !important;
   }
 
+  /* BTC-график мелковат на телефоне — задаём заметную высоту (SVG сам впишется
+     по aspect-ratio). Полноэкранная кнопка даёт горизонтальный просмотр. */
+  .v2-btc-svg {
+    min-height: 200px;
+  }
+
+  /* Полный экран: поворот в горизонталь (пользователь кладёт телефон вбок).
+     width=100vh / height=100vw + rotate(90deg) → чарт занимает весь экран
+     landscape. Кнопка-крестик не повёрнута — остаётся тапабельной. */
+  .v2-btc-chart-wrap.is-fullscreen .v2-btc-svg {
+    width: 100vh !important;
+    height: 100vw !important;
+    max-width: none !important;
+    transform: rotate(90deg);
+  }
+
   /* Панель «СТАДИЯ ЦИКЛА»: флекс-ряд (фаза | зона) не влезает — правая колонка
      обрезалась. В столбец, обе секции на всю ширину. */
   .v2-btc-phase-hero {

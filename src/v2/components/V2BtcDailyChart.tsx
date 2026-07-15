@@ -138,6 +138,8 @@ function getFearGreedLabel(v: number) {
 export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: number }) {
   const [bars, setBars] = useState<Bar[]>([]);
   const [loading, setLoading] = useState(true);
+  // График на весь экран (на мобиле — с поворотом в горизонталь)
+  const [chartFull, setChartFull] = useState(false);
 
   useEffect(() => {
     fetchAllBars(CHART_START)
@@ -423,7 +425,24 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
       </div>
 
       {/* ── Chart SVG ── */}
-      <svg viewBox={`0 0 ${VW} ${VH}`} className="v2-btc-svg" preserveAspectRatio="xMidYMid meet">
+      <div className={`v2-btc-chart-wrap${chartFull ? " is-fullscreen" : ""}`}>
+        <button
+          type="button"
+          className="v2-btc-fs-btn"
+          onClick={() => setChartFull((v) => !v)}
+          aria-label={chartFull ? "Свернуть график" : "График на весь экран"}
+        >
+          {chartFull ? (
+            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+              <path d="M7 2v5H2M11 2v5h5M7 16v-5H2M11 16v-5h5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+              <path d="M2 7V2h5M16 7V2h-5M2 11v5h5M16 11v5h-5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
+        <svg viewBox={`0 0 ${VW} ${VH}`} className="v2-btc-svg" preserveAspectRatio="xMidYMid meet">
         <defs>
           <filter id="btcGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="5" result="blur"/>
@@ -679,7 +698,8 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
         {/* Chart area top border line */}
         <line x1={ML} y1={MT} x2={VW-MR} y2={MT}
           stroke="rgba(86,196,240,0.14)" strokeWidth="0.8" />
-      </svg>
+        </svg>
+      </div>
     </div>
   );
 }
