@@ -115,6 +115,14 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     localStorage.setItem(avatarKey, avatar);
   }
 
+  // Мобильное меню-шторка: на ≤768px сайдбар (все 8 страниц + Выход) скрыт,
+  // а гамбургер его выдвигает. Навигация закрывает шторку.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const handleNavigate = (p: V2Page) => {
+    onNavigate(p);
+    setMenuOpen(false);
+  };
+
   const criticalCount = useMemo(() => {
     const portfolio = data.portfolio;
     let n = 0;
@@ -133,7 +141,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     >
       {/* Мобильная шапка (только ≤768px) */}
       <header className="v2-mob-header">
-        <button className="v2-mob-hamburger" type="button" aria-label="Меню">
+        <button className="v2-mob-hamburger" type="button" aria-label="Меню" onClick={() => setMenuOpen(true)}>
           <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6">
             <path d="M2 5h14M2 9h14M2 13h14" strokeLinecap="round" />
           </svg>
@@ -164,9 +172,13 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
       }} aria-hidden="true" />
       {/* Живые звёзды и вспышки поверх фото */}
       <V2StarField />
+      {/* Бэкдроп мобильной шторки */}
+      {menuOpen && <div className="v2-mob-drawer-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
       <V2Sidebar
+        mobileOpen={menuOpen}
+        onCloseMobile={() => setMenuOpen(false)}
         activePage={page}
-        onNavigate={onNavigate}
+        onNavigate={handleNavigate}
         healthFactor={data.portfolio.healthFactor}
         healthStatus={data.portfolio.healthStatus}
         portfolio={data.portfolio}

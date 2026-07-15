@@ -103,12 +103,14 @@ type Props = {
   health: PortfolioHealth;
   profileAvatar: string;
   onOpenAuth: (tab: "signin" | "signup") => void;
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
 };
 
 const mainNavItems = navItems.filter(i => i.label !== "Настройки");
 const settingsItem  = navItems.find(i => i.label === "Настройки")!;
 
-export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, profileAvatar, onOpenAuth }: Props) {
+export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, profileAvatar, onOpenAuth, mobileOpen = false, onCloseMobile }: Props) {
   const { configured, user, displayName, signOut } = useAuth();
   const [levelOpen, setLevelOpen] = useState(false);
   const { level } = computeLevel(healthFactor);
@@ -137,7 +139,12 @@ export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, 
   const statusColor = statusColors[healthStatus] ?? "#5af8ff";
 
   return (
-    <aside className="v2-sidebar">
+    <aside className={mobileOpen ? "v2-sidebar is-mobile-open" : "v2-sidebar"}>
+      <button className="v2-sidebar-mob-close" type="button" aria-label="Закрыть меню" onClick={onCloseMobile}>
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+          <path d="M4 4l10 10M14 4L4 14" strokeLinecap="round" />
+        </svg>
+      </button>
       <div className="v2-brand">
         <div className="v2-brand-mark">
           {profileAvatar
