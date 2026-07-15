@@ -6,6 +6,10 @@
 /* Предотвращаем overscroll-bounce — иначе снизу проступает серая полоска браузера. */
 html:has(.v2-lab) {
   overscroll-behavior: none;
+  /* iOS Safari без этого «инфлейтит» шрифты в портрете — контент кажется
+     зумнутым/съехавшим, пока не сведёшь пальцами. Фиксируем масштаб текста. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body:has(.v2-lab) {
