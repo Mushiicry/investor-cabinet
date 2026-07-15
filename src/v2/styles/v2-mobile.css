@@ -5,30 +5,68 @@
    ═══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
+  /* ═══ ПРОИЗВОДИТЕЛЬНОСТЬ ═══
+     backdrop-filter — главный источник лагов в мобильном Safari: каждый такой
+     слой требует отдельного прохода блюра по фону на КАЖДОМ кадре скролла,
+     а их в проекте 48. Отключаем на мобиле — градиентные фоны панелей остаются,
+     «стекло» читается, но скролл становится плавным.
+     ВАЖНО: не трогаем `filter` — приватный гейт (.v2-main.is-locked) размывает
+     данные чужих именно им, и он должен продолжать работать. */
+  .v2-lab *,
+  .v2-lab *::before,
+  .v2-lab *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* ═══ ГОРИЗОНТАЛЬНЫЙ ДРЕЙФ ═══
+     Причины дрейфа лечим у источника (grid blowout → minmax(0,1fr), абсолютные
+     тултипы, фикс-ширины ниже). overflow-x у корня НЕ ставим `clip`: он лишь
+     прячет вылезшее, создавая ощущение «тряски». Единственная страховочная
+     сетка — чтобы случайный будущий вылет не тряс весь экран, но основную
+     работу делают точечные фиксы. */
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Шапка BTC-графика: 3 колонки (1fr auto 1fr) не влезают в 390px */
+  .v2-btc-header {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .v2-btc-header-right {
+    justify-self: start;
+  }
+
   /* ── Верхние карточки метрик: в столбец, полная ширина ──
      Иначе две карточки жмутся в ~168px и desktop-шрифты клипятся. */
   .v2-metrics-left {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
 
-  /* ── Блок здоровья: вертикальный стек (диагноз → рекомендации) ──
-     Десктоп-реактор (орбитальный гексагон, min-height 760px) — showpiece
-     для широкого экрана; на мобиле он схлопывается в 0px и ломает раскладку.
-     Скрываем его: балл, health-бар, диагноз и рекомендации остаются. */
+  /* ── Блок здоровья: вертикальный стек (диагноз → РЕАКТОР → рекомендации) ──
+     Реактор — целиком SVG (viewBox -80 -80 440 440), поэтому масштабируется
+     без потерь. Раньше он схлопывался в 0px не потому, что «не влезает», а
+     потому что был средней колонкой 3-колоночного грида. Даём ему свою строку
+     на всю ширину — гексагон и все 6 орбитальных датчиков видны как на десктопе. */
   .v2-hc-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 14px;
   }
   .v2-hc-layout .v2-health-stage {
-    display: none;
+    min-height: 0;
+    height: auto;
+    overflow: visible;
   }
 
   /* ── Распределение средств + стратегия F&G: в столбец ──
      Дети несут явные grid-column: 1 / 2 — сбрасываем, иначе grid-column:2
      создаёт вторую колонку даже при одном треке. */
   .v2-alloc-center-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     padding-right: 0;
     margin-top: 24px;
   }
@@ -36,7 +74,7 @@
     grid-column: 1;
   }
   .v2-secondary-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     margin-top: 24px;
   }
 
@@ -48,7 +86,7 @@
 
   /* ── Страница «Здоровье»: верхний ряд (Score / Диагноз / Рецепты) в столбец ── */
   .v2-hp-top {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /* Breakdown-строки: фикс-лейбл 200px не влезает → гибкие колонки */
@@ -65,18 +103,48 @@
     gap: 12px;
   }
   .v2-re-body {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  /* ── Сигналы: сетка тревог и основная сетка в столбец ── */
+  /* ── Сигналы и Отчёты: снять десктопную «страницу в один экран» ──
+     Обе задают height: calc(100vh - 36px) + overflow: hidden — на десктопе это
+     аккуратный дашборд без прокрутки, но на телефоне так контент просто
+     обрезается по высоте. На мобиле страница должна расти и скроллиться.
+
+     Плюс grid blowout: .v2-signals-page объявляет только grid-template-rows,
+     а неявная колонка получает `auto` = min-content своих панелей (815px!) и
+     разрывает сетку. minmax(0, 1fr) разрешает треку сжиматься. */
+  .v2-signals-page,
+  .v2-reports-page {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    padding: 14px;
+  }
+  .v2-signals-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .v2-alerts-row,
   .v2-sig-main-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Полоса факторов здоровья: 6 баров в ряд не влезают и раздували всю
+     страницу до 650px (min-content) → 3 колонки × 2 ряда. */
+  .v2-sig-health-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .v2-sig-hbar-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* ── Настройки: карточки в столбец (3 фикс-колонки не влезают) ── */
   .v2-settings-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /* ── Сценарии: рейл активов — паддинги внутрь ширины, тач-скролл ──
@@ -92,7 +160,7 @@
      на мобиле она скрыта — без подписей цифры нечитаемы, а 2 блока
      по 3 значения в ряд клипались. Каждое значение — колонка с лейблом. */
   .v2-port-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto;
     gap: 4px;
   }
@@ -123,53 +191,4 @@
   .v2-port-row .v2-row-block:nth-child(2) .v2-rb-val:nth-child(2)::before { content: "pnl $"; }
   .v2-port-row .v2-row-block:nth-child(2) .v2-rb-val:nth-child(3)::before { content: "стоимость"; }
 
-  /* ── Обзор: компактная полоса всех 6 компонент здоровья ──
-     Десктоп-реактор скрыт на мобиле; диагноз показывает только слабые и
-     сильные стороны — средние (напр. Концентрация 69) выпадали. Полоса
-     гарантирует те же 6 цифр, что и орбитальные датчики на десктопе. */
-  .v2-hc-mobile-scores {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 10px;
-  }
-}
-
-/* Полоса компонент — только мобила; на десктопе те же данные в реакторе */
-@media (min-width: 769px) {
-  .v2-hc-mobile-scores {
-    display: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .v2-hc-mscore {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    padding: 7px 9px;
-    border-radius: 9px;
-    border: 1px solid rgba(86, 196, 240, 0.10);
-    background: rgba(86, 196, 240, 0.04);
-    cursor: pointer;
-    text-align: left;
-  }
-  .v2-hc-mscore-label {
-    font-size: 8.5px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(150, 185, 210, 0.65);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-  .v2-hc-mscore-val {
-    font-size: 17px;
-    font-weight: 800;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
 }

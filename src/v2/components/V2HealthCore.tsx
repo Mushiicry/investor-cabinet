@@ -74,23 +74,6 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
           </div>
         </div>
 
-        {/* Мобильная полоса всех 6 компонент: на узких экранах десктоп-реактор
-            скрыт, а диагноз показывает только слабые/сильные стороны — средние
-            баллы выпадали. Здесь те же 6 цифр, тап открывает детальный чип. */}
-        <div className="v2-hc-mobile-scores">
-          {components.map((c) => (
-            <button
-              key={c.key}
-              type="button"
-              className="v2-hc-mscore"
-              onClick={() => onChipSelect?.(c)}
-            >
-              <span className="v2-hc-mscore-label">{CHIP_LABEL[c.key] ?? c.label}</span>
-              <span className="v2-hc-mscore-val" style={{ color: chipColor(c.score) }}>{c.score}</span>
-            </button>
-          ))}
-        </div>
-
         <div className="v2-hc-side-title">Диагноз</div>
         <div className="v2-hc-side-verdict" style={{ color: interp.color }}>{interp.text}</div>
         <div className="v2-hc-side-list">
