@@ -219,3 +219,17 @@ Main-account incident recovery:
 - Local dev-proxy fix is committed in `main` as `7f0dfce`.
 - Branch hygiene completed: local branch list contains only `main`.
 - Abandoned hardening roadmap is cancelled; do not revive that approach without an explicit product decision.
+
+## 2026-07-16 — SPCXB (SpaceX tokenized, BNB Chain)
+
+- Актив SPCXB добавлен в «Расчеты» (строка 13, категория «Акции»): вход 135.79
+  (биржевой средний, решение владельца), вложено ≈9.02$.
+- Кошелёк BNB Chain 0xFEc1…e0c3: apps-script/bnbWalletImport.gs — синк количества
+  каждые 30 мин (только quantity; RPC-фейл → skip, ноль не пишется).
+- Цена: Hyperliquid xyz:SPCX → лист «Цены», далее спотовые формулы строки.
+- Инцидент: вставка строки 13 вызвала авто-перезапись формул Обзора/Риска
+  с ","-разделителями → массовый #ERROR! (документ в русской локали требует ";").
+  Починено Claude: repairSpcxbInsertSideEffects() + все setFormula переведены на ";".
+  Анти-паттерны зафиксированы в HANDOFF §3.7–3.8.
+- Коммиты: b5a2569, 32a823b, e4662c2, 2bff3ee, 4b45873, 50e0514. Деплой /exec @33 (URL прежний).
+- Фронт: группа «Акции» в V2PortfolioPage.
