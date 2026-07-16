@@ -129,129 +129,133 @@ function IC_HL_refreshOverviewTopPositions_(ss) {
   });
 }
 
-function IC_HL_refreshPortfolioAccounting_(ss) {
+function IC_HL_refreshPortfolioAccounting_(ss, force) {
   var overview = ss.getSheetByName('Обзор');
   var calculations = ss.getSheetByName(IC_HL_CALCULATIONS_SHEET);
   var risk = ss.getSheetByName('Риск');
   var history = ss.getSheetByName('История');
   if (!overview || !calculations || !risk) return;
 
-  var expectedOverviewFormula = '=ROUND(SUM(\'Расчеты\'!G2:G100),2)';
+  // ВАЖНО (инцидент 2026-07-16): документ в русской локали хранит формулы с ";".
+  // Формулы, записанные setFormula с запятыми-разделителями, дают #ERROR! (парсер
+  // считает "," десятичным разделителем). Все формулы ниже — ТОЛЬКО с ";".
+  var expectedOverviewFormula = "=ROUND(SUM('Расчеты'!G2:G100);2)";
   if (
-    overview.getRange('A2').getFormula().replace(/;/g, ',') === expectedOverviewFormula &&
+    !force &&
+    overview.getRange('A2').getFormula().replace(/,/g, ';') === expectedOverviewFormula &&
     calculations.getRange('X4').getFormula().indexOf('SUMPRODUCT') >= 0
   ) return;
 
-  calculations.getRange('X2').setFormula('=SUMIF(B2:B100,"\u0424\u044c\u044e\u0447\u0435\u0440\u0441\u044b",E2:E100)');
-  calculations.getRange('X3').setFormula('=SUMIF(B2:B100,"\u0424\u044c\u044e\u0447\u0435\u0440\u0441\u044b",G2:G100)');
-  calculations.getRange('X4').setFormula('=SUMPRODUCT((B2:B100="\u0424\u044c\u044e\u0447\u0435\u0440\u0441\u044b")*ABS(C2:C100*F2:F100))');
-  calculations.getRange('X5').setFormula('=SUMIF(B2:B100,"\u0424\u044c\u044e\u0447\u0435\u0440\u0441\u044b",H2:H100)');
-  calculations.getRange('X7').setFormula('=ROUND(SUM(G2:G100)*10%,2)');
+  calculations.getRange('X2').setFormula('=SUMIF(B2:B100;"Фьючерсы";E2:E100)');
+  calculations.getRange('X3').setFormula('=SUMIF(B2:B100;"Фьючерсы";G2:G100)');
+  calculations.getRange('X4').setFormula('=SUMPRODUCT((B2:B100="Фьючерсы")*ABS(C2:C100*F2:F100))');
+  calculations.getRange('X5').setFormula('=SUMIF(B2:B100;"Фьючерсы";H2:H100)');
+  calculations.getRange('X7').setFormula('=ROUND(SUM(G2:G100)*10%;2)');
   calculations.getRange('X8').setFormula('=X3+X10');
-  calculations.getRange('X9').setFormula('=IFERROR(X4/SUM(G2:G100),0)');
-  calculations.getRange('X10').setFormula('=SUMIF(A2:A100,"USDC HL",G2:G100)');
-  calculations.getRange('X11').setFormula('=IF(X9>10%,"OVER LIMIT","OK")');
-  calculations.getRange('X12').setFormula('=SUMIF(A2:A100,"GOLD LONG",E2:E100)');
-  calculations.getRange('X15').setFormula('=SUMIF(A2:A100,"GOLD LONG",G2:G100)');
-  calculations.getRange('X16').setFormula('=SUMIF(A2:A100,"GOLD LONG",H2:H100)');
-  calculations.getRange('X17').setFormula('=MAX(0,X4-X7)');
-  calculations.getRange('X18').setFormula('=IF(X17>0,"OVER LIMIT: \u0441\u043d\u0438\u0437\u0438\u0442\u044c \u043d\u043e\u043c\u0438\u043d\u0430\u043b \u0434\u043e 10%","OK: \u043d\u0438\u0436\u0435 \u043b\u0438\u043c\u0438\u0442\u0430 10%")');
+  calculations.getRange('X9').setFormula('=IFERROR(X4/SUM(G2:G100);0)');
+  calculations.getRange('X10').setFormula('=SUMIF(A2:A100;"USDC HL";G2:G100)');
+  calculations.getRange('X11').setFormula('=IF(X9>10%;"OVER LIMIT";"OK")');
+  calculations.getRange('X12').setFormula('=SUMIF(A2:A100;"GOLD LONG";E2:E100)');
+  calculations.getRange('X15').setFormula('=SUMIF(A2:A100;"GOLD LONG";G2:G100)');
+  calculations.getRange('X16').setFormula('=SUMIF(A2:A100;"GOLD LONG";H2:H100)');
+  calculations.getRange('X17').setFormula('=MAX(0;X4-X7)');
+  calculations.getRange('X18').setFormula('=IF(X17>0;"OVER LIMIT: снизить номинал до 10%";"OK: ниже лимита 10%")');
   calculations.getRange('X19').setFormula('=X8+X15');
-  calculations.getRange('X20').setFormula('=IFERROR(X19/SUM(G2:G100),0)');
+  calculations.getRange('X20').setFormula('=IFERROR(X19/SUM(G2:G100);0)');
   calculations.getRange('X21').setFormula('=X19');
   calculations.getRange('X22').setFormula('=X17');
   calculations.getRange('W24').setValue('btcCurrentMargin');
-  calculations.getRange('X24').setFormula('=SUMIF(A2:A100,"BTC*",G2:G100)');
+  calculations.getRange('X24').setFormula('=SUMIF(A2:A100;"BTC*";G2:G100)');
   calculations.getRange('W25').setValue('hlFreeAvailable');
   calculations.getRange('X25').setFormula('=X10');
   calculations.getRange('W26').setValue('btcUnrealizedPnl');
-  calculations.getRange('X26').setFormula('=SUMIF(A2:A100,"BTC*",H2:H100)');
+  calculations.getRange('X26').setFormula('=SUMIF(A2:A100;"BTC*";H2:H100)');
   calculations.getRange('W27').setValue('btcCurrentNotional');
-  calculations.getRange('X27').setFormula('=SUMPRODUCT((LEFT(A2:A100,3)="BTC")*ABS(C2:C100*F2:F100))');
-  calculations.getRange('X28').setFormula('=SUMIF(B2:B100,"\u041a\u044d\u0448 / \u0421\u0442\u0435\u0439\u0431\u043b\u044b",G2:G100)+SUMIF(B2:B100,"\u0421\u0432\u043e\u0431\u043e\u0434\u043d\u044b\u0435 \u0434\u0435\u043d\u044c\u0433\u0438",G2:G100)');
+  calculations.getRange('X27').setFormula('=SUMPRODUCT((LEFT(A2:A100;3)="BTC")*ABS(C2:C100*F2:F100))');
+  calculations.getRange('X28').setFormula('=SUMIF(B2:B100;"Кэш / Стейблы";G2:G100)+SUMIF(B2:B100;"Свободные деньги";G2:G100)');
   calculations.getRange('X29').setFormula('=X28-X30');
-  calculations.getRange('X30').setFormula('=SUMIF(A2:A100,"USDC HL",G2:G100)');
+  calculations.getRange('X30').setFormula('=SUMIF(A2:A100;"USDC HL";G2:G100)');
   calculations.getRange('X31').setFormula('=X28');
-  calculations.getRange('X32').setFormula('=MAX(0,X28-SUM(G2:G100)*30%)');
+  calculations.getRange('X32').setFormula('=MAX(0;X28-SUM(G2:G100)*30%)');
 
-  overview.getRange('A2').setFormula('=ROUND(SUM(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!G2:G100),2)');
-  overview.getRange('B2').setFormula('=ROUND(SUM(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!E2:E100),2)');
+  overview.getRange('A2').setFormula("=ROUND(SUM('Расчеты'!G2:G100);2)");
+  overview.getRange('B2').setFormula("=ROUND(SUM('Расчеты'!E2:E100);2)");
   overview.getRange('C2').setFormula('=A2-B2');
-  overview.getRange('D2').setFormula('=IFERROR(C2/B2,0)');
-  overview.getRange('E2').setFormula('=ROUND(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X28,2)');
-  overview.getRange('F2').setFormula('=COUNTIFS(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!G2:G100,">0",\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!B2:B100,"<>\u041a\u044d\u0448 / \u0421\u0442\u0435\u0439\u0431\u043b\u044b",\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!B2:B100,"<>\u0421\u0432\u043e\u0431\u043e\u0434\u043d\u044b\u0435 \u0434\u0435\u043d\u044c\u0433\u0438")');
+  overview.getRange('D2').setFormula('=IFERROR(C2/B2;0)');
+  overview.getRange('E2').setFormula("=ROUND('Расчеты'!X28;2)");
+  overview.getRange('F2').setFormula('=COUNTIFS(\'Расчеты\'!G2:G100;">0";\'Расчеты\'!B2:B100;"<>Кэш / Стейблы";\'Расчеты\'!B2:B100;"<>Свободные деньги")');
 
   var categoryRows = [
-    [12, '\u041a\u0440\u0438\u043f\u0442\u0430'],
-    [13, '\u0410\u043a\u0446\u0438\u0438'],
-    [14, '\u041c\u0435\u0442\u0430\u043b\u043b\u044b'],
-    [15, '\u0424\u044c\u044e\u0447\u0435\u0440\u0441\u044b']
+    [12, 'Крипта'],
+    [13, 'Акции'],
+    [14, 'Металлы'],
+    [15, 'Фьючерсы']
   ];
   categoryRows.forEach(function(item) {
-    overview.getRange(item[0], 2).setFormula('=SUMIF(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!B2:B100,"' + item[1] + '",\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!G2:G100)');
-    overview.getRange(item[0], 3).setFormula('=IFERROR(B' + item[0] + '/$A$2,0)');
+    overview.getRange(item[0], 2).setFormula('=SUMIF(\'Расчеты\'!B2:B100;"' + item[1] + '";\'Расчеты\'!G2:G100)');
+    overview.getRange(item[0], 3).setFormula('=IFERROR(B' + item[0] + '/$A$2;0)');
   });
-  overview.getRange('B16').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X28');
-  overview.getRange('C16').setFormula('=IFERROR(B16/$A$2,0)');
+  overview.getRange('B16').setFormula("='Расчеты'!X28");
+  overview.getRange('C16').setFormula('=IFERROR(B16/$A$2;0)');
 
-  overview.getRange('B18').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X2');
-  overview.getRange('B19').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X3');
-  overview.getRange('B20').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X4');
-  overview.getRange('B21').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X5');
-  overview.getRange('B22').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X7');
-  overview.getRange('B23').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X8');
-  overview.getRange('B24').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X9');
-  overview.getRange('B25').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X12');
-  overview.getRange('B26').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X19');
-  overview.getRange('B27').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X21');
-  overview.getRange('B28').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X17');
-  overview.getRange('B29').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X18');
+  overview.getRange('B18').setFormula("='Расчеты'!X2");
+  overview.getRange('B19').setFormula("='Расчеты'!X3");
+  overview.getRange('B20').setFormula("='Расчеты'!X4");
+  overview.getRange('B21').setFormula("='Расчеты'!X5");
+  overview.getRange('B22').setFormula("='Расчеты'!X7");
+  overview.getRange('B23').setFormula("='Расчеты'!X8");
+  overview.getRange('B24').setFormula("='Расчеты'!X9");
+  overview.getRange('B25').setFormula("='Расчеты'!X12");
+  overview.getRange('B26').setFormula("='Расчеты'!X19");
+  overview.getRange('B27').setFormula("='Расчеты'!X21");
+  overview.getRange('B28').setFormula("='Расчеты'!X17");
+  overview.getRange('B29').setFormula("='Расчеты'!X18");
   overview.getRange('C18:C29').setValues([
-    ['\u041d\u0430\u0447\u0430\u043b\u044c\u043d\u0430\u044f \u043c\u0430\u0440\u0436\u0430 BTC/MNT'],
-    ['\u0422\u0435\u043a\u0443\u0449\u0430\u044f \u0441\u0442\u043e\u0438\u043c\u043e\u0441\u0442\u044c \u043c\u0430\u0440\u0436\u0438 BTC/MNT'],
-    ['\u041d\u043e\u043c\u0438\u043d\u0430\u043b\u044c\u043d\u0430\u044f \u044d\u043a\u0441\u043f\u043e\u0437\u0438\u0446\u0438\u044f BTC/MNT'],
+    ['Начальная маржа BTC/MNT'],
+    ['Текущая стоимость маржи BTC/MNT'],
+    ['Номинальная экспозиция BTC/MNT'],
     ['Unrealized PnL BTC/MNT'],
-    ['10% \u043e\u0442 \u0442\u0435\u043a\u0443\u0449\u0435\u0439 \u0441\u0442\u043e\u0438\u043c\u043e\u0441\u0442\u0438 \u043f\u043e\u0440\u0442\u0444\u0435\u043b\u044f'],
-    ['BTC/MNT current margin + \u0441\u0432\u043e\u0431\u043e\u0434\u043d\u044b\u0439 USDC HL'],
-    ['\u041d\u043e\u043c\u0438\u043d\u0430\u043b BTC/MNT / \u0441\u0442\u043e\u0438\u043c\u043e\u0441\u0442\u044c \u043f\u043e\u0440\u0442\u0444\u0435\u043b\u044f'],
-    ['\u041d\u0430\u0447\u0430\u043b\u044c\u043d\u0430\u044f \u043c\u0430\u0440\u0436\u0430 GOLD'],
-    ['\u0422\u0435\u043a\u0443\u0449\u0438\u0439 \u043a\u0430\u043f\u0438\u0442\u0430\u043b HL \u0432\u043a\u043b\u044e\u0447\u0430\u044f GOLD'],
-    ['\u0422\u043e \u0436\u0435, \u0441\u0432\u0435\u0440\u043a\u0430'],
-    ['\u041f\u0440\u0435\u0432\u044b\u0448\u0435\u043d\u0438\u0435 \u043d\u043e\u043c\u0438\u043d\u0430\u043b\u0430 BTC/MNT \u043d\u0430\u0434 10%'],
-    ['\u0421\u0442\u0430\u0442\u0443\u0441 \u043f\u043e \u043d\u043e\u043c\u0438\u043d\u0430\u043b\u0443 BTC/MNT']
+    ['10% от текущей стоимости портфеля'],
+    ['BTC/MNT current margin + свободный USDC HL'],
+    ['Номинал BTC/MNT / стоимость портфеля'],
+    ['Начальная маржа GOLD'],
+    ['Текущий капитал HL включая GOLD'],
+    ['То же, сверка'],
+    ['Превышение номинала BTC/MNT над 10%'],
+    ['Статус по номиналу BTC/MNT']
   ]);
 
-  overview.getRange('N1').setFormula('=SUM(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!E2:E100)');
-  overview.getRange('N2').setFormula('=SUM(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!G2:G100)');
+  overview.getRange('N1').setFormula("=SUM('Расчеты'!E2:E100)");
+  overview.getRange('N2').setFormula("=SUM('Расчеты'!G2:G100)");
   overview.getRange('N6').setFormula('=B2');
   overview.getRange('N7').setFormula('=A2');
   overview.getRange('N8').setFormula('=C2');
-  overview.getRange('Q1').setFormula('=IFERROR(INDEX(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!A2:A100,MATCH(MAXIFS(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!I2:I100,\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!G2:G100,">0",\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!B2:B100,"<>\u041a\u044d\u0448 / \u0421\u0442\u0435\u0439\u0431\u043b\u044b"),\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!I2:I100,0)),"-")');
-  overview.getRange('Q2').setFormula('=IFERROR(INDEX(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!H2:H100,MATCH(Q1,\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!A2:A100,0)),0)');
-  overview.getRange('Q3').setFormula('=IFERROR(INDEX(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!A2:A100,MATCH(MINIFS(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!I2:I100,\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!G2:G100,">0",\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!B2:B100,"<>\u041a\u044d\u0448 / \u0421\u0442\u0435\u0439\u0431\u043b\u044b"),\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!I2:I100,0)),"-")');
-  overview.getRange('Q4').setFormula('=IFERROR(INDEX(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!H2:H100,MATCH(Q3,\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!A2:A100,0)),0)');
+  overview.getRange('Q1').setFormula('=IFERROR(INDEX(\'Расчеты\'!A2:A100;MATCH(MAXIFS(\'Расчеты\'!I2:I100;\'Расчеты\'!G2:G100;">0";\'Расчеты\'!B2:B100;"<>Кэш / Стейблы");\'Расчеты\'!I2:I100;0));"-")');
+  overview.getRange('Q2').setFormula('=IFERROR(INDEX(\'Расчеты\'!H2:H100;MATCH(Q1;\'Расчеты\'!A2:A100;0));0)');
+  overview.getRange('Q3').setFormula('=IFERROR(INDEX(\'Расчеты\'!A2:A100;MATCH(MINIFS(\'Расчеты\'!I2:I100;\'Расчеты\'!G2:G100;">0";\'Расчеты\'!B2:B100;"<>Кэш / Стейблы");\'Расчеты\'!I2:I100;0));"-")');
+  overview.getRange('Q4').setFormula('=IFERROR(INDEX(\'Расчеты\'!H2:H100;MATCH(Q3;\'Расчеты\'!A2:A100;0));0)');
 
-  risk.getRange('B2').setFormula('=SUM(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!G2:G100)');
-  risk.getRange('B3').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X28');
-  risk.getRange('B4').setFormula('=IFERROR(B3/B2,0)');
-  risk.getRange('B5').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X32');
-  risk.getRange('B6').setFormula('=IFERROR(INDEX(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!A2:A100,MATCH(MAXIFS(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!G2:G100,\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!B2:B100,"<>\u041a\u044d\u0448 / \u0421\u0442\u0435\u0439\u0431\u043b\u044b"),\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!G2:G100,0)),"-")');
-  risk.getRange('B7').setFormula('=IFERROR(MAXIFS(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!G2:G100,\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!B2:B100,"<>\u041a\u044d\u0448 / \u0421\u0442\u0435\u0439\u0431\u043b\u044b")/B2,0)');
-  risk.getRange('B8').setFormula('=IFERROR(SUMIF(\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!B2:B100,"\u041a\u0440\u0438\u043f\u0442\u0430",\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!G2:G100)/B2,0)');
+  risk.getRange('B2').setFormula("=SUM('Расчеты'!G2:G100)");
+  risk.getRange('B3').setFormula("='Расчеты'!X28");
+  risk.getRange('B4').setFormula('=IFERROR(B3/B2;0)');
+  risk.getRange('B5').setFormula("='Расчеты'!X32");
+  risk.getRange('B6').setFormula('=IFERROR(INDEX(\'Расчеты\'!A2:A100;MATCH(MAXIFS(\'Расчеты\'!G2:G100;\'Расчеты\'!B2:B100;"<>Кэш / Стейблы");\'Расчеты\'!G2:G100;0));"-")');
+  risk.getRange('B7').setFormula('=IFERROR(MAXIFS(\'Расчеты\'!G2:G100;\'Расчеты\'!B2:B100;"<>Кэш / Стейблы")/B2;0)');
+  risk.getRange('B8').setFormula('=IFERROR(SUMIF(\'Расчеты\'!B2:B100;"Крипта";\'Расчеты\'!G2:G100)/B2;0)');
   risk.getRange('B19').setFormula('=B8-B16');
-  risk.getRange('B28').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X9');
-  risk.getRange('B29').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X10');
-  risk.getRange('B30').setFormula('=IF(B28>B27,"\u041f\u0440\u0435\u0432\u044b\u0448\u0435\u043d - \u0441\u043d\u0438\u0437\u0438\u0442\u044c \u043d\u043e\u043c\u0438\u043d\u0430\u043b \u0434\u043e 10%","\u0412 \u043d\u043e\u0440\u043c\u0435")');
-  risk.getRange('B31').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X15');
-  risk.getRange('B32').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X17');
-  risk.getRange('B33').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X19');
-  risk.getRange('B34').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X20');
-  risk.getRange('B35').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X17');
-  risk.getRange('B36').setFormula('=\'\u0420\u0430\u0441\u0447\u0435\u0442\u044b\'!X18');
-  risk.getRange('A28').setValue('\u0422\u0435\u043a\u0443\u0449\u0430\u044f \u0434\u043e\u043b\u044f \u043d\u043e\u043c\u0438\u043d\u0430\u043b\u0430 BTC/MNT');
-  risk.getRange('A31').setValue('GOLD current margin (\u041c\u0435\u0442\u0430\u043b\u043b\u044b)');
-  risk.getRange('A33').setValue('\u0422\u0435\u043a\u0443\u0449\u0438\u0439 \u043a\u0430\u043f\u0438\u0442\u0430\u043b HL \u0441 GOLD');
-  risk.getRange('A34').setValue('\u0414\u043e\u043b\u044f \u043a\u0430\u043f\u0438\u0442\u0430\u043b\u0430 HL \u0441 GOLD (\u0438\u043d\u0444\u043e)');
+  risk.getRange('B28').setFormula("='Расчеты'!X9");
+  risk.getRange('B29').setFormula("='Расчеты'!X10");
+  risk.getRange('B30').setFormula('=IF(B28>B27;"Превышен - снизить номинал до 10%";"В норме")');
+  risk.getRange('B31').setFormula("='Расчеты'!X15");
+  risk.getRange('B32').setFormula("='Расчеты'!X17");
+  risk.getRange('B33').setFormula("='Расчеты'!X19");
+  risk.getRange('B34').setFormula("='Расчеты'!X20");
+  risk.getRange('B35').setFormula("='Расчеты'!X17");
+  risk.getRange('B36').setFormula("='Расчеты'!X18");
+  risk.getRange('A28').setValue('Текущая доля номинала BTC/MNT');
+  risk.getRange('A31').setValue('GOLD current margin (Металлы)');
+  risk.getRange('A33').setValue('Текущий капитал HL с GOLD');
+  risk.getRange('A34').setValue('Доля капитала HL с GOLD (инфо)');
   risk.getRange('A37').setValue('BTC current margin');
   risk.getRange('A38').setValue('HL free available');
   risk.getRange('A39').setValue('BTC unrealized PnL');
@@ -262,7 +266,7 @@ function IC_HL_refreshPortfolioAccounting_(ss) {
     var historyValues = history.getRange(2, 2, historyRows, 3).getValues();
     historyValues.forEach(function(row, index) {
       if (row[0] === '' || row[1] === '' || row[2] === '') return;
-      history.getRange(index + 2, 5).setFormulaR1C1('=IFERROR(RC[-1]/RC[-2],0)');
+      history.getRange(index + 2, 5).setFormulaR1C1('=IFERROR(RC[-1]/RC[-2];0)');
     });
   }
 }

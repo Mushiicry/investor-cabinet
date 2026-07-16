@@ -132,10 +132,12 @@ function fixSpcxbRowFormulas() {
   var templateRow = IC_BNB_findAssetRow_(sheet, 'ETH');
   if (!templateRow) throw new Error('Нет спотовой строки-образца ETH в Расчетах');
 
-  var width = sheet.getLastColumn();
-  var fromCol = 6; // F: цена и всё правее
-  sheet.getRange(templateRow, fromCol, 1, width - fromCol + 1)
-       .copyTo(sheet.getRange(spcxbRow, fromCol, 1, width - fromCol + 1));
+  // Только F..K (цена..примечание). Правее K начинаются СЛУЖЕБНЫЕ блоки листа
+  // (L-O агрегаты, W-X фьючерсный учёт) — копировать туда нельзя (инцидент 2026-07-16).
+  var fromCol = 6;  // F
+  var toCol = 11;   // K
+  sheet.getRange(templateRow, fromCol, 1, toCol - fromCol + 1)
+       .copyTo(sheet.getRange(spcxbRow, fromCol, 1, toCol - fromCol + 1));
 
   // Учёт по решению владельца (2026-07-16): вход = биржевой средний 135.79
   // (10.1191 USDT / 0.07452 куплено), комиссии за кадром. Дальше покупки
@@ -144,6 +146,50 @@ function fixSpcxbRowFormulas() {
 
   Logger.log('SPCXB (строка ' + spcxbRow + '): спотовые формулы ETH применены, ' +
              'вход 135.79 (биржевой). Цена ищется по имени SPCXB в «Цены».');
+}
+
+// Одноразовый ремонт последствий вставки строки SPCXB (2026-07-16):
+// 1) вставка строки 13 сдвинула служебный W/X-блок «Расчетов» и таблицу L-O;
+// 2) старая копия fixSpcxbRowFormulas намусорила в L13..X13;
+// 3) авто-перезапись IC_HL_refreshPortfolioAccounting_ записала формулы
+//    с запятыми-разделителями -> #ERROR! по всему «Обзору»/«Риску» (русская
+//    локаль документа требует ";").
+// Функция идемпотентна: чистит мусор, выравнивает подписи W, принудительно
+// перезаписывает все формулы учёта в правильном (";") формате.
+function repairSpcxbInsertSideEffects() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(IC_BNB_CALCULATIONS_SHEET);
+  if (!sheet) throw new Error('Missing sheet: ' + IC_BNB_CALCULATIONS_SHEET);
+
+  var spcxbRow = IC_BNB_findAssetRow_(sheet, IC_BNB_STOCK_SYMBOL);
+  if (spcxbRow) {
+    // Всё правее K в строке SPCXB — мусор от старого копирования строки ETH.
+    var lastCol = sheet.getLastColumn();
+    if (lastCol > 11) sheet.getRange(spcxbRow, 12, 1, lastCol - 11).clearContent();
+  }
+
+  // Подписи W13:W33 как до вставки строки (сдвинулись на 1 вниз).
+  var wLabels = [
+    '', '', 'goldCurrentValue', 'goldPnl', 'futuresExcess',
+    'futuresRebalanceAction', 'hlBalanceForReconciliation', 'hlBalanceShareForInfo',
+    'hlCurrentForReconciliation', 'specFuturesExcess', '',
+    'btcCurrentMargin', 'hlFreeAvailable', 'btcUnrealizedPnl', 'btcCurrentNotional',
+    'totalStableReserve', 'spotStableReserve', 'hlFreeStableReserve',
+    'cashBreakdownCheck', '', ''
+  ];
+  sheet.getRange(13, 23, wLabels.length, 1).setValues(wLabels.map(function(l) { return [l]; }));
+
+  // Ячейки X, которые учёт не пишет: чистим осколки сдвига.
+  [13, 14, 23, 33].forEach(function(row) {
+    sheet.getRange(row, 24).clearContent();
+  });
+
+  // Принудительная перезапись всех формул учёта в ";"-формате.
+  IC_HL_refreshPortfolioAccounting_(ss, true);
+
+  Logger.log('Ремонт выполнен: строка SPCXB очищена правее K, W/X-блок выровнен, ' +
+             'формулы Обзор/Риск/Расчеты перезаписаны с ";".');
+  return 'OK';
 }
 
 // Одноразово: нажать ▶ Run — поставит синк каждые 30 минут (идемпотентно).
