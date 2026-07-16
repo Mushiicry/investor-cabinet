@@ -2556,3 +2556,20 @@ Never:
 - change API naming
 - remove fallback blindly
 - merge huge unstable patches
+
+---
+
+## 2026-07-16 — Ревизия источника истины + мобильная волна 2
+
+Apps Script (деплой /exec @43, URL прежний):
+- sheetRevision.gs: две волны фиксов таблицы (см. трекер), идемпотентны
+- historySnapshot.gs: F&G пишет живое значение alternative.me в Настройки
+- Код.js: overview.realizedPnl / realizedPnlPct (поиск по метке O-колонки)
+
+Frontend (коммиты 57fa128, 7a4d743):
+- riskRules.ts: лимиты классов + RESERVE_FLOOR_SHARE 10%
+- portfolioHealth.ts: пол резерва (10% = 30 баллов), meta диверсификации
+  с конкретикой ребаланса ($ и классы)
+- рекомендации Обзор/Здоровье: живые цифры вместо абстрактных фраз
+- v2-mobile.css: симулятор, breakdown, DCA-зоны, BTC-график full-bleed,
+  стейблы, стейк-карта, разделители блоков позиций
