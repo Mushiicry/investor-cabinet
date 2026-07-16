@@ -420,3 +420,72 @@
 @media (max-width: 480px) {
   .v2-hp-sim-effects { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ── Портфель, мобильные фиксы 2026-07-16 (вторая волна) ── */
+@media (max-width: 768px) {
+  /* Раскрытая карта стейкинга: на десктопе прижата к колонке «Ср. вход»
+     (margin-left 336px, width 850px) — на телефоне вылетала за экран
+     и была неподъёмно высокой. Во всю ширину, компактнее. */
+  .v2-stake-card {
+    width: auto;
+    max-width: 100%;
+    margin-left: 0;
+    padding: 14px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Стейблы: было 3 колонки под 4 элемента — статус падал на новую строку,
+     «всё поехало». Двухэтажная раскладка: назначение+статус / сумма+доля. */
+  .v2-port-srow:not(.v2-port-stables-head) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "purpose status"
+      "value share";
+    row-gap: 2px;
+    padding: 10px 12px;
+    min-height: auto;
+    text-align: left;
+  }
+  .v2-port-srow .v2-port-purpose { grid-area: purpose; align-self: center; }
+  .v2-port-srow > strong { grid-area: value; justify-self: start; }
+  .v2-port-srow .v2-port-share { grid-area: share; justify-self: end; align-self: center; }
+  .v2-port-srow .v2-port-status { grid-area: status; justify-self: end; }
+
+  /* Заголовок секции: «Свободные деньги …… 206 $» в одну строку */
+  .v2-port-srow.v2-port-stables-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+/* Карточка позиции: не было видно, где «цена за штуку», а где «мои деньги».
+   Блоки в столбец, каждому — мини-заголовок, между ними разделитель. */
+@media (max-width: 480px) {
+  .v2-port-row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+  }
+  .v2-port-row .v2-row-block {
+    position: relative;
+    padding-top: 24px;
+  }
+  .v2-port-row .v2-row-block::before {
+    content: "Цена за 1 шт · вход → сейчас";
+    position: absolute;
+    top: 7px;
+    left: 10px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(140, 200, 235, 0.55);
+  }
+  .v2-port-row .v2-row-block:last-child::before {
+    content: "Мои деньги · вложено → стоимость";
+  }
+  .v2-port-row .v2-row-block + .v2-row-block {
+    border-top: 1px solid rgba(86, 196, 240, 0.14);
+  }
+}

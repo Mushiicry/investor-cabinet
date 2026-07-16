@@ -101,10 +101,30 @@ function buildPrescriptions(components: HealthComponent[], portfolio: V2Portfoli
         result.push({ action: "Зафиксировать слабые позиции — вывести в кэш", gain: 4, source: c.label });
         result.push({ action: "Держать свободные деньги для откупов на просадках", gain: 3, source: c.label });
         break;
-      case "diversification":
-        result.push({ action: "Добавить новый класс активов (металлы / акции / стейблы)", gain: 4, source: c.label });
-        result.push({ action: "Не держать более 80% в одном классе", gain: 3, source: c.label });
+      case "diversification": {
+        // Умный расчёт из модели: кто перегружен, сколько $ и куда добавить
+        const m = c.meta;
+        if (m?.largestClassShareOfRisk && m.largestClassShareOfRisk > 0.8 && m.rebalanceAddUsd) {
+          const pct = Math.round(m.largestClassShareOfRisk * 100);
+          const addPct = Math.round((m.rebalanceAddShare ?? 0) * 100);
+          const others = (m.otherClassNames ?? []).join(" / ").toLowerCase();
+          result.push({
+            action: `${m.largestClassName} — ${pct}% рискового капитала (лимит 80%). Добавить ≈${fmt$(m.rebalanceAddUsd)} (${addPct}% портфеля) в ${others}`,
+            gain: 4,
+            source: c.label,
+          });
+        } else if (m?.missingClassNames?.length) {
+          result.push({
+            action: `Добавить отсутствующий класс: ${m.missingClassNames.join(" / ").toLowerCase()}`,
+            gain: 4,
+            source: c.label,
+          });
+        } else {
+          result.push({ action: "Выравнивать классы к лимитам: крипта 60% / металлы 10% / акции 10%", gain: 4, source: c.label });
+        }
+        result.push({ action: "Не держать более 80% рискового капитала в одном классе", gain: 3, source: c.label });
         break;
+      }
       case "crypto":
         result.push({ action: "Зафиксировать часть волатильных активов в стейблы", gain: 5, source: c.label });
         result.push({ action: "В зоне жадности (F&G > 70) снижать долю крипты", gain: 3, source: c.label });

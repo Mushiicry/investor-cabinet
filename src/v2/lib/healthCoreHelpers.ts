@@ -169,9 +169,28 @@ export function buildCoreRecs(weak: HealthComponent[], portfolio: V2Portfolio): 
       case "flexibility":
         result.push({ action: "Зафиксировать слабые позиции в кэш", gain: 4, source: "Повысит гибкость капитала → здоровье +4" });
         break;
-      case "diversification":
-        result.push({ action: "Добавить новый класс (металлы / акции)", gain: 4, source: "Снизит корреляцию портфеля → здоровье +4" });
+      case "diversification": {
+        // Конкретика из модели (portfolioHealth): кто перегружен и сколько добавить
+        const m = c.meta;
+        if (m?.largestClassShareOfRisk && m.largestClassShareOfRisk > 0.8 && m.rebalanceAddUsd) {
+          const pct = Math.round(m.largestClassShareOfRisk * 100);
+          const others = (m.otherClassNames ?? []).join(" / ").toLowerCase();
+          result.push({
+            action: `Добавить ≈${fmt$(m.rebalanceAddUsd)} в ${others}`,
+            gain: 4,
+            source: `${m.largestClassName} — ${pct}% рискового капитала, лимит 80% → здоровье +4`,
+          });
+        } else if (m?.missingClassNames?.length) {
+          result.push({
+            action: `Добавить отсутствующий класс: ${m.missingClassNames.join(" / ").toLowerCase()}`,
+            gain: 4,
+            source: "Снизит корреляцию портфеля → здоровье +4",
+          });
+        } else {
+          result.push({ action: "Выравнивать классы к лимитам 60/10/10", gain: 4, source: "Снизит корреляцию портфеля → здоровье +4" });
+        }
         break;
+      }
       case "crypto":
         result.push({ action: "Зафиксировать часть крипты в стейблы", gain: 5, source: "Снизит волатильность портфеля → здоровье +5" });
         break;

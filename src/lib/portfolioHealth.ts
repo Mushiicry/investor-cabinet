@@ -52,6 +52,13 @@ export type HealthComponentKey =
 export type HealthComponentMeta = {
   reserveUsd?: number;
   reserveTargetUsd?: number;
+  /** Диверсификация: крупнейший класс и конкретика для ребаланса */
+  largestClassName?: string;
+  largestClassShareOfRisk?: number; // доля крупнейшего класса в РИСКОВОМ капитале (0..1)
+  rebalanceAddShare?: number; // сколько добавить в другие классы, доля портфеля (0..1), чтобы крупнейший стал ≤80%
+  rebalanceAddUsd?: number; // то же в $
+  otherClassNames?: string[]; // куда добавлять
+  missingClassNames?: string[]; // классы с нулевой долей
   worstLeverage?: number;
   worstLeverageAsset?: string;
   worstLeverageLimit?: number;
@@ -203,6 +210,31 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     Math.round(100 - marginPenalty - leveragePenalty - positionPenalty)
   );
 
+  // ── Диверсификация: конкретика для рекомендаций (не «не держать более 80%»
+  // абстрактно, а сколько $ и куда добавить). Всё меряется по РИСКОВОМУ
+  // капиталу (крипта/металлы/акции, без кэша и фьючерсов) — доля класса
+  // от всего портфеля здесь намеренно не используется, она вводит в заблуждение.
+  const riskShares = input.riskCategoryShares;
+  const riskTotal = riskShares.reduce((sum, value) => sum + value, 0);
+  let diversificationMeta: HealthComponentMeta | undefined;
+  if (riskTotal > 0 && riskShares.length === DIVERSIFIABLE_CLASSES.length) {
+    const maxIdx = riskShares.indexOf(Math.max(...riskShares));
+    const largestOfRisk = riskShares[maxIdx] / riskTotal;
+    // Чтобы крупнейший класс стал ≤80% рискового капитала, в ДРУГИЕ классы
+    // нужно добавить X (доля портфеля): largest / (total + X) = 0.8
+    const rebalanceAddShare = Math.max(0, riskShares[maxIdx] / 0.8 - riskTotal);
+    diversificationMeta = {
+      largestClassName: DIVERSIFIABLE_CLASSES[maxIdx],
+      largestClassShareOfRisk: largestOfRisk,
+      rebalanceAddShare,
+      rebalanceAddUsd: input.portfolioValue
+        ? rebalanceAddShare * input.portfolioValue
+        : undefined,
+      otherClassNames: DIVERSIFIABLE_CLASSES.filter((_, i) => i !== maxIdx),
+      missingClassNames: DIVERSIFIABLE_CLASSES.filter((_, i) => riskShares[i] <= 0.001),
+    };
+  }
+
   const components: HealthComponent[] = [
     {
       key: "reserve",
@@ -257,6 +289,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       desc: "Насколько ровно разложен рисковый капитал по спотовым классам (крипта / металлы / акции). Кэш и фьючерсы не учитываются.",
       weight: 0.15,
       score: computeDiversificationScore(input.riskCategoryShares),
+      meta: diversificationMeta,
     },
     {
       key: "flexibility",
