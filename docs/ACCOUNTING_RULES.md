@@ -164,3 +164,31 @@ Future isolated tests should cover:
 - cash alias normalization;
 - closed position filtering;
 - futures cash separation from spot cash.
+
+---
+
+# Invariants (проверено сверкой 2026-07-16)
+
+Инварианты для любых будущих сверок цифр (см. SHEET_CROSSCHECK_2026-07-16.md):
+
+1. Спот-позиция: quantity × avgEntry ≈ invested (допуск — округление
+   отображения, до 0.05$).
+2. Фьючерс-позиция: invested = начальная МАРЖА, не номинал.
+   Номинал = quantity × avgEntry ≈ invested × leverage.
+   Проверка qty × entry == invested к фьючерсам НЕ применима.
+3. Категория «Кэш / Стейблы» в таблице отдаётся API как «Свободные деньги»
+   (normalizePortfolioCategoryForApi). Сверки резерва по API ищут
+   «Свободные деньги», не русское имя листа.
+4. overview.invested / portfolioValue = ROUND(SUM(raw);2) — может отличаться
+   от суммы построчных display-значений на ≤0.05$. Это не ошибка учёта.
+5. Формулы в таблицу пишутся ТОЛЬКО с ";"-разделителями (русская локаль,
+   "," — десятичный разделитель; формулы с запятыми дают #ERROR!).
+6. Реализованный профит живёт в «Расчеты» O:U (realizedProfitUsd/Pct),
+   в API — overview.realizedPnl / realizedPnlPct. В текущий PnL не входит.
+
+# Class Limits (политика владельца, 2026-07-16)
+
+Полная картина рынка — всё куплено по лимитам:
+крипта 60% + акции 10% + металлы 10% + фьючерсы 10% + резерв 10% = 100%.
+Резерв: цель 30% (коридор 30–60% = 100 баллов), пол 10% — ниже не опускаем.
+Источник в коде: src/config/riskRules.ts; в таблице: Риск B14-B16, B21, B27.
