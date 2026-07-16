@@ -1,7 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
 import type { FearGreedMode, FearGreedStrategy, FearGreedStrategyRule } from "../../types/portfolio";
 import type { V2Portfolio, V2Page } from "../InvestorCabinetV2Lab";
+
+// Открытая подсказка «?» закрывается тапом в любом месте экрана
+// (обработчик самого тултипа стоит раньше и через stopPropagation
+// перехватывает тап по кнопке — документный слушатель ловит остальное,
+// включая тап по карточке с текстом подсказки).
+function useCloseOnOutsideTap(open: boolean, close: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = () => close();
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [open, close]);
+}
 
 type Props = {
   portfolio: V2Portfolio;
@@ -88,6 +101,7 @@ function statusLabel(row: FearGreedStrategyRule) {
 // ── Mode tooltip (hover + tap) ─────────────────────────────────
 function ModeTooltip({ mode, color }: { mode: string; color: string }) {
   const [open, setOpen] = useState(false);
+  useCloseOnOutsideTap(open, () => setOpen(false));
   const tip = MODE_TOOLTIP[mode];
   if (!tip) return null;
 
@@ -118,6 +132,7 @@ function ModeTooltip({ mode, color }: { mode: string; color: string }) {
 // ── DCA abbreviation tooltip ───────────────────────────────────
 function DcaTooltip() {
   const [open, setOpen] = useState(false);
+  useCloseOnOutsideTap(open, () => setOpen(false));
   return (
     <span
       className={`v2-dca-abbr-wrap${open ? " is-open" : ""}`}
@@ -137,6 +152,7 @@ function DcaTooltip() {
 // ── F&G index tooltip ──────────────────────────────────────────
 function FgIndexTooltip({ color }: { color: string }) {
   const [open, setOpen] = useState(false);
+  useCloseOnOutsideTap(open, () => setOpen(false));
   return (
     <span
       className={`v2-dca-fg-tip-wrap${open ? " is-open" : ""}`}

@@ -207,7 +207,7 @@
     margin-left: calc(50% - 50vw);
   }
   .v2-btc-svg {
-    min-height: 240px;
+    min-height: 300px; /* владелец: ещё выше */
   }
 
   /* Полный экран: поворот в горизонталь (пользователь кладёт телефон вбок).
@@ -400,11 +400,17 @@
 /* DCA-зоны: «?» и сумма наезжали друг на друга — левый блок с nowrap-заголовком
    и правый блок не сжимались. Разрешаем правому блоку переноситься целиком. */
 @media (max-width: 480px) {
-  .v2-dca-zone { flex-wrap: wrap; row-gap: 6px; }
-  /* Заголовок с nowrap не должен сжиматься (иначе текст и «?» вытекают
-     поверх суммы) — вместо этого правый блок переносится на свою строку. */
+  /* Карточка зоны в 2 строки: слева заголовок+диапазон, справа столбик
+     «сумма над кнопкой» (решение владельца 2026-07-16). */
+  .v2-dca-zone { flex-wrap: nowrap; }
   .v2-dca-zone-info { flex: 1 0 auto; }
-  .v2-dca-zone-right { margin-left: auto; }
+  .v2-dca-zone-right {
+    margin-left: auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+    flex-shrink: 0;
+  }
 }
 
 /* «Почему такая стадия?» — 4 мини-карточки в ряд не влезали (значения
@@ -467,24 +473,8 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto;
   }
-  .v2-port-row .v2-row-block {
-    position: relative;
-    padding-top: 24px;
-  }
-  .v2-port-row .v2-row-block::before {
-    content: "Цена за 1 шт · вход → сейчас";
-    position: absolute;
-    top: 7px;
-    left: 10px;
-    font-size: 9px;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(140, 200, 235, 0.55);
-  }
-  .v2-port-row .v2-row-block:last-child::before {
-    content: "Мои деньги · вложено → стоимость";
-  }
+  /* Разделителя между блоками достаточно (решение владельца);
+     динамику показывают стрелки у PnL в самих значениях */
   .v2-port-row .v2-row-block + .v2-row-block {
     border-top: 1px solid rgba(86, 196, 240, 0.14);
   }
@@ -540,5 +530,26 @@
   .v2-sig-rule-name {
     white-space: normal;
     line-height: 1.25;
+  }
+}
+
+/* Круговая диаграмма распределения — на всю ширину экрана (владелец) */
+@media (max-width: 480px) {
+  .v2-pac-svg {
+    width: 100% !important;
+    max-width: none;
+  }
+}
+
+/* Подсказка индекса F&G: absolute от кнопки уводил карточку за левый
+   край экрана — на телефоне показываем по центру, во всю ширину. */
+@media (max-width: 480px) {
+  .v2-dca-fg-tip-card {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: auto;
   }
 }

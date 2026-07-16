@@ -38,6 +38,8 @@ function money(value: number): string {
 const signedMoney = (value: number) =>
   `${value > 0 ? "+" : ""}${money(value)}`;
 const signedPct = (value: number) => `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
+// Стрелка динамики позиции: сразу видно, вырос капитал или просел
+const trendArrow = (value: number) => (value > 0.004 ? "▲ " : value < -0.004 ? "▼ " : "");
 
 const STATUS_TONE: Record<string, string> = {
   ACCUMULATE: "is-accumulate",
@@ -56,6 +58,7 @@ function pnlTone(value: number) {
 }
 
 const FULL_NAME: Record<string, string> = {
+  SPCXB: "SpaceX",
   ETH: "Ethereum",
   SOL: "Solana",
   TON: "GRAM",
@@ -316,7 +319,7 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, r
                     <div className="v2-port-row">
                       <div className="v2-row-block">
                         <span className="v2-rb-val">{money(position.avgEntry)}</span>
-                        <span className={`v2-rb-val v2-port-pnl ${tone}`}>{signedPct(position.pnlPct)}</span>
+                        <span className={`v2-rb-val v2-port-pnl ${tone}`}>{trendArrow(position.pnl)}{signedPct(position.pnlPct)}</span>
                         <span className="v2-rb-val">{money(position.currentPrice)}</span>
                       </div>
                       <div className="v2-row-block">

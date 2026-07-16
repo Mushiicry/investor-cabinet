@@ -55,6 +55,7 @@ export type HealthComponentMeta = {
   /** Диверсификация: крупнейший класс и конкретика для ребаланса */
   largestClassName?: string;
   largestClassShareOfRisk?: number; // доля крупнейшего класса в РИСКОВОМ капитале (0..1)
+  largestClassShareOfPortfolio?: number; // тот же класс, но от ВСЕГО портфеля (0..1) — как в «Распределении»
   rebalanceAddShare?: number; // сколько добавить в другие классы, доля портфеля (0..1), чтобы крупнейший стал ≤80%
   rebalanceAddUsd?: number; // то же в $
   otherClassNames?: string[]; // куда добавлять
@@ -226,6 +227,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     diversificationMeta = {
       largestClassName: DIVERSIFIABLE_CLASSES[maxIdx],
       largestClassShareOfRisk: largestOfRisk,
+      largestClassShareOfPortfolio: riskShares[maxIdx],
       rebalanceAddShare,
       rebalanceAddUsd: input.portfolioValue
         ? rebalanceAddShare * input.portfolioValue

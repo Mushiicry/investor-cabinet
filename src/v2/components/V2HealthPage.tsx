@@ -106,10 +106,10 @@ function buildPrescriptions(components: HealthComponent[], portfolio: V2Portfoli
         const m = c.meta;
         if (m?.largestClassShareOfRisk && m.largestClassShareOfRisk > 0.8 && m.rebalanceAddUsd) {
           const pct = Math.round(m.largestClassShareOfRisk * 100);
-          const addPct = Math.round((m.rebalanceAddShare ?? 0) * 100);
+          const portfolioPct = Math.round((m.largestClassShareOfPortfolio ?? 0) * 100);
           const others = (m.otherClassNames ?? []).join(" / ").toLowerCase();
           result.push({
-            action: `${m.largestClassName} — ${pct}% рискового капитала (лимит 80%). Добавить ≈${fmt$(m.rebalanceAddUsd)} (${addPct}% портфеля) в ${others}`,
+            action: `${m.largestClassName}: ${portfolioPct}% портфеля, но ${pct}% рисковой части (без кэша) — лимит 80%. Добавить ≈${fmt$(m.rebalanceAddUsd)} в ${others}`,
             gain: 4,
             source: c.label,
           });

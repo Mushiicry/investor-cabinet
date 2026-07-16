@@ -175,10 +175,11 @@ export function buildCoreRecs(weak: HealthComponent[], portfolio: V2Portfolio): 
         if (m?.largestClassShareOfRisk && m.largestClassShareOfRisk > 0.8 && m.rebalanceAddUsd) {
           const pct = Math.round(m.largestClassShareOfRisk * 100);
           const others = (m.otherClassNames ?? []).join(" / ").toLowerCase();
+          const portfolioPct = Math.round((m.largestClassShareOfPortfolio ?? 0) * 100);
           result.push({
             action: `Добавить ≈${fmt$(m.rebalanceAddUsd)} в ${others}`,
             gain: 4,
-            source: `${m.largestClassName} — ${pct}% рискового капитала, лимит 80% → здоровье +4`,
+            source: `${m.largestClassName} — ${portfolioPct}% портфеля, но ${pct}% рисковой части (без кэша), лимит 80% → +4`,
           });
         } else if (m?.missingClassNames?.length) {
           result.push({
