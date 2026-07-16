@@ -116,6 +116,31 @@ function setupSpcxbPortfolioRow() {
   Logger.log('SPCXB добавлен в Расчеты, строка ' + newRow + '. Проверь колонку F (цена) глазами.');
 }
 
+// ── Одноразово: починить формулы строки SPCXB ───────────────────────
+// setupSpcxbPortfolioRow клонировал GOLD LONG, но GOLD — ФЬЮЧЕРСНАЯ строка
+// (маржинальные формулы стоимости/PnL). Для спотовой акции формулы должны
+// быть как у ETH: цена по имени актива из «Цены», стоимость = C×F, PnL = G−E.
+// Копируем формулы колонок F..конец из спотовой строки ETH (относительные
+// ссылки сами перестроятся на строку SPCXB). A–E не трогаем.
+function fixSpcxbRowFormulas() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(IC_BNB_CALCULATIONS_SHEET);
+  if (!sheet) throw new Error('Missing sheet: ' + IC_BNB_CALCULATIONS_SHEET);
+
+  var spcxbRow = IC_BNB_findAssetRow_(sheet, IC_BNB_STOCK_SYMBOL);
+  if (!spcxbRow) throw new Error('Нет строки SPCXB — сначала setupSpcxbPortfolioRow');
+  var templateRow = IC_BNB_findAssetRow_(sheet, 'ETH');
+  if (!templateRow) throw new Error('Нет спотовой строки-образца ETH в Расчетах');
+
+  var width = sheet.getLastColumn();
+  var fromCol = 6; // F: цена и всё правее
+  sheet.getRange(templateRow, fromCol, 1, width - fromCol + 1)
+       .copyTo(sheet.getRange(spcxbRow, fromCol, 1, width - fromCol + 1));
+
+  Logger.log('SPCXB (строка ' + spcxbRow + '): формулы F..' + width +
+             ' скопированы со спотовой ETH. Цена теперь ищется по имени SPCXB в «Цены».');
+}
+
 // Одноразово: нажать ▶ Run — поставит синк каждые 30 минут (идемпотентно).
 function installBnbWalletBalanceTrigger() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
