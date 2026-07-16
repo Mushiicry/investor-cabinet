@@ -436,9 +436,11 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
                 <div className="v2-hp-sim-lever-hint">
                   {levers.reserve > 0.6
                     ? "Выше 60% капитал простаивает — резерв начинает падать"
-                    : levers.reserve > baseReserve
-                      ? `Перевести ~${fmt$((levers.reserve - baseReserve) * portfolio.totalPortfolioValue)} рисковых в стейблы · коридор 30–60%`
-                      : "Коридор 30–60% = 100 баллов"}
+                    : levers.reserve < 0.1
+                      ? "Ниже пола 10% — так низко резерв не опускаем"
+                      : levers.reserve > baseReserve
+                        ? `Перевести ~${fmt$((levers.reserve - baseReserve) * portfolio.totalPortfolioValue)} рисковых в стейблы · коридор 30–60%`
+                        : "Коридор 30–60% = 100 · при полном рынке допустим пол 10%"}
                 </div>
               </div>
 

@@ -200,17 +200,24 @@
     max-width: 92vw !important;
   }
 
-  /* BTC-график мелковат на телефоне — задаём заметную высоту (SVG сам впишется
-     по aspect-ratio). Полноэкранная кнопка даёт горизонтальный просмотр. */
+  /* BTC-график мелковат на телефоне: full-bleed на всю ширину экрана
+     (вытаскиваем из паддингов панели) + заметная высота. */
+  .v2-btc-chart-wrap:not(.is-fullscreen) {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+  }
   .v2-btc-svg {
-    min-height: 200px;
+    min-height: 240px;
   }
 
   /* Полный экран: поворот в горизонталь (пользователь кладёт телефон вбок).
      width=100vh / height=100vw + rotate(90deg) → чарт занимает весь экран
      landscape. Кнопка-крестик не повёрнута — остаётся тапабельной. */
+  .v2-btc-chart-wrap.is-fullscreen { padding: 0; }
   .v2-btc-chart-wrap.is-fullscreen .v2-btc-svg {
-    width: 100vh !important;
+    /* -24px: без запаса правый край SVG (плашка текущей цены BTC) резался
+       рамкой экрана после поворота */
+    width: calc(100vh - 24px) !important;
     height: 100vw !important;
     max-width: none !important;
     transform: rotate(90deg);
@@ -362,4 +369,54 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+/* ── Здоровье: симулятор и breakdown (ревизия мобилы 2026-07-16) ── */
+@media (max-width: 768px) {
+  /* Симулятор: на мобиле backdrop-filter выключен, полупрозрачный градиент
+     складывался со страницей — даём плотный фон */
+  .v2-hp-sim-overlay { background: rgba(0, 4, 16, 0.92); }
+  .v2-hp-sim-modal {
+    background: linear-gradient(135deg, #0d1e2e 0%, #050e1c 100%);
+  }
+}
+
+@media (max-width: 480px) {
+  /* Breakdown: 200px-колонка метки не оставляла места бару — текст и бар
+     накладывались. Двухэтажная раскладка: метка+балл сверху, бар снизу. */
+  .v2-hp-brow {
+    grid-template-columns: 1fr 52px 36px;
+    grid-template-areas:
+      "label score weight"
+      "track track track";
+    row-gap: 8px;
+  }
+  .v2-hp-brow-label  { grid-area: label; }
+  .v2-hp-brow-score  { grid-area: score; }
+  .v2-hp-brow-weight { grid-area: weight; }
+  .v2-hp-brow-track  { grid-area: track; }
+}
+
+/* DCA-зоны: «?» и сумма наезжали друг на друга — левый блок с nowrap-заголовком
+   и правый блок не сжимались. Разрешаем правому блоку переноситься целиком. */
+@media (max-width: 480px) {
+  .v2-dca-zone { flex-wrap: wrap; row-gap: 6px; }
+  /* Заголовок с nowrap не должен сжиматься (иначе текст и «?» вытекают
+     поверх суммы) — вместо этого правый блок переносится на свою строку. */
+  .v2-dca-zone-info { flex: 1 0 auto; }
+  .v2-dca-zone-right { margin-left: auto; }
+}
+
+/* «Почему такая стадия?» — 4 мини-карточки в ряд не влезали (значения
+   «Структура», «ещё не было» наезжали на соседей). На телефоне 2×2. */
+@media (max-width: 480px) {
+  .v2-bph-mini-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .v2-bph-mini-card { min-width: 0; }
+  .v2-bph-mini-value { font-size: 18px; overflow-wrap: anywhere; }
+}
+
+/* Симулятор: итоговые пары «компонента 30→30» — на телефоне в одну колонку
+   (в две правая обрезалась: «Сопротивление волатильно…») */
+@media (max-width: 480px) {
+  .v2-hp-sim-effects { grid-template-columns: minmax(0, 1fr); }
 }

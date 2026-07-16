@@ -2,6 +2,7 @@ import {
   MAX_CRYPTO_EXPOSURE_SHARE,
   MAX_FUTURES_EXPOSURE_SHARE,
   RESERVE_BAND_MAX_SHARE,
+  RESERVE_FLOOR_SHARE,
   RESERVE_TARGET_SHARE,
 } from "../config/riskRules";
 
@@ -94,7 +95,12 @@ export const DIVERSIFIABLE_CLASSES = ["Крипта", "Металлы", "Акц�
 /**
  * Резерв — это КОРИДОР, а не «чем больше, тем лучше».
  *
- * < 30%  — подушки не хватает: линейный рост балла до 100.
+ * < 10%  — ниже пола политики (RESERVE_FLOOR_SHARE): резкий линейный рост 0→30.
+ *          Пол — минимум, ниже которого резерв не опускаем даже при полном
+ *          развороте в рынок.
+ * 10–30% — рабочая зона «полной картины рынка» (всё куплено по лимитам классов:
+ *          крипта 60 + акции 10 + металлы 10 + фьючерсы 10 + резерв 10):
+ *          линейный рост 30→100.
  * 30–60% — дисциплинированная зона: 100 баллов.
  * > 60%  — капитал простаивает: инвестор перестал инвестировать. Балл линейно
  *          падает до 0 при 100% в кэше.
@@ -103,9 +109,18 @@ export const DIVERSIFIABLE_CLASSES = ["Крипта", "Металлы", "Акц�
  * классах» — вырожденный оптимум, при котором «идеальное здоровье» = не инвестировать.
  * Резерв даёт опциональность, но сверх коридора это уже не подушка, а простой.
  */
+const RESERVE_FLOOR_SCORE = 30; // балл ровно на полу 10% — допустимо, но на пределе
+
 export function computeReserveScore(reserveShare: number): number {
   if (reserveShare <= 0) return 0;
-  if (reserveShare < RESERVE_TARGET_SHARE) return score(reserveShare / RESERVE_TARGET_SHARE);
+  if (reserveShare < RESERVE_FLOOR_SHARE) {
+    return Math.round((reserveShare / RESERVE_FLOOR_SHARE) * RESERVE_FLOOR_SCORE);
+  }
+  if (reserveShare < RESERVE_TARGET_SHARE) {
+    const progress =
+      (reserveShare - RESERVE_FLOOR_SHARE) / (RESERVE_TARGET_SHARE - RESERVE_FLOOR_SHARE);
+    return Math.round(RESERVE_FLOOR_SCORE + progress * (100 - RESERVE_FLOOR_SCORE));
+  }
   if (reserveShare <= RESERVE_BAND_MAX_SHARE) return 100;
   return score((1 - reserveShare) / (1 - RESERVE_BAND_MAX_SHARE));
 }

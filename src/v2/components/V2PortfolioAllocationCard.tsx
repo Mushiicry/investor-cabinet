@@ -10,9 +10,9 @@ const CFG: Record<string, {
   limitLabel: string;
 }> = {
   "Крипта":           { glyph: "₿", color: "#1260E8", iconColor: "#3D8FFF", glow: "rgba(18,96,232,0.85)",   limit: 0.60, limitKind: "max", limitLabel: "ЛИМИТ 60%" },
-  "Металлы":          { glyph: "◆", color: "#E6A200", iconColor: "#FFB800", glow: "rgba(230,162,0,0.80)",   limit: null, limitKind: "none", limitLabel: "" },
+  "Металлы":          { glyph: "◆", color: "#E6A200", iconColor: "#FFB800", glow: "rgba(230,162,0,0.80)",   limit: 0.10, limitKind: "max", limitLabel: "ЛИМИТ 10%" },
   "Фьючерсы":         { glyph: "↗", color: "#8B20FF", iconColor: "#B060FF", glow: "rgba(139,32,255,0.82)",  limit: 0.10, limitKind: "max", limitLabel: "ЛИМИТ 10%" },
-  "Акции":            { glyph: "▲", color: "#00BFFF", iconColor: "#22E5FF", glow: "rgba(0,191,255,0.80)",   limit: null, limitKind: "none", limitLabel: "" },
+  "Акции":            { glyph: "▲", color: "#00BFFF", iconColor: "#22E5FF", glow: "rgba(0,191,255,0.80)",   limit: 0.10, limitKind: "max", limitLabel: "ЛИМИТ 10%" },
   "Свободные деньги": { glyph: "$", color: "#00CC66", iconColor: "#00FF80", glow: "rgba(0,204,102,0.80)",   limit: 0.30, limitKind: "min", limitLabel: "ЦЕЛЬ 30%" },
 };
 
