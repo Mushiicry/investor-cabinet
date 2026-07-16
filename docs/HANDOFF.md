@@ -23,13 +23,14 @@
 
 | | |
 |---|---|
-| main | `4b45873` — SPCXB live + фикс формул RU-локали |
-| main `/exec` | ✅ `success:true` (LIVE), деплой `@33`, URL не менялся |
+| main | `a5faabc` — ревизия таблицы (2 волны) + реализованный профит на сайте |
+| main `/exec` | ✅ `success:true` (LIVE), деплой `@41`, URL не менялся |
 | wife `/exec` | ✅ `success:true` (LIVE) |
 | Тесты | ✅ 24/24 (6 файлов) |
 | Lint / Build | ✅ чисто / OK |
 | `npm audit --omit=dev` | ✅ 0 vulnerabilities |
 | SPCXB | ✅ «Акции», строка 13 «Расчетов», цена live `xyz:SPCX`, синк кошелька BNB каждые 30 мин |
+| Таблица | ✅ ревизия 2026-07-16: 0 ошибок, health сайт = health таблицы (одна модель), листы «Портфель»/«HL_DEBUG» удалены, F&G-обновлятор жив |
 
 ---
 
