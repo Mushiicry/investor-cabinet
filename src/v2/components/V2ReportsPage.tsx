@@ -64,6 +64,10 @@ function transactionTone(t: InvestorTransaction) {
   const normalized = (t.action || "").toLowerCase();
   if (normalized.includes("покуп") || normalized.includes("buy")) return "tx-buy";
   if (normalized.includes("прод") || normalized.includes("sell")) return "tx-sell";
+  // Стейбл-потоки кошелька (Arbitrum-импорт, 2026-07-17)
+  if (normalized.includes("пополн") || normalized.includes("deposit")) return "tx-in";
+  if (normalized.includes("обмен") || normalized.includes("swap")) return "tx-swap";
+  if (normalized.includes("вывод") || normalized.includes("withdraw")) return "tx-out";
   if (isTransfer(t.action)) return isIncoming(t) ? "tx-in" : "tx-transfer";
   return "tx-reinforce";
 }

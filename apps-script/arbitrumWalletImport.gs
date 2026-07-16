@@ -8,6 +8,11 @@ var IC_EVM_DEFAULT_ADDRESS = '0xFEc18D4474826afd65d578ff931F4ff2926ee0c3';
 var IC_EVM_ARBITRUM_RPC_URL = 'https://arb1.arbitrum.io/rpc';
 var IC_EVM_ARBITRUM_CHAIN_ID = 42161;
 var IC_EVM_ARBITRUM_NATIVE_USDC = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
+// USDT (Arbitrum One). Отслеживается всегда: без него пополнения кошелька
+// стейблами и обмены стейбл-в-стейбл невидимы для истории сделок (кейс 2026-07-17:
+// вывод 61.34 USDT с Bybit + свап в USDC прошли мимо отчётов).
+var IC_EVM_ARBITRUM_USDT = '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9';
+var IC_EVM_USDT_CALC_ASSET = 'USDT ARB'; // имя строки в «Расчетах»
 
 function setupArbitrumWalletImport() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -116,6 +121,11 @@ function IC_EVM_fetchWalletBalanceRows_(wallet, syncStartedAt) {
     if (usdcQuantity) rows.push(IC_EVM_balanceRow_(wallet, 'USDC', 'ERC20_NATIVE', usdcQuantity, syncAt, IC_EVM_ARBITRUM_NATIVE_USDC, 6, 'Arbitrum native USDC balanceOf'));
   }
 
+  // USDT мониторим всегда (не зависит от allowedAssets): нужен для детекта
+  // пополнений и обменов стейбл-в-стейбл.
+  var usdtQuantity = IC_EVM_fetchErc20Balance_(wallet.address, IC_EVM_ARBITRUM_USDT, 6);
+  if (usdtQuantity) rows.push(IC_EVM_balanceRow_(wallet, 'USDT', 'ERC20', usdtQuantity, syncAt, IC_EVM_ARBITRUM_USDT, 6, 'Arbitrum USDT balanceOf'));
+
   return rows;
 }
 
@@ -189,9 +199,117 @@ function IC_EVM_applyBalanceDeltas_(calculationsSheet, importSheet, previousBala
     return;
   }
 
-  if (Math.abs(usdcDelta) > 0.000001) {
+  // ── Обмен стейбл-в-стейбл (USDT <-> USDC): дельты противоположны и почти
+  // равны (допуск — комиссия/слиппедж до 2% или 1$). Нейтрально для PnL. ──
+  var usdtDelta = (currentBalances.USDT || 0) - (previousBalances.USDT || 0);
+  var swapTolerance = Math.max(1, Math.abs(usdcDelta) * 0.02);
+  if (
+    Math.abs(usdtDelta) > 0.5 && Math.abs(usdcDelta) > 0.5 &&
+    usdtDelta * usdcDelta < 0 &&
+    Math.abs(usdtDelta + usdcDelta) <= swapTolerance
+  ) {
+    IC_EVM_applyStableDelta_(calculationsSheet, 'USDC', usdcDelta);
+    IC_EVM_applyStableDelta_(calculationsSheet, IC_EVM_USDT_CALC_ASSET, usdtDelta);
+    if (importSheet) {
+      var fromAsset = usdtDelta < 0 ? 'USDT' : 'USDC';
+      var toAsset = usdtDelta < 0 ? 'USDC' : 'USDT';
+      var fromQty = usdtDelta < 0 ? -usdtDelta : -usdcDelta;
+      var toQty = usdtDelta < 0 ? usdcDelta : usdtDelta;
+      IC_EVM_appendStableFlowAuditRow_(importSheet, 'Обмен', toAsset, toQty, fromQty,
+        fromAsset + ' -> ' + toAsset, syncStartedAt);
+    }
+    return;
+  }
+
+  // ── Пополнение / вывод стейбла: движение без встречной пары ──
+  if (Math.abs(usdtDelta) > 0.5) {
+    IC_EVM_applyStableDelta_(calculationsSheet, IC_EVM_USDT_CALC_ASSET, usdtDelta);
+    if (importSheet) {
+      IC_EVM_appendStableFlowAuditRow_(importSheet,
+        usdtDelta > 0 ? 'Пополнение' : 'Вывод',
+        'USDT', Math.abs(usdtDelta), Math.abs(usdtDelta),
+        usdtDelta > 0 ? 'Приход USDT на кошелёк' : 'Уход USDT с кошелька', syncStartedAt);
+    }
+  } else if (Math.abs(usdtDelta) > 0.000001) {
+    IC_EVM_applyStableDelta_(calculationsSheet, IC_EVM_USDT_CALC_ASSET, usdtDelta);
+  }
+
+  if (Math.abs(usdcDelta) > 0.5) {
+    IC_EVM_applyStableDelta_(calculationsSheet, 'USDC', usdcDelta);
+    if (importSheet) {
+      IC_EVM_appendStableFlowAuditRow_(importSheet,
+        usdcDelta > 0 ? 'Пополнение' : 'Вывод',
+        'USDC', Math.abs(usdcDelta), Math.abs(usdcDelta),
+        usdcDelta > 0 ? 'Приход USDC на кошелёк' : 'Уход USDC с кошелька', syncStartedAt);
+    }
+  } else if (Math.abs(usdcDelta) > 0.000001) {
     IC_EVM_applyStableDelta_(calculationsSheet, 'USDC', usdcDelta);
   }
+}
+
+// Колонки листа импорта защищены списками значений (наследие TON-импорта:
+// «Действие» без Пополнения/Вывода, «Chain» только TON). Дописываем нужное
+// значение в правило всей колонки, не ломая существующий список.
+function IC_EVM_ensureListValidationAllows_(sheet, colLetter, value) {
+  var lastRow = Math.max(sheet.getMaxRows(), 1000);
+  var range = sheet.getRange(colLetter + '2:' + colLetter + lastRow);
+  // Правило ищем по ПОСЛЕДНЕЙ строке данных +1 (куда будет писаться новая):
+  // старые строки могли быть заполнены до появления валидации.
+  var probeRow = sheet.getLastRow() + 1;
+  var rule = sheet.getRange(colLetter + probeRow).getDataValidation() ||
+             sheet.getRange(colLetter + '2').getDataValidation();
+  if (!rule) return;
+
+  if (String(rule.getCriteriaType()) !== 'VALUE_IN_LIST') return;
+
+  var args = rule.getCriteriaValues();
+  var list = (args[0] || []).map(String);
+  if (list.indexOf(value) >= 0) return;
+
+  list.push(value);
+  range.setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireValueInList(list, args.length > 1 ? args[1] !== false : true)
+      .setAllowInvalid(false)
+      .build()
+  );
+}
+
+// Аудит-строка потока стейблов: Пополнение / Вывод / Обмен. Формат тот же,
+// что у Покупки/Продажи — история сделок на сайте показывает их одной лентой.
+function IC_EVM_appendStableFlowAuditRow_(sheet, action, asset, quantity, usdAmount, pairLabel, syncStartedAt) {
+  IC_EVM_ensureListValidationAllows_(sheet, 'F', action);
+  IC_EVM_ensureListValidationAllows_(sheet, 'L', 'ARBITRUM');
+  var syncId = Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyyMMdd'T'HHmmss");
+  var importId = [
+    'EVM_STABLE_FLOW', 'ARBITRUM', syncId, action.toUpperCase(), asset,
+    IC_EVM_round_(quantity, 6)
+  ].join(':');
+
+  if (IC_EVM_readExistingImportIds_(sheet)[importId]) return;
+
+  IC_EVM_appendRows_(sheet, [[
+    importId,
+    'PENDING',
+    Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), 'dd.MM.yyyy'),
+    asset,
+    'Кэш / Стейблы',
+    action,
+    quantity,
+    1,
+    usdAmount,
+    'Arbitrum wallet stable flow; balance already applied to Расчеты',
+    IC_EVM_DEFAULT_WALLET_ID,
+    'ARBITRUM',
+    'BALANCE_DELTA',
+    '',
+    action === 'Обмен' ? 'SWAP' : (action === 'Пополнение' ? 'IN' : 'OUT'),
+    '',
+    pairLabel,
+    IC_EVM_round_(quantity, 6) + ' ' + asset,
+    'BALANCE_APPLIED audit row at ' + Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss") +
+      '. Стейбл-поток: PnL не создаёт, баланс уже применён.'
+  ]]);
 }
 
 function IC_EVM_appendBalanceDeltaBuyAuditRow_(sheet, asset, assetReceived, impliedPrice, usdcSpent, syncStartedAt) {
@@ -362,6 +480,9 @@ function IC_EVM_applyAssetSale_(sheet, asset, quantity, proceeds) {
 
 function IC_EVM_applyStableDelta_(sheet, asset, delta) {
   var rowIndex = IC_EVM_findAssetRow_(sheet, asset);
+  if (!rowIndex && Math.abs(delta) > 0.000001) {
+    rowIndex = IC_EVM_createStableRow_(sheet, asset);
+  }
   if (!rowIndex) return;
 
   var currentQuantity = IC_EVM_toNumber_(sheet.getRange(rowIndex, 3).getValue());
@@ -409,6 +530,31 @@ function IC_EVM_appendRows_(sheet, rows) {
 
 function IC_EVM_updateWalletSyncState_(sheet, rowIndex, date) {
   sheet.getRange(rowIndex, 7).setValue(Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss"));
+}
+
+// Новая стейбл-строка в «Расчетах»: пишем в первую ПУСТУЮ строку колонки A
+// в пределах 2..30 (диапазоны формул 2:100 её подхватят). insertRow НЕ используем:
+// вставка сдвигает служебные блоки L-O и W-X (анти-паттерн HANDOFF §3.8).
+// Формулы — только с ";" (русская локаль, HANDOFF §3.7). Цена стейбла = 1.
+function IC_EVM_createStableRow_(sheet, asset) {
+  var values = sheet.getRange(2, 1, 29, 1).getValues();
+  var rowIndex = 0;
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0]).trim() === '') { rowIndex = i + 2; break; }
+  }
+  if (!rowIndex) return 0;
+
+  sheet.getRange(rowIndex, 1, 1, 4).setValues([[asset, 'Кэш / Стейблы', 0, 1]]);
+  sheet.getRange(rowIndex, 5).setFormula('=C' + rowIndex + '*D' + rowIndex);
+  sheet.getRange(rowIndex, 6).setValue(1);
+  sheet.getRange(rowIndex, 7).setFormula(
+    '=IF(OR(C' + rowIndex + '="";F' + rowIndex + '="");"";C' + rowIndex + '*F' + rowIndex + ')'
+  );
+  sheet.getRange(rowIndex, 8).setFormula('=G' + rowIndex + '-E' + rowIndex);
+  sheet.getRange(rowIndex, 9).setFormula('=IF(E' + rowIndex + '=0;0;H' + rowIndex + '/E' + rowIndex + ')');
+  sheet.getRange(rowIndex, 10).setFormula('=IF(G' + rowIndex + '=0;0;G' + rowIndex + '/SUM($G$2:$G$100))');
+  sheet.getRange(rowIndex, 11).setValue('Reserve');
+  return rowIndex;
 }
 
 function IC_EVM_isAllowedWalletAsset_(wallet, asset) {
@@ -520,4 +666,54 @@ function IC_EVM_toNumber_(value) {
 function IC_EVM_round_(value, digits) {
   var parsed = IC_EVM_toNumber_(value);
   return Number(parsed.toFixed(digits));
+}
+
+
+// ── Одноразовый бэкфил 2026-07-17: пополнение и обмен прошли до внедрения
+// стейбл-потоков и не попали в историю. Балансы УЖЕ применены прошлыми
+// синками — только летопись. Идемпотентно (importId защищает от дублей).
+function backfillArbitrumStableFlows20260717() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var importSheet = ss.getSheetByName(IC_EVM_IMPORT_SHEET);
+  if (!importSheet) throw new Error('Нет листа ' + IC_EVM_IMPORT_SHEET);
+  var at = new Date();
+
+  IC_EVM_appendStableFlowAuditRow_(importSheet, 'Пополнение', 'USDT',
+    61.3448, 61.3448, 'Вывод с Bybit -> Arbitrum кошелёк (задним числом)', at);
+  IC_EVM_appendStableFlowAuditRow_(importSheet, 'Обмен', 'USDC',
+    61.3074, 61.3448, 'USDT -> USDC (Uniswap V4, задним числом)', at);
+  return 'OK';
+}
+
+
+// Одноразовая чистка 2026-07-17: три упавших на валидациях прогона бэкфила
+// оставили полузаписанные строки (пустое действие) и дубли «Пополнения».
+// Оставляем последнюю валидную пару (Пополнение + Обмен), остальные
+// EVM_STABLE_FLOW-строки удаляем.
+function cleanupStableFlowDuplicates20260717() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(IC_EVM_IMPORT_SHEET);
+  var lastRow = sheet.getLastRow();
+  var values = sheet.getRange(2, 1, lastRow - 1, 6).getValues(); // A..F
+  var flowRows = [];
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0]).indexOf('EVM_STABLE_FLOW') === 0) {
+      flowRows.push({ row: i + 2, action: String(values[i][5]).trim() });
+    }
+  }
+  // Валидные: последнее «Пополнение» и последний «Обмен». Остальные — мусор.
+  var lastDeposit = -1, lastSwap = -1;
+  flowRows.forEach(function(r) {
+    if (r.action === 'Пополнение') lastDeposit = r.row;
+    if (r.action === 'Обмен') lastSwap = r.row;
+  });
+  var removed = [];
+  for (var j = flowRows.length - 1; j >= 0; j--) {
+    var r = flowRows[j];
+    if (r.row !== lastDeposit && r.row !== lastSwap) {
+      sheet.deleteRow(r.row);
+      removed.push(r.row + ':' + (r.action || 'пусто'));
+    }
+  }
+  return 'удалено ' + removed.length + ' строк: ' + removed.join(', ');
 }

@@ -802,6 +802,20 @@
   border: 1px solid rgba(77, 160, 200, 0.25);
 }
 
+/* Обмен (стейбл-в-стейбл) — нейтральный голубой */
+.v2-rep-type-chip.tx-swap {
+  background: rgba(86, 196, 240, 0.1);
+  color: rgba(120, 205, 245, 0.92);
+  border: 1px solid rgba(86, 196, 240, 0.28);
+}
+
+/* Вывод (уход стейбла с кошелька) — оранжевый */
+.v2-rep-type-chip.tx-out {
+  background: rgba(250, 150, 60, 0.1);
+  color: rgba(250, 170, 90, 0.92);
+  border: 1px solid rgba(250, 150, 60, 0.25);
+}
+
 /* Приход (входящий перевод) — зелёный */
 .v2-rep-type-chip.tx-in {
   background: rgba(52, 211, 153, 0.12);
