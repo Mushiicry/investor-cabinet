@@ -93,6 +93,7 @@ const GROUPS = [
   { title: "Спот", category: "Крипта" },
   { title: "Фьючи", category: "Фьючерсы" },
   { title: "Металлы", category: "Металлы" },
+  { title: "Акции", category: "Акции" },
 ];
 
 function IdentityCard({
