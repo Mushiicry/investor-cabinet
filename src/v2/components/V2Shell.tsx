@@ -103,7 +103,18 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
   const [desktopViewport, setDesktopViewport] = useState(getDesktopViewport);
 
   useEffect(() => {
-    const updateViewport = () => setDesktopViewport(getDesktopViewport());
+    const updateViewport = () => {
+      setDesktopViewport(prev => {
+        const next = getDesktopViewport();
+        // iOS Safari шлёт resize на каждом кадре скролла (сворачивание
+        // адресной строки меняет innerHeight). Обновление стейта здесь
+        // перерисовывало весь shell и заставляло нижний таб-бар «плыть».
+        // Дёргаем стейт только когда изменение реально значимо.
+        if (next.scale === prev.scale && window.innerWidth <= MOBILE_BREAKPOINT) return prev;
+        if (next.scale === prev.scale && Math.abs(next.logicalHeight - prev.logicalHeight) < 0.5) return prev;
+        return next;
+      });
+    };
     window.addEventListener("resize", updateViewport);
     return () => window.removeEventListener("resize", updateViewport);
   }, []);

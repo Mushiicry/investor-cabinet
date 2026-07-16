@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- maximum-scale/user-scalable: случайный пинч-зум отвязывал fixed-панели
+         от экрана (нижний таб-бар «плавал» посреди страницы). Приложение-дашборд
+         ведёт себя как нативное: масштаб фиксирован. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>investor-cabinet</title>
   </head>
   <body>

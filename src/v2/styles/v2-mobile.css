@@ -20,21 +20,32 @@
     left: 0;
     bottom: 0;
     z-index: 300;
-    width: min(310px, 85vw);
-    max-width: 85vw;
+    /* Во весь экран (решение владельца 2026-07-16): задний план не виден.
+       height: базовое правило даёт calc(logical-height - 36px) — шторка
+       не доставала до низа и снизу просвечивали контент и таб-бар. */
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    /* Скролл внутри меню не прокидывается на страницу под ним */
+    overscroll-behavior: contain;
     transform: translateX(-102%) !important;
     transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform;
     /* Плотный фон — иначе контент страницы просвечивает сквозь меню */
     background: linear-gradient(180deg, #081020 0%, #04070f 100%) !important;
-    border-right: 1px solid rgba(86, 196, 240, 0.18);
-    box-shadow: 8px 0 40px rgba(0, 0, 0, 0.6);
     padding: 16px 14px 20px;
   }
   .v2-sidebar.is-mobile-open {
     transform: translateX(0) !important;
+  }
+  /* Открытая шторка лочит скролл страницы под собой */
+  html:has(.v2-sidebar.is-mobile-open),
+  body:has(.v2-sidebar.is-mobile-open) {
+    overflow: hidden !important;
+    height: 100%;
   }
   .v2-mob-drawer-backdrop {
     position: fixed;
@@ -154,9 +165,13 @@
     width: 100%;
     align-items: center;
   }
+  /* Донат — крупный, во всю ширину экрана (решение владельца 2026-07-16):
+     full-bleed из паддингов панели, квадратный аспект сохраняем. */
   .v2-pac-svg {
-    width: min(300px, 82vw);
-    height: min(300px, 82vw);
+    width: min(96vw, 440px) !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1;
+    margin-inline: calc(50% - min(48vw, 220px));
   }
 
   /* Инвестор-модалка: фикс 540px шире экрана → адаптивная ширина */
@@ -207,13 +222,28 @@
     margin-left: calc(50% - 50vw);
   }
   .v2-btc-svg {
-    min-height: 300px; /* владелец: ещё выше */
+    /* Свёрнутый график заполняет всю высоту без пустот: компонент на узких
+       экранах рисует с preserveAspectRatio="none" (см. V2BtcDailyChart). */
+    height: 340px;
+    min-height: 340px;
   }
 
   /* Полный экран: поворот в горизонталь (пользователь кладёт телефон вбок).
      width=100vh / height=100vw + rotate(90deg) → чарт занимает весь экран
      landscape. Кнопка-крестик не повёрнута — остаётся тапабельной. */
-  .v2-btc-chart-wrap.is-fullscreen { padding: 0; }
+  /* Фулскрин — статичное окно (решение владельца): фон под ним не скроллится
+     и не виден, пан-жесты по графику не двигают страницу. */
+  .v2-btc-chart-wrap.is-fullscreen {
+    padding: 0;
+    touch-action: none;
+    overscroll-behavior: contain;
+    overflow: hidden;
+  }
+  html:has(.v2-btc-chart-wrap.is-fullscreen),
+  body:has(.v2-btc-chart-wrap.is-fullscreen) {
+    overflow: hidden !important;
+    height: 100%;
+  }
   .v2-btc-chart-wrap.is-fullscreen .v2-btc-svg {
     /* -24px: без запаса правый край SVG (плашка текущей цены BTC) резался
        рамкой экрана после поворота */
@@ -533,23 +563,38 @@
   }
 }
 
-/* Круговая диаграмма распределения — на всю ширину экрана (владелец) */
-@media (max-width: 480px) {
-  .v2-pac-svg {
-    width: 100% !important;
-    max-width: none;
+/* (донат: единое правило живёт выше, в блоке «Распределение средств») */
+
+/* LIVE-бейдж из шапки на телефоне убран — на BTC-графике уже есть свой
+   LIVE-индикатор (решение владельца). Проблемные статусы (STALE / ERROR /
+   CACHE / DEMO) остаются видимыми: это сигнал о несвежих данных. */
+@media (max-width: 768px) {
+  .v2-datastatus.is-live {
+    display: none;
   }
 }
 
-/* Подсказка индекса F&G: absolute от кнопки уводил карточку за левый
-   край экрана — на телефоне показываем по центру, во всю ширину. */
+/* Подсказки F&G-блока: absolute от кнопки уводил карточки за край экрана
+   (индекс — влево, DCA-аббревиатура — вправо). На телефоне показываем
+   по центру экрана, во всю ширину. */
 @media (max-width: 480px) {
-  .v2-dca-fg-tip-card {
+  .v2-dca-fg-tip-card,
+  .v2-dca-abbr-card {
     position: fixed;
     left: 16px;
     right: 16px;
     top: 50%;
+    bottom: auto;
     transform: translateY(-50%);
     width: auto;
+    max-width: none;
+  }
+}
+
+/* Таб-бар: собственный композитный слой — не перерисовывается при скролле */
+@media (max-width: 768px) {
+  .v2-tab-bar {
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 }

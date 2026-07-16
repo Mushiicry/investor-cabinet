@@ -140,6 +140,17 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
   const [loading, setLoading] = useState(true);
   // График на весь экран (на мобиле — с поворотом в горизонталь)
   const [chartFull, setChartFull] = useState(false);
+  // Узкий экран: свёрнутый график заполняет контейнер целиком
+  // (preserveAspectRatio="none") — без пустот сверху и снизу.
+  const [isNarrow, setIsNarrow] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const onChange = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     fetchAllBars(CHART_START)
@@ -442,7 +453,11 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
             </svg>
           )}
         </button>
-        <svg viewBox={`0 0 ${VW} ${VH}`} className="v2-btc-svg" preserveAspectRatio="xMidYMid meet">
+        <svg
+          viewBox={`0 0 ${VW} ${VH}`}
+          className="v2-btc-svg"
+          preserveAspectRatio={isNarrow && !chartFull ? "none" : "xMidYMid meet"}
+        >
         <defs>
           <filter id="btcGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="5" result="blur"/>
