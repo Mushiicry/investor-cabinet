@@ -65,6 +65,8 @@ function IC_HL_syncLivePrices_(ss, primaryMids, dexMids) {
   IC_HL_setPriceSource_(sheet, 'GRAM LIVE', 'GRAM', 'Hyperliquid', 'GRAM (ex-TON), live Hyperliquid mid');
   IC_HL_setPriceSource_(sheet, 'ATOM', 'ATOM', 'Hyperliquid', 'Live Hyperliquid ATOM mid');
   IC_HL_setPriceSource_(sheet, 'GOLD LONG', 'xyz:GOLD', 'Hyperliquid xyz', 'Live Hyperliquid xyz:GOLD mid');
+  IC_HL_ensurePriceRow_(sheet, 'SPCXB');
+  IC_HL_setPriceSource_(sheet, 'SPCXB', 'xyz:SPCX', 'Hyperliquid xyz', 'SpaceX tokenized (BNB Chain), live Hyperliquid xyz:SPCX mid');
   IC_HL_disableLegacyPriceRow_(sheet, 'BTC SHORT');
   IC_HL_disableLegacyPriceRow_(sheet, 'GRAM');
 
