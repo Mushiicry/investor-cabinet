@@ -137,8 +137,13 @@ function fixSpcxbRowFormulas() {
   sheet.getRange(templateRow, fromCol, 1, width - fromCol + 1)
        .copyTo(sheet.getRange(spcxbRow, fromCol, 1, width - fromCol + 1));
 
-  Logger.log('SPCXB (строка ' + spcxbRow + '): формулы F..' + width +
-             ' скопированы со спотовой ETH. Цена теперь ищется по имени SPCXB в «Цены».');
+  // Учёт по решению владельца (2026-07-16): вход = биржевой средний 135.79
+  // (10.1191 USDT / 0.07452 куплено), комиссии за кадром. Дальше покупки
+  // планируются напрямую в сети BNB — там издержки ниже.
+  sheet.getRange(spcxbRow, 4).setValue(135.79);
+
+  Logger.log('SPCXB (строка ' + spcxbRow + '): спотовые формулы ETH применены, ' +
+             'вход 135.79 (биржевой). Цена ищется по имени SPCXB в «Цены».');
 }
 
 // Одноразово: нажать ▶ Run — поставит синк каждые 30 минут (идемпотентно).
