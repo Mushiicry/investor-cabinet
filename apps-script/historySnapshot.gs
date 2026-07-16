@@ -92,6 +92,10 @@ function IC_HISTORY_syncFearGreedSnapshot_(ss, now, timezone) {
     { muteHttpExceptions: true }
   );
 
+  // Свежайшая точка alternative.me — ей же обновляем «Настройки».
+  // Раньше Настройки никто не обновлял (застряли на апрельском значении),
+  // и «сегодняшняя» точка истории затиралась стухшим числом (баг 2026-07-16).
+  var freshest = null;
   if (response.getResponseCode() >= 200 && response.getResponseCode() < 300) {
     var payload = JSON.parse(response.getContentText() || '{}');
     var points = Array.isArray(payload.data) ? payload.data : [];
@@ -109,7 +113,16 @@ function IC_HISTORY_syncFearGreedSnapshot_(ss, now, timezone) {
         now,
         timezone
       );
+      if (!freshest || timestamp > freshest.timestamp) {
+        freshest = { timestamp: timestamp, value: value };
+      }
     });
+  }
+
+  var currentSource = 'Настройки';
+  if (freshest) {
+    IC_HISTORY_updateFearGreedSettings_(ss, freshest.value, now);
+    currentSource = 'alternative.me';
   }
 
   var currentValue = getFearGreedCurrentIndex(ss);
@@ -118,7 +131,7 @@ function IC_HISTORY_syncFearGreedSnapshot_(ss, now, timezone) {
     now,
     currentValue,
     IC_HISTORY_fearGreedLabel_(currentValue),
-    'Настройки',
+    currentSource,
     now,
     timezone
   );
@@ -164,6 +177,46 @@ function IC_HISTORY_upsertFearGreedPoint_(sheet, date, value, label, source, sav
   sheet.getRange(targetRow, 1).setNumberFormat('dd.MM.yyyy');
   sheet.getRange(targetRow, 5).setNumberFormat('dd.MM.yyyy HH:mm');
   return targetRow;
+}
+
+// Записывает живое значение F&G в «Настройки» (value/label/source/updatedAt/summary).
+function IC_HISTORY_updateFearGreedSettings_(ss, value, now) {
+  var sheet = ss.getSheetByName('Настройки');
+  if (!sheet) return;
+
+  var clamped = Math.max(0, Math.min(100, Math.round(value)));
+  var updates = {
+    fearGreedValue: clamped,
+    fearGreedLabel: IC_HISTORY_fearGreedLabel_(clamped),
+    fearGreedSummary: IC_HISTORY_fearGreedSummary_(clamped),
+    fearGreedSource: 'alternative.me',
+    fearGreedUpdatedAt: now.toISOString()
+  };
+
+  var lastRow = sheet.getLastRow();
+  var keys = sheet.getRange(1, 1, lastRow, 1).getDisplayValues();
+  for (var i = 0; i < keys.length; i++) {
+    var key = String(keys[i][0]).trim();
+    if (Object.prototype.hasOwnProperty.call(updates, key)) {
+      sheet.getRange(i + 1, 2).setValue(updates[key]);
+    }
+  }
+}
+
+function IC_HISTORY_fearGreedSummary_(value) {
+  if (value <= 24) {
+    return 'Рынок в экстремальном страхе. Исторически лучшая зона для дисциплинированного набора по плану — без попыток поймать самое дно.';
+  }
+  if (value <= 44) {
+    return 'Рынок остается в зоне страха. Среда подходит для аккуратного набора, а не для агрессивной погони за ростом.';
+  }
+  if (value <= 54) {
+    return 'Рынок нейтрален. Работаем по плану: без спешки с покупками и без эмоциональных продаж.';
+  }
+  if (value <= 74) {
+    return 'Рынок в жадности. Новые покупки требуют повышенной избирательности; время сверяться с планом фиксаций.';
+  }
+  return 'Рынок в крайней жадности. Опасная зона для новых покупок — приоритет дисциплине и плану выхода.';
 }
 
 function IC_HISTORY_fearGreedLabel_(value) {

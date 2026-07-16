@@ -38,6 +38,9 @@ export type V2Portfolio = {
   reserveShare: number;
   exposureMode: string;
   exposureSignal: string;
+  /** Реализованный профит по закрытым позициям — $ и доля 0..1 (Расчеты O:U). */
+  realizedPnlUsd?: number;
+  realizedPnlPct?: number;
 };
 
 export type V2Position = {

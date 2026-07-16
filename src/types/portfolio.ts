@@ -64,6 +64,9 @@ export type OverviewData = {
   reserve: number;
   positionsCount: number;
   health: number;
+  /** Реализованный профит по закрытым позициям (Расчеты O:U), $ и доля 0..1. */
+  realizedPnl?: number;
+  realizedPnlPct?: number;
   state: string;
   signal: string;
   action: string;

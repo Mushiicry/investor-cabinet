@@ -45,6 +45,7 @@ function doGet() {
   const history = ss.getSheetByName("История");
   const transactions = ss.getSheetByName("Транзакции_IMPORT");
   const overviewData = getOverview(overview);
+  attachRealizedProfit(overviewData, calculations);
   const portfolioSource = calculations || portfolio;
 
   const result = {
@@ -65,6 +66,26 @@ function doGet() {
   return ContentService
     .createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Реализованный профит по закрытым/зафиксированным позициям — таблица O:U
+// на «Расчетах». Ищем строку по метке (не по фиксированной ячейке), чтобы
+// вставки строк не ломали ссылку.
+function attachRealizedProfit(overviewData, calculations) {
+  overviewData.realizedPnl = 0;
+  overviewData.realizedPnlPct = 0;
+  if (!calculations) return;
+
+  const labels = calculations.getRange("O1:O30").getDisplayValues();
+  for (let i = 0; i < labels.length; i += 1) {
+    const label = String(labels[i][0]).trim();
+    if (label === "realizedProfitUsd") {
+      overviewData.realizedPnl = parseNumber(calculations.getRange(i + 1, 20).getDisplayValue());
+    }
+    if (label === "realizedProfitPct") {
+      overviewData.realizedPnlPct = parseNumber(calculations.getRange(i + 1, 21).getDisplayValue());
+    }
+  }
 }
 
 function getOverview(sheet) {

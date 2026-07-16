@@ -57,6 +57,8 @@ export function buildOverviewStateFromApi({
     reserve: toNumber(json?.overview?.reserve, prev.overview.reserve),
     positionsCount: portfolio.filter(item => item.category !== "Свободные деньги").length,
     health: toNumber(json?.overview?.health, prev.overview.health),
+    realizedPnl: toNumber(json?.overview?.realizedPnl, prev.overview.realizedPnl ?? 0),
+    realizedPnlPct: toNumber(json?.overview?.realizedPnlPct, prev.overview.realizedPnlPct ?? 0),
     state: json?.overview?.state ?? prev.overview.state,
     signal: json?.overview?.signal ?? prev.overview.signal,
     action: json?.overview?.action ?? prev.overview.action,

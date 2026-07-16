@@ -13,6 +13,9 @@ type Props = {
   playbook: PlaybookCard[];
   staking?: TonStaking | null;
   cosmosStaking?: CosmosStaking | null;
+  /** Реализованный профит по закрытым позициям — $ и доля 0..1. */
+  realizedPnlUsd?: number;
+  realizedPnlPct?: number;
 };
 
 const money0 = new Intl.NumberFormat("ru-RU", {
@@ -232,7 +235,7 @@ function PlaybookModal({
   );
 }
 
-export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking }: Props) {
+export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, realizedPnlUsd, realizedPnlPct }: Props) {
   const [selected, setSelected] = useState<{ card: PlaybookCard; position: V2Position } | null>(null);
   // Какая стейкинг-плашка раскрыта (по тикеру актива): "TON" | "ATOM" | null
   const [openStake, setOpenStake] = useState<string | null>(null);
@@ -249,8 +252,21 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking }:
   ];
   const stablesTotal = stables.reduce((sum, position) => sum + position.value, 0);
 
+  const showRealized = typeof realizedPnlUsd === "number" && realizedPnlUsd !== 0;
+
   return (
     <section className="v2-port-page" aria-label="Портфель — все позиции">
+      {showRealized && (
+        <div className="v2-panel v2-port-realized" title="Профит по закрытым и зафиксированным позициям — не входит в текущий PnL портфеля">
+          <span className="v2-port-realized-label">Реализовано за всё время</span>
+          <span className={`v2-port-realized-val ${realizedPnlUsd > 0 ? "is-up" : "is-down"}`}>
+            {signedMoney(realizedPnlUsd)}
+            {typeof realizedPnlPct === "number" && realizedPnlPct !== 0 && (
+              <em>{signedPct(realizedPnlPct * 100)}</em>
+            )}
+          </span>
+        </div>
+      )}
       <div className="v2-panel v2-port-table">
         {GROUPS.map((group) => {
           const rows = positions

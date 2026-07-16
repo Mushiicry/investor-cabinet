@@ -802,3 +802,38 @@ strong.v2-rb-val {
   vertical-align: middle;
   white-space: nowrap;
 }
+
+/* Реализованный профит по закрытым позициям — плашка над таблицей */
+.v2-port-realized {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  margin-bottom: 14px;
+}
+
+.v2-port-realized-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(141, 167, 181, 0.75);
+}
+
+.v2-port-realized-val {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-port-realized-val em {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 8px;
+  opacity: 0.75;
+}
+
+.v2-port-realized-val.is-up { color: #5af08d; }
+.v2-port-realized-val.is-down { color: #ff6b8a; }

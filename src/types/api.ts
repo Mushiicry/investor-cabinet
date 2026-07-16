@@ -38,6 +38,8 @@ export type InvestorApiResponse = {
     reserve?: unknown;
     positionsCount?: unknown;
     health?: unknown;
+    realizedPnl?: unknown;
+    realizedPnlPct?: unknown;
     state?: string;
     signal?: string;
     action?: string;

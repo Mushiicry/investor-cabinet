@@ -212,7 +212,14 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         ) : page === "reports" ? (
           <V2ReportsPage history={data.history} transactions={data.transactions} positions={data.positions} />
         ) : page === "portfolio" ? (
-          <V2PortfolioPage positions={data.positions} playbook={data.playbook} staking={staking} cosmosStaking={cosmosStaking} />
+          <V2PortfolioPage
+            positions={data.positions}
+            playbook={data.playbook}
+            staking={staking}
+            cosmosStaking={cosmosStaking}
+            realizedPnlUsd={data.portfolio.realizedPnlUsd}
+            realizedPnlPct={data.portfolio.realizedPnlPct}
+          />
         ) : page === "scenarios" ? (
           <V2ScenariosPage playbook={data.playbook} positions={data.positions} />
         ) : page === "health" ? (

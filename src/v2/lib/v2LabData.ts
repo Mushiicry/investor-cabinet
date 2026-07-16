@@ -300,6 +300,8 @@ export const buildLiveV2Data = (
       pnlPct: state.overview.pnlPct,
       stableReserve: state.overview.reserve,
       positionsCount: Math.round(state.overview.positionsCount),
+      realizedPnlUsd: state.overview.realizedPnl ?? 0,
+      realizedPnlPct: state.overview.realizedPnlPct ?? 0,
       healthFactor,
       healthStatus,
       riskLevel: health.riskLevel,

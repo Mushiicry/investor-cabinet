@@ -341,3 +341,25 @@
   .v2-port-row .v2-row-block:nth-child(2) .v2-rb-val:nth-child(3)::before { content: "стоимость"; }
 
 }
+
+/* Стейкинг-тогл: длинная метка выпирала за экран (scrollWidth +47px) */
+@media (max-width: 480px) {
+  /* На десктопе тогл прижат к колонке «Ср. вход» через margin-left: 336px —
+     на мобиле это выталкивало его за экран (right 663 при вьюпорте 375). */
+  .v2-stake-toggle {
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    overflow: hidden;
+  }
+  .v2-stake-toggle-val, .v2-stake-toggle-chevron { flex-shrink: 0; }
+  .v2-stake-toggle-label {
+    font-size: 11px;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
