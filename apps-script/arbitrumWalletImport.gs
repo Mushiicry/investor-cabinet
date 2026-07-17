@@ -277,12 +277,14 @@ function IC_EVM_ensureListValidationAllows_(sheet, colLetter, value) {
 
 // Аудит-строка потока стейблов: Пополнение / Вывод / Обмен. Формат тот же,
 // что у Покупки/Продажи — история сделок на сайте показывает их одной лентой.
-function IC_EVM_appendStableFlowAuditRow_(sheet, action, asset, quantity, usdAmount, pairLabel, syncStartedAt) {
+function IC_EVM_appendStableFlowAuditRow_(sheet, action, asset, quantity, usdAmount, pairLabel, syncStartedAt, chain, walletId) {
+  chain = chain || 'ARBITRUM';
+  walletId = walletId || IC_EVM_DEFAULT_WALLET_ID;
   IC_EVM_ensureListValidationAllows_(sheet, 'F', action);
-  IC_EVM_ensureListValidationAllows_(sheet, 'L', 'ARBITRUM');
+  IC_EVM_ensureListValidationAllows_(sheet, 'L', chain);
   var syncId = Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyyMMdd'T'HHmmss");
   var importId = [
-    'EVM_STABLE_FLOW', 'ARBITRUM', syncId, action.toUpperCase(), asset,
+    'EVM_STABLE_FLOW', chain, syncId, action.toUpperCase(), asset,
     IC_EVM_round_(quantity, 6)
   ].join(':');
 
@@ -299,8 +301,8 @@ function IC_EVM_appendStableFlowAuditRow_(sheet, action, asset, quantity, usdAmo
     1,
     usdAmount,
     'Arbitrum wallet stable flow; balance already applied to Расчеты',
-    IC_EVM_DEFAULT_WALLET_ID,
-    'ARBITRUM',
+    walletId,
+    chain,
     'BALANCE_DELTA',
     '',
     action === 'Обмен' ? 'SWAP' : (action === 'Пополнение' ? 'IN' : 'OUT'),
