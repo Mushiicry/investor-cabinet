@@ -806,12 +806,14 @@ strong.v2-rb-val {
 /* Реализованный профит по закрытым позициям — компактная плашка над таблицей.
    Ширина по содержимому (не на весь блок), метка и значение рядом. */
 .v2-port-realized {
-  display: inline-flex;
+  display: flex;
   align-items: baseline;
+  justify-content: center;
   gap: 8px;
   width: fit-content;
   padding: 6px 12px;
-  margin-bottom: 12px;
+  /* по центру над таблицей */
+  margin: 0 auto 12px;
 }
 
 .v2-port-realized-label {
