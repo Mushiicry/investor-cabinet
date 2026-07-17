@@ -251,67 +251,17 @@ function IC_EVM_applyBalanceDeltas_(calculationsSheet, importSheet, previousBala
 // «Действие» без Пополнения/Вывода, «Chain» только TON). Дописываем нужное
 // значение в правило всей колонки, не ломая существующий список.
 function IC_EVM_ensureListValidationAllows_(sheet, colLetter, value) {
-  var lastRow = Math.max(sheet.getMaxRows(), 1000);
-  var range = sheet.getRange(colLetter + '2:' + colLetter + lastRow);
-  // Правило ищем по ПОСЛЕДНЕЙ строке данных +1 (куда будет писаться новая):
-  // старые строки могли быть заполнены до появления валидации.
-  var probeRow = sheet.getLastRow() + 1;
-  var rule = sheet.getRange(colLetter + probeRow).getDataValidation() ||
-             sheet.getRange(colLetter + '2').getDataValidation();
-  if (!rule) return;
-
-  if (String(rule.getCriteriaType()) !== 'VALUE_IN_LIST') return;
-
-  var args = rule.getCriteriaValues();
-  var list = (args[0] || []).map(String);
-  if (list.indexOf(value) >= 0) return;
-
-  list.push(value);
-  range.setDataValidation(
-    SpreadsheetApp.newDataValidation()
-      .requireValueInList(list, args.length > 1 ? args[1] !== false : true)
-      .setAllowInvalid(false)
-      .build()
-  );
+  return IC_LEDGER_ensureListValidationAllows_(sheet, colLetter, value);
 }
 
 // Аудит-строка потока стейблов: Пополнение / Вывод / Обмен. Формат тот же,
 // что у Покупки/Продажи — история сделок на сайте показывает их одной лентой.
 function IC_EVM_appendStableFlowAuditRow_(sheet, action, asset, quantity, usdAmount, pairLabel, syncStartedAt, chain, walletId) {
-  chain = chain || 'ARBITRUM';
-  walletId = walletId || IC_EVM_DEFAULT_WALLET_ID;
-  IC_EVM_ensureListValidationAllows_(sheet, 'F', action);
-  IC_EVM_ensureListValidationAllows_(sheet, 'L', chain);
-  var syncId = Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyyMMdd'T'HHmmss");
-  var importId = [
-    'EVM_STABLE_FLOW', chain, syncId, action.toUpperCase(), asset,
-    IC_EVM_round_(quantity, 6)
-  ].join(':');
-
-  if (IC_EVM_readExistingImportIds_(sheet)[importId]) return;
-
-  IC_EVM_appendRows_(sheet, [[
-    importId,
-    'PENDING',
-    Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), 'dd.MM.yyyy'),
-    asset,
-    'Кэш / Стейблы',
-    action,
-    quantity,
-    1,
-    usdAmount,
-    'Arbitrum wallet stable flow; balance already applied to Расчеты',
-    walletId,
-    chain,
-    'BALANCE_DELTA',
-    '',
-    action === 'Обмен' ? 'SWAP' : (action === 'Пополнение' ? 'IN' : 'OUT'),
-    '',
-    pairLabel,
-    IC_EVM_round_(quantity, 6) + ' ' + asset,
-    'BALANCE_APPLIED audit row at ' + Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss") +
-      '. Стейбл-поток: PnL не создаёт, баланс уже применён.'
-  ]]);
+  return IC_LEDGER_appendStableFlowRow_(sheet, {
+    action: action, asset: asset, quantity: quantity, usdAmount: usdAmount,
+    pairLabel: pairLabel, syncStartedAt: syncStartedAt,
+    chain: chain || 'ARBITRUM', walletId: walletId || IC_EVM_DEFAULT_WALLET_ID
+  });
 }
 
 function IC_EVM_appendBalanceDeltaBuyAuditRow_(sheet, asset, assetReceived, impliedPrice, usdcSpent, syncStartedAt) {
@@ -481,18 +431,7 @@ function IC_EVM_applyAssetSale_(sheet, asset, quantity, proceeds) {
 }
 
 function IC_EVM_applyStableDelta_(sheet, asset, delta) {
-  var rowIndex = IC_EVM_findAssetRow_(sheet, asset);
-  if (!rowIndex && Math.abs(delta) > 0.000001) {
-    rowIndex = IC_EVM_createStableRow_(sheet, asset);
-  }
-  if (!rowIndex) return;
-
-  var currentQuantity = IC_EVM_toNumber_(sheet.getRange(rowIndex, 3).getValue());
-  var nextQuantity = Math.max(0, currentQuantity + delta);
-
-  sheet.getRange(rowIndex, 3).setValue(nextQuantity);
-  sheet.getRange(rowIndex, 4).setValue(1);
-  sheet.getRange(rowIndex, 5).setFormula('=C' + rowIndex + '*D' + rowIndex);
+  return IC_LEDGER_applyStableDelta_(sheet, asset, delta);
 }
 
 function IC_EVM_setCalculationQuantity_(sheet, asset, quantity) {
@@ -504,30 +443,15 @@ function IC_EVM_setCalculationQuantity_(sheet, asset, quantity) {
 }
 
 function IC_EVM_findAssetRow_(sheet, asset) {
-  var values = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues();
-  var normalizedAsset = IC_EVM_normalizeAssetSymbol_(asset).toUpperCase();
-
-  for (var index = 0; index < values.length; index += 1) {
-    if (IC_EVM_normalizeAssetSymbol_(values[index][0]).toUpperCase() === normalizedAsset) return index + 1;
-  }
-
-  return 0;
+  return IC_LEDGER_findAssetRow_(sheet, asset);
 }
 
 function IC_EVM_readExistingImportIds_(sheet) {
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) return {};
-
-  return sheet.getRange(2, 1, lastRow - 1, 1).getValues().reduce(function(index, row) {
-    var importId = String(row[0] || '').trim();
-    if (importId) index[importId] = true;
-    return index;
-  }, {});
+  return IC_LEDGER_readExistingImportIds_(sheet);
 }
 
 function IC_EVM_appendRows_(sheet, rows) {
-  var startRow = sheet.getLastRow() + 1;
-  sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
+  return IC_LEDGER_appendRows_(sheet, rows);
 }
 
 function IC_EVM_updateWalletSyncState_(sheet, rowIndex, date) {
@@ -539,24 +463,7 @@ function IC_EVM_updateWalletSyncState_(sheet, rowIndex, date) {
 // вставка сдвигает служебные блоки L-O и W-X (анти-паттерн HANDOFF §3.8).
 // Формулы — только с ";" (русская локаль, HANDOFF §3.7). Цена стейбла = 1.
 function IC_EVM_createStableRow_(sheet, asset) {
-  var values = sheet.getRange(2, 1, 29, 1).getValues();
-  var rowIndex = 0;
-  for (var i = 0; i < values.length; i++) {
-    if (String(values[i][0]).trim() === '') { rowIndex = i + 2; break; }
-  }
-  if (!rowIndex) return 0;
-
-  sheet.getRange(rowIndex, 1, 1, 4).setValues([[asset, 'Кэш / Стейблы', 0, 1]]);
-  sheet.getRange(rowIndex, 5).setFormula('=C' + rowIndex + '*D' + rowIndex);
-  sheet.getRange(rowIndex, 6).setValue(1);
-  sheet.getRange(rowIndex, 7).setFormula(
-    '=IF(OR(C' + rowIndex + '="";F' + rowIndex + '="");"";C' + rowIndex + '*F' + rowIndex + ')'
-  );
-  sheet.getRange(rowIndex, 8).setFormula('=G' + rowIndex + '-E' + rowIndex);
-  sheet.getRange(rowIndex, 9).setFormula('=IF(E' + rowIndex + '=0;0;H' + rowIndex + '/E' + rowIndex + ')');
-  sheet.getRange(rowIndex, 10).setFormula('=IF(G' + rowIndex + '=0;0;G' + rowIndex + '/SUM($G$2:$G$100))');
-  sheet.getRange(rowIndex, 11).setValue('Reserve');
-  return rowIndex;
+  return IC_LEDGER_createStableRow_(sheet, asset);
 }
 
 function IC_EVM_isAllowedWalletAsset_(wallet, asset) {
@@ -583,14 +490,11 @@ function IC_EVM_category_(asset) {
 }
 
 function IC_EVM_isStable_(asset) {
-  var symbol = String(asset || '').toUpperCase();
-  return symbol === 'USDC' || symbol === 'USDT';
+  return IC_LEDGER_isStable_(asset);
 }
 
 function IC_EVM_normalizeAssetSymbol_(asset) {
-  var symbol = String(asset || '').trim();
-  if (symbol.toUpperCase() === 'USDCOIN') return 'USDC';
-  return symbol;
+  return IC_LEDGER_normalizeAssetSymbol_(asset);
 }
 
 function IC_EVM_padAddress_(address) {
@@ -666,26 +570,9 @@ function IC_EVM_toNumber_(value) {
 }
 
 function IC_EVM_round_(value, digits) {
-  var parsed = IC_EVM_toNumber_(value);
-  return Number(parsed.toFixed(digits));
+  return IC_LEDGER_round_(value, digits);
 }
 
-
-// ── Одноразовый бэкфил 2026-07-17: пополнение и обмен прошли до внедрения
-// стейбл-потоков и не попали в историю. Балансы УЖЕ применены прошлыми
-// синками — только летопись. Идемпотентно (importId защищает от дублей).
-function backfillArbitrumStableFlows20260717() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var importSheet = ss.getSheetByName(IC_EVM_IMPORT_SHEET);
-  if (!importSheet) throw new Error('Нет листа ' + IC_EVM_IMPORT_SHEET);
-  var at = new Date();
-
-  IC_EVM_appendStableFlowAuditRow_(importSheet, 'Пополнение', 'USDT',
-    61.3448, 61.3448, 'Вывод с Bybit -> Arbitrum кошелёк (задним числом)', at);
-  IC_EVM_appendStableFlowAuditRow_(importSheet, 'Обмен', 'USDC',
-    61.3074, 61.3448, 'USDT -> USDC (Uniswap V4, задним числом)', at);
-  return 'OK';
-}
 
 
 // Одноразовая чистка 2026-07-17: три упавших на валидациях прогона бэкфила

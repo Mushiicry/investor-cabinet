@@ -137,16 +137,22 @@ function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
   var usdcSpent = -usdcDelta;
   var impliedBuy = stockDelta > 0 ? usdcSpent / stockDelta : 0;
   if (usdcSpent > 0.5 && stockDelta > 0.000001 && impliedBuy >= 1 && impliedBuy <= 100000) {
-    IC_BNB_applyStockPurchase_(calc, IC_BNB_STOCK_SYMBOL, stockDelta, usdcSpent);
-    if (importSheet) IC_BNB_appendTradeAuditRow_(importSheet, 'Покупка', IC_BNB_STOCK_SYMBOL,
-      stockDelta, impliedBuy, usdcSpent, 'USDC -> ' + IC_BNB_STOCK_SYMBOL, syncStartedAt);
+    IC_LEDGER_averageInPurchase_(calc, IC_BNB_STOCK_SYMBOL, stockDelta, usdcSpent);
+    if (importSheet) IC_LEDGER_appendTradeRow_(importSheet, {
+      action: 'Покупка', asset: IC_BNB_STOCK_SYMBOL, category: 'Акции',
+      quantity: stockDelta, price: impliedBuy, amount: usdcSpent,
+      pairLabel: 'USDC -> ' + IC_BNB_STOCK_SYMBOL, syncStartedAt: syncStartedAt,
+      chain: 'BNB', walletId: IC_BNB_WALLET_ID });
     return;
   }
 
   var impliedSell = stockDelta < 0 ? usdcDelta / -stockDelta : 0;
   if (usdcDelta > 0.5 && stockDelta < -0.000001 && impliedSell >= 1 && impliedSell <= 100000) {
-    if (importSheet) IC_BNB_appendTradeAuditRow_(importSheet, 'Продажа', IC_BNB_STOCK_SYMBOL,
-      -stockDelta, impliedSell, usdcDelta, IC_BNB_STOCK_SYMBOL + ' -> USDC', syncStartedAt);
+    if (importSheet) IC_LEDGER_appendTradeRow_(importSheet, {
+      action: 'Продажа', asset: IC_BNB_STOCK_SYMBOL, category: 'Акции',
+      quantity: -stockDelta, price: impliedSell, amount: usdcDelta,
+      pairLabel: IC_BNB_STOCK_SYMBOL + ' -> USDC', syncStartedAt: syncStartedAt,
+      chain: 'BNB', walletId: IC_BNB_WALLET_ID });
     return;
   }
 
@@ -158,8 +164,10 @@ function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
       var toAsset = usdtDelta < 0 ? 'USDC' : 'USDT';
       var toQty = usdtDelta < 0 ? usdcDelta : usdtDelta;
       var fromQty = usdtDelta < 0 ? -usdtDelta : -usdcDelta;
-      IC_EVM_appendStableFlowAuditRow_(importSheet, 'Обмен', toAsset, toQty, fromQty,
-        (usdtDelta < 0 ? 'USDT -> USDC' : 'USDC -> USDT') + ' (BNB)', syncStartedAt, 'BNB', IC_BNB_WALLET_ID);
+      IC_LEDGER_appendStableFlowRow_(importSheet, {
+        action: 'Обмен', asset: toAsset, quantity: toQty, usdAmount: fromQty,
+        pairLabel: (usdtDelta < 0 ? 'USDT -> USDC' : 'USDC -> USDT') + ' (BNB)',
+        syncStartedAt: syncStartedAt, chain: 'BNB', walletId: IC_BNB_WALLET_ID });
     }
     return;
   }
@@ -167,57 +175,22 @@ function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
   // Пополнение / вывод стейблов
   [['USDT', usdtDelta], ['USDC', usdcDelta]].forEach(function(pair) {
     if (Math.abs(pair[1]) > 0.5 && importSheet) {
-      IC_EVM_appendStableFlowAuditRow_(importSheet,
-        pair[1] > 0 ? 'Пополнение' : 'Вывод',
-        pair[0], Math.abs(pair[1]), Math.abs(pair[1]),
-        (pair[1] > 0 ? 'Приход ' : 'Уход ') + pair[0] + ' (BNB)', syncStartedAt, 'BNB', IC_BNB_WALLET_ID);
+      IC_LEDGER_appendStableFlowRow_(importSheet, {
+        action: pair[1] > 0 ? 'Пополнение' : 'Вывод',
+        asset: pair[0], quantity: Math.abs(pair[1]), usdAmount: Math.abs(pair[1]),
+        pairLabel: (pair[1] > 0 ? 'Приход ' : 'Уход ') + pair[0] + ' (BNB)',
+        syncStartedAt: syncStartedAt, chain: 'BNB', walletId: IC_BNB_WALLET_ID });
     }
   });
 }
 
-// Покупка акций: усреднение входа. invested = C*D + потрачено; qty = C + куплено.
-function IC_BNB_applyStockPurchase_(sheet, asset, quantityBought, usdcSpent) {
-  var rowIndex = IC_BNB_findAssetRow_(sheet, asset);
-  if (!rowIndex) return;
-  var prevQty = Number(sheet.getRange(rowIndex, 3).getValue()) || 0;
-  var prevAvg = Number(sheet.getRange(rowIndex, 4).getValue()) || 0;
-  var newQty = prevQty + quantityBought;
-  var newAvg = newQty > 0 ? (prevQty * prevAvg + usdcSpent) / newQty : prevAvg;
-  sheet.getRange(rowIndex, 3).setValue(newQty);
-  sheet.getRange(rowIndex, 4).setValue(IC_BNB_round_(newAvg, 4));
-  sheet.getRange(rowIndex, 5).setFormula('=C' + rowIndex + '*D' + rowIndex);
-}
-
-// Аудит-строка сделки (Покупка/Продажа) в Транзакции_IMPORT, chain BNB.
-function IC_BNB_appendTradeAuditRow_(sheet, action, asset, quantity, price, usdcAmount, pairLabel, syncStartedAt) {
-  IC_EVM_ensureListValidationAllows_(sheet, 'F', action);
-  IC_EVM_ensureListValidationAllows_(sheet, 'L', 'BNB');
-  var syncId = Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyyMMdd'T'HHmmss");
-  var importId = ['BNB_BALANCE_DELTA', 'BNB', syncId, action.toUpperCase(), asset,
-    IC_BNB_round_(quantity, 12)].join(':');
-  if (IC_EVM_readExistingImportIds_(sheet)[importId]) return;
-
-  IC_EVM_appendRows_(sheet, [[
-    importId, 'PENDING',
-    Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), 'dd.MM.yyyy'),
-    asset, 'Акции', action, quantity, price, usdcAmount,
-    'BNB wallet balance delta; учёт уже применён к Расчетам',
-    IC_BNB_WALLET_ID, 'BNB', 'BALANCE_DELTA', '', 'SWAP', '',
-    pairLabel, IC_BNB_round_(quantity, 12) + ' ' + asset,
-    'BALANCE_APPLIED audit row at ' + Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss") +
-      (action === 'Покупка' ? '. Средний вход усреднён автоматически.' : '. Средний вход не менялся.')
-  ]]);
-}
-
-// Строка стейбла в «Расчетах» (если её нет). Без insertRow — HANDOFF §3.8.
+// Строка стейбла в «Расчетах» (если её нет) — общее ядро (walletLedger).
 function IC_BNB_ensureStableRowExists_(sheet, asset) {
-  if (IC_BNB_findAssetRow_(sheet, asset)) return;
-  IC_EVM_createStableRow_(sheet, asset);
+  IC_LEDGER_ensureStableRow_(sheet, asset);
 }
 
 function IC_BNB_round_(value, digits) {
-  var factor = Math.pow(10, digits);
-  return Math.round((Number(value) || 0) * factor) / factor;
+  return IC_LEDGER_round_(value, digits);
 }
 
 // ── Одноразово: создать строку SPCXB в «Расчетах» ──────────────────
@@ -431,33 +404,3 @@ function IC_BNB_hexUnits_(hex, decimals) {
 }
 
 
-// ── Одноразовый бэкфил 2026-07-17: покупка SPCXB на Uniswap (BNB) прошла
-// до внедрения дельта-классификации. Пересчитывает средний вход и пишет
-// летопись: Пополнение USDC (мост с Arbitrum) + Покупка SPCXB.
-// Идемпотентно: если вход уже усреднён (D < 135) — учёт не трогаем повторно.
-function backfillBnbSpcxbPurchase20260717() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var calc = ss.getSheetByName(IC_BNB_CALCULATIONS_SHEET);
-  var importSheet = ss.getSheetByName(IC_BNB_IMPORT_SHEET);
-  var at = new Date();
-  var boughtQty = 0.0850;
-  var usdcSpent = 10.8516;
-  var log = [];
-
-  var rowIndex = IC_BNB_findAssetRow_(calc, IC_BNB_STOCK_SYMBOL);
-  if (!rowIndex) throw new Error('Нет строки SPCXB');
-  var d = Number(calc.getRange(rowIndex, 4).getValue()) || 0;
-  if (d > 135) {
-    IC_BNB_applyStockPurchase_(calc, IC_BNB_STOCK_SYMBOL, boughtQty, usdcSpent);
-    log.push('вход усреднён: ' + calc.getRange(rowIndex, 4).getValue());
-  } else {
-    log.push('вход уже усреднён (' + d + '), учёт не трогаю');
-  }
-
-  IC_EVM_appendStableFlowAuditRow_(importSheet, 'Пополнение', 'USDC',
-    10.8516, 10.8516, 'Мост Arbitrum -> BNB (задним числом)', at, 'BNB', IC_BNB_WALLET_ID);
-  IC_BNB_appendTradeAuditRow_(importSheet, 'Покупка', IC_BNB_STOCK_SYMBOL,
-    boughtQty, usdcSpent / boughtQty, usdcSpent, 'USDC -> SPCXB (Uniswap V4, задним числом)', at);
-  log.push('аудит-строки записаны');
-  return log.join('; ');
-}
