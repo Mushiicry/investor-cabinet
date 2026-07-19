@@ -2664,9 +2664,10 @@
     z-index: 200;
     height: calc(56px + env(safe-area-inset-bottom, 0px));
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: linear-gradient(180deg, rgba(3, 10, 24, 0.97) 0%, rgba(1, 5, 14, 0.99) 100%);
-    backdrop-filter: blur(22px) saturate(1.6);
-    -webkit-backdrop-filter: blur(22px) saturate(1.6);
+    /* iOS Safari: position:fixed + backdrop-filter отклеивает бар — он едет со
+       скроллом на середину экрана. Фон и так почти непрозрачный, поэтому делаем
+       его ПОЛНОСТЬЮ непрозрачным и убираем backdrop-filter — бар прибит к низу. */
+    background: linear-gradient(180deg, #030a18 0%, #01050e 100%);
     border-top: 1px solid rgba(86, 196, 240, 0.14);
     box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.55), 0 -1px 0 rgba(86, 196, 240, 0.06);
   }
