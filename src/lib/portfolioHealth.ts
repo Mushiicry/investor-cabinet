@@ -16,8 +16,11 @@ const score = (value: number) => Math.round(clamp01(value) * 100);
 // Пороги мягкой деградации
 const COMFORT_CASH = 0.5; // «Гибкость»: комфортная зона кэша
 const CRYPTO_HARD = 0.9; // «Волатильность»: 100 при ≤60%, 0 при ≥90%
-const CONCENTRATION_SAFE = 0.2; // «Концентрация»: 100 при ≤20%
+const CONCENTRATION_SAFE = 0.2; // «Концентрация» (legacy, largestShare): 100 при ≤20%
 const CONCENTRATION_HARD = 0.5; // 0 при ≥50% (лимит на позицию 35%)
+// Per-asset балл считается снаружи (assetConcentration): системный риск по доле
+// портфеля минус ограниченный штраф за активы сверх своих лимитов — сюда приходит
+// готовым в input.concentrationScore, чтобы health не дублировал модель.
 
 // Лимиты плеча по фьючерсам (правило инвестора):
 // мажоры (BTC / золото) — до 3x, всё остальное (альты) — до 2x.
@@ -69,6 +72,13 @@ export type HealthComponentMeta = {
   countScore?: number;
   futuresCount?: number;
   futuresShare?: number;
+  /** Концентрация (per-asset): худший актив и его перегруз */
+  worstConcentrationAsset?: string;
+  worstConcentrationShare?: number; // доля актива в его базе (крипто-блок/портфель)
+  worstConcentrationPortfolioShare?: number; // доля актива в портфеле
+  worstConcentrationLimit?: number; // его per-asset лимит
+  maxAssetLimitUtilization?: number; // доля/лимит (1.0 = ровно на лимите)
+  overLimitAssets?: string[]; // все активы сверх своих лимитов
 };
 
 export type HealthComponent = {
@@ -155,6 +165,15 @@ export type HealthInput = {
   reserveShare?: number; // выделенный резерв (стейблы) / портфель — Risk First
   futuresLegs?: FuturesLeg[]; // фьючерс-позиции с выведенным плечом
   portfolioValue?: number; // для перевода долей в $ в подсказках
+  // Концентрация по per-asset лимитам (единый источник со шлюзом). Если задано —
+  // метрика считается по худшему активу (доля/лимит), а не по плоским 35%.
+  concentrationScore?: number; // готовый балл 0..100 из assetConcentration
+  maxAssetLimitUtilization?: number; // худший util = доля/лимит (1.0 = ровно на лимите)
+  worstConcentrationAsset?: string;
+  worstConcentrationShare?: number; // доля актива в его базе (крипто-блок/портфель)
+  worstConcentrationPortfolioShare?: number; // доля актива в портфеле
+  worstConcentrationLimit?: number; // его per-asset лимит
+  overLimitAssets?: string[]; // все активы сверх своих лимитов
 };
 
 export type PortfolioHealth = {
@@ -237,6 +256,15 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     };
   }
 
+  // ── Концентрация: готовый per-asset балл (assetConcentration), иначе legacy. ──
+  const usePerAssetConcentration = input.concentrationScore !== undefined;
+  const concentrationScore = usePerAssetConcentration
+    ? input.concentrationScore!
+    : score((CONCENTRATION_HARD - input.largestShare) / (CONCENTRATION_HARD - CONCENTRATION_SAFE));
+  const concentrationDesc = usePerAssetConcentration
+    ? "У каждого актива свой лимит: ETH 35% / BTC 20% / SOL·TON·BNB 10% / альты 5% ВНУТРИ крипто-блока; прочие классы — 35% портфеля. Балл = системный риск (крупнейшая позиция от портфеля) минус ограниченный штраф за активы сверх лимита — один перевес не обнуляет метрику."
+    : "Нет перегруза одним активом (≤35%).";
+
   const components: HealthComponent[] = [
     {
       key: "reserve",
@@ -278,11 +306,19 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       key: "concentration",
       label: "Концентрация",
       color: "#ff6b8a",
-      desc: "Нет перегруза одним активом (≤35%).",
+      desc: concentrationDesc,
       weight: 0.18,
-      score: score(
-        (CONCENTRATION_HARD - input.largestShare) / (CONCENTRATION_HARD - CONCENTRATION_SAFE)
-      ),
+      score: concentrationScore,
+      meta: usePerAssetConcentration
+        ? {
+            worstConcentrationAsset: input.worstConcentrationAsset,
+            worstConcentrationShare: input.worstConcentrationShare,
+            worstConcentrationPortfolioShare: input.worstConcentrationPortfolioShare,
+            worstConcentrationLimit: input.worstConcentrationLimit,
+            maxAssetLimitUtilization: input.maxAssetLimitUtilization,
+            overLimitAssets: input.overLimitAssets,
+          }
+        : undefined,
     },
     {
       key: "diversification",

@@ -8,6 +8,7 @@ import type { HealthInput, PortfolioHealth } from "../../lib/portfolioHealth";
 import { buildPlaybookCards } from "../../lib/playbookSelectors";
 import { decisionsData, scenariosData } from "../../mocks/portfolioData";
 import { mergeWithLocalSnapshots } from "../../services/dailySnapshotService";
+import { assetConcentration } from "./preTradeGate";
 import type { PortfolioState } from "../../types/portfolio";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 
@@ -222,6 +223,16 @@ export const buildLiveV2Data = (
       leverage: leverageByCoin[coinOf(position.asset)] ?? null,
     }));
 
+  // Концентрация по per-asset лимитам крипто-блока (единый источник со шлюзом).
+  const cryptoBlockValue = state.portfolio
+    .filter((p) => p.category === "Крипта")
+    .reduce((sum, p) => sum + Math.max(p.currentValue, 0), 0);
+  const concentration = assetConcentration(
+    state.portfolio.map((p) => ({ asset: p.asset, category: p.category, value: p.currentValue })),
+    cryptoBlockValue,
+    state.overview.portfolioValue,
+  );
+
   const liveHealthInput: HealthInput = {
     cashShare: categoryShare(state, "Свободные деньги"),
     cryptoShare: categoryShare(state, "Крипта"),
@@ -231,6 +242,13 @@ export const buildLiveV2Data = (
     reserveShare: resolveReserveShare(state),
     futuresLegs,
     portfolioValue: state.overview.portfolioValue,
+    concentrationScore: concentration.score,
+    maxAssetLimitUtilization: concentration.maxUtilization,
+    worstConcentrationAsset: concentration.worstAsset,
+    worstConcentrationShare: concentration.worstShare,
+    worstConcentrationPortfolioShare: concentration.worstPortfolioShare,
+    worstConcentrationLimit: concentration.worstLimit,
+    overLimitAssets: concentration.overLimitAssets,
   };
   const computedHealth = computePortfolioHealth(liveHealthInput);
   // Честный диагноз: используем собственный расчёт, а не сглаженный health из API.
