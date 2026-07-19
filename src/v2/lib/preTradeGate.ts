@@ -1,0 +1,455 @@
+// Pre-trade gate — дисциплинарный шлюз для спот-добора.
+//
+// Не исполняет сделки: исполнение остаётся на бирже. Задача модуля —
+// до сделки ответить на вопросы конституции: «можно ли сейчас добирать,
+// сколько, где перегруз, не роняет ли добор резерв».
+//
+// Капитал под спот-добор — это ОДИН пул стейблов с двумя порогами резерва
+// (оба уже есть в riskRules, единый источник правды):
+//   • спот-пол 30% — движок отдаёт «безопасно к работе» как spotDeployable;
+//   • абсолютный пол 10% — «святое», ниже не опускаемся никогда.
+// Отсюда три зоны добора:
+//   🟢 ok      — в пределах spotDeployable (спот-резерв ≥ 30%);
+//   🟡 caution — заходим в подушку (резерв 10–30%), разрешено, но с пометкой;
+//   🔴 block   — пробили абсолютный пол 10% ИЛИ лимит позиции/класса.
+// Лимиты позиции и класса — жёсткие (block). Fear & Greed — мягкая сверка
+// со ступенью откупа, не блокирует.
+
+import {
+  MAX_CRYPTO_EXPOSURE_SHARE,
+  MAX_FUTURES_EXPOSURE_SHARE,
+  MAX_METALS_EXPOSURE_SHARE,
+  MAX_SINGLE_RISK_ASSET_SHARE,
+  MAX_STOCKS_EXPOSURE_SHARE,
+  RESERVE_FLOOR_SHARE,
+  RESERVE_TARGET_SHARE,
+  SPOT_RESERVE_FLOOR_SHARE,
+} from "../../config/riskRules";
+
+/** Категория актива — совпадает с именами в allocation/positions. */
+export const CRYPTO_CATEGORY = "Крипта";
+export const METALS_CATEGORY = "Металлы";
+export const FUTURES_CATEGORY = "Фьючерсы";
+export const STOCKS_CATEGORY = "Акции";
+export const CASH_CATEGORY = "Свободные деньги";
+
+// Лимиты доли актива ВНУТРИ крипто-блока (манифест «Структура крипто-блока» +
+// решение владельца: BNB на уровне SOL/TON). Считаются от стоимости крипто-блока,
+// НЕ от всего портфеля. Прочие (альткоины) — 5%.
+// Мажоры при полном сборе: BTC 20 + ETH 35 + SOL 10 + TON 10 + BNB 10 = 85%,
+// оставшиеся 15% → 3 места для альткоинов по 5%.
+export const CRYPTO_ASSET_LIMITS: Record<string, number> = {
+  ETH: 0.35,
+  WETH: 0.35,
+  ETHEREUM: 0.35,
+  BTC: 0.2,
+  WBTC: 0.2,
+  BITCOIN: 0.2,
+  SOL: 0.1,
+  SOLANA: 0.1,
+  TON: 0.1,
+  GRAM: 0.1, // GRAM = ex-TON тикер в учёте
+  BNB: 0.1,
+  WBNB: 0.1,
+};
+export const CRYPTO_ALT_LIMIT = 0.05;
+
+/** Мест под альткоины: 15% крипто-блока ÷ 5% = 3 (мажоры занимают 85%). */
+export const MAX_ALTCOIN_SLOTS = 3;
+
+/** true — актив это «мажор» с именным лимитом (не альткоин). */
+export function isCryptoMajor(asset: string): boolean {
+  return CRYPTO_ASSET_LIMITS[asset.trim().toUpperCase()] !== undefined;
+}
+
+/** Лимит доли одного крипто-актива внутри крипто-блока. */
+export function cryptoAssetLimit(asset: string): number {
+  return CRYPTO_ASSET_LIMITS[asset.trim().toUpperCase()] ?? CRYPTO_ALT_LIMIT;
+}
+
+/**
+ * Учёт альткоин-мест по списку крипто-активов портфеля.
+ * Альткоин = крипто-позиция без именного лимита (не мажор).
+ */
+export function altcoinSlots(cryptoAssets: string[]): {
+  used: number;
+  total: number;
+  free: number;
+  altcoins: string[];
+} {
+  const seen = new Set<string>();
+  const altcoins: string[] = [];
+  for (const raw of cryptoAssets) {
+    const key = raw.trim().toUpperCase();
+    if (!key || seen.has(key) || isCryptoMajor(raw)) continue;
+    seen.add(key);
+    altcoins.push(raw.trim());
+  }
+  const used = altcoins.length;
+  return { used, total: MAX_ALTCOIN_SLOTS, free: Math.max(MAX_ALTCOIN_SLOTS - used, 0), altcoins };
+}
+
+// ── Модель «Концентрации» (двухчастная, не роняет в 0 из-за одного актива) ──
+// 1) Системный риск: крупнейшая позиция как доля ВСЕГО портфеля (что реально
+//    потеряешь, если она рухнет). 100 при ≤20% портфеля, 0 при ≥50%.
+// 2) Дисциплина: активы сверх своего per-asset лимита дают штраф, взвешенный
+//    по доле в ПОРТФЕЛЕ (мелкий альт чуть выше своих 5% почти не штрафуется) и
+//    ограниченный сверху — один актив не может обнулить метрику.
+const CONC_SYSTEMIC_SAFE = 0.2;
+const CONC_SYSTEMIC_HARD = 0.5;
+const CONC_DISCIPLINE_SCALE = 120; // множитель штрафа overage×долю_портфеля
+const CONC_DISCIPLINE_CAP = 45; // максимум штрафа от одного/суммы над-лимитных
+const CONC_OVERAGE_CAP = 2; // overage = util−1, но не больше 2× (≥3× лимита = «сильно»)
+
+const clamp0to100 = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+
+export type AssetConcentration = {
+  score: number; // 0..100 — итоговый балл «Концентрации»
+  maxUtilization: number; // худший util = доля/лимит (для объяснения)
+  worstAsset: string;
+  worstLimit: number;
+  worstShare: number; // доля худшего актива в его базе (крипто-блок/портфель)
+  worstPortfolioShare: number; // доля худшего актива в портфеле
+  largestPortfolioShare: number; // системный: крупнейшая позиция портфеля
+  overLimitAssets: string[]; // активы сверх своего лимита
+};
+
+/**
+ * Концентрация по per-asset лимитам (единый источник со шлюзом): крипто —
+ * против лимита ВНУТРИ крипто-блока (ETH 35%…альт 5%), прочие — против 35%
+ * портфеля. Кэш не концентрируем. Считает итоговый балл двухчастной моделью.
+ */
+export function assetConcentration(
+  positions: GatePosition[],
+  cryptoBlockValue: number,
+  totalPortfolio: number,
+): AssetConcentration {
+  let maxUtilization = 0;
+  let worstAsset = "-";
+  let worstLimit = 1;
+  let worstShare = 0;
+  let worstPortfolioShare = 0;
+  let largestPortfolioShare = 0;
+  let disciplinePenalty = 0;
+  const overLimitAssets: string[] = [];
+
+  for (const p of positions) {
+    if (!p.value || p.value <= 0 || p.category === CASH_CATEGORY) continue;
+    const isCrypto = p.category === CRYPTO_CATEGORY;
+    const base = isCrypto ? cryptoBlockValue : totalPortfolio;
+    if (base <= 0) continue;
+    const share = p.value / base;
+    const portfolioShare = totalPortfolio > 0 ? p.value / totalPortfolio : 0;
+    const limit = isCrypto ? cryptoAssetLimit(p.asset) : MAX_SINGLE_RISK_ASSET_SHARE;
+    const util = limit > 0 ? share / limit : 0;
+
+    if (portfolioShare > largestPortfolioShare) largestPortfolioShare = portfolioShare;
+    if (util > maxUtilization) {
+      maxUtilization = util;
+      worstAsset = p.asset;
+      worstLimit = limit;
+      worstShare = share;
+      worstPortfolioShare = portfolioShare;
+    }
+    if (util > 1) {
+      overLimitAssets.push(p.asset);
+      const overage = Math.min(util - 1, CONC_OVERAGE_CAP);
+      disciplinePenalty += overage * portfolioShare * CONC_DISCIPLINE_SCALE;
+    }
+  }
+
+  const systemicScore =
+    (CONC_SYSTEMIC_HARD - largestPortfolioShare) / (CONC_SYSTEMIC_HARD - CONC_SYSTEMIC_SAFE);
+  const score = clamp0to100(
+    systemicScore * 100 - Math.min(disciplinePenalty, CONC_DISCIPLINE_CAP),
+  );
+
+  return {
+    score,
+    maxUtilization,
+    worstAsset,
+    worstLimit,
+    worstShare,
+    worstPortfolioShare,
+    largestPortfolioShare,
+    overLimitAssets,
+  };
+}
+
+/** Потолок доли класса в портфеле. null — класс без лимита (кэш). */
+export function categoryCap(category: string): number | null {
+  switch (category) {
+    case CRYPTO_CATEGORY:
+      return MAX_CRYPTO_EXPOSURE_SHARE;
+    case METALS_CATEGORY:
+      return MAX_METALS_EXPOSURE_SHARE;
+    case FUTURES_CATEGORY:
+      return MAX_FUTURES_EXPOSURE_SHARE;
+    case STOCKS_CATEGORY:
+      return MAX_STOCKS_EXPOSURE_SHARE;
+    default:
+      return null; // Свободные деньги / неизвестный класс — не риск-добор.
+  }
+}
+
+// Минимальные срезы live-данных, которых достаточно шлюзу.
+export type GatePosition = {
+  asset: string;
+  category: string;
+  value: number; // текущая стоимость позиции, $
+};
+
+export type GateAllocation = {
+  name: string;
+  value: number; // стоимость класса, $
+};
+
+export type GateFearGreedRule = {
+  mode: string;
+  label: string;
+  buyAmount: number;
+  isCurrent: boolean;
+  isAvailable: boolean;
+  cooldownRemainingHours: number;
+};
+
+export type GateContext = {
+  totalPortfolioValue: number;
+  /** Вся категория «Свободные деньги», $ (для пола резерва). */
+  stableReserve: number;
+  /** Спот-капитал сверх 30%-пола, $ — канон движка (portfolioCalculations). */
+  spotDeployable: number;
+  positions: GatePosition[];
+  allocation: GateAllocation[];
+  fearGreedRules: GateFearGreedRule[];
+  /** Пол резерва текущей фазы, доля 0..1 (по умолчанию абсолютный 10%). */
+  reserveFloorShare?: number;
+  /** Максимальная доля крипты текущей фазы, доля 0..1 (по умолчанию 60%). */
+  cryptoMaxShare?: number;
+};
+
+export type TradeInput = {
+  asset: string;
+  amountUsd: number;
+  /** Категория — обязательна только для нового актива (нет в positions). */
+  category?: string;
+};
+
+export type GateCheckKey = "capital" | "position" | "class";
+export type GateCheckSeverity = "block" | "warn";
+
+export type GateCheck = {
+  key: GateCheckKey;
+  label: string;
+  ok: boolean;
+  /** Мягкая (warn) или жёсткая (block) проверка при провале. */
+  severity: GateCheckSeverity;
+  before: number;
+  after: number;
+  limit: number;
+  /** true — before/after/limit это доли портфеля; false — суммы в $. */
+  isShare: boolean;
+  /** Пояснение для проваленных/пограничных проверок. */
+  note?: string;
+};
+
+export type FearGreedNote = {
+  tone: "info" | "warning" | "muted";
+  text: string;
+};
+
+export type GateStatus = "idle" | "ok" | "caution" | "block";
+
+export type GateVerdict =
+  | { status: "idle"; message: string }
+  | {
+      status: "ok" | "caution" | "block";
+      checks: GateCheck[];
+      /** Причины жёсткого блока. */
+      reasons: string[];
+      /** Пометки жёлтой зоны (напр. заход в подушку). */
+      warnings: string[];
+      /** Максимум полностью безопасного (зелёного) добора, $. */
+      maxSafeAmount: number;
+      /** Максимум допустимого добора до жёсткого блока, $ (вкл. подушку). */
+      maxAllowedAmount: number;
+      fearGreed: FearGreedNote | null;
+    };
+
+const clampMin0 = (n: number) => (n > 0 ? n : 0);
+const EPS = 1e-6;
+
+function resolveCategory(input: TradeInput, ctx: GateContext): string {
+  const existing = ctx.positions.find((p) => p.asset === input.asset);
+  if (existing) return existing.category;
+  return input.category ?? CASH_CATEGORY;
+}
+
+/** Мягкая сверка суммы со ступенью откупа Fear & Greed. Не блокирует. */
+function buildFearGreedNote(
+  input: TradeInput,
+  ctx: GateContext,
+): FearGreedNote | null {
+  const current = ctx.fearGreedRules.find((r) => r.isCurrent);
+  if (!current) return null;
+
+  if (current.mode === "observation") {
+    return {
+      tone: "muted",
+      text: "Рынок в наблюдении — плановой ступени откупа сейчас нет.",
+    };
+  }
+  if (!current.isAvailable && current.cooldownRemainingHours > 0) {
+    const hours = Math.ceil(current.cooldownRemainingHours);
+    return {
+      tone: "warning",
+      text: `Ступень «${current.label}» на кулдауне ещё ~${hours} ч — добор вне графика лестницы.`,
+    };
+  }
+  const recommended = current.buyAmount;
+  if (recommended > 0 && input.amountUsd > recommended * 1.5) {
+    return {
+      tone: "warning",
+      text: `Выше рекомендации ступени «${current.label}» (${Math.round(recommended)}$). Лестница просит меньше.`,
+    };
+  }
+  return {
+    tone: "info",
+    text: `Ступень «${current.label}»: рекомендация ~${Math.round(recommended)}$.`,
+  };
+}
+
+/**
+ * Оценивает планируемый спот-добор против политики риска.
+ * Total портфеля при доборе с собственных стейблов не меняется: капитал
+ * переходит из «Свободные деньги» в актив.
+ */
+export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict {
+  const amount = input.amountUsd;
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { status: "idle", message: "Введите сумму добора." };
+  }
+  if (ctx.totalPortfolioValue <= 0) {
+    return { status: "idle", message: "Нет данных по портфелю." };
+  }
+
+  const total = ctx.totalPortfolioValue;
+  const category = resolveCategory(input, ctx);
+  const checks: GateCheck[] = [];
+
+  // ── Капитал: единый пул с фазовым полом резерва ───────────────
+  // Зелёная граница — spotDeployable (движок, спот-пол 30% уже вычтен).
+  // Жёсткая граница — пол резерва ТЕКУЩЕЙ ФАЗЫ: в постепенном накоплении
+  // 30% (подушки нет), в агрессивном окне открывается до 10%. Ниже фазового
+  // пола — блок. reserveFloorShare приходит из marketPhases (дефолт — 10%).
+  const phaseFloor = ctx.reserveFloorShare ?? RESERVE_FLOOR_SHARE;
+  const greenMax = clampMin0(ctx.spotDeployable);
+  const phaseFloorMax = clampMin0(ctx.stableReserve - phaseFloor * total);
+  const hardMax = Math.max(greenMax, phaseFloorMax);
+
+  const inGreen = amount <= greenMax + EPS;
+  const inCushion = !inGreen && amount <= hardMax + EPS;
+
+  checks.push({
+    key: "capital",
+    label: "Капитал к доборку",
+    ok: inGreen,
+    severity: inCushion ? "warn" : "block",
+    before: greenMax,
+    after: greenMax - amount,
+    limit: greenMax,
+    isShare: false,
+    note: inGreen
+      ? undefined
+      : inCushion
+        ? `Заходишь в подушку на ${Math.round(amount - greenMax)}$ — резерв опустится ниже цели, но выше пола фазы ${Math.round(phaseFloor * 100)}%.`
+        : `Пробивает пол резерва фазы ${Math.round(phaseFloor * 100)}% — так нельзя.`,
+  });
+
+  // ── Лимит доли одной позиции (жёсткий) ────────────────────────
+  // Крипто-активы: лимит per-asset ВНУТРИ крипто-блока (ETH 35%, BTC 20%,
+  // SOL/TON 10%, прочие альты 5%). При доборе крипто-блок растёт на сумму
+  // (деньги переходят из кэша в крипту). Прочие классы: плоские 35% портфеля.
+  const posValue = ctx.positions.find((p) => p.asset === input.asset)?.value ?? 0;
+  const isCryptoAsset = category === CRYPTO_CATEGORY;
+  const cryptoBlockValue = ctx.allocation.find((a) => a.name === CRYPTO_CATEGORY)?.value ?? 0;
+  const positionLimit = isCryptoAsset
+    ? cryptoAssetLimit(input.asset)
+    : MAX_SINGLE_RISK_ASSET_SHARE;
+  const posBaseBefore = isCryptoAsset ? cryptoBlockValue : total;
+  const posBaseAfter = isCryptoAsset ? cryptoBlockValue + amount : total;
+  const positionAfterShare = posBaseAfter > 0 ? (posValue + amount) / posBaseAfter : 0;
+  checks.push({
+    key: "position",
+    label: isCryptoAsset
+      ? `Доля ${input.asset} в крипто-блоке`
+      : `Доля ${input.asset} в портфеле`,
+    ok: positionAfterShare <= positionLimit + 1e-9,
+    severity: "block",
+    before: posBaseBefore > 0 ? posValue / posBaseBefore : 0,
+    after: positionAfterShare,
+    limit: positionLimit,
+    isShare: true,
+  });
+
+  // ── Лимит доли класса (жёсткий, кроме кэша) ───────────────────
+  // Крипта — фазовый лимит (60% обычно / 80% агрессив / 40% эйфория).
+  const baseCap = categoryCap(category);
+  const cap =
+    baseCap !== null && isCryptoAsset && ctx.cryptoMaxShare !== undefined
+      ? ctx.cryptoMaxShare
+      : baseCap;
+  if (cap !== null) {
+    const classValue = ctx.allocation.find((a) => a.name === category)?.value ?? 0;
+    const classAfterShare = (classValue + amount) / total;
+    checks.push({
+      key: "class",
+      label: `Доля «${category}» в портфеле`,
+      ok: classAfterShare <= cap + 1e-9,
+      severity: "block",
+      before: classValue / total,
+      after: classAfterShare,
+      limit: cap,
+      isShare: true,
+    });
+  }
+
+  // ── Границы «уменьшить до» ─────────────────────────────────────
+  // Крипто-лимит считается от растущего крипто-блока, поэтому room нелинейный:
+  // (posValue + x)/(cryptoBlock + x) = L  →  x = (L·cryptoBlock − posValue)/(1 − L).
+  const positionRoom = isCryptoAsset
+    ? positionLimit < 1
+      ? (positionLimit * cryptoBlockValue - posValue) / (1 - positionLimit)
+      : Infinity
+    : positionLimit * total - posValue;
+  const classRoom =
+    cap === null
+      ? Infinity
+      : cap * total - (ctx.allocation.find((a) => a.name === category)?.value ?? 0);
+  const maxSafeAmount = clampMin0(Math.min(greenMax, positionRoom, classRoom));
+  const maxAllowedAmount = clampMin0(Math.min(hardMax, positionRoom, classRoom));
+
+  const hardFailed = checks.filter((c) => !c.ok && c.severity === "block");
+  const softFailed = checks.filter((c) => !c.ok && c.severity === "warn");
+
+  const status: GateStatus =
+    hardFailed.length > 0 ? "block" : softFailed.length > 0 ? "caution" : "ok";
+
+  return {
+    status,
+    checks,
+    reasons: hardFailed.map((c) => c.label),
+    warnings: softFailed.map((c) => c.note ?? c.label),
+    maxSafeAmount,
+    maxAllowedAmount,
+    fearGreed: buildFearGreedNote(input, ctx),
+  };
+}
+
+export {
+  RESERVE_FLOOR_SHARE,
+  RESERVE_TARGET_SHARE,
+  SPOT_RESERVE_FLOOR_SHARE,
+  MAX_SINGLE_RISK_ASSET_SHARE,
+};

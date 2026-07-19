@@ -4,6 +4,7 @@ import type { HealthComponent } from "../../lib/portfolioHealth";
 import { V2HealthDetailModal } from "./V2HealthDetailModal";
 import { V2ReportsPage } from "./V2ReportsPage";
 import { V2SignalsPage } from "./V2SignalsPage";
+import { V2GatePage } from "./V2GatePage";
 import { V2RiskEnginePage } from "./V2RiskEnginePage";
 import { V2ScenariosPage } from "./V2ScenariosPage";
 import { V2DeployableCapital } from "./V2DeployableCapital";
@@ -219,6 +220,13 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             health={data.health}
             fearGreedStrategy={data.fearGreedStrategy}
             allocation={data.allocation}
+          />
+        ) : page === "gate" ? (
+          <V2GatePage
+            portfolio={data.portfolio}
+            positions={data.positions}
+            allocation={data.allocation}
+            fearGreedStrategy={data.fearGreedStrategy}
           />
         ) : page === "reports" ? (
           <V2ReportsPage history={data.history} transactions={data.transactions} positions={data.positions} />

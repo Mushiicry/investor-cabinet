@@ -83,6 +83,16 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
     ),
   },
   {
+    label: "Проверка",
+    page: "gate",
+    icon: (
+      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M9 1.8l6 2.6v4.2c0 3.6-2.5 6.3-6 7.6-3.5-1.3-6-4-6-7.6V4.4L9 1.8z" />
+        <path d="M6.4 9l1.8 1.9L11.8 7" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     label: "Настройки",
     page: "settings",
     icon: (

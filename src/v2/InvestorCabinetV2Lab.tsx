@@ -111,7 +111,7 @@ export type V2LabData = {
 };
 
 
-export type V2Page = "overview" | "portfolio" | "scenarios" | "risk" | "reports" | "signals" | "settings" | "health";
+export type V2Page = "overview" | "portfolio" | "scenarios" | "risk" | "reports" | "signals" | "settings" | "health" | "gate";
 
 export default function InvestorCabinetV2Lab() {
   const { configured, user } = useAuth();

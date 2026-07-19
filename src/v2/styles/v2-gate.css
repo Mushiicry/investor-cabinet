@@ -1,0 +1,334 @@
+/* Pre-trade gate — дисциплинарный шлюз добора.
+   Палитра общая с V2: холодный синий акцент, тёмное стекло, спокойствие. */
+
+.v2-gate-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.v2-gate-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.v2-gate-title {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(220, 238, 252, 0.95);
+}
+.v2-gate-sub {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(120, 170, 210, 0.7);
+}
+
+.v2-gate-empty,
+.v2-gate-verdict-idle {
+  color: rgba(170, 200, 224, 0.75);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Капитал под спот ───────────────────────────────────── */
+.v2-gate-capital {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.v2-gate-cap-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.v2-gate-cap-value {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: rgba(120, 220, 255, 0.98);
+  font-variant-numeric: tabular-nums;
+}
+.v2-gate-cap-label {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(150, 185, 214, 0.75);
+}
+.v2-gate-cap-cushion {
+  font-size: 12px;
+  color: rgba(224, 178, 110, 0.85);
+}
+
+/* ── Форма ──────────────────────────────────────────────── */
+.v2-gate-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 18px;
+}
+.v2-gate-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.v2-gate-field:last-child,
+.v2-gate-field:has(.v2-gate-source) {
+  grid-column: 1 / -1;
+}
+.v2-gate-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(140, 180, 214, 0.7);
+}
+.v2-gate-input {
+  appearance: none;
+  background: rgba(10, 22, 38, 0.7);
+  border: 1px solid rgba(90, 150, 200, 0.28);
+  border-radius: 10px;
+  padding: 11px 12px;
+  color: rgba(224, 240, 252, 0.96);
+  font-size: 15px;
+  font-family: "Space Grotesk", sans-serif;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.v2-gate-input:focus {
+  outline: none;
+  border-color: rgba(90, 180, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(90, 180, 255, 0.12);
+}
+.v2-gate-input option {
+  background: #0a1626;
+  color: rgba(224, 240, 252, 0.96);
+}
+
+.v2-gate-source {
+  display: flex;
+  gap: 10px;
+}
+.v2-gate-source-btn {
+  flex: 1;
+  cursor: pointer;
+  background: rgba(10, 22, 38, 0.6);
+  border: 1px solid rgba(90, 150, 200, 0.25);
+  border-radius: 10px;
+  padding: 11px 10px;
+  color: rgba(180, 210, 234, 0.85);
+  font-size: 13px;
+  font-family: "Space Grotesk", sans-serif;
+  transition: all 0.18s ease;
+}
+.v2-gate-source-btn.is-active {
+  border-color: rgba(90, 180, 255, 0.75);
+  background: rgba(30, 70, 110, 0.35);
+  color: rgba(224, 240, 252, 0.98);
+  box-shadow: 0 0 18px rgba(70, 150, 230, 0.18);
+}
+
+/* ── Вердикт ────────────────────────────────────────────── */
+.v2-gate-verdict {
+  padding: 18px;
+  border-radius: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.v2-gate-verdict.is-ok {
+  border-color: rgba(80, 200, 140, 0.45);
+  box-shadow: 0 0 26px rgba(60, 190, 130, 0.1);
+}
+.v2-gate-verdict.is-caution {
+  border-color: rgba(224, 165, 70, 0.5);
+  box-shadow: 0 0 26px rgba(220, 150, 60, 0.1);
+}
+.v2-gate-verdict.is-block {
+  border-color: rgba(224, 96, 96, 0.5);
+  box-shadow: 0 0 26px rgba(220, 80, 80, 0.1);
+}
+
+.v2-gate-verdict-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.v2-gate-verdict-badge {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  padding: 5px 12px;
+  border-radius: 8px;
+}
+.is-ok .v2-gate-verdict-badge {
+  color: rgba(150, 240, 190, 0.98);
+  background: rgba(40, 120, 80, 0.28);
+}
+.is-caution .v2-gate-verdict-badge {
+  color: rgba(245, 205, 140, 0.98);
+  background: rgba(120, 85, 30, 0.32);
+}
+.is-block .v2-gate-verdict-badge {
+  color: rgba(255, 175, 175, 0.98);
+  background: rgba(130, 45, 45, 0.32);
+}
+.v2-gate-verdict-line {
+  font-size: 14px;
+  color: rgba(210, 230, 246, 0.9);
+}
+
+.v2-gate-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.v2-gate-check {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: rgba(12, 26, 42, 0.5);
+  font-size: 13px;
+}
+.v2-gate-check.warn {
+  background: rgba(70, 55, 20, 0.32);
+}
+.v2-gate-check.fail {
+  background: rgba(70, 26, 26, 0.35);
+}
+.v2-gate-check-mark {
+  font-weight: 700;
+  text-align: center;
+}
+.v2-gate-check.ok .v2-gate-check-mark {
+  color: rgba(110, 220, 160, 0.95);
+}
+.v2-gate-check.warn .v2-gate-check-mark {
+  color: rgba(232, 178, 90, 0.95);
+}
+.v2-gate-check.fail .v2-gate-check-mark {
+  color: rgba(240, 120, 120, 0.95);
+}
+
+.v2-gate-warnings {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.v2-gate-warn-line {
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(238, 200, 150, 0.9);
+  background: rgba(70, 55, 20, 0.25);
+  border-left: 2px solid rgba(224, 165, 70, 0.7);
+  border-radius: 0 8px 8px 0;
+  padding: 8px 12px;
+}
+.v2-gate-check-label {
+  color: rgba(200, 224, 242, 0.9);
+}
+.v2-gate-check-vals {
+  color: rgba(210, 232, 248, 0.92);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.v2-gate-arrow {
+  color: rgba(120, 165, 205, 0.6);
+  margin: 0 2px;
+}
+.v2-gate-check-limit {
+  color: rgba(130, 170, 205, 0.6);
+}
+
+.v2-gate-fix {
+  margin-top: 14px;
+  width: 100%;
+  cursor: pointer;
+  border: 1px solid rgba(90, 180, 255, 0.5);
+  background: rgba(30, 70, 110, 0.32);
+  color: rgba(214, 236, 252, 0.98);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 14px;
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 500;
+  transition: all 0.18s ease;
+}
+.v2-gate-fix:hover {
+  background: rgba(40, 90, 140, 0.45);
+  box-shadow: 0 0 20px rgba(70, 150, 230, 0.2);
+}
+.v2-gate-fix.subtle {
+  border-color: rgba(120, 165, 205, 0.35);
+  background: rgba(20, 40, 60, 0.4);
+  color: rgba(190, 214, 236, 0.85);
+  font-size: 13px;
+  padding: 10px;
+}
+.v2-gate-nofix {
+  margin-top: 14px;
+  font-size: 13px;
+  color: rgba(240, 160, 160, 0.85);
+}
+
+.v2-gate-fg {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  line-height: 1.45;
+  border-left: 2px solid transparent;
+}
+.v2-gate-fg.tone-info {
+  background: rgba(30, 60, 90, 0.3);
+  border-left-color: rgba(90, 180, 255, 0.7);
+  color: rgba(190, 220, 245, 0.9);
+}
+.v2-gate-fg.tone-warning {
+  background: rgba(80, 60, 20, 0.28);
+  border-left-color: rgba(224, 165, 70, 0.8);
+  color: rgba(240, 214, 168, 0.92);
+}
+.v2-gate-fg.tone-muted {
+  background: rgba(30, 40, 54, 0.4);
+  border-left-color: rgba(120, 150, 180, 0.5);
+  color: rgba(170, 195, 218, 0.8);
+}
+
+.v2-gate-foot {
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(130, 165, 198, 0.65);
+  padding: 0 2px;
+}
+
+/* ── Mobile ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .v2-gate-form {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+  .v2-gate-source {
+    flex-direction: column;
+  }
+  .v2-gate-check {
+    grid-template-columns: 16px 1fr;
+  }
+  .v2-gate-check-vals {
+    grid-column: 2;
+    text-align: left;
+    white-space: normal;
+  }
+}
