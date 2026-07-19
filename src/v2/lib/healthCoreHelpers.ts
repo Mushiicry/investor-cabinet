@@ -119,8 +119,15 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
       return "Капитал сконцентрирован в одном классе";
     case "crypto":
       return "Доля крипты выше лимита 60%";
-    case "concentration":
-      return "Крупнейшая позиция выше лимита 35%";
+    case "concentration": {
+      const m = c.meta;
+      if (m?.worstConcentrationAsset && m.worstConcentrationAsset !== "-" && (m.maxAssetLimitUtilization ?? 0) > 1) {
+        const limit = Math.round((m.worstConcentrationLimit ?? 0) * 100);
+        return `${m.worstConcentrationAsset} выше своего лимита ${limit}%`;
+      }
+      if (c.score < 70) return "Актив близко к своему лимиту";
+      return "Активы в пределах лимитов";
+    }
     case "futures":
       if ((c.meta?.leverageBreaches ?? []).length) return "Плечо превышено";
       if (c.meta?.futuresCount && c.meta.futuresCount > 3) return `${c.meta.futuresCount}/3 позиций — лимит превышен`;
