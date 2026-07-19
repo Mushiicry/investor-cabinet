@@ -42,8 +42,18 @@ var IC_BNB_USDC_CALC_ASSET = 'USDC BNB'; // строка в «Расчетах»
 var IC_BNB_IMPORT_SHEET = 'Транзакции_IMPORT';
 var IC_BNB_WALLET_ID = 'metamask-bnb-main';
 
+// Нативный BNB (газовый токен сети BNB Chain) — крипто-позиция, лимит 10%.
+// Покупка обычно кросс-чейн (USDC ушёл на Arbitrum через мост Aori), поэтому
+// локального USDC↓ на BNB-цепи нет — цену для суммы берём из листа «Цены»
+// (его наполняет HL-синк по primaryMids['BNB'], как GRAM/ATOM/GOLD/SPCXB).
+// Приход BNB (сверх газового шума) классифицируем как «Покупка BNB».
+// BNB↓ игнорируем (это газ на транзакции, не продажа).
+var IC_BNB_NATIVE_SYMBOL = 'BNB';
+var IC_BNB_NATIVE_MIN_USD = 0.5; // ниже — газовый шум, не сделка
+var IC_BNB_PRICES_SHEET = 'Цены';
+
 // Максимально правдоподобные количества — защита от мусорного ответа RPC.
-var IC_BNB_SANE_LIMITS = { 'USDT BNB': 100000, 'USDC BNB': 100000, STOCK: 1000000 };
+var IC_BNB_SANE_LIMITS = { 'USDT BNB': 100000, 'USDC BNB': 100000, STOCK: 1000000, BNB: 100000 };
 
 function setupBnbWalletImport() {
   IC_BNB_getOrCreateBalancesSheet_(SpreadsheetApp.getActiveSpreadsheet());
@@ -91,11 +101,20 @@ function syncBnbWalletBalances() {
     }
   }
 
+  // Нативный BNB (газовый токен = крипто-позиция)
+  var bnb = IC_BNB_fetchNativeBalance_(IC_BNB_WALLET_ADDRESS);
+  if (bnb !== null) {
+    IC_BNB_assertSane_(IC_BNB_NATIVE_SYMBOL, bnb, IC_BNB_SANE_LIMITS.BNB);
+    IC_BNB_appendBalanceRow_(balances, IC_BNB_NATIVE_SYMBOL, bnb, 'NATIVE', syncAt);
+  } else {
+    Logger.log('BNB sync: нативный BNB RPC не ответил — скип');
+  }
+
   // ── Классификация дельт (до записи количеств) ──
   var hasPrev = prev && Object.keys(prev).length > 0;
   if (hasPrev) {
     IC_BNB_classifyDeltas_(calculations, importSheet, prev, {
-      'USDT BNB': usdt, 'USDC BNB': usdc, STOCK: stock
+      'USDT BNB': usdt, 'USDC BNB': usdc, STOCK: stock, BNB: bnb
     }, syncStartedAt);
   }
 
@@ -106,6 +125,7 @@ function syncBnbWalletBalances() {
     if (IC_BNB_setQuantity_(calculations, IC_BNB_USDC_CALC_ASSET, usdc)) updated.push('USDC BNB=' + usdc);
   }
   if (stock !== null && IC_BNB_setQuantity_(calculations, IC_BNB_STOCK_SYMBOL, stock)) updated.push(IC_BNB_STOCK_SYMBOL + '=' + stock);
+  if (bnb !== null && IC_BNB_setQuantity_(calculations, IC_BNB_NATIVE_SYMBOL, bnb)) updated.push('BNB=' + bnb);
 
   Logger.log('BNB sync: ' + (updated.length ? updated.join(', ') : 'изменений нет'));
   return updated.length;
@@ -133,6 +153,27 @@ function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
   var usdcDelta = cur['USDC BNB'] === null ? 0 : (cur['USDC BNB'] || 0) - (prev['USDC BNB'] || 0);
   var usdtDelta = cur['USDT BNB'] === null ? 0 : (cur['USDT BNB'] || 0) - (prev['USDT BNB'] || 0);
   var stockDelta = cur.STOCK === null ? 0 : (cur.STOCK || 0) - (prev[IC_BNB_STOCK_SYMBOL] || 0);
+
+  // ── Нативный BNB: приход → «Покупка BNB» по цене из «Цены» (HL) ──
+  // Покупка кросс-чейн (USDC ушёл на Arbitrum), локального USDC↓ нет — цену
+  // берём из листа «Цены» (HL-синк). BNB↓ игнорируем (газ, не продажа). Средний
+  // вход усредняется; строка попадает в отчёты и запускает кулдаун стратегии
+  // (сумма совпадёт со ступенью откупа). Не return — стейбл-потоки независимы.
+  var bnbDelta = cur.BNB === null ? 0 : (cur.BNB || 0) - (prev.BNB || 0);
+  if (bnbDelta > 0.000001) {
+    var bnbPrice = IC_BNB_readHlPrice_(IC_BNB_NATIVE_SYMBOL);
+    var bnbUsd = bnbPrice ? bnbDelta * bnbPrice : 0;
+    if (bnbPrice && bnbUsd >= IC_BNB_NATIVE_MIN_USD) {
+      IC_LEDGER_averageInPurchase_(calc, IC_BNB_NATIVE_SYMBOL, bnbDelta, bnbUsd);
+      if (importSheet) IC_LEDGER_appendTradeRow_(importSheet, {
+        action: 'Покупка', asset: IC_BNB_NATIVE_SYMBOL, category: 'Крипта',
+        quantity: bnbDelta, price: bnbPrice, amount: bnbUsd,
+        pairLabel: 'Приход BNB (мост/DEX)', syncStartedAt: syncStartedAt,
+        chain: 'BNB', walletId: IC_BNB_WALLET_ID });
+    } else {
+      Logger.log('BNB sync: приход BNB ' + bnbDelta + ' — цена недоступна/ниже порога, покупку не пишу');
+    }
+  }
 
   var usdcSpent = -usdcDelta;
   var impliedBuy = stockDelta > 0 ? usdcSpent / stockDelta : 0;
@@ -310,6 +351,87 @@ function repairSpcxbInsertSideEffects() {
   return 'OK';
 }
 
+// ── Одноразово: строка BNB в «Расчетах» (категория «Крипта») ───────
+// БЕЗ insertRow — переиспользуем первую пустую строку (как createStableRow_),
+// чтобы не сдвигать служебные блоки L-O/W-X (инцидент 2026-07-16 с SPCXB).
+// Формулы F..K копируем со спотовой строки ETH (цена по имени из «Цены»).
+// Количество ведёт импорт; средний вход усредняется при первой покупке.
+// Строку BNB в лист «Цены» заводит HL-синк цен (primaryMids['BNB']) —
+// вручную «Цены» трогать не нужно, достаточно один раз прогнать HL-синк.
+function setupBnbPortfolioRow() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(IC_BNB_CALCULATIONS_SHEET);
+  if (!sheet) throw new Error('Missing sheet: ' + IC_BNB_CALCULATIONS_SHEET);
+  if (IC_BNB_findAssetRow_(sheet, IC_BNB_NATIVE_SYMBOL)) {
+    Logger.log('BNB уже есть в Расчетах — ничего не делаю');
+    return;
+  }
+  var ethRow = IC_BNB_findAssetRow_(sheet, 'ETH');
+  if (!ethRow) throw new Error('Нет спотовой строки-образца ETH в Расчетах');
+
+  var lastRow = sheet.getLastRow();
+  var colA = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  var blankRow = 0;
+  for (var i = 0; i < colA.length; i += 1) {
+    if (String(colA[i][0]).trim() === '') { blankRow = i + 2; break; }
+  }
+  if (!blankRow) {
+    Logger.log('BNB setup: нет пустой строки в Расчетах — добавь строку BNB вручную ' +
+               '(A=BNB, B=Крипта, C=0, D=0), потом скопируй формулы F..K со строки ETH.');
+    return;
+  }
+
+  sheet.getRange(blankRow, 1).setValue(IC_BNB_NATIVE_SYMBOL);                 // A актив
+  sheet.getRange(blankRow, 2).setValue('Крипта');                            // B категория
+  sheet.getRange(blankRow, 3).setValue(0);                                   // C количество (ведёт импорт)
+  sheet.getRange(blankRow, 4).setValue(0);                                   // D средний вход (усреднится)
+  sheet.getRange(blankRow, 5).setFormula('=C' + blankRow + '*D' + blankRow); // E вложено
+  // F..K — спотовые формулы ETH (правее K служебные блоки, копировать нельзя).
+  sheet.getRange(ethRow, 6, 1, 6).copyTo(sheet.getRange(blankRow, 6, 1, 6));
+
+  Logger.log('BNB добавлен в Расчеты, строка ' + blankRow + ' (спотовые формулы ETH). ' +
+             'ДАЛЬШЕ: прогони HL-синк цен (заведёт BNB в «Цены» по primaryMids), ' +
+             'затем syncBnbWalletBalances. Проверь колонку F глазами.');
+}
+
+// ── Одноразово: зафиксировать текущий BNB как покупку ──────────────
+// Нужно, когда приход BNB прошёл мимо дельта-детекции (первый синк без цены в
+// «Цены», дельта «съелась»). Ставит средний вход, пишет строку «Покупка BNB»
+// в отчёты (→ запускает кулдаун ступени стратегии) и НЕ трогает количество.
+// Требует: строка BNB в «Расчетах» (setupBnbPortfolioRow) + цена BNB в «Цены»
+// (syncHyperliquidAccountState). Идемпотентно: если средний вход уже задан — скип.
+function initBnbPositionFromChain() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var calc = ss.getSheetByName(IC_BNB_CALCULATIONS_SHEET);
+  if (!calc) throw new Error('Missing sheet: ' + IC_BNB_CALCULATIONS_SHEET);
+  var row = IC_BNB_findAssetRow_(calc, IC_BNB_NATIVE_SYMBOL);
+  if (!row) throw new Error('Нет строки BNB в «Расчетах» — сначала setupBnbPortfolioRow');
+
+  var qty = Number(calc.getRange(row, 3).getValue()) || 0;
+  var avg = Number(calc.getRange(row, 4).getValue()) || 0;
+  if (avg > 0) { Logger.log('BNB: средний вход уже задан (' + avg + ') — ничего не делаю'); return; }
+  if (qty <= 0) { Logger.log('BNB: количество 0 — сначала syncBnbWalletBalances'); return; }
+
+  var price = IC_BNB_readHlPrice_(IC_BNB_NATIVE_SYMBOL);
+  if (!price) throw new Error('Нет цены BNB в листе «Цены» — сначала syncHyperliquidAccountState');
+
+  var amount = qty * price;
+  // Средний вход = текущая цена (приближение — фактическая покупка была рядом).
+  calc.getRange(row, 4).setValue(IC_LEDGER_round_(price, 4));
+  calc.getRange(row, 5).setFormula('=C' + row + '*D' + row);
+
+  var importSheet = ss.getSheetByName(IC_BNB_IMPORT_SHEET);
+  if (importSheet) IC_LEDGER_appendTradeRow_(importSheet, {
+    action: 'Покупка', asset: IC_BNB_NATIVE_SYMBOL, category: 'Крипта',
+    quantity: qty, price: price, amount: amount,
+    pairLabel: 'Инициализация BNB (приход через мост)', syncStartedAt: new Date(),
+    chain: 'BNB', walletId: IC_BNB_WALLET_ID });
+
+  Logger.log('BNB инициализирован: qty=' + qty + ', вход=' + price + ', сумма=' + amount.toFixed(2) +
+             '$. Строка «Покупка BNB» записана — кулдаун запустится. ' +
+             'Если знаешь точную цену покупки — поправь D' + row + ' вручную.');
+}
+
 // Одноразово: нажать ▶ Run — поставит синк каждые 30 минут (идемпотентно).
 function installBnbWalletBalanceTrigger() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
@@ -370,6 +492,28 @@ function IC_BNB_fetchErc20Balance_(address, contractAddress, decimals) {
   var result = IC_BNB_rpcCall_('eth_call', [{ to: contractAddress, data: data }, 'latest']);
   if (result === null) return null;
   return IC_BNB_hexUnits_(result, decimals);
+}
+
+// Нативный баланс BNB (eth_getBalance, 18 знаков). null → RPC не ответил, скип.
+function IC_BNB_fetchNativeBalance_(address) {
+  var result = IC_BNB_rpcCall_('eth_getBalance', [address, 'latest']);
+  if (result === null) return null;
+  return IC_BNB_hexUnits_(result, 18);
+}
+
+// Цена BNB из листа «Цены» (колонка C, наполняет HL-синк). null → цены нет.
+function IC_BNB_readHlPrice_(asset) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(IC_BNB_PRICES_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return null;
+  var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues(); // A..C
+  var target = String(asset).trim().toUpperCase();
+  for (var i = 0; i < values.length; i += 1) {
+    if (String(values[i][0]).trim().toUpperCase() === target) {
+      var price = Number(values[i][2]);
+      return isFinite(price) && price > 0 ? price : null;
+    }
+  }
+  return null;
 }
 
 function IC_BNB_rpcCall_(method, params) {
