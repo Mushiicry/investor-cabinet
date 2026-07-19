@@ -140,9 +140,32 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
 
 export type CoreRec = { action: string; gain: number; source: string; critical?: boolean };
 
-export function buildCoreRecs(weak: HealthComponent[], portfolio: V2Portfolio): CoreRec[] {
+export function buildCoreRecs(
+  weak: HealthComponent[],
+  portfolio: V2Portfolio,
+  all: HealthComponent[] = [],
+): CoreRec[] {
   const deficit = Math.max(0, portfolio.totalPortfolioValue * 0.30 - portfolio.stableReserve);
   const result: CoreRec[] = [];
+
+  // ── Концентрация: актив сверх своего per-asset лимита рекомендуем сократить
+  // ДАЖЕ при «умеренном» балле (перевес не всегда роняет score ниже порога weak).
+  // Конкретный актив и его лимит — из меты.
+  const conc = all.find((c) => c.key === "concentration");
+  const cm = conc?.meta;
+  if (cm?.worstConcentrationAsset && cm.worstConcentrationAsset !== "-" && (cm.maxAssetLimitUtilization ?? 0) > 1) {
+    const limit = Math.round((cm.worstConcentrationLimit ?? 0) * 100);
+    const shareBase = Math.round((cm.worstConcentrationShare ?? 0) * 100);
+    const over = cm.overLimitAssets?.length ?? 1;
+    result.push({
+      action: `Сократить ${cm.worstConcentrationAsset} — ${shareBase}% при лимите ${limit}%`,
+      gain: 5,
+      source:
+        over > 1
+          ? `${cm.worstConcentrationAsset} и ещё ${over - 1} актив(а) сверх лимита → здоровье +5`
+          : `Приведёт ${cm.worstConcentrationAsset} к своему лимиту → здоровье +5`,
+    });
+  }
 
   // ── Критический сигнал: покупательская сила на нуле ──
   if (portfolio.deployableCapital < 50) {
@@ -203,7 +226,9 @@ export function buildCoreRecs(weak: HealthComponent[], portfolio: V2Portfolio): 
         result.push({ action: "Зафиксировать часть крипты в стейблы", gain: 5, source: "Снизит волатильность портфеля → здоровье +5" });
         break;
       case "concentration":
-        result.push({ action: "Распределить часть крупнейшей позиции", gain: 5, source: "Снизит концентрацию риска → здоровье +5" });
+        // Если уже добавили точечную «Сократить <актив>» — не дублируем.
+        if (!result.some((r) => r.action.startsWith("Сократить")))
+          result.push({ action: "Распределить часть крупнейшей позиции", gain: 5, source: "Снизит концентрацию риска → здоровье +5" });
         break;
       case "futures":
         result.push({ action: "Снизить маржу, плечо или число позиций", gain: 5, source: "Уменьшит фьючерсный риск → здоровье +5" });

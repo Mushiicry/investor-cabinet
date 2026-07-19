@@ -36,6 +36,9 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
   const sorted = [...components].sort((a, b) => a.score - b.score);
   const weak = sorted.filter(c => c.score < 65).slice(0, 5);
   const strong = sorted.filter(c => c.score >= 75).slice(-2);
+  // Рекомендации считаем один раз на всех компонентах (перевес актива даёт
+  // рекомендацию даже при «умеренном» балле, не попав в weak).
+  const recs = isEmpty ? [] : buildCoreRecs(weak, portfolio, components);
   const interp = isEmpty
     ? { text: "Подключите кошельки, чтобы увидеть анализ портфеля", color: "#55C7FF" }
     : healthInterpretation(health.healthFactor);
@@ -622,12 +625,12 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
                 <span className="v2-hc-rec-source">Портфель, риск и здоровье появятся автоматически по вашим данным</span>
               </div>
             </div>
-          ) : weak.length === 0 ? (
+          ) : recs.length === 0 ? (
             <div className="v2-hc-rec-row v2-hc-rec-row--ok">
               <span className="v2-hc-rec-arrow">✓</span>
               <span>Портфель сбалансирован — удерживайте структуру.</span>
             </div>
-          ) : buildCoreRecs(weak, portfolio).map((rec, i) => (
+          ) : recs.map((rec, i) => (
             <div key={i} className="v2-hc-rec-row v2-hc-rec-row--critical">
               <span className="v2-hc-rec-gain">+{rec.gain}</span>
               <div className="v2-hc-rec-body">
