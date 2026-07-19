@@ -8,6 +8,9 @@ import type { V2LabData } from "../InvestorCabinetV2Lab";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import { isEmptyAccount } from "../lib/accountState";
 import { getMarketPsychology } from "../lib/marketPsychology";
+import { altcoinSlots, CRYPTO_ALT_LIMIT } from "../lib/preTradeGate";
+
+const CRYPTO_CATEGORIES = new Set(["Крипта", "Crypto"]);
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -135,6 +138,31 @@ function computeAlerts(
       detail: `F&G ${currentFG} · исторически выгодная зона`,
       action: "Открыть стратегию",
     });
+  }
+
+  // 6. Альткоин-места. Мажоры (BTC/ETH/SOL/TON/BNB) занимают 85% крипто-блока,
+  // на альткоины по 5% остаётся 3 места. Напоминаем, сколько свободно.
+  const cryptoAssets = positions
+    .filter((p) => CRYPTO_CATEGORIES.has(p.category))
+    .map((p) => p.asset);
+  const slots = altcoinSlots(cryptoAssets);
+  if (slots.used > 0 || slots.free < slots.total) {
+    if (slots.free === 0) {
+      alerts.push({
+        id: "altcoins-full",
+        level: "warning",
+        title: "Нет места для новых альткоинов",
+        detail: `Занято ${slots.used}/${slots.total} (${slots.altcoins.join(", ")}). Лимит ${toPercent(CRYPTO_ALT_LIMIT).toFixed(0)}% на альт.`,
+        action: "Новый альт — только вместо старого",
+      });
+    } else {
+      alerts.push({
+        id: "altcoins-slots",
+        level: "info",
+        title: `Альткоины: свободно ${slots.free} из ${slots.total}`,
+        detail: `Занято: ${slots.altcoins.join(", ") || "—"}. Мажоры (BTC/ETH/SOL/TON/BNB) — вне счёта.`,
+      });
+    }
   }
 
   return alerts;

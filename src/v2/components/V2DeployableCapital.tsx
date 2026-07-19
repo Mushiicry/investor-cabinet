@@ -1,9 +1,9 @@
 import type { CSSProperties } from "react";
-import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
 import type { FearGreedStrategy } from "../../types/portfolio";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
+import { MAX_FUTURES_EXPOSURE_SHARE, RESERVE_TARGET_SHARE } from "../../config/riskRules";
 
-const RESERVE_TARGET_PCT = 0.30;
+const RESERVE_TARGET_PCT = RESERVE_TARGET_SHARE;
 
 type Props = {
   portfolio: V2Portfolio;
@@ -18,12 +18,6 @@ const money = new Intl.NumberFormat("ru-RU", {
 });
 
 export function V2DeployableCapital({ portfolio, strategy }: Props) {
-  const activeStrategy = buildFearGreedStrategy(
-    strategy.currentIndex,
-    portfolio.totalPortfolioValue || strategy.portfolioValue || 0,
-    strategy.rules
-  );
-
   const freeCash =
     portfolio.stableReserve || portfolio.spotDeployable + portfolio.futuresDeployable;
 
@@ -35,15 +29,23 @@ export function V2DeployableCapital({ portfolio, strategy }: Props) {
   const deployable = Math.max(freeCash - reserveTarget, 0);
   const reserveShort = pureReserve < reserveTarget;
 
-  // Излишек распределяем по корзинам в порядке приоритета.
-  const futuresCash = Math.min(portfolio.futuresDeployable, deployable);
+  // Порядок наполнения (Risk First): стратегия-откуп → фьючи (≤10% капитала) → спот-остаток.
+  // Стратегия берёт только доступные ступени (не на кулдауне) по канону — база вложенного.
+  // Спекулятивная часть (фьючи) ограничена лимитом 10% и финансируется до спота лишь в его рамках;
+  // всё, что осталось сверх — уходит в спот-добор.
   const strategyCash = Math.min(
-    activeStrategy.rules
+    strategy.rules
       .filter((row) => row.buyPct > 0 && row.status !== "cooldown")
       .reduce((sum, row) => sum + row.buyAmount, 0),
-    Math.max(deployable - futuresCash, 0)
+    deployable
   );
-  const spotCash = Math.max(deployable - futuresCash - strategyCash, 0);
+  const remainingAfterStrategy = Math.max(deployable - strategyCash, 0);
+  const futuresCash = Math.min(
+    portfolio.futuresDeployable,
+    MAX_FUTURES_EXPOSURE_SHARE * totalPortfolio,
+    remainingAfterStrategy
+  );
+  const spotCash = Math.max(remainingAfterStrategy - futuresCash, 0);
 
   const rows: Array<{
     label: string;
@@ -51,9 +53,9 @@ export function V2DeployableCapital({ portfolio, strategy }: Props) {
     glyph: string;
     color: string;
   }> = [
-    { label: "Фьючи", value: futuresCash, glyph: "↗", color: "#8f9ff0" },
     { label: "Стратегия", value: strategyCash, glyph: "⚡", color: "#5fe0cf" },
     { label: "Спот", value: spotCash, glyph: "○", color: "#56d8f5" },
+    { label: "Фьючи", value: futuresCash, glyph: "↗", color: "#8f9ff0" },
   ];
 
   const maxValue = Math.max(...rows.map((r) => r.value), 1);
