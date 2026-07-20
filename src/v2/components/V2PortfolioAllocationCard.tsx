@@ -148,9 +148,15 @@ function CategoryGlyph({ name }: { name: string }) {
   return <span className="v2-pac-card-icon-text">{name === "Крипта" ? "₿" : "$"}</span>;
 }
 
-type Props = { allocation: AllocItem[]; total: number; positions?: V2Position[] };
+type Props = {
+  allocation: AllocItem[];
+  total: number;
+  positions?: V2Position[];
+  /** Спекулятивная нагрузка 0..1: маржа открытых фьючей + свободная маржа HL. */
+  futuresShare?: number;
+};
 
-export function V2PortfolioAllocationCard({ allocation, total, positions = [] }: Props) {
+export function V2PortfolioAllocationCard({ allocation, total, positions = [], futuresShare = 0 }: Props) {
   const [hoveredName, setHoveredName] = useState<string | null>(null);
   // Дриллдаун: null — классы, иначе имя класса, внутри которого показываем активы.
   const [drill, setDrill] = useState<string | null>(null);
@@ -239,7 +245,17 @@ export function V2PortfolioAllocationCard({ allocation, total, positions = [] }:
         <div className="v2-pac-list">
           {viewItems.map((item, idx) => {
             const cfg = cfgOf(item.name, idx);
-            const st  = isEmpty ? null : statusOf(item.share, cfg.limit, cfg.limitKind);
+            // «Фьючерсы»: большой % — рыночная стоимость класса (как в донате),
+            // но лимит 10% применяется к СПЕКУЛЯТИВНОЙ НАГРУЗКЕ (маржа открытых
+            // позиций по цене входа + свободная маржа HL) — это разные метрики,
+            // поэтому бейдж и подпись лимита считаем по futuresShare.
+            const isFutures = !drill && item.name === "Фьючерсы";
+            const st = isEmpty
+              ? null
+              : statusOf(isFutures ? futuresShare : item.share, cfg.limit, cfg.limitKind);
+            const limitLabel = isFutures && cfg.limit
+              ? `СПЕК ${(futuresShare * 100).toFixed(1)}% / ${Math.round(cfg.limit * 100)}%`
+              : cfg.limitLabel;
             const bar = Math.min(100, item.share * 100);
             const lim = cfg.limit ? cfg.limit * 100 : null;
             const canDrill = !drill && drillable(item.name);
@@ -261,9 +277,9 @@ export function V2PortfolioAllocationCard({ allocation, total, positions = [] }:
                 </div>
                 <div className="v2-pac-card-right">
                   <span className="v2-pac-card-pct" style={{ color: cfg.color }}>{(item.share * 100).toFixed(1)}%</span>
-                  {cfg.limitLabel && (
+                  {limitLabel && (
                     <span className="v2-pac-card-limit-row">
-                      <span className="v2-pac-card-limit-label">{cfg.limitLabel}</span>
+                      <span className="v2-pac-card-limit-label">{limitLabel}</span>
                       {st && <em className={`v2-pac-badge ${st.ok ? "ok" : "warn"}`}>{st.text}</em>}
                     </span>
                   )}

@@ -281,7 +281,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           <div className="v2-alloc-center-row">
             <div className="v2-alloc-center-inner">
               <span aria-hidden="true" className="v2-hud-corners" />
-              <V2PortfolioAllocationCard allocation={data.allocation} total={data.portfolio.totalPortfolioValue} positions={data.positions} />
+              <V2PortfolioAllocationCard allocation={data.allocation} total={data.portfolio.totalPortfolioValue} positions={data.positions} futuresShare={data.risk.futuresShare} />
             </div>
             <div className="v2-alloc-dca-slot">
               <V2DCAStrategy
