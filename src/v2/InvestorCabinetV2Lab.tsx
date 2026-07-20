@@ -156,8 +156,8 @@ export default function InvestorCabinetV2Lab() {
   }, [wife, portfolioData, investorData.status]);
 
   const liveBase = useMemo(
-    () => buildLiveV2Data(portfolioData, hlLeverage.leverage, wife ? "wife" : "main"),
-    [portfolioData, hlLeverage.leverage, wife]
+    () => buildLiveV2Data(portfolioData, hlLeverage.leverage, hlLeverage.risk, wife ? "wife" : "main"),
+    [portfolioData, hlLeverage.leverage, hlLeverage.risk, wife]
   );
   const zeroedBase = useMemo(() => buildZeroedV2Data(), []);
 

@@ -69,15 +69,35 @@ async function fetchHyperliquidPrices(assets: string[]): Promise<Record<string, 
 const HYPERLIQUID_EXTRA_DEXES = ["xyz"];
 
 type ClearingState = {
-  assetPositions?: { position?: { coin?: string; leverage?: { value?: number } } }[];
+  assetPositions?: {
+    position?: {
+      coin?: string;
+      leverage?: { value?: number };
+      liquidationPx?: string | number | null;
+      entryPx?: string | number | null;
+    };
+  }[];
+};
+
+/** Риск открытой фьючерс-позиции с Hyperliquid: плечо + цена ликвидации. */
+export type HlPositionRisk = {
+  leverage: number;
+  /** Цена ликвидации. null — HL её не отдал (напр. позиция без риска ликвидации). */
+  liquidationPx: number | null;
+  entryPx: number | null;
+};
+
+const toNum = (v: unknown): number | null => {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
 };
 
 // Один запрос clearinghouseState (основной DEX при dex=undefined, иначе билдер-DEX).
 // Возвращает map: COIN (upper) → выставленное плечо.
-async function fetchClearinghouseLeverage(
+async function fetchClearinghouseRisk(
   address: string,
   dex?: string
-): Promise<Record<string, number>> {
+): Promise<Record<string, HlPositionRisk>> {
   const body: Record<string, unknown> = { type: "clearinghouseState", user: address };
   if (dex) body.dex = dex;
 
@@ -90,12 +110,16 @@ async function fetchClearinghouseLeverage(
   if (!res.ok) throw new Error(`Hyperliquid clearinghouseState error: ${res.status}`);
 
   const data = (await res.json()) as ClearingState;
-  const result: Record<string, number> = {};
+  const result: Record<string, HlPositionRisk> = {};
   for (const ap of data?.assetPositions ?? []) {
     const coin = ap?.position?.coin;
     const lev = Number(ap?.position?.leverage?.value);
     if (coin && Number.isFinite(lev) && lev > 0) {
-      result[String(coin).toUpperCase()] = lev;
+      result[String(coin).toUpperCase()] = {
+        leverage: lev,
+        liquidationPx: toNum(ap?.position?.liquidationPx),
+        entryPx: toNum(ap?.position?.entryPx),
+      };
     }
   }
   return result;
@@ -104,20 +128,30 @@ async function fetchClearinghouseLeverage(
 // ── Плечо открытых фьючерс-позиций (clearinghouseState, привязан к адресу) ──
 // Основной perp-DEX + билдер-DEX'ы (xyz: GOLD). Возвращает map: COIN → плечо.
 // Падение отдельного DEX не ломает остальные (allSettled).
-export async function fetchHyperliquidLeverage(
+export async function fetchHyperliquidRisk(
   address: string
-): Promise<Record<string, number>> {
+): Promise<Record<string, HlPositionRisk>> {
   if (!address) return {};
 
   const settled = await Promise.allSettled([
-    fetchClearinghouseLeverage(address),
-    ...HYPERLIQUID_EXTRA_DEXES.map((dex) => fetchClearinghouseLeverage(address, dex)),
+    fetchClearinghouseRisk(address),
+    ...HYPERLIQUID_EXTRA_DEXES.map((dex) => fetchClearinghouseRisk(address, dex)),
   ]);
 
-  const result: Record<string, number> = {};
+  const result: Record<string, HlPositionRisk> = {};
   for (const s of settled) {
     if (s.status === "fulfilled") Object.assign(result, s.value);
   }
+  return result;
+}
+
+/** Обратная совместимость: только плечо (COIN → leverage). */
+export async function fetchHyperliquidLeverage(
+  address: string
+): Promise<Record<string, number>> {
+  const risk = await fetchHyperliquidRisk(address);
+  const result: Record<string, number> = {};
+  for (const [coin, r] of Object.entries(risk)) result[coin] = r.leverage;
   return result;
 }
 

@@ -140,6 +140,24 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
 
 export type CoreRec = { action: string; gain: number; source: string; critical?: boolean };
 
+export type CoreAchievement = { title: string; detail: string };
+
+/**
+ * Выполненные цели — показываем как достижения, а не как задачи.
+ * Сейчас: спекулятивный счёт профинансирован ровно до лимита 10% капитала.
+ */
+export function buildCoreAchievements(all: HealthComponent[]): CoreAchievement[] {
+  const out: CoreAchievement[] = [];
+  const fm = all.find((c) => c.key === "futures")?.meta;
+  if (fm?.isFutureBudgetFunded && (fm.futuresTargetUsd ?? 0) > 0) {
+    out.push({
+      title: "Фьючерсный счёт укомплектован",
+      detail: `${fmt$(fm.futuresUsedUsd ?? 0)} из ${fmt$(fm.futuresTargetUsd ?? 0)} — ровно 10% капитала. Пополнять больше не нужно.`,
+    });
+  }
+  return out;
+}
+
 export function buildCoreRecs(
   weak: HealthComponent[],
   portfolio: V2Portfolio,
@@ -147,6 +165,33 @@ export function buildCoreRecs(
 ): CoreRec[] {
   const deficit = Math.max(0, portfolio.totalPortfolioValue * 0.30 - portfolio.stableReserve);
   const result: CoreRec[] = [];
+
+  // ── Фьючерсный счёт: не добит до 10% капитала → яркий алерт с точной суммой.
+  // Пополнил ровно до лимита → ачивка (см. buildCoreAchievements).
+  const fut = all.find((c) => c.key === "futures");
+  const fm = fut?.meta;
+  if (fm && !fm.isFutureBudgetFunded && (fm.futuresTopUpUsd ?? 0) >= 1) {
+    result.push({
+      action: `Пополнить фьючерсный счёт на ${fmt$(fm.futuresTopUpUsd ?? 0)}`,
+      gain: 6,
+      source: `Спекулятивный бюджет ${fmt$(fm.futuresUsedUsd ?? 0)} из ${fmt$(fm.futuresTargetUsd ?? 0)} (10% капитала) → здоровье +6`,
+      critical: true,
+    });
+  }
+
+  // ── Близость к ликвидации: чем ближе цена, тем громче сигнал. ──
+  if (fm?.worstLiqAsset && fm.worstLiqDistance !== undefined && fm.worstLiqDistance < 0.4) {
+    const pct = Math.round(fm.worstLiqDistance * 100);
+    result.push({
+      action:
+        fm.worstLiqDistance <= 0.1
+          ? `Срочно: ${fm.worstLiqAsset} в ${pct}% от ликвидации`
+          : `Увеличить запас по ${fm.worstLiqAsset} — ${pct}% до ликвидации`,
+      gain: 5,
+      source: "Долить маржу или сократить позицию → здоровье +5",
+      critical: fm.worstLiqDistance <= 0.1,
+    });
+  }
 
   // ── Концентрация: актив сверх своего per-asset лимита рекомендуем сократить
   // ДАЖЕ при «умеренном» балле (перевес не всегда роняет score ниже порога weak).

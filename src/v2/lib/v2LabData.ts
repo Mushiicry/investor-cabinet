@@ -203,6 +203,7 @@ const categoryShare = (state: PortfolioState, name: string) =>
 export const buildLiveV2Data = (
   state: PortfolioState,
   leverageByCoin: Record<string, number> = {},
+  riskByCoin: Record<string, { liquidationPx: number | null }> = {},
   slot: import("../../services/dailySnapshotService").SnapshotSlot = "main"
 ): V2LabData => {
   // Реальное выставленное плечо фьючерс-позиций берём с Hyperliquid (по монете).
@@ -218,10 +219,21 @@ export const buildLiveV2Data = (
       // Металл с реально выставленным плечом на HL (GOLD) — под контроль плеча.
       return position.category === "Металлы" && leverageByCoin[coinOf(position.asset)] != null;
     })
-    .map((position) => ({
-      asset: position.asset,
-      leverage: leverageByCoin[coinOf(position.asset)] ?? null,
-    }));
+    .map((position) => {
+      // Расстояние до ликвидации: |текущая цена − цена ликвидации| / цена.
+      // Чем меньше — тем ближе счёт к сносу, тем ниже балл категории.
+      const liquidationPx = riskByCoin[coinOf(position.asset)]?.liquidationPx ?? null;
+      const markPx = position.currentPrice > 0 ? position.currentPrice : null;
+      const liqDistance =
+        liquidationPx && markPx ? Math.abs(markPx - liquidationPx) / markPx : null;
+      return {
+        asset: position.asset,
+        leverage: leverageByCoin[coinOf(position.asset)] ?? null,
+        liquidationPx,
+        markPx,
+        liqDistance,
+      };
+    });
 
   // Концентрация по per-asset лимитам крипто-блока (единый источник со шлюзом).
   const cryptoBlockValue = state.portfolio
@@ -242,6 +254,7 @@ export const buildLiveV2Data = (
     reserveShare: resolveReserveShare(state),
     futuresLegs,
     portfolioValue: state.overview.portfolioValue,
+    investedCapital: state.overview.invested,
     concentrationScore: concentration.score,
     maxAssetLimitUtilization: concentration.maxUtilization,
     worstConcentrationAsset: concentration.worstAsset,

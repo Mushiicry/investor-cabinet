@@ -2339,3 +2339,34 @@
 .v2-alloc-hint.is-danger {
   color: rgba(240, 160, 160, 0.9);
 }
+
+/* ── Достижение: выполненная цель (напр. фьючерсный счёт укомплектован) ── */
+.v2-hc-achievement {
+  border-color: rgba(90, 240, 141, 0.42) !important;
+  background: linear-gradient(90deg, rgba(24, 74, 48, 0.42) 0%, rgba(10, 32, 24, 0.28) 100%) !important;
+}
+.v2-hc-ach-badge {
+  color: #5af08d !important;
+  background: rgba(30, 96, 60, 0.5) !important;
+}
+.v2-hc-achievement .v2-hc-rec-action {
+  color: rgba(180, 250, 205, 0.98);
+}
+
+/* ── Срочная рекомендация: пульсирующий акцент (пополнить счёт, ликвидация) ── */
+.v2-hc-rec-row--critical.is-urgent {
+  border-color: rgba(255, 170, 70, 0.65);
+  background: linear-gradient(90deg, rgba(92, 56, 12, 0.5) 0%, rgba(36, 22, 6, 0.3) 100%);
+  animation: v2-hc-urgent-pulse 2.4s ease-in-out infinite;
+}
+.v2-hc-rec-row--critical.is-urgent .v2-hc-rec-gain {
+  color: #ffc266;
+  background: rgba(120, 74, 16, 0.6);
+}
+@keyframes v2-hc-urgent-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(255, 170, 70, 0); }
+  50%      { box-shadow: 0 0 16px rgba(255, 170, 70, 0.28); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-hc-rec-row--critical.is-urgent { animation: none; }
+}

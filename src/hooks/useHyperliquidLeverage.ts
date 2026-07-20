@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { fetchHyperliquidLeverage } from "../api/prices";
+import { fetchHyperliquidRisk, type HlPositionRisk } from "../api/prices";
 
 const REFRESH_INTERVAL_MS = 60_000;
 
 export type HyperliquidLeverageState = {
   leverage: Record<string, number>; // COIN (upper) → выставленное плечо
+  /** COIN → плечо + цена ликвидации (для оценки близости к ликвидации). */
+  risk: Record<string, HlPositionRisk>;
   isLoading: boolean;
   lastUpdatedAt: string | null;
   error: string | null;
@@ -15,6 +17,7 @@ export type HyperliquidLeverageState = {
 export function useHyperliquidLeverage(address: string | undefined): HyperliquidLeverageState {
   const [state, setState] = useState<HyperliquidLeverageState>({
     leverage: {},
+    risk: {},
     isLoading: !!address,
     lastUpdatedAt: null,
     error: null,
@@ -22,7 +25,7 @@ export function useHyperliquidLeverage(address: string | undefined): Hyperliquid
 
   useEffect(() => {
     if (!address) {
-      setState({ leverage: {}, isLoading: false, lastUpdatedAt: null, error: null });
+      setState({ leverage: {}, risk: {}, isLoading: false, lastUpdatedAt: null, error: null });
       return;
     }
 
@@ -30,10 +33,13 @@ export function useHyperliquidLeverage(address: string | undefined): Hyperliquid
 
     const load = async () => {
       try {
-        const leverage = await fetchHyperliquidLeverage(address);
+        const risk = await fetchHyperliquidRisk(address);
         if (!isMounted) return;
+        const leverage: Record<string, number> = {};
+        for (const [coin, r] of Object.entries(risk)) leverage[coin] = r.leverage;
         setState({
           leverage,
+          risk,
           isLoading: false,
           lastUpdatedAt: new Date().toISOString(),
           error: null,

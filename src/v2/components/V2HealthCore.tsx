@@ -5,7 +5,7 @@ import {
   CX, CY, RADAR_R, OUTER_R, VB_OFF, VB_SIZE, CHIP_W, CHIP_H, CHIP_R,
   CHIP_LABEL, SCORE_LABEL, scoreHint, scoreAlpha, chipColor,
   hexPts, hexPtsAt, chipLayout, scaleValuePts,
-  healthInterpretation, diagWhy, buildCoreRecs,
+  healthInterpretation, diagWhy, buildCoreRecs, buildCoreAchievements,
 } from "../lib/healthCoreHelpers";
 
 type Props = {
@@ -39,6 +39,7 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
   // Рекомендации считаем один раз на всех компонентах (перевес актива даёт
   // рекомендацию даже при «умеренном» балле, не попав в weak).
   const recs = isEmpty ? [] : buildCoreRecs(weak, portfolio, components);
+  const achievements = isEmpty ? [] : buildCoreAchievements(components);
   const interp = isEmpty
     ? { text: "Подключите кошельки, чтобы увидеть анализ портфеля", color: "#55C7FF" }
     : healthInterpretation(health.healthFactor);
@@ -617,6 +618,15 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
       <aside className="v2-hc-side v2-hc-side--recommend">
         <div className="v2-hc-side-title">Рекомендации</div>
         <div className="v2-hc-side-list">
+          {achievements.map((a, i) => (
+            <div key={`ach-${i}`} className="v2-hc-rec-row v2-hc-achievement">
+              <span className="v2-hc-rec-gain v2-hc-ach-badge">✓</span>
+              <div className="v2-hc-rec-body">
+                <span className="v2-hc-rec-action">{a.title}</span>
+                <span className="v2-hc-rec-source">{a.detail}</span>
+              </div>
+            </div>
+          ))}
           {isEmpty ? (
             <div className="v2-hc-rec-row v2-hc-rec-row--critical">
               <span className="v2-hc-rec-gain">1</span>
@@ -631,7 +641,7 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
               <span>Портфель сбалансирован — удерживайте структуру.</span>
             </div>
           ) : recs.map((rec, i) => (
-            <div key={i} className="v2-hc-rec-row v2-hc-rec-row--critical">
+            <div key={i} className={`v2-hc-rec-row v2-hc-rec-row--critical${rec.critical ? " is-urgent" : ""}`}>
               <span className="v2-hc-rec-gain">+{rec.gain}</span>
               <div className="v2-hc-rec-body">
                 <span className="v2-hc-rec-action">{rec.action}</span>

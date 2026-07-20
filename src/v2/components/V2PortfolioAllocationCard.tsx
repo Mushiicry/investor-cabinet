@@ -180,6 +180,10 @@ export function V2PortfolioAllocationCard({ allocation, total, positions = [], f
 
   const sortedCats = [...allocation].sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
   const viewItems: AllocItem[] = drillItems ?? sortedCats;
+  // Сумма в центре доната: весь портфель на верхнем уровне, стоимость класса — в дриллдауне.
+  const levelTotal = drillItems
+    ? drillItems.reduce((sum, i) => sum + i.value, 0)
+    : total;
 
   // Конфиг элемента текущего уровня: класс — из CFG, актив — палитра + свой лимит.
   const cfgOf = (name: string, index: number) => {
@@ -514,14 +518,22 @@ export function V2PortfolioAllocationCard({ allocation, total, positions = [], f
                 fill="url(#p-scan)"/>
             </g>
 
-            {/* Center label */}
-            <text x={CX} y={CY + 8} textAnchor="middle"
+            {/* Center label — на дриллдауне показываем сумму класса, не портфеля */}
+            <text x={CX} y={drill ? CY : CY + 8} textAnchor="middle"
               fontSize="23" fontWeight="700" letterSpacing="-0.03em"
               className="v2-pac-total-text"
               fill="rgba(220,242,255,0.96)"
               fontFamily="'Space Grotesk', system-ui, sans-serif">
-              ${Math.round(total)}
+              ${Math.round(levelTotal)}
             </text>
+            {drill && (
+              <text x={CX} y={CY + 18} textAnchor="middle"
+                fontSize="10" letterSpacing="0.14em"
+                fill="rgba(150,195,230,0.7)"
+                fontFamily="'Space Grotesk', system-ui, sans-serif">
+                {drill.toUpperCase()}
+              </text>
+            )}
           </svg>
 
         </div>
