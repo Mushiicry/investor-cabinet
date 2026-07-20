@@ -526,3 +526,18 @@
   color: #56d8f5;
   transform: translateY(-50%) translateX(2px);
 }
+
+/* Тикер актива в кружке-иконке (дриллдаун): 28px рассчитан на один глиф (₿/$),
+   для 3-4 букв он вылезает за круг — свой компактный размер. */
+.v2-pac-card-icon-ticker {
+  position: relative;
+  z-index: 1;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-align: center;
+  max-width: 100%;
+  text-shadow: 0 0 6px currentColor;
+}

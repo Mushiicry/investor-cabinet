@@ -251,7 +251,9 @@ export function V2PortfolioAllocationCard({ allocation, total, positions = [] }:
                 onClick={() => openDrill(item.name)}
                 title={canDrill ? `Показать состав: ${item.name}` : undefined}>
                 <div className="v2-pac-card-icon">
-                  {drill ? <span className="v2-pac-card-icon-text">{item.name.slice(0, 3)}</span> : <CategoryGlyph name={item.name} />}
+                  {drill
+                    ? <span className="v2-pac-card-icon-ticker">{item.name.split(/\s+/)[0].slice(0, 4)}</span>
+                    : <CategoryGlyph name={item.name} />}
                 </div>
                 <div className="v2-pac-card-info">
                   <span className="v2-pac-card-name">{item.name}</span>
