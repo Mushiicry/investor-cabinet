@@ -30,6 +30,8 @@ export type FearGreedStrategyApiRule = {
 
 export type InvestorApiResponse = {
   success?: boolean;
+  /** Лист «Прогресс»: достигнутый уровень лестницы (источник истины). */
+  progress?: { maxLevel?: unknown };
   overview?: {
     invested?: unknown;
     portfolioValue?: unknown;

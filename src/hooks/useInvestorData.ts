@@ -8,6 +8,7 @@ import {
 } from "../services/investorDataCache";
 import { buildInvestorStateFromApi } from "../services/investorState";
 import { maybeRecordSnapshot } from "../services/dailySnapshotService";
+import { mergeServerMaxLevel } from "../v2/lib/levelProgress";
 import type { DataLoadState } from "../types/dataStatus";
 import type { PortfolioState } from "../types/portfolio";
 
@@ -67,6 +68,12 @@ export function useInvestorData(
         }
 
         const json = validation.data;
+
+        // Достигнутый уровень лестницы с сервера → в локальный кэш (монотонно).
+        // Только основной аккаунт: у жены своя таблица и своя лестница.
+        if (cacheSlot !== "wife") {
+          mergeServerMaxLevel(json.progress?.maxLevel);
+        }
 
         if (!json.success) {
           setState((prev) => ({

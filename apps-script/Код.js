@@ -33,8 +33,15 @@ function normalizePortfolioPnlPct(pnlPct, invested, pnl) {
   return moneyPct;
 }
 
-function doGet() {
+function doGet(e) {
   const ss = SpreadsheetApp.openById("1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8");
+
+  // Запись достигнутого уровня (лестница на сайте): ?action=setMaxLevel&level=N.
+  // Авторизацию владельца обеспечивает Vercel-прокси (Supabase), сюда чужие
+  // запросы не доходят. Запись монотонная — понизить уровень нельзя.
+  if (e && e.parameter && e.parameter.action === "setMaxLevel") {
+    return IC_PROGRESS_handleSetMaxLevel_(ss, e.parameter.level);
+  }
 
   const overview = ss.getSheetByName("Обзор");
   const portfolio = ss.getSheetByName("Портфель");
@@ -60,7 +67,10 @@ function doGet() {
     scenarios: getScenarios(scenarios),
     history: getHistory(history),
     transactions: getTransactions(transactions),
-    fearGreedStrategy: getFearGreedStrategyReadOnly(ss, overviewData.invested)
+    fearGreedStrategy: getFearGreedStrategyReadOnly(ss, overviewData.invested),
+    // Достигнутый уровень лестницы (лист «Прогресс», монотонный) — общий
+    // для всех устройств; localStorage на сайте остаётся офлайн-кэшем.
+    progress: { maxLevel: IC_PROGRESS_readMaxLevel_(ss) }
   };
 
   return ContentService

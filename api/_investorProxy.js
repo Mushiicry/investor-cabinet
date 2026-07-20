@@ -88,7 +88,21 @@ export async function proxyInvestorApi(req, res, kind) {
       return;
     }
 
-    const upstream = await fetch(targetUrlFor(kind), {
+    // Белый список query-параметров, которые уезжают в Apps Script.
+    // Сейчас единственная операция — запись достигнутого уровня лестницы
+    // (?action=setMaxLevel&level=N). Владельца уже проверили выше по Supabase.
+    const upstreamUrl = new URL(targetUrlFor(kind));
+    const incoming = new URL(req.url ?? "/", "http://localhost");
+    const action = incoming.searchParams.get("action");
+    if (action === "setMaxLevel") {
+      const level = Number(incoming.searchParams.get("level"));
+      if (Number.isFinite(level) && level >= 1 && level <= 5) {
+        upstreamUrl.searchParams.set("action", action);
+        upstreamUrl.searchParams.set("level", String(Math.floor(level)));
+      }
+    }
+
+    const upstream = await fetch(upstreamUrl.toString(), {
       headers: { accept: "application/json" },
       redirect: "follow",
     });

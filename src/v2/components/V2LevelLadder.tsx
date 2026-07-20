@@ -8,7 +8,7 @@ import {
   MAX_LADDER_LEVEL,
   type LevelCard,
 } from "../lib/levelLadder";
-import { persistMaxLevel, readMaxLevel } from "../lib/levelProgress";
+import { persistMaxLevel, pushMaxLevelToServer, readMaxLevel } from "../lib/levelProgress";
 
 type Props = {
   health: PortfolioHealth;
@@ -31,9 +31,14 @@ const STATUS_LABEL: Record<LevelCard["status"], string> = {
 export function V2LevelLadder({ health, portfolio, positions = [], transactions = [] }: Props) {
   // Уровень не сгорает: фиксируем максимум достигнутого и больше не опускаем.
   const hfLevel = currentLadderLevel(health.healthFactor);
-  const [maxLevel, setMaxLevel] = useState(() => Math.max(readMaxLevel(), hfLevel));
+  // Уровень выводим синхронно: достигнутый максимум (кэш, влитый с сервера)
+  // либо текущий по здоровью — что больше. Стейт не нужен, откат невозможен.
+  const maxLevel = Math.max(readMaxLevel(), hfLevel);
+  // Эффект только синхронизирует внешние системы: localStorage и таблицу.
   useEffect(() => {
-    setMaxLevel(persistMaxLevel(hfLevel));
+    const before = readMaxLevel();
+    const next = persistMaxLevel(hfLevel);
+    if (next > before) void pushMaxLevelToServer(next);
   }, [hfLevel]);
 
   const cards = buildLevelCards({ health, portfolio, positions, transactions }, maxLevel);
