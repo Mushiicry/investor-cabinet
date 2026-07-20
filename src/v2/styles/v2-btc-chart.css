@@ -2164,8 +2164,8 @@
 }
 
 .v2-im-panel {
-  width: 540px;
-  max-height: 88vh;
+  width: 720px;
+  max-height: 90vh;
   overflow-y: auto;
   background:
     radial-gradient(ellipse at 30% 0%, rgba(40,100,200,0.10) 0%, transparent 55%),
