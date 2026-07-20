@@ -1,6 +1,8 @@
 /* eslint-disable react-refresh/only-export-components -- хук/хелперы намеренно рядом с компонентом (личный инструмент) */
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { V2LevelLadder } from "./V2LevelLadder";
+import { getAchievements } from "../lib/levelLadder";
 import type { PortfolioHealth, HealthComponent } from "../../lib/portfolioHealth";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
 
@@ -34,71 +36,6 @@ const STAT_LABELS: Record<string, string> = {
   flexibility: "Гибкость",
 };
 
-type Achievement = {
-  id: string;
-  name: string;
-  desc: string;
-  unlocked: boolean;
-  progress?: number;
-  target?: number;
-};
-
-function getAchievements(health: PortfolioHealth, portfolio: V2Portfolio): Achievement[] {
-  const score = (key: string) =>
-    health.components.find((c) => c.key === key)?.score ?? 0;
-
-  return [
-    {
-      id: "guardian",
-      name: "Страж портфеля",
-      desc: "Здоровье портфеля выше 70",
-      unlocked: health.healthFactor >= 70,
-      progress: health.healthFactor,
-      target: 70,
-    },
-    {
-      id: "reserve",
-      name: "Хранитель резерва",
-      desc: "Резерв в умеренной зоне",
-      unlocked: score("reserve") >= 50,
-      progress: score("reserve"),
-      target: 50,
-    },
-    {
-      id: "futures",
-      name: "Фьючерсы под контролем",
-      desc: "Фьючерсная экспозиция в норме",
-      unlocked: score("futures") >= 70,
-      progress: score("futures"),
-      target: 70,
-    },
-    {
-      id: "diversification",
-      name: "Диверсификатор",
-      desc: "Диверсификация выше 60",
-      unlocked: score("diversification") >= 60,
-      progress: score("diversification"),
-      target: 60,
-    },
-    {
-      id: "flexibility",
-      name: "Мастер гибкости",
-      desc: "Гибкость портфеля выше 60",
-      unlocked: score("flexibility") >= 60,
-      progress: score("flexibility"),
-      target: 60,
-    },
-    {
-      id: "tencount",
-      name: "Опытный позиционер",
-      desc: "Держит 10+ позиций",
-      unlocked: portfolio.positionsCount >= 10,
-      progress: portfolio.positionsCount,
-      target: 10,
-    },
-  ];
-}
-
 function StatBar({ component }: { component: HealthComponent }) {
   const color =
     component.score >= 70
@@ -124,61 +61,20 @@ function StatBar({ component }: { component: HealthComponent }) {
   );
 }
 
-function AchievementRow({ a }: { a: Achievement }) {
-  const progressPct = a.target ? Math.min(100, ((a.progress ?? 0) / a.target) * 100) : 100;
 
-  return (
-    <div className={`v2-im-ach ${a.unlocked ? "is-unlocked" : "is-locked"}`}>
-      <span className="v2-im-ach-icon">{a.unlocked ? "★" : "○"}</span>
-      <div className="v2-im-ach-body">
-        <div className="v2-im-ach-head">
-          <span className="v2-im-ach-name">{a.name}</span>
-          {a.unlocked ? (
-            <span className="v2-im-ach-badge">РАЗБЛОКИРОВАНО</span>
-          ) : (
-            <span className="v2-im-ach-progress">
-              {a.progress}/{a.target}
-            </span>
-          )}
-        </div>
-        {!a.unlocked && (
-          <div className="v2-im-ach-track">
-            <span className="v2-im-ach-fill" style={{ width: `${progressPct}%` }} />
-          </div>
-        )}
-        <span className="v2-im-ach-desc">{a.desc}</span>
-      </div>
-    </div>
-  );
-}
-
+// Пороги здоровья для уровней 1..5 (совпадают с hfFrom в LEVEL_LADDER).
 export const LEVEL_THRESHOLDS = [0, 40, 60, 75, 90, 101];
 
 export const LEVEL_TITLES: Record<number, string> = {
-  1:  "Ученик",
-  2:  "Оператор",
-  3:  "Аналитик",
-  4:  "Исследователь",
-  5:  "Планировщик",
-  6:  "Стратег",
-  7:  "Архитектор",
-  8:  "Координатор",
-  9:  "Аллокатор",
-  10: "Управляющий",
-  11: "Директор",
-  12: "Партнёр",
-  13: "Куратор фонда",
-  14: "Хранитель резерва",
-  15: "Мастер риска",
-  16: "Архитектор капитала",
-  17: "Хранитель богатства",
-  18: "Суверенный управляющий",
-  19: "Владыка фонда",
-  20: "Легенда капитала",
+  1: "Ученик",
+  2: "Оператор",
+  3: "Аналитик",
+  4: "Исследователь",
+  5: "Планировщик",
 };
 
 export function getLevelTitle(level: number): string {
-  return LEVEL_TITLES[level] ?? LEVEL_TITLES[20];
+  return LEVEL_TITLES[level] ?? LEVEL_TITLES[5];
 }
 
 export function computeLevel(hf: number): { level: number; xpCurrent: number; xpMax: number } {
@@ -249,18 +145,14 @@ export function V2InvestorModal({ portfolio, health, onClose }: Props) {
           </div>
         </div>
 
-        {/* ── Достижения ── */}
+        {/* ── Путь инвестора: уровни, достижения и денежные поощрения ── */}
         <div className="v2-im-section">
           <div className="v2-im-section-title">
             <span className="v2-im-section-line" />
-            ДОСТИЖЕНИЯ · {unlockedCount}/{achievements.length}
+            ПУТЬ · {unlockedCount}/{achievements.length} ДОСТИЖЕНИЙ
             <span className="v2-im-section-line" />
           </div>
-          <div className="v2-im-achievements">
-            {achievements.map((a) => (
-              <AchievementRow key={a.id} a={a} />
-            ))}
-          </div>
+          <V2LevelLadder health={health} portfolio={portfolio} />
         </div>
 
       </div>
