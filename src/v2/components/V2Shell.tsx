@@ -195,6 +195,8 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         healthStatus={data.portfolio.healthStatus}
         portfolio={data.portfolio}
         health={data.health}
+        positions={data.positions}
+        transactions={data.transactions}
         profileAvatar={profileAvatar}
         onOpenAuth={onOpenAuth}
       />

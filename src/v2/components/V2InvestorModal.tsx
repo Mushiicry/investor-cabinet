@@ -4,11 +4,14 @@ import { createPortal } from "react-dom";
 import { V2LevelLadder } from "./V2LevelLadder";
 import { getAchievements } from "../lib/levelLadder";
 import type { PortfolioHealth, HealthComponent } from "../../lib/portfolioHealth";
-import type { V2Portfolio } from "../InvestorCabinetV2Lab";
+import type { InvestorTransaction } from "../../types/portfolio";
+import type { V2Portfolio, V2Position } from "../InvestorCabinetV2Lab";
 
 type Props = {
   portfolio: V2Portfolio;
   health: PortfolioHealth;
+  positions?: V2Position[];
+  transactions?: InvestorTransaction[];
   onClose: () => void;
 };
 
@@ -90,11 +93,11 @@ export function computeLevel(hf: number): { level: number; xpCurrent: number; xp
   return { level: 1, xpCurrent: hf, xpMax: 40 };
 }
 
-export function V2InvestorModal({ portfolio, health, onClose }: Props) {
+export function V2InvestorModal({ portfolio, health, positions = [], transactions = [], onClose }: Props) {
   const { level, xpCurrent, xpMax } = computeLevel(health.healthFactor);
   const xpFillPct = Math.round((xpCurrent / xpMax) * 100);
   const className = CLASS_BY_STATUS[portfolio.healthStatus] ?? "Стратегический инвестор";
-  const achievements = getAchievements(health, portfolio);
+  const achievements = getAchievements({ health, portfolio, positions, transactions });
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
   useEffect(() => {
@@ -152,7 +155,7 @@ export function V2InvestorModal({ portfolio, health, onClose }: Props) {
             ПУТЬ · {unlockedCount}/{achievements.length} ДОСТИЖЕНИЙ
             <span className="v2-im-section-line" />
           </div>
-          <V2LevelLadder health={health} portfolio={portfolio} />
+          <V2LevelLadder health={health} portfolio={portfolio} positions={positions} transactions={transactions} />
         </div>
 
       </div>

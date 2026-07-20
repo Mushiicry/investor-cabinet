@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
-import type { V2Portfolio } from "../InvestorCabinetV2Lab";
+import type { InvestorTransaction } from "../../types/portfolio";
+import type { V2Portfolio, V2Position } from "../InvestorCabinetV2Lab";
 import {
   buildLevelCards,
   currentLadderLevel,
@@ -9,7 +10,12 @@ import {
 } from "../lib/levelLadder";
 import { persistMaxLevel, readMaxLevel } from "../lib/levelProgress";
 
-type Props = { health: PortfolioHealth; portfolio: V2Portfolio };
+type Props = {
+  health: PortfolioHealth;
+  portfolio: V2Portfolio;
+  positions?: V2Position[];
+  transactions?: InvestorTransaction[];
+};
 
 const STATUS_LABEL: Record<LevelCard["status"], string> = {
   done: "ПРОЙДЕН",
@@ -22,7 +28,7 @@ const STATUS_LABEL: Record<LevelCard["status"], string> = {
  * Пройденный уровень гаснет, но показывает что закрыто и какая награда получена;
  * текущий — прогресс и что осталось; закрытый — требования и будущая награда.
  */
-export function V2LevelLadder({ health, portfolio }: Props) {
+export function V2LevelLadder({ health, portfolio, positions = [], transactions = [] }: Props) {
   // Уровень не сгорает: фиксируем максимум достигнутого и больше не опускаем.
   const hfLevel = currentLadderLevel(health.healthFactor);
   const [maxLevel, setMaxLevel] = useState(() => Math.max(readMaxLevel(), hfLevel));
@@ -30,7 +36,7 @@ export function V2LevelLadder({ health, portfolio }: Props) {
     setMaxLevel(persistMaxLevel(hfLevel));
   }, [hfLevel]);
 
-  const cards = buildLevelCards(health, portfolio, maxLevel);
+  const cards = buildLevelCards({ health, portfolio, positions, transactions }, maxLevel);
   const currentIdx = Math.max(0, cards.findIndex((c) => c.status === "current"));
   const [active, setActive] = useState(currentIdx);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -133,7 +139,7 @@ export function V2LevelLadder({ health, portfolio }: Props) {
               {c.status === "locked" && <>Откроется при здоровье <b>{c.hfFrom}</b></>}
             </div>
 
-            <div className="v2-lad-ach-cap">Что закрыть</div>
+            <div className="v2-lad-ach-cap">Задания · {c.doneCount}/{c.achievements.length}</div>
             <div className="v2-lad-ach-list">
               {c.achievements.map((a) => (
                 <div key={a.id} className={`v2-lad-ach ${a.unlocked ? "is-on" : "is-off"}`}>
