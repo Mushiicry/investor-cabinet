@@ -1,5 +1,13 @@
-import { useState, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { isEmptyAccount } from "../lib/accountState";
+import { cryptoAssetLimit } from "../lib/preTradeGate";
+import type { V2Position } from "../InvestorCabinetV2Lab";
+
+// Палитра для дриллдауна (активы внутри класса) — циклическая, холодная гамма.
+const ASSET_COLORS = [
+  "#3D8FFF", "#00E5C7", "#FFB800", "#B060FF",
+  "#FF6B8A", "#22E5FF", "#7CFF6B", "#FF9E4A",
+];
 
 type AllocItem = { name: string; share: number; value: number };
 type LimitKind = "max" | "min" | "none";
@@ -140,15 +148,55 @@ function CategoryGlyph({ name }: { name: string }) {
   return <span className="v2-pac-card-icon-text">{name === "Крипта" ? "₿" : "$"}</span>;
 }
 
-type Props = { allocation: AllocItem[]; total: number };
+type Props = { allocation: AllocItem[]; total: number; positions?: V2Position[] };
 
-export function V2PortfolioAllocationCard({ allocation, total }: Props) {
+export function V2PortfolioAllocationCard({ allocation, total, positions = [] }: Props) {
   const [hoveredName, setHoveredName] = useState<string | null>(null);
+  // Дриллдаун: null — классы, иначе имя класса, внутри которого показываем активы.
+  const [drill, setDrill] = useState<string | null>(null);
   // Пустой аккаунт (кошельки не подключены): доли по нулям — не считаем это
   // нарушением лимитов, не показываем тревожные бейджи ВЫШЕ/НИЖЕ.
   const isEmpty = isEmptyAccount({ totalPortfolioValue: total });
-  const sorted = [...allocation].sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
-  const segs   = buildSegs(sorted);
+
+  // В класс можно провалиться, если в нём есть позиции с ненулевой стоимостью.
+  const drillable = (name: string) => positions.some(p => p.category === name && p.value > 0);
+
+  // Активы внутри класса: доли считаются ВНУТРИ класса (база — сам класс),
+  // чтобы совпадать с per-asset лимитами манифеста (ETH 35% крипто-блока и т.д.).
+  const drillItems = useMemo(() => {
+    if (!drill) return null;
+    const inside = positions.filter(p => p.category === drill && p.value > 0);
+    const sum = inside.reduce((s, p) => s + p.value, 0) || 1;
+    return inside
+      .map(p => ({ name: p.asset, share: p.value / sum, value: p.value }))
+      .sort((a, b) => b.share - a.share);
+  }, [drill, positions]);
+
+  const sortedCats = [...allocation].sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
+  const viewItems: AllocItem[] = drillItems ?? sortedCats;
+
+  // Конфиг элемента текущего уровня: класс — из CFG, актив — палитра + свой лимит.
+  const cfgOf = (name: string, index: number) => {
+    if (!drill) {
+      return CFG[name] ?? { glyph: "•", color: "#6f86a6", iconColor: "#7fd8ff", glow: "rgba(111,134,166,0.4)", limit: null, limitKind: "none" as LimitKind, limitLabel: "" };
+    }
+    const color = ASSET_COLORS[index % ASSET_COLORS.length];
+    const limit = drill === "Крипта" ? cryptoAssetLimit(name) : null;
+    return {
+      glyph: "•", color, iconColor: color, glow: `${color}99`,
+      limit, limitKind: (limit ? "max" : "none") as LimitKind,
+      limitLabel: limit ? `ЛИМИТ ${Math.round(limit * 100)}%` : "",
+    };
+  };
+
+  const openDrill = (name: string) => {
+    if (drill || !drillable(name)) return;
+    setHoveredName(null);
+    setDrill(name);
+  };
+  const closeDrill = () => { setHoveredName(null); setDrill(null); };
+
+  const segs   = buildSegs(viewItems);
   const faceFront = frontFaces(segs);
   const faceInner = innerFaces(segs);
   const indexedSegs = segs.map((seg, index) => ({ seg, index }));
@@ -175,24 +223,35 @@ export function V2PortfolioAllocationCard({ allocation, total }: Props) {
 
   return (
     <div className="v2-pac-wrap">
-      <div className="v2-pac-header">РАСПРЕДЕЛЕНИЕ СРЕДСТВ</div>
+      <div className="v2-pac-header">
+        {drill ? (
+          <button type="button" className="v2-pac-back" onClick={closeDrill}>
+            ← РАСПРЕДЕЛЕНИЕ · <b>{drill.toUpperCase()}</b>
+          </button>
+        ) : (
+          "РАСПРЕДЕЛЕНИЕ СРЕДСТВ"
+        )}
+      </div>
 
       <div className="v2-pac-body">
 
-        {/* ── Левая колонка: категории ── */}
+        {/* ── Левая колонка: классы, либо активы внутри класса ── */}
         <div className="v2-pac-list">
-          {sorted.map((item, idx) => {
-            const cfg = CFG[item.name] ?? { glyph: "•", color: "#6f86a6", iconColor: "#7fd8ff", glow: "rgba(111,134,166,0.4)", limit: null, limitKind: "none" as LimitKind, limitLabel: "" };
+          {viewItems.map((item, idx) => {
+            const cfg = cfgOf(item.name, idx);
             const st  = isEmpty ? null : statusOf(item.share, cfg.limit, cfg.limitKind);
             const bar = Math.min(100, item.share * 100);
             const lim = cfg.limit ? cfg.limit * 100 : null;
+            const canDrill = !drill && drillable(item.name);
             return (
-              <div key={item.name} className={`v2-pac-card${hoveredName === item.name ? " is-active" : ""}${hoveredName && hoveredName !== item.name ? " is-muted" : ""}`}
+              <div key={item.name} className={`v2-pac-card${hoveredName === item.name ? " is-active" : ""}${hoveredName && hoveredName !== item.name ? " is-muted" : ""}${canDrill ? " is-drillable" : ""}`}
                 style={{ "--c": cfg.color, "--icon-c": cfg.iconColor, "--glow": cfg.glow, animationDelay: `${idx * 70}ms` } as CSSProperties}
                 onPointerEnter={() => setHoveredName(item.name)}
-                onPointerLeave={() => setHoveredName(null)}>
+                onPointerLeave={() => setHoveredName(null)}
+                onClick={() => openDrill(item.name)}
+                title={canDrill ? `Показать состав: ${item.name}` : undefined}>
                 <div className="v2-pac-card-icon">
-                  <CategoryGlyph name={item.name} />
+                  {drill ? <span className="v2-pac-card-icon-text">{item.name.slice(0, 3)}</span> : <CategoryGlyph name={item.name} />}
                 </div>
                 <div className="v2-pac-card-info">
                   <span className="v2-pac-card-name">{item.name}</span>
@@ -238,8 +297,8 @@ export function V2PortfolioAllocationCard({ allocation, total }: Props) {
               ))}
               {/* Top-face gradient per segment */}
               {segs.map((seg, i) => {
-                const c = CFG[seg.name]?.color ?? "#6f86a6";
-                const ic = CFG[seg.name]?.iconColor ?? "#aaccff";
+                const c = cfgOf(seg.name, i).color;
+                const ic = cfgOf(seg.name, i).iconColor;
                 return (
                   <radialGradient key={i} id={`ptg${i}`} cx="35%" cy="25%" r="78%">
                     <stop offset="0%"   stopColor={ic}  stopOpacity="0.72"/>
@@ -251,7 +310,7 @@ export function V2PortfolioAllocationCard({ allocation, total }: Props) {
               })}
               {/* Side-wall gradient per segment */}
               {segs.map((seg, i) => {
-                const c = CFG[seg.name]?.color ?? "#6f86a6";
+                const c = cfgOf(seg.name, i).color;
                 return (
                   <linearGradient key={i} id={`psg-wall${i}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%"   stopColor={c} stopOpacity="0.90"/>
@@ -410,14 +469,20 @@ export function V2PortfolioAllocationCard({ allocation, total }: Props) {
               {/* Stable hover targets stay in place while the visible segment moves. */}
               {segs.map((seg) => (
                 <path key={`hit-${seg.name}`}
-                  className="v2-pac-segment-hit"
+                  className={`v2-pac-segment-hit${!drill && drillable(seg.name) ? " is-drillable" : ""}`}
                   d={donut(CX, CY, R_OUT + 16, R_IN - 10, seg.start, seg.end)}
                   tabIndex={0}
-                  aria-label={`${seg.name}: ${(seg.share * 100).toFixed(1)}%`}
+                  aria-label={
+                    !drill && drillable(seg.name)
+                      ? `${seg.name}: ${(seg.share * 100).toFixed(1)}% — открыть состав`
+                      : `${seg.name}: ${(seg.share * 100).toFixed(1)}%`
+                  }
                   onPointerEnter={() => setHoveredName(seg.name)}
                   onPointerLeave={() => setHoveredName(null)}
                   onFocus={() => setHoveredName(seg.name)}
                   onBlur={() => setHoveredName(null)}
+                  onClick={() => openDrill(seg.name)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDrill(seg.name); } }}
                 />
               ))}
 

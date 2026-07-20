@@ -481,3 +481,48 @@
     max-width: 100%;
   }
 }
+
+/* ── Дриллдаун: состав класса (клик по сегменту/карточке) ────────── */
+
+/* Кнопка «назад» в шапке — выглядит как заголовок, но кликабельна. */
+.v2-pac-back {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(140, 190, 240, 0.72);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.18s ease;
+}
+.v2-pac-back:hover {
+  color: rgba(190, 225, 255, 0.95);
+}
+.v2-pac-back b {
+  color: #56d8f5;
+  font-weight: 700;
+}
+
+/* Класс, в который можно провалиться: курсор + мягкая подсказка справа. */
+.v2-pac-card.is-drillable {
+  cursor: pointer;
+}
+.v2-pac-card.is-drillable::after {
+  content: "›";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  line-height: 1;
+  color: rgba(140, 190, 240, 0.35);
+  transition: color 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+.v2-pac-card.is-drillable:hover::after {
+  color: #56d8f5;
+  transform: translateY(-50%) translateX(2px);
+}
