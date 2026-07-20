@@ -165,6 +165,11 @@ export type LevelCard = {
   achievements: LadderAchievement[];
   /** Сколько ещё пунктов здоровья до следующего уровня. */
   hfToNext: number;
+  /**
+   * true — здоровье просело ниже порога текущего уровня: опыт обнулён,
+   * но сам уровень сохранён (награда не отбирается).
+   */
+  xpDrained: boolean;
 };
 
 /** Текущий уровень по health factor (1..5). */
@@ -183,10 +188,12 @@ export function currentLadderLevel(healthFactor: number): number {
 export function buildLevelCards(
   health: PortfolioHealth,
   portfolio: V2Portfolio,
+  maxLevelReached = 1,
 ): LevelCard[] {
   const hf = health.healthFactor;
   const all = getAchievements(health, portfolio);
-  const current = currentLadderLevel(hf);
+  // Уровень не откатывается: берём максимум из достигнутого ранее и текущего.
+  const current = Math.max(currentLadderLevel(hf), Math.max(1, maxLevelReached));
 
   return LEVEL_LADDER.map((step, idx) => {
     const next = LEVEL_LADDER[idx + 1];
@@ -195,10 +202,14 @@ export function buildLevelCards(
       step.level < current ? "done" : step.level === current ? "current" : "locked";
 
     const span = Math.max(hfTo - step.hfFrom, 1);
+    // Опыт внутри текущего уровня живёт по фактическому здоровью и МОЖЕТ убывать.
+    // Если здоровье упало ниже порога уровня — опыт 0, но уровень остаётся.
     const xpCurrent =
       status === "done" ? span : status === "current" ? Math.max(0, Math.min(hf - step.hfFrom, span)) : 0;
+    const xpDrained = status === "current" && hf < step.hfFrom;
 
     return {
+      xpDrained,
       level: step.level,
       title: step.title,
       focus: step.focus,

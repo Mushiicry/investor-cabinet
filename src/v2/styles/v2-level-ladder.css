@@ -149,3 +149,7 @@
   .v2-lad-card { padding: 14px; }
   .v2-lad-reward-sum { font-size: 23px; }
 }
+
+/* Опыт просел ниже порога уровня — уровень при этом сохраняется. */
+.v2-lad-drained { color: rgba(238, 200, 150, 0.92); }
+.v2-lad-drained b { color: #ffc266; }

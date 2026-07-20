@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
-import { buildLevelCards, MAX_LADDER_LEVEL, type LevelCard } from "../lib/levelLadder";
+import {
+  buildLevelCards,
+  currentLadderLevel,
+  MAX_LADDER_LEVEL,
+  type LevelCard,
+} from "../lib/levelLadder";
+import { persistMaxLevel, readMaxLevel } from "../lib/levelProgress";
 
 type Props = { health: PortfolioHealth; portfolio: V2Portfolio };
 
@@ -17,7 +23,14 @@ const STATUS_LABEL: Record<LevelCard["status"], string> = {
  * текущий — прогресс и что осталось; закрытый — требования и будущая награда.
  */
 export function V2LevelLadder({ health, portfolio }: Props) {
-  const cards = buildLevelCards(health, portfolio);
+  // Уровень не сгорает: фиксируем максимум достигнутого и больше не опускаем.
+  const hfLevel = currentLadderLevel(health.healthFactor);
+  const [maxLevel, setMaxLevel] = useState(() => Math.max(readMaxLevel(), hfLevel));
+  useEffect(() => {
+    setMaxLevel(persistMaxLevel(hfLevel));
+  }, [hfLevel]);
+
+  const cards = buildLevelCards(health, portfolio, maxLevel);
   const currentIdx = Math.max(0, cards.findIndex((c) => c.status === "current"));
   const [active, setActive] = useState(currentIdx);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -108,7 +121,14 @@ export function V2LevelLadder({ health, portfolio }: Props) {
             <div className="v2-lad-progress-line">
               {c.status === "done" && <>Опыт получен: <b>{c.xpMax} XP</b></>}
               {c.status === "current" && (
-                <>Опыт: <b>{c.xpCurrent} / {c.xpMax} XP</b> · до LVL {c.level + 1} ещё <b>{c.hfToNext}</b></>
+                c.xpDrained ? (
+                  <span className="v2-lad-drained">
+                    Опыт просел до <b>0 / {c.xpMax} XP</b> — здоровье ниже {c.hfFrom}.
+                    Уровень сохранён, награда остаётся за тобой.
+                  </span>
+                ) : (
+                  <>Опыт: <b>{c.xpCurrent} / {c.xpMax} XP</b> · до LVL {c.level + 1} ещё <b>{c.hfToNext}</b></>
+                )
               )}
               {c.status === "locked" && <>Откроется при здоровье <b>{c.hfFrom}</b></>}
             </div>
