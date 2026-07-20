@@ -8,6 +8,8 @@ const RESERVE_TARGET_PCT = RESERVE_TARGET_SHARE;
 type Props = {
   portfolio: V2Portfolio;
   strategy: FearGreedStrategy;
+  /** Спекулятивная нагрузка 0..1 (маржа открытых фьючей + свободная маржа HL). */
+  futuresShare?: number;
 };
 
 const money = new Intl.NumberFormat("ru-RU", {
@@ -17,7 +19,7 @@ const money = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 2,
 });
 
-export function V2DeployableCapital({ portfolio, strategy }: Props) {
+export function V2DeployableCapital({ portfolio, strategy, futuresShare = 0 }: Props) {
   const freeCash =
     portfolio.stableReserve || portfolio.spotDeployable + portfolio.futuresDeployable;
 
@@ -47,15 +49,39 @@ export function V2DeployableCapital({ portfolio, strategy }: Props) {
   );
   const spotCash = Math.max(remainingAfterStrategy - futuresCash, 0);
 
+  // Сколько ДОЛОЖИТЬ на Hyperliquid, чтобы спекулятивный блок стал ровно 10%
+  // капитала. Занято = маржа открытых фьючей + свободная маржа HL (futuresShare).
+  // База — вложенный капитал, как в calculateFuturesMarginShare.
+  const investedCapital = portfolio.totalInvested || 0;
+  const futuresTarget = MAX_FUTURES_EXPOSURE_SHARE * investedCapital;
+  const futuresUsed = futuresShare * investedCapital;
+  const futuresTopUp = Math.max(futuresTarget - futuresUsed, 0);
+  const futuresOver = futuresUsed > futuresTarget;
+
   const rows: Array<{
     label: string;
     value: number;
     glyph: string;
     color: string;
+    hint?: string;
+    hintDanger?: boolean;
   }> = [
     { label: "Стратегия", value: strategyCash, glyph: "⚡", color: "#5fe0cf" },
     { label: "Спот", value: spotCash, glyph: "○", color: "#56d8f5" },
-    { label: "Фьючи", value: futuresCash, glyph: "↗", color: "#8f9ff0" },
+    {
+      label: "Фьючи",
+      value: futuresCash,
+      glyph: "↗",
+      color: "#8f9ff0",
+      hint: investedCapital
+        ? futuresOver
+          ? `Лимит 10% превышен на ${money.format(futuresUsed - futuresTarget)} — не пополнять`
+          : futuresTopUp > 0.5
+            ? `Пополнить HL на ${money.format(futuresTopUp)} → ровно 10% (занято ${money.format(futuresUsed)} из ${money.format(futuresTarget)})`
+            : `Лимит 10% выбран полностью (${money.format(futuresUsed)})`
+        : undefined,
+      hintDanger: futuresOver,
+    },
   ];
 
   const maxValue = Math.max(...rows.map((r) => r.value), 1);
@@ -88,6 +114,11 @@ export function V2DeployableCapital({ portfolio, strategy }: Props) {
                 <div className="v2-alloc-track">
                   <span className="v2-alloc-fill" style={{ width: `${fill}%` }} />
                 </div>
+                {row.hint && (
+                  <div className={`v2-alloc-hint${row.hintDanger ? " is-danger" : ""}`}>
+                    {row.hint}
+                  </div>
+                )}
               </div>
             </div>
           );

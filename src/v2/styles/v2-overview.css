@@ -2327,3 +2327,15 @@
   min-height: 0;
   box-sizing: border-box;
 }
+
+/* Подсказка под строкой торгового капитала (напр. сколько доложить на HL,
+   чтобы спекулятивный блок стал ровно 10% капитала). */
+.v2-alloc-hint {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(150, 190, 225, 0.72);
+}
+.v2-alloc-hint.is-danger {
+  color: rgba(240, 160, 160, 0.9);
+}
