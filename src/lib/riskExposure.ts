@@ -51,6 +51,14 @@ export function calculateCategoryExposureShares(
   };
 }
 
+// Спекулятивная нагрузка против лимита 10% капитала (манифест, «Спекулятивная
+// часть»). Считаем ВСЁ, что уже выделено под спекуляцию:
+//   1) начальная маржа ОТКРЫТЫХ фьючерс-позиций (invested);
+//   2) СВОБОДНАЯ маржа на Hyperliquid (USDC HL) — деньги уже отведены под
+//      торговлю, поэтому входят в лимит наравне с открытыми позициями
+//      (решение владельца 2026-07-19).
+// GOLD остаётся в «Металлах» и в этот лимит НЕ входит (плечо контролируется
+// отдельно, ≤3x) — см. [[gold-leverage-control]].
 export function calculateFuturesMarginShare(positions: PositionCalculated[]): number {
   const investedCapital = positions.reduce((sum, item) => sum + item.invested, 0);
   if (!investedCapital) return 0;
@@ -59,7 +67,15 @@ export function calculateFuturesMarginShare(positions: PositionCalculated[]): nu
     .filter((item) => item.category === "Фьючерсы" && item.currentValue > 0)
     .reduce((sum, item) => sum + item.invested, 0);
 
-  return round(futuresInitialMargin / investedCapital);
+  const freeFuturesMargin = positions
+    .filter(
+      (item) =>
+        item.category === "Свободные деньги" &&
+        item.asset.toUpperCase().includes("USDC HL")
+    )
+    .reduce((sum, item) => sum + item.currentValue, 0);
+
+  return round((futuresInitialMargin + freeFuturesMargin) / investedCapital);
 }
 
 export function buildExposureWarnings(
