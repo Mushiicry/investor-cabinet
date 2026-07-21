@@ -114,6 +114,7 @@ type Props = {
   health: PortfolioHealth;
   positions?: V2Position[];
   transactions?: InvestorTransaction[];
+  profileName: string;
   profileAvatar: string;
   onOpenAuth: (tab: "signin" | "signup") => void;
   mobileOpen?: boolean;
@@ -123,7 +124,7 @@ type Props = {
 const mainNavItems = navItems.filter(i => i.label !== "Настройки");
 const settingsItem  = navItems.find(i => i.label === "Настройки")!;
 
-export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, positions = [], transactions = [], profileAvatar, onOpenAuth, mobileOpen = false, onCloseMobile }: Props) {
+export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, positions = [], transactions = [], profileName, profileAvatar, onOpenAuth, mobileOpen = false, onCloseMobile }: Props) {
   const { configured, user, displayName, signOut } = useAuth();
   const [levelOpen, setLevelOpen] = useState(false);
   const { level } = computeLevel(healthFactor);
@@ -233,6 +234,7 @@ export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, 
           health={health}
           positions={positions}
           transactions={transactions}
+          profileName={profileName}
           onClose={() => setLevelOpen(false)}
         />
       )}

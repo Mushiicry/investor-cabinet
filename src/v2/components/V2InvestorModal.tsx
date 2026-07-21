@@ -12,6 +12,7 @@ type Props = {
   health: PortfolioHealth;
   positions?: V2Position[];
   transactions?: InvestorTransaction[];
+  profileName?: string;
   onClose: () => void;
 };
 
@@ -93,10 +94,11 @@ export function computeLevel(hf: number): { level: number; xpCurrent: number; xp
   return { level: 1, xpCurrent: hf, xpMax: 40 };
 }
 
-export function V2InvestorModal({ portfolio, health, positions = [], transactions = [], onClose }: Props) {
+export function V2InvestorModal({ portfolio, health, positions = [], transactions = [], profileName = "", onClose }: Props) {
   const { level, xpCurrent, xpMax } = computeLevel(health.healthFactor);
   const xpFillPct = Math.round((xpCurrent / xpMax) * 100);
   const className = CLASS_BY_STATUS[portfolio.healthStatus] ?? "Стратегический инвестор";
+  const displayName = profileName.trim() || "ИНВЕСТОР";
   const achievements = getAchievements({ health, portfolio, positions, transactions });
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
@@ -116,7 +118,7 @@ export function V2InvestorModal({ portfolio, health, positions = [], transaction
             <span className="v2-im-avatar-letter">M</span>
           </div>
           <div className="v2-im-identity">
-            <div className="v2-im-name">ИНВЕСТОР</div>
+            <div className="v2-im-name">{displayName}</div>
             <div className="v2-im-class">{className}</div>
             <div className="v2-im-xp-row">
               <div className="v2-im-xp-track">
