@@ -101,6 +101,8 @@ describe("health concentration — per-asset score passthrough", () => {
       "Текущая доля: 42%",
       "Лимит худшего актива: 10%",
       "Альткоин-места: нет данных",
+      "Места акций: нет данных",
+      "Места металлов: нет данных",
     ]);
   });
 
@@ -155,6 +157,44 @@ describe("health concentration — per-asset score passthrough", () => {
       altcoins: ["ATOM", "INJ", "SEI", "PEPE"],
     });
     expect(conc(h).meta?.concentrationBlockers).toEqual(["Превышен лимит альткоин-мест"]);
+  });
+
+  it("концентрация: 2 места акций заняты — предупреждение", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      concentrationScore: 88,
+      maxAssetLimitUtilization: 0.7,
+      worstConcentrationAsset: "AAPL",
+      worstConcentrationLimit: 0.05,
+      worstConcentrationShare: 0.035,
+      worstConcentrationPortfolioShare: 0.035,
+      overLimitAssets: [],
+      stockSlotsUsed: 2,
+      stockSlotsTotal: 2,
+      stockSlotsFree: 0,
+      stocks: ["AAPL", "MSFT"],
+    });
+    expect(conc(h).meta?.concentrationWarnings).toEqual(["Все 2 места акций заняты"]);
+    expect(conc(h).meta?.concentrationFormula).toContain("Места акций: 2/2");
+  });
+
+  it("концентрация: больше 2 металлов — жёсткая блокировка", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      concentrationScore: 80,
+      maxAssetLimitUtilization: 0.7,
+      worstConcentrationAsset: "GOLD",
+      worstConcentrationLimit: 0.05,
+      worstConcentrationShare: 0.035,
+      worstConcentrationPortfolioShare: 0.035,
+      overLimitAssets: [],
+      metalSlotsUsed: 3,
+      metalSlotsTotal: 2,
+      metalSlotsFree: 0,
+      metals: ["GOLD", "NICKEL", "SILVER"],
+    });
+    expect(conc(h).meta?.concentrationBlockers).toEqual(["Превышен лимит мест металлов"]);
+    expect(conc(h).meta?.concentrationFormula).toContain("Места металлов: 3/2");
   });
 
   it("фьючерсы: свободный остаток до лимита не снимает баллы", () => {

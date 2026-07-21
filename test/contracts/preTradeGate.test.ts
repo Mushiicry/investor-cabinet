@@ -85,11 +85,20 @@ describe("pre-trade gate", () => {
     }
   });
 
-  it("не-крипто актив использует плоские 35% портфеля", () => {
+  it("металл: один актив использует лимит 5% портфеля", () => {
     const v = evaluateTrade(buy({ asset: "GOLD", amountUsd: 40, category: "Металлы" }), baseCtx);
     const pos = v.status !== "idle" ? v.checks.find((c) => c.key === "position") : undefined;
-    expect(pos?.limit).toBeCloseTo(0.35, 6);
+    expect(v.status).toBe("block");
+    expect(pos?.limit).toBeCloseTo(0.05, 6);
     expect(pos?.label).toBe("Доля GOLD в портфеле");
+  });
+
+  it("акция: один актив использует лимит 5% портфеля", () => {
+    const v = evaluateTrade(buy({ asset: "AAPL", amountUsd: 60, category: "Акции" }), baseCtx);
+    const pos = v.status !== "idle" ? v.checks.find((c) => c.key === "position") : undefined;
+    expect(v.status).toBe("block");
+    expect(pos?.limit).toBeCloseTo(0.05, 6);
+    expect(pos?.label).toBe("Доля AAPL в портфеле");
   });
 
   it("заход в подушку 10–30% резерва — caution", () => {
@@ -214,12 +223,53 @@ describe("pre-trade gate", () => {
     const v = evaluateTrade(buy({ asset: "PEPE", amountUsd: 1, category: "Крипта" }), ctx);
     expect(v.status).toBe("block");
     if (v.status === "block") {
-      const slotCheck = v.checks.find((check) => check.key === "altcoinSlots");
+      const slotCheck = v.checks.find((check) => check.key === "assetSlots");
       expect(slotCheck?.before).toBe(3);
       expect(slotCheck?.after).toBe(4);
       expect(slotCheck?.limit).toBe(3);
       expect(v.reasons).toContain("Альткоин-места по 5%");
       expect(v.maxAllowedAmount).toBe(0);
+    }
+  });
+
+  it("акции: новая 3-я акция блокируется", () => {
+    const ctx: GateContext = {
+      ...baseCtx,
+      positions: [
+        ...baseCtx.positions,
+        { asset: "AAPL", category: "Акции", value: 10 },
+        { asset: "MSFT", category: "Акции", value: 10 },
+      ],
+      allocation: [...baseCtx.allocation, { name: "Акции", value: 20 }],
+    };
+    const v = evaluateTrade(buy({ asset: "NVDA", amountUsd: 1, category: "Акции" }), ctx);
+    expect(v.status).toBe("block");
+    if (v.status === "block") {
+      const slotCheck = v.checks.find((check) => check.key === "assetSlots");
+      expect(slotCheck?.before).toBe(2);
+      expect(slotCheck?.after).toBe(3);
+      expect(slotCheck?.limit).toBe(2);
+      expect(v.reasons).toContain("Места акций по 5%");
+    }
+  });
+
+  it("металлы: новый 3-й металл блокируется", () => {
+    const ctx: GateContext = {
+      ...baseCtx,
+      positions: [
+        { asset: "GOLD", category: "Металлы", value: 10 },
+        { asset: "NICKEL", category: "Металлы", value: 10 },
+      ],
+      allocation: [{ name: "Металлы", value: 20 }, { name: "Свободные деньги", value: 980 }],
+    };
+    const v = evaluateTrade(buy({ asset: "SILVER", amountUsd: 1, category: "Металлы" }), ctx);
+    expect(v.status).toBe("block");
+    if (v.status === "block") {
+      const slotCheck = v.checks.find((check) => check.key === "assetSlots");
+      expect(slotCheck?.before).toBe(2);
+      expect(slotCheck?.after).toBe(3);
+      expect(slotCheck?.limit).toBe(2);
+      expect(v.reasons).toContain("Места металлов по 5%");
     }
   });
 

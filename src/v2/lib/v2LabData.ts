@@ -274,6 +274,14 @@ export const buildLiveV2Data = (
     altcoinSlotsTotal: concentration.altcoinSlotsTotal,
     altcoinSlotsFree: concentration.altcoinSlotsFree,
     altcoins: concentration.altcoins,
+    stockSlotsUsed: concentration.stockSlotsUsed,
+    stockSlotsTotal: concentration.stockSlotsTotal,
+    stockSlotsFree: concentration.stockSlotsFree,
+    stocks: concentration.stocks,
+    metalSlotsUsed: concentration.metalSlotsUsed,
+    metalSlotsTotal: concentration.metalSlotsTotal,
+    metalSlotsFree: concentration.metalSlotsFree,
+    metals: concentration.metals,
   };
   const computedHealth = computePortfolioHealth(liveHealthInput);
   // Честный диагноз: используем собственный расчёт, а не сглаженный health из API.

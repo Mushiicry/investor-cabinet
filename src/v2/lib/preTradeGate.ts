@@ -53,9 +53,13 @@ export const CRYPTO_ASSET_LIMITS: Record<string, number> = {
   WBNB: 0.1,
 };
 export const CRYPTO_ALT_LIMIT = 0.05;
+export const STOCK_ASSET_LIMIT = 0.05;
+export const METAL_ASSET_LIMIT = 0.05;
 
 /** Мест под альткоины: 15% крипто-блока ÷ 5% = 3 (мажоры занимают 85%). */
 export const MAX_ALTCOIN_SLOTS = 3;
+export const MAX_STOCK_SLOTS = 2;
+export const MAX_METAL_SLOTS = 2;
 
 /** true — актив это «мажор» с именным лимитом (не альткоин). */
 export function isCryptoMajor(asset: string): boolean {
@@ -89,6 +93,35 @@ export function altcoinSlots(cryptoAssets: string[]): {
   return { used, total: MAX_ALTCOIN_SLOTS, free: Math.max(MAX_ALTCOIN_SLOTS - used, 0), altcoins };
 }
 
+function uniqueAssets(assets: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of assets) {
+    const key = raw.trim().toUpperCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(raw.trim());
+  }
+  return out;
+}
+
+export function fixedClassSlots(assets: string[], total: number): {
+  used: number;
+  total: number;
+  free: number;
+  assets: string[];
+} {
+  const listed = uniqueAssets(assets);
+  return { used: listed.length, total, free: Math.max(total - listed.length, 0), assets: listed };
+}
+
+export function assetLimit(category: string, asset: string): number {
+  if (category === CRYPTO_CATEGORY) return cryptoAssetLimit(asset);
+  if (category === STOCKS_CATEGORY) return STOCK_ASSET_LIMIT;
+  if (category === METALS_CATEGORY) return METAL_ASSET_LIMIT;
+  return MAX_SINGLE_RISK_ASSET_SHARE;
+}
+
 // ── Модель «Концентрации» (двухчастная, не роняет в 0 из-за одного актива) ──
 // 1) Системный риск: крупнейшая позиция как доля ВСЕГО портфеля (что реально
 //    потеряешь, если она рухнет). 100 при ≤20% портфеля, 0 при ≥50%.
@@ -116,12 +149,21 @@ export type AssetConcentration = {
   altcoinSlotsTotal: number;
   altcoinSlotsFree: number;
   altcoins: string[];
+  stockSlotsUsed: number;
+  stockSlotsTotal: number;
+  stockSlotsFree: number;
+  stocks: string[];
+  metalSlotsUsed: number;
+  metalSlotsTotal: number;
+  metalSlotsFree: number;
+  metals: string[];
 };
 
 /**
  * Концентрация по per-asset лимитам (единый источник со шлюзом): крипто —
- * против лимита ВНУТРИ крипто-блока (ETH 35%…альт 5%), прочие — против 35%
- * портфеля. Кэш не концентрируем. Считает итоговый балл двухчастной моделью.
+ * против лимита ВНУТРИ крипто-блока (ETH 35%…альт 5%), акции/металлы —
+ * 5% портфеля на актив и максимум 2 актива в классе. Кэш не концентрируем.
+ * Считает итоговый балл двухчастной моделью.
  */
 export function assetConcentration(
   positions: GatePosition[],
@@ -141,6 +183,18 @@ export function assetConcentration(
       .filter((position) => position.category === CRYPTO_CATEGORY && position.value > 0)
       .map((position) => position.asset),
   );
+  const stockSlots = fixedClassSlots(
+    positions
+      .filter((position) => position.category === STOCKS_CATEGORY && position.value > 0)
+      .map((position) => position.asset),
+    MAX_STOCK_SLOTS,
+  );
+  const metalSlots = fixedClassSlots(
+    positions
+      .filter((position) => position.category === METALS_CATEGORY && position.value > 0)
+      .map((position) => position.asset),
+    MAX_METAL_SLOTS,
+  );
 
   for (const p of positions) {
     if (!p.value || p.value <= 0 || p.category === CASH_CATEGORY) continue;
@@ -149,7 +203,7 @@ export function assetConcentration(
     if (base <= 0) continue;
     const share = p.value / base;
     const portfolioShare = totalPortfolio > 0 ? p.value / totalPortfolio : 0;
-    const limit = isCrypto ? cryptoAssetLimit(p.asset) : MAX_SINGLE_RISK_ASSET_SHARE;
+    const limit = assetLimit(p.category, p.asset);
     const util = limit > 0 ? share / limit : 0;
 
     if (portfolioShare > largestPortfolioShare) largestPortfolioShare = portfolioShare;
@@ -186,6 +240,14 @@ export function assetConcentration(
     altcoinSlotsTotal: slots.total,
     altcoinSlotsFree: slots.free,
     altcoins: slots.altcoins,
+    stockSlotsUsed: stockSlots.used,
+    stockSlotsTotal: stockSlots.total,
+    stockSlotsFree: stockSlots.free,
+    stocks: stockSlots.assets,
+    metalSlotsUsed: metalSlots.used,
+    metalSlotsTotal: metalSlots.total,
+    metalSlotsFree: metalSlots.free,
+    metals: metalSlots.assets,
   };
 }
 
@@ -248,7 +310,7 @@ export type TradeInput = {
   category?: string;
 };
 
-export type GateCheckKey = "capital" | "position" | "class" | "altcoinSlots";
+export type GateCheckKey = "capital" | "position" | "class" | "assetSlots";
 export type GateCheckSeverity = "block" | "warn";
 
 export type GateCheck = {
@@ -383,13 +445,13 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   // ── Лимит доли одной позиции (жёсткий) ────────────────────────
   // Крипто-активы: лимит per-asset ВНУТРИ крипто-блока (ETH 35%, BTC 20%,
   // SOL/TON 10%, прочие альты 5%). При доборе крипто-блок растёт на сумму
-  // (деньги переходят из кэша в крипту). Прочие классы: плоские 35% портфеля.
+  // (деньги переходят из кэша в крипту). Акции/металлы: один актив ≤5% портфеля.
   const posValue = ctx.positions.find((p) => p.asset === input.asset)?.value ?? 0;
   const isCryptoAsset = category === CRYPTO_CATEGORY;
+  const isStockAsset = category === STOCKS_CATEGORY;
+  const isMetalAsset = category === METALS_CATEGORY;
   const cryptoBlockValue = ctx.allocation.find((a) => a.name === CRYPTO_CATEGORY)?.value ?? 0;
-  const positionLimit = isCryptoAsset
-    ? cryptoAssetLimit(input.asset)
-    : MAX_SINGLE_RISK_ASSET_SHARE;
+  const positionLimit = assetLimit(category, input.asset);
   const posBaseBefore = isCryptoAsset ? cryptoBlockValue : total;
   const posBaseAfter = isCryptoAsset ? cryptoBlockValue + amount : total;
   const positionAfterShare = posBaseAfter > 0 ? (posValue + amount) / posBaseAfter : 0;
@@ -397,9 +459,19 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   const altSlots = isCryptoAsset
     ? altcoinSlots(ctx.positions.filter((p) => p.category === CRYPTO_CATEGORY && p.value > 0).map((p) => p.asset))
     : null;
+  const stockSlots = isStockAsset
+    ? fixedClassSlots(ctx.positions.filter((p) => p.category === STOCKS_CATEGORY && p.value > 0).map((p) => p.asset), MAX_STOCK_SLOTS)
+    : null;
+  const metalSlots = isMetalAsset
+    ? fixedClassSlots(ctx.positions.filter((p) => p.category === METALS_CATEGORY && p.value > 0).map((p) => p.asset), MAX_METAL_SLOTS)
+    : null;
   const isAltcoin = isCryptoAsset && !isCryptoMajor(input.asset);
   const isNewAltcoin =
     isAltcoin && !altSlots?.altcoins.some((asset) => asset.toUpperCase() === input.asset.trim().toUpperCase()) && !existingAsset;
+  const isNewStock =
+    isStockAsset && !stockSlots?.assets.some((asset) => asset.toUpperCase() === input.asset.trim().toUpperCase()) && !existingAsset;
+  const isNewMetal =
+    isMetalAsset && !metalSlots?.assets.some((asset) => asset.toUpperCase() === input.asset.trim().toUpperCase()) && !existingAsset;
   checks.push({
     key: "position",
     label: isCryptoAsset
@@ -416,7 +488,7 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   if (isNewAltcoin && altSlots) {
     const afterSlots = altSlots.used + 1;
     checks.push({
-      key: "altcoinSlots",
+      key: "assetSlots",
       label: "Альткоин-места по 5%",
       ok: afterSlots <= altSlots.total,
       severity: "block",
@@ -425,6 +497,34 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
       limit: altSlots.total,
       isShare: false,
       note: "В крипто-блоке есть только 3 места под альткоины по 5%.",
+    });
+  }
+  if (isNewStock && stockSlots) {
+    const afterSlots = stockSlots.used + 1;
+    checks.push({
+      key: "assetSlots",
+      label: "Места акций по 5%",
+      ok: afterSlots <= stockSlots.total,
+      severity: "block",
+      before: stockSlots.used,
+      after: afterSlots,
+      limit: stockSlots.total,
+      isShare: false,
+      note: "В портфеле есть только 2 места под акции по 5%.",
+    });
+  }
+  if (isNewMetal && metalSlots) {
+    const afterSlots = metalSlots.used + 1;
+    checks.push({
+      key: "assetSlots",
+      label: "Места металлов по 5%",
+      ok: afterSlots <= metalSlots.total,
+      severity: "block",
+      before: metalSlots.used,
+      after: afterSlots,
+      limit: metalSlots.total,
+      isShare: false,
+      note: "В портфеле есть только 2 места под металлы по 5%.",
     });
   }
 
@@ -462,7 +562,12 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
     cap === null
       ? Infinity
       : cap * total - (ctx.allocation.find((a) => a.name === category)?.value ?? 0);
-  const slotRoom = isNewAltcoin && altSlots && altSlots.used >= altSlots.total ? 0 : Infinity;
+  const slotRoom =
+    (isNewAltcoin && altSlots && altSlots.used >= altSlots.total) ||
+    (isNewStock && stockSlots && stockSlots.used >= stockSlots.total) ||
+    (isNewMetal && metalSlots && metalSlots.used >= metalSlots.total)
+      ? 0
+      : Infinity;
   const maxSafeAmount = clampMin0(Math.min(greenMax, positionRoom, classRoom, slotRoom));
   const maxAllowedAmount = clampMin0(Math.min(hardMax, positionRoom, classRoom, slotRoom));
 

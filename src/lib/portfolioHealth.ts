@@ -129,6 +129,14 @@ export type HealthComponentMeta = {
   altcoinSlotsTotal?: number;
   altcoinSlotsFree?: number;
   altcoins?: string[];
+  stockSlotsUsed?: number;
+  stockSlotsTotal?: number;
+  stockSlotsFree?: number;
+  stocks?: string[];
+  metalSlotsUsed?: number;
+  metalSlotsTotal?: number;
+  metalSlotsFree?: number;
+  metals?: string[];
   concentrationBlockers?: string[];
   concentrationWarnings?: string[];
   concentrationFormula?: string[];
@@ -245,6 +253,14 @@ export type HealthInput = {
   altcoinSlotsTotal?: number;
   altcoinSlotsFree?: number;
   altcoins?: string[];
+  stockSlotsUsed?: number;
+  stockSlotsTotal?: number;
+  stockSlotsFree?: number;
+  stocks?: string[];
+  metalSlotsUsed?: number;
+  metalSlotsTotal?: number;
+  metalSlotsFree?: number;
+  metals?: string[];
 };
 
 export type PortfolioHealth = {
@@ -460,6 +476,14 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   const altcoinSlotsTotal = input.altcoinSlotsTotal;
   const altcoinSlotsFree = input.altcoinSlotsFree;
   const altcoins = input.altcoins;
+  const stockSlotsUsed = input.stockSlotsUsed;
+  const stockSlotsTotal = input.stockSlotsTotal;
+  const stockSlotsFree = input.stockSlotsFree;
+  const stocks = input.stocks;
+  const metalSlotsUsed = input.metalSlotsUsed;
+  const metalSlotsTotal = input.metalSlotsTotal;
+  const metalSlotsFree = input.metalSlotsFree;
+  const metals = input.metals;
   if (usePerAssetConcentration && overLimitAssets.length > 0) {
     concentrationBlockers.push("Актив выше своего лимита");
   } else if (usePerAssetConcentration && concentrationUtil >= 0.85) {
@@ -480,6 +504,36 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   ) {
     concentrationWarnings.push("Все 3 альткоин-места заняты");
   }
+  if (
+    usePerAssetConcentration &&
+    stockSlotsUsed !== undefined &&
+    stockSlotsTotal !== undefined &&
+    stockSlotsUsed > stockSlotsTotal
+  ) {
+    concentrationBlockers.push("Превышен лимит мест акций");
+  } else if (
+    usePerAssetConcentration &&
+    stockSlotsUsed !== undefined &&
+    stockSlotsTotal !== undefined &&
+    stockSlotsUsed === stockSlotsTotal
+  ) {
+    concentrationWarnings.push("Все 2 места акций заняты");
+  }
+  if (
+    usePerAssetConcentration &&
+    metalSlotsUsed !== undefined &&
+    metalSlotsTotal !== undefined &&
+    metalSlotsUsed > metalSlotsTotal
+  ) {
+    concentrationBlockers.push("Превышен лимит мест металлов");
+  } else if (
+    usePerAssetConcentration &&
+    metalSlotsUsed !== undefined &&
+    metalSlotsTotal !== undefined &&
+    metalSlotsUsed === metalSlotsTotal
+  ) {
+    concentrationWarnings.push("Все 2 места металлов заняты");
+  }
   const concentrationFormula = usePerAssetConcentration
     ? [
         `Балл концентрации: ${concentrationScore}/100`,
@@ -492,6 +546,12 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
         altcoinSlotsUsed !== undefined && altcoinSlotsTotal !== undefined
           ? `Альткоин-места: ${altcoinSlotsUsed}/${altcoinSlotsTotal}`
           : "Альткоин-места: нет данных",
+        stockSlotsUsed !== undefined && stockSlotsTotal !== undefined
+          ? `Места акций: ${stockSlotsUsed}/${stockSlotsTotal}`
+          : "Места акций: нет данных",
+        metalSlotsUsed !== undefined && metalSlotsTotal !== undefined
+          ? `Места металлов: ${metalSlotsUsed}/${metalSlotsTotal}`
+          : "Места металлов: нет данных",
       ]
     : [
         `Балл концентрации: ${concentrationScore}/100`,
@@ -499,7 +559,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
         "Лимит legacy-модели: 35% портфеля",
       ];
   const concentrationDesc = usePerAssetConcentration
-    ? "У каждого актива свой лимит: ETH 35% / BTC 20% / SOL·TON·BNB 10% / альты 5% ВНУТРИ крипто-блока; прочие классы — 35% портфеля. Балл = системный риск (крупнейшая позиция от портфеля) минус ограниченный штраф за активы сверх лимита — один перевес не обнуляет метрику."
+    ? "У каждого актива свой лимит: ETH 35% / BTC 20% / SOL·TON·BNB 10% / альты 5% внутри крипто-блока; акции и металлы — 5% портфеля на актив и максимум 2 актива в классе. Балл = системный риск крупнейшей позиции минус ограниченный штраф за активы сверх лимита."
     : "Нет перегруза одним активом (≤35%).";
 
   const components: HealthComponent[] = [
@@ -581,6 +641,14 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
             altcoinSlotsTotal,
             altcoinSlotsFree,
             altcoins,
+            stockSlotsUsed,
+            stockSlotsTotal,
+            stockSlotsFree,
+            stocks,
+            metalSlotsUsed,
+            metalSlotsTotal,
+            metalSlotsFree,
+            metals,
             concentrationBlockers,
             concentrationWarnings,
             concentrationFormula,

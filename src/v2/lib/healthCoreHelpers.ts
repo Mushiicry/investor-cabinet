@@ -126,7 +126,11 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
     case "concentration": {
       const m = c.meta;
       if ((m?.concentrationBlockers ?? []).includes("Превышен лимит альткоин-мест")) return "Превышен лимит альткоин-мест";
+      if ((m?.concentrationBlockers ?? []).includes("Превышен лимит мест акций")) return "Превышен лимит мест акций";
+      if ((m?.concentrationBlockers ?? []).includes("Превышен лимит мест металлов")) return "Превышен лимит мест металлов";
       if ((m?.concentrationWarnings ?? []).includes("Все 3 альткоин-места заняты")) return "Все 3 альткоин-места заняты";
+      if ((m?.concentrationWarnings ?? []).includes("Все 2 места акций заняты")) return "Все 2 места акций заняты";
+      if ((m?.concentrationWarnings ?? []).includes("Все 2 места металлов заняты")) return "Все 2 места металлов заняты";
       if ((m?.concentrationBlockers ?? []).length) return m?.concentrationBlockers?.[0] ?? "";
       if ((m?.concentrationWarnings ?? []).length) return m?.concentrationWarnings?.[0] ?? "";
       if (m?.worstConcentrationAsset && m.worstConcentrationAsset !== "-" && (m.maxAssetLimitUtilization ?? 0) > 1) {
@@ -238,11 +242,39 @@ export function buildCoreRecs(
       source: "В крипто-блоке только 3 места под альткоины по 5% → здоровье +5",
     });
   }
+  if (concentrationBlockers.includes("Превышен лимит мест акций")) {
+    result.push({
+      action: "Сократить лишнюю акцию или освободить место",
+      gain: 5,
+      source: "В портфеле только 2 места под акции по 5% → здоровье +5",
+    });
+  }
+  if (concentrationBlockers.includes("Превышен лимит мест металлов")) {
+    result.push({
+      action: "Сократить лишний металл или освободить место",
+      gain: 5,
+      source: "В портфеле только 2 места под металлы по 5% → здоровье +5",
+    });
+  }
   if ((cm?.concentrationWarnings ?? []).includes("Все 3 альткоин-места заняты")) {
     result.push({
       action: "Не добавлять новые альткоины",
       gain: 3,
       source: "Все 3 места под альткоины уже заняты",
+    });
+  }
+  if ((cm?.concentrationWarnings ?? []).includes("Все 2 места акций заняты")) {
+    result.push({
+      action: "Не добавлять новые акции",
+      gain: 3,
+      source: "Все 2 места под акции уже заняты",
+    });
+  }
+  if ((cm?.concentrationWarnings ?? []).includes("Все 2 места металлов заняты")) {
+    result.push({
+      action: "Не добавлять новые металлы",
+      gain: 3,
+      source: "Все 2 места под металлы уже заняты",
     });
   }
   if (cm?.worstConcentrationAsset && cm.worstConcentrationAsset !== "-" && (cm.maxAssetLimitUtilization ?? 0) > 1) {
