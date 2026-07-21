@@ -2778,3 +2778,45 @@ API отвечает, минутный триггер алертов работ�
 - AbortError больше не логируется как ошибка (штатная отмена запроса)
 - одна повторная попытка на 5xx: транзиентный 502 прокси больше не роняет
   данные в кэш/fallback
+
+---
+
+## 2026-07-21 (5) — V2 baseline перед Patch 3: Risk & Health manifesto
+
+Назначение:
+зафиксировать рабочую версию 2 сайта перед началом большого Patch 3 по
+Risk & Portfolio Health. Этот патч не меняет runtime-код, API, Apps Script,
+Google Sheets или UI. Он сохраняет архитектурную точку, от которой безопасно
+начинать длинную переработку Health Factor, Survival Engine, Decision Engine,
+Pre-Trade Engine, Trade Journal и Behavior Engine.
+
+Затронутые файлы:
+- `docs/RISK_AND_PORTFOLIO_HEALTH_MANIFEST.md`
+- `docs/RISK_HEALTH_IMPLEMENTATION_ROADMAP.md`
+- `docs/RISK_HEALTH_STAGE0_AUDIT_2026-07-21.md`
+- `docs/PORTFOLIO_HEALTH_AUDIT_2026-07-21.md` удалён как устаревшая форма
+  разового аудита
+- `docs/HANDOFF.md`
+- `docs/INVESTOR_CABINET_ROADMAP.md`
+- `docs/CODEX_TRACKER_2026-07-19.md`
+- `docs/PATCH_LOG.md`
+
+Что зафиксировано:
+- старый audit превращён в главный документ проекта:
+  `RISK_AND_PORTFOLIO_HEALTH_MANIFEST.md`
+- создан implementation roadmap по этапам от HealthFactorV2 до Behavior Engine
+- выполнен Stage 0 read-only audit текущих API/Sheets/Health/Risk/Gate
+- выбран следующий безопасный code scope:
+  `Stage 1A — Speculative Risk cap-control patch`
+- подтверждено: 10% active trading sleeve — hard cap, а не target funding
+- подтверждено: Google Sheets/API остаются source of truth
+- подтверждено: UI/код не тронуты до готовности расчетной модели
+
+Rollback / checkpoint:
+- git tag: `v2-baseline-pre-patch3-2026-07-21`
+- откат к состоянию перед Patch 3: checkout/revert к этому tag/commit
+- runtime-отката не требуется, потому что патч docs-only
+
+Deployment impact:
+docs-only. Push в GitHub нужен как сохранение baseline; Vercel deploy с `main`
+не должен менять поведение сайта.

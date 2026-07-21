@@ -7,6 +7,33 @@ Product mode: personal investor operating system. Risk First / PnL Second.
 
 ---
 
+# 2026-07-21 — V2 baseline before Patch 3
+
+Статус:
+рабочая версия 2 сайта зафиксирована перед большим Patch 3 по Risk & Portfolio Health.
+
+Checkpoint:
+
+```text
+v2-baseline-pre-patch3-2026-07-21
+```
+
+Codex docs-only результат:
+
+- создан `docs/RISK_AND_PORTFOLIO_HEALTH_MANIFEST.md`
+- создан `docs/RISK_HEALTH_IMPLEMENTATION_ROADMAP.md`
+- создан `docs/RISK_HEALTH_STAGE0_AUDIT_2026-07-21.md`
+- удалён устаревший `docs/PORTFOLIO_HEALTH_AUDIT_2026-07-21.md`
+
+Смысл:
+аудит Health превращен в архитектурную конституцию проекта. Следующий технический
+шаг — `Stage 1A: Speculative Risk cap-control patch`, без изменения API/Sheets.
+
+Граница:
+runtime-код, UI, API, Apps Script и Google Sheets в baseline-коммите не менялись.
+
+---
+
 # Ownership Boundary (без изменений)
 
 - **Codex владеет:** документация, API-контракт-доки, accounting/risk-доки, security-доки, read-only верификация, изолированные тесты/фикстуры ПОСЛЕ стабилизации `src/` Claude.

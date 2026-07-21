@@ -23,6 +23,7 @@
 
 | | |
 |---|---|
+| V2 baseline | ✅ рабочая версия 2 сайта зафиксирована перед большим Patch 3; checkpoint tag: `v2-baseline-pre-patch3-2026-07-21` |
 | main | `2f05bf0`+ — стейбл-потоки, покупки на кошельках, рефактор walletLedger |
 | main `/exec` | ✅ `success:true` (LIVE), деплой `@54`, URL не менялся |
 | wife `/exec` | ✅ `success:true` (LIVE) |
@@ -74,6 +75,9 @@
 
 ## 4. Открытые задачи — Codex
 
+- [x] **Stage 0 Risk & Health baseline** — создан manifesto, implementation roadmap,
+      read-only Stage 0 audit; runtime-код, API, Apps Script, Sheets и UI не менялись.
+      Следующий code scope: `Stage 1A — Speculative Risk cap-control patch`.
 - [ ] **Дописать блок SPCXB в конец `CODEX_TRACKER_2026-07-11.md`** — готовый текст выдан
       Муши 2026-07-16. Только вставка в конец файла, один коммит, ничего больше.
 - Поддерживать: `docs/` в актуальном состоянии, контракт-тесты при изменениях API,
@@ -86,6 +90,10 @@
 
 ## 5. Открытые задачи — Claude
 
+- [ ] **Patch 3 / Risk & Health implementation** — начинать только от checkpoint
+      `v2-baseline-pre-patch3-2026-07-21`. Первый безопасный шаг: убрать futures
+      underfunded penalty и перевести active trading sleeve в cap-control без
+      изменения API/Sheets.
 - [ ] **Симулятор → 6 рычагов** (все грани Health, включая диверсификацию и разбивку
       фьючерсов), чтобы каждую категорию можно было довести до 100 и увидеть путь к сотке.
 - [ ] *(опц.)* Коридор и для **Гибкости** — сейчас она всё ещё монотонно растёт от кэша,

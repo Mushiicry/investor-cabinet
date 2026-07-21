@@ -2,10 +2,42 @@
 
 Версия: Product Roadmap / Master Plan  
 Статус: Active Development  
-Текущий этап: V2 экраны завершены — Обзор / Портфель / Сценарии / Риск → следующий: Отчёты  
-Дата фиксации: 2026-06-17
+Текущий этап: V2 рабочий сайт зафиксирован → следующий большой Patch 3: Risk & Portfolio Health
+Дата фиксации: 2026-07-21
 
 ---
+
+# 0.0 Checkpoint перед Patch 3
+
+Версия 2 рабочего сайта считается сохраненной baseline-точкой перед большим
+Patch 3 по Risk & Portfolio Health.
+
+Checkpoint:
+
+```text
+tag: v2-baseline-pre-patch3-2026-07-21
+```
+
+Что сохранено:
+
+- `RISK_AND_PORTFOLIO_HEALTH_MANIFEST.md` — конституция риска и здоровья капитала;
+- `RISK_HEALTH_IMPLEMENTATION_ROADMAP.md` — порядок реализации Patch 3;
+- `RISK_HEALTH_STAGE0_AUDIT_2026-07-21.md` — read-only фиксация текущего API/Sheets/Health/Risk/Gate;
+- старый `PORTFOLIO_HEALTH_AUDIT_2026-07-21.md` удалён как устаревший audit-формат.
+
+Следующий безопасный технический шаг:
+
+```text
+Stage 1A — Speculative Risk cap-control patch
+```
+
+Граница:
+
+- не менять Google Sheets без отдельного согласования;
+- не менять Apps Script без отдельного согласования;
+- не менять API contract без отдельного согласования;
+- не менять UI-геометрию до готовности расчетной модели;
+- сначала pure calculations, потом presentation.
 
 # 0.1 Текущая стадия: миграция на новый визуал (V2)
 
