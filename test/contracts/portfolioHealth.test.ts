@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeDiversificationScore,
   computePortfolioHealth,
   liquidationPenalty,
   type HealthInput,
@@ -104,5 +105,28 @@ describe("health concentration — per-asset score passthrough", () => {
     const h = computePortfolioHealth({ ...base, largestShare: 0.5 });
     expect(conc(h).score).toBe(0); // largestShare 0.5 = CONCENTRATION_HARD
     expect(conc(h).meta).toBeUndefined();
+  });
+});
+
+describe("диверсификация калибруется по манифесту, а не по равным долям", () => {
+  it("портфель, идеально собранный по лимитам политики, даёт 100", () => {
+    // Резерв 30% и фьючерсы 10% → на рисковый спот 60%: крипта 40, металлы 10, акции 10.
+    expect(computeDiversificationScore([40, 10, 10])).toBe(100);
+  });
+
+  it("перевес одного класса всё ещё снижает балл", () => {
+    expect(computeDiversificationScore([81, 11, 8])).toBeLessThan(70);
+  });
+
+  it("весь риск в одном классе — ноль", () => {
+    expect(computeDiversificationScore([100, 0, 0])).toBe(0);
+  });
+
+  it("равные доли не наказываются — тоже 100", () => {
+    expect(computeDiversificationScore([33, 33, 33])).toBe(100);
+  });
+
+  it("меньше двух классов оценить нельзя", () => {
+    expect(computeDiversificationScore([100])).toBe(0);
   });
 });

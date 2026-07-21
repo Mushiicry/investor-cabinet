@@ -170,6 +170,14 @@ export function computeReserveScore(reserveShare: number): number {
   return score((1 - reserveShare) / (1 - RESERVE_BAND_MAX_SHARE));
 }
 
+// Эталон диверсификации — не равные доли, а структура из манифеста.
+// При резерве 30% и фьючерсах 10% на рисковый спот остаётся 60%: крипта 40,
+// металлы 10, акции 10. Внутри рисковой части это 0.667 / 0.167 / 0.167,
+// то есть HHI = 0.5. Раньше шкала требовала равенства (HHI = 1/n), и такой
+// «идеальный по политике» портфель получал 75 из 100 — метрика не могла
+// показать 100 ни при каком допустимом раскладе и горела вечно.
+const DIVERSIFICATION_TARGET_HHI = 0.5;
+
 export function computeDiversificationScore(riskShares: number[]): number {
   const n = riskShares.length;
   const total = riskShares.reduce((sum, value) => sum + value, 0);
@@ -180,7 +188,11 @@ export function computeDiversificationScore(riskShares: number[]): number {
     return sum + weight * weight;
   }, 0);
 
-  return score((1 - hhi) / (1 - 1 / n));
+  // Идеал не может быть строже равномерного распределения: при двух классах
+  // 1/n = 0.5 совпадает с целью, при большем числе классов цель мягче.
+  const targetHhi = Math.max(DIVERSIFICATION_TARGET_HHI, 1 / n);
+
+  return score((1 - hhi) / (1 - targetHhi));
 }
 
 export type HealthInput = {

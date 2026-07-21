@@ -52,7 +52,6 @@ function getDesktopViewport() {
   }
 
   const scale = Math.min(
-    1,
     window.innerWidth / DESKTOP_DESIGN_WIDTH,
     window.innerHeight / DESKTOP_DESIGN_HEIGHT,
   );
