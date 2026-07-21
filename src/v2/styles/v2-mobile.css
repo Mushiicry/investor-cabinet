@@ -904,3 +904,41 @@
   line-height: 1.4;
   color: rgba(140, 175, 195, 0.6);
 }
+
+/* ═══ МЕТКА ПРОИСХОЖДЕНИЯ ДАННЫХ ═══
+   Инвестор должен различать расчёт системы, внешний источник и собственный
+   ручной ввод: доверие к числу зависит от того, кто за него отвечает. */
+.v2-source-tag {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-transform: none;
+  cursor: help;
+}
+
+/* Ручной ввод — тёплый оттенок: за это число отвечает человек. */
+.v2-source-tag.is-manual {
+  background: rgba(210, 170, 90, 0.1);
+  border: 1px solid rgba(210, 170, 90, 0.24);
+  color: rgba(225, 185, 110, 0.85);
+}
+
+/* Внешний источник и расчёт — холодный акцент интерфейса. */
+.v2-source-tag.is-api,
+.v2-source-tag.is-mixed {
+  background: rgba(77, 200, 255, 0.08);
+  border: 1px solid rgba(77, 200, 255, 0.2);
+  color: rgba(120, 205, 240, 0.8);
+}
+
+.v2-source-tag.is-computed {
+  background: rgba(120, 200, 170, 0.08);
+  border: 1px solid rgba(120, 200, 170, 0.2);
+  color: rgba(130, 210, 180, 0.8);
+}

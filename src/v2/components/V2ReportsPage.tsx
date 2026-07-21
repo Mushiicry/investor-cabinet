@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { V2SourceTag } from "./V2SourceTag";
 import {
   getPortfolioHistorySummary,
   getSortedPortfolioHistory,
@@ -246,7 +247,10 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
         </div>
         <div className="v2-rep-kpi">
           <span className="v2-rep-kpi-label" title="Оценка по текущей средней цене входа. Для точного налогового/бухгалтерского учёта нужен лотовый (FIFO) расчёт с учётом комиссий.">
-            Зафиксировано с продаж · <em className="v2-rep-est">оценка</em>
+            Зафиксировано с продаж
+            {/* Другое число, чем «Реализовано за всё время» на «Портфеле»:
+                там ручной блок закрытых позиций, здесь расчёт по журналу. */}
+            <V2SourceTag source="computed" title="Оценка по журналу сделок и текущей средней цене входа — не равна ручному блоку закрытых позиций" />
           </span>
           <strong className={`v2-rep-kpi-value v2-rep-cell-pnl ${totalRealized != null && totalRealized >= 0 ? "is-pos" : "is-neg"}`}>
             {totalRealized != null ? `≈ ${signedMoney(totalRealized)}` : "—"}
@@ -259,6 +263,7 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
           <div className="v2-panel v2-rep-journal-panel">
             <div className="v2-rep-journal-header">
               <span className="v2-panel-kicker">История портфеля</span>
+              <V2SourceTag source="computed" title="Ежедневные снимки портфеля, считает система" />
             </div>
 
             <div className="v2-rep-table">
@@ -307,6 +312,9 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
           <div className="v2-panel v2-rep-journal-panel">
             <div className="v2-rep-journal-header">
               <span className="v2-panel-kicker">История сделок</span>
+              {/* Строки пишут импорты кошельков, а не человек — в отличие
+                  от блока реализованного профита в «Расчетах». */}
+              <V2SourceTag source="api" title="Заполняется автоматически импортами кошельков" />
             </div>
 
             <div className="v2-rep-table v2-rep-transaction-table">

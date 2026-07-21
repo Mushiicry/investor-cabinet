@@ -6,6 +6,7 @@ import type { TonStaking } from "../../hooks/useTonStaking";
 import type { CosmosStaking } from "../../hooks/useCosmosStaking";
 import { CryptoLogo } from "../../components/crypto/CryptoLogo";
 import { useEscapeClose } from "../../hooks/useEscapeClose";
+import { V2SourceTag } from "./V2SourceTag";
 import { V2StakingCard } from "./V2StakingCard";
 import { V2CosmosStakingCard } from "./V2CosmosStakingCard";
 
@@ -265,6 +266,10 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, r
       {showRealized && (
         <div className="v2-panel v2-port-realized" title="Профит по закрытым и зафиксированным позициям — не входит в текущий PnL портфеля">
           <span className="v2-port-realized-label">Реализовано за всё время</span>
+          {/* Считается НЕ автоматически: блок закрытых позиций в «Расчетах»
+              заполняется вручную, автоимпорт туда не пишет. В «Отчётах»
+              рядом живёт другая цифра — оценка по журналу сделок. */}
+          <V2SourceTag source="manual" title="Из блока закрытых позиций в таблице — заполняется вручную, автоимпорт туда не пишет" />
           <span className={`v2-port-realized-val ${realizedPnlUsd > 0 ? "is-up" : "is-down"}`}>
             {signedMoney(realizedPnlUsd)}
             {typeof realizedPnlPct === "number" && realizedPnlPct !== 0 && (

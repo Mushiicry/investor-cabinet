@@ -12,6 +12,7 @@ import {
   type SignalDistance,
 } from "../lib/interestSignals";
 import { CryptoLogo } from "../../components/crypto/CryptoLogo";
+import { V2SourceTag } from "./V2SourceTag";
 import {
   buildPortfolioAlerts,
   sortAlerts,
@@ -160,6 +161,7 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
           <div className="v2-sig-panel-label">
             <span className="v2-sig-dot dot-info" />
             Рынок
+            <V2SourceTag source="api" title="Индекс страха и жадности приходит из внешнего источника" />
           </div>
 
           <div className="v2-fg-signal-row">
@@ -284,7 +286,11 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
           <div className="v2-sig-panel-label">
             <span className="v2-sig-dot dot-info" />
             Зона интереса
-            <span className="v2-sig-int-bot-badge">{interestSignals.length ? "СИГНАЛЫ API" : "НЕТ ИСТОЧНИКА API"}</span>
+            {/* Раньше стояло «СИГНАЛЫ API», хотя сами уровни вписаны вручную
+                в лист «Сигналы» — из API приходят только текущие цены. */}
+            {interestSignals.length
+              ? <V2SourceTag source="mixed" />
+              : <span className="v2-sig-int-bot-badge">НЕТ ДАННЫХ</span>}
           </div>
           {assetGroups.length ? (
             <>

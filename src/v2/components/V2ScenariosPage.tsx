@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CryptoLogo } from "../../components/crypto/CryptoLogo";
 import type { PlaybookCard } from "../../lib/playbookSelectors";
 import type { V2Position } from "../InvestorCabinetV2Lab";
+import { V2SourceTag } from "./V2SourceTag";
 
 type Props = {
   playbook: PlaybookCard[];
@@ -103,7 +104,12 @@ export function V2ScenariosPage({ playbook, positions }: Props) {
       {/* ── PAGE HEADER ── */}
       <div className="v2-sc-header">
         <div>
-          <h2 className="v2-sc-title">Сценарии и решения</h2>
+          <h2 className="v2-sc-title">
+            Сценарии и решения
+            {/* Весь контент раздела — тезисы владельца из таблицы, а не
+                аналитика системы. Без метки это читается как рекомендация. */}
+            <V2SourceTag source="manual" title="Ваши тезисы и планы из листа «Сценарии» — система их не генерирует" />
+          </h2>
           <p className="v2-sc-sub">Сценарный анализ и инвестиционные решения по позициям</p>
         </div>
         <div className="v2-sc-header-chips">
