@@ -43,6 +43,7 @@ export function futuresLeverageLimit(asset: string): number {
 // d ≥ 40% — безопасно (0 штрафа); d ≤ 5% — критично (полный штраф 30).
 const LIQ_SAFE_DISTANCE = 0.40;
 const LIQ_CRITICAL_DISTANCE = 0.05;
+const LIQ_BLOCK_DISTANCE = 0.10;
 const LIQ_MAX_PENALTY = 30;
 
 /** Штраф за близость к ликвидации по одной позиции (0..LIQ_MAX_PENALTY). */
@@ -90,12 +91,16 @@ export type HealthComponentMeta = {
   countScore?: number;
   futuresCount?: number;
   futuresShare?: number;
-  /** Фьючерсы: финансирование спекулятивного счёта до лимита 10% */
-  isFutureBudgetFunded?: boolean; // цель достигнута — ачивка
-  futuresTargetUsd?: number; // 10% капитала
-  futuresUsedUsd?: number; // маржа позиций + свободная маржа HL
-  futuresTopUpUsd?: number; // сколько доложить до 10%
-  /** Фьючерсы: близость к ликвидации худшей позиции */
+  /** Контроль риска: лимит 10% активной торговли. */
+  futuresCapUsd?: number; // верхняя граница риска
+  futuresUsedUsd?: number; // маржа позиций + свободная маржа торгового счёта
+  futuresRemainingUsd?: number; // сколько осталось до лимита
+  futuresBreachUsd?: number; // превышение лимита
+  futuresCapUtilization?: number; // занято / лимит
+  riskControlBlockers?: string[]; // причины, при которых новый риск запрещён
+  riskControlWarnings?: string[]; // ранние предупреждения без полного запрета
+  riskControlFormula?: string[]; // человекочитаемая раскладка формулы
+  /** Контроль риска: близость к ликвидации худшей позиции */
   liquidationScore?: number;
   worstLiqDistance?: number; // 0..1, доля до цены ликвидации
   worstLiqAsset?: string;
@@ -129,9 +134,9 @@ export const DIVERSIFIABLE_CLASSES = ["Крипта", "Металлы", "Акц�
  * HHI по всем классам вместе с кэшем и потому наказывала за резерв — компоненты
  * «Гибкость» (хочет много кэша) и «Диверсификация» воевали друг с другом.
  *
- * Фьючерсы исключены: это плечевой оверлей, он оценивается отдельным компонентом.
+ * Фьючерсы исключены: это плечевой оверлей, он оценивается отдельным компонентом риска.
  * Включать их значило бы требовать ~25% во фьючерсах ради 100 баллов — прямой
- * конфликт с компонентом «Фьючерсы», который за это же штрафует.
+ * конфликт с компонентом «Контроль риска», который за это же штрафует.
  *
  * Нормализация: 100 = капитал ровно разложен по всем спотовым классам (HHI = 1/n),
  * 0 = всё в одном классе (HHI = 1). Без нормализации потолок был 80 — сотня была
@@ -233,27 +238,27 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     ? RESERVE_TARGET_SHARE * input.portfolioValue
     : undefined;
 
-  // ── Фьючерсы: 100 при выполненном плане, далее прозрачные штрафы ──
-  // Спекулятивный бюджет = ровно 10% капитала (манифест). Цель — держать счёт
-  // профинансированным на эту сумму: маржа открытых позиций + свободная маржа HL.
-  //   • недофинансирован → план не выполнен, снимаем баллы, пока не пополнишь;
-  //   • превышен лимит  → пробит риск-лимит, штраф жёстче.
-  // Ровно 10% = 0 штрафа (цель достигнута).
-  const fundingRatio = input.futuresShare / MAX_FUTURES_EXPOSURE_SHARE; // 1.0 = ровно 10%
-  const underfunded = Math.max(0, 1 - fundingRatio);
-  const overfunded = Math.max(0, fundingRatio - 1);
-  const marginPenalty = underfunded * 25 + overfunded * 50;
-  const isFutureBudgetFunded = fundingRatio >= 0.98 && overfunded === 0;
-  const futuresTargetUsd = input.portfolioValue
-    ? MAX_FUTURES_EXPOSURE_SHARE * (input.investedCapital ?? input.portfolioValue)
-    : undefined;
-  const futuresUsedUsd = input.investedCapital
-    ? input.futuresShare * input.investedCapital
-    : undefined;
-  const futuresTopUpUsd =
-    futuresTargetUsd !== undefined && futuresUsedUsd !== undefined
-      ? Math.max(0, futuresTargetUsd - futuresUsedUsd)
+  // ── Контроль риска: 10% — верхняя граница, а не цель пополнения ──
+  // Активная торговля остаётся разрешённой частью системы, но здоровье не должно
+  // стимулировать «добивать» счёт до 10%. Снижение балла начинается только при
+  // превышении лимита, нарушении плеча, лишних позициях или риске ликвидации.
+  const futuresCapBase = input.investedCapital ?? input.portfolioValue ?? 0;
+  const futuresCapUsd = futuresCapBase > 0 ? MAX_FUTURES_EXPOSURE_SHARE * futuresCapBase : undefined;
+  const futuresUsedUsd = futuresCapBase > 0 ? input.futuresShare * futuresCapBase : undefined;
+  const futuresCapUtilization =
+    futuresCapUsd && futuresCapUsd > 0 && futuresUsedUsd !== undefined
+      ? futuresUsedUsd / futuresCapUsd
+      : input.futuresShare / MAX_FUTURES_EXPOSURE_SHARE;
+  const futuresRemainingUsd =
+    futuresCapUsd !== undefined && futuresUsedUsd !== undefined
+      ? Math.max(0, futuresCapUsd - futuresUsedUsd)
       : undefined;
+  const futuresBreachUsd =
+    futuresCapUsd !== undefined && futuresUsedUsd !== undefined
+      ? Math.max(0, futuresUsedUsd - futuresCapUsd)
+      : undefined;
+  const overLimit = Math.max(0, futuresCapUtilization - 1);
+  const marginPenalty = overLimit * 50;
   const weightScore = Math.max(0, Math.round(100 - marginPenalty));
   const legs = input.futuresLegs ?? [];
   const breaches: { asset: string; leverage: number; limit: number }[] = [];
@@ -298,10 +303,35 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   liqPenalty = liquidationPenalty(worstLiqDistance ?? null);
   const liquidationScore = Math.max(0, 100 - liqPenalty);
 
+  const riskControlBlockers: string[] = [];
+  const riskControlWarnings: string[] = [];
+  if (overLimit > 0) {
+    riskControlBlockers.push("Превышен лимит 10% активной торговли");
+  } else if (futuresCapUtilization >= 0.8) {
+    riskControlWarnings.push("Лимит активной торговли почти выбран");
+  }
+  if (breaches.length) {
+    riskControlBlockers.push("Превышено допустимое плечо");
+  }
+  if (futuresCount > MAX_FUTURES_POSITIONS) {
+    riskControlBlockers.push("Открыто больше 3 активных позиций");
+  }
+  if (worstLiqDistance !== undefined && worstLiqDistance <= LIQ_BLOCK_DISTANCE) {
+    riskControlBlockers.push("Ликвидация слишком близко");
+  } else if (worstLiqDistance !== undefined && worstLiqDistance < LIQ_SAFE_DISTANCE) {
+    riskControlWarnings.push("Запас до ликвидации ниже комфортного");
+  }
+
   const futuresScore = Math.max(
     0,
     Math.round(100 - marginPenalty - leveragePenalty - positionPenalty - liqPenalty)
   );
+  const riskControlFormula = [
+    `Лимит активной торговли: ${weightScore}/100`,
+    `Плечо: ${leverageScore}/100`,
+    `Число позиций: ${countScore}/100`,
+    `Запас до ликвидации: ${liquidationScore}/100`,
+  ];
 
   // ── Диверсификация: конкретика для рекомендаций (не «не держать более 80%»
   // абстрактно, а сколько $ и куда добавить). Всё меряется по РИСКОВОМУ
@@ -358,9 +388,9 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     },
     {
       key: "futures",
-      label: "Фьючерсы",
+      label: "Контроль риска",
       color: "#e8b35a",
-      desc: "Спекулятивный бюджет — ровно 10% капитала (маржа открытых позиций + свободная маржа HL). Недофинансирован — план не выполнен, баллы снимаются; превышен — пробит риск-лимит. Плюс плечо (≤2x альты / ≤3x BTC и золото), не более 3 позиций и близость к ликвидации: чем ближе цена к ликвидации, тем ниже оценка.",
+      desc: "Активная торговля — не более 10% капитала. Балл = 100 минус штраф за превышение лимита, плечо, лишние позиции и близкую ликвидацию. Свободная часть лимита не ухудшает здоровье.",
       weight: 0.15,
       score: futuresScore,
       meta: {
@@ -373,10 +403,14 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
         worstLeverageAsset,
         worstLeverageLimit,
         leverageBreaches: breaches,
-        isFutureBudgetFunded,
-        futuresTargetUsd,
+        futuresCapUsd,
         futuresUsedUsd,
-        futuresTopUpUsd,
+        futuresRemainingUsd,
+        futuresBreachUsd,
+        futuresCapUtilization,
+        riskControlBlockers,
+        riskControlWarnings,
+        riskControlFormula,
         liquidationScore,
         worstLiqDistance,
         worstLiqAsset,

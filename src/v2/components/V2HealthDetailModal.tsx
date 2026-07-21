@@ -14,7 +14,7 @@ const WHAT: Record<HealthComponentKey, string> = {
   crypto:
     "Сопротивление волатильности — экспозиция в волатильных активах (крипта) против лимита 60%. Выше лимита портфель слишком сильно зависит от движений самого волатильного класса, и любая просадка рынка бьёт непропорционально сильно.",
   futures:
-    "Дисциплина фьючерсов: 100 баллов без позиций. За каждую открытую позицию, используемое плечо и занятую часть лимита маржи снимаются баллы. Лимиты: начальная маржа ≤10% от вложенного капитала, ≤2x на альтах, ≤3x на BTC и золоте, максимум 3 позиции. GOLD остаётся категорией «Металлы», но его плечо контролируется по тому же правилу (≤3x) и учитывается в лимите позиций; маржа GOLD в лимит 10% пока не входит.",
+    "Контроль риска: контроль фьючерсных позиций, плеча, занятой части лимита и близости к ликвидации. Лимиты: занято не более 10% от вложенного капитала, не выше 2x на альтах, не выше 3x на BTC и золоте, максимум 3 позиции. Золото остаётся категорией «Металлы», но его плечо контролируется по тому же правилу и учитывается в лимите позиций; маржа золота в лимит 10% пока не входит.",
   concentration:
     "У каждого актива свой лимит доли ВНУТРИ крипто-блока: ETH 35% · BTC 20% · SOL/TON/BNB 10% · альткоины 5%; прочие классы — 35% портфеля. Балл = системный риск (крупнейшая позиция от всего портфеля) минус ограниченный штраф за активы сверх лимита. Один перевес снижает балл, но не обнуляет — метрика показывает реальный ущерб при падении, а не только факт нарушения правила.",
   diversification:
@@ -36,7 +36,7 @@ const HOW: Record<HealthComponentKey, string[]> = {
   ],
   futures: [
     "Снизьте плечо до лимита: ≤2x на альтах, ≤3x на BTC и золоте",
-    "Сократите начальную маржу фьючерсов до ≤10% от вложенного капитала",
+    "Сократите занятую часть лимита активной торговли до ≤10% от вложенного капитала",
     "При высоком плече первая задача — снять риск ликвидации",
   ],
   concentration: [
@@ -76,6 +76,8 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     const count = m?.futuresCount ?? 0;
     const weightPct = m?.futuresShare != null ? Math.round(m.futuresShare * 1000) / 10 : null;
     const breaches = m?.leverageBreaches ?? [];
+    const breachUsd = m?.futuresBreachUsd ?? 0;
+    const remainingUsd = m?.futuresRemainingUsd ?? 0;
 
     // 1) Слишком много позиций — самое жёсткое нарушение
     if (count > 3) {
@@ -89,14 +91,14 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
         .join(", ");
       return `Плечо превышено: ${list}. Самое опасное — ${worst.asset} при ${worst.leverage.toFixed(1)}x. Снизьте плечо — это риск ликвидации.`;
     }
-    // 3) Начальная маржа близка к критическому лимиту 10%
-    if ((m?.weightScore ?? 100) < 60 && weightPct != null) {
-      return `Начальная маржа фьючерсов ${weightPct}% от вложенного капитала приближается к лимиту 10%. Сократите риск-бюджет.`;
+    // 3) Превышен лимит активной торговли 10%
+    if (breachUsd > 0 && weightPct != null) {
+      return `Контроль риска: занято ${weightPct}% от вложенного капитала, лимит 10% превышен на ${Math.round(breachUsd)}$. Сократите риск до лимита.`;
     }
     if (weightPct != null) {
-      return `Фьючерсы под контролем: ${count}/3 позиций, начальная маржа ${weightPct}% от вложенного капитала (лимит 10%), плечо в пределах ≤2x альты / ≤3x BTC.`;
+      return `Контроль риска в норме: ${count}/3 позиций, занято ${weightPct}% от вложенного капитала при лимите 10%. Осталось до лимита ${Math.round(remainingUsd)}$. Плечо в пределах ≤2x альты / ≤3x BTC.`;
     }
-    return "Фьючерсы под контролем — вес, плечо и число позиций в пределах правил.";
+    return "Контроль риска в норме — вес, плечо и число позиций в пределах правил.";
   }
   if (key === "concentration") {
     const m = c.meta;
@@ -147,6 +149,12 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
   const why = whyText(component, portfolio);
   const how = HOW[component.key];
   const what = WHAT[component.key];
+  const riskControlBlockers =
+    component.key === "futures" ? component.meta?.riskControlBlockers ?? [] : [];
+  const riskControlWarnings =
+    component.key === "futures" ? component.meta?.riskControlWarnings ?? [] : [];
+  const riskControlFormula =
+    component.key === "futures" ? component.meta?.riskControlFormula ?? [] : [];
 
   const circumference = 2 * Math.PI * 44;
   const dash = (component.score / 100) * circumference;
@@ -182,7 +190,7 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
           <div className="v2-hdm-title-block">
             <span className="v2-hdm-status" style={{ color }}>{label}</span>
             <h2 className="v2-hdm-title">{component.label}</h2>
-            <p className="v2-hdm-subtitle">Компонент Health Factor</p>
+            <p className="v2-hdm-subtitle">Компонент фактора здоровья</p>
           </div>
           <button className="v2-hdm-close" onClick={onClose} aria-label="Закрыть">
             <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -202,6 +210,36 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
             <div className="v2-hdm-section-label">Почему сейчас {component.score}</div>
             <p className="v2-hdm-text v2-hdm-text--why">{why}</p>
           </section>
+
+          {riskControlFormula.length > 0 && (
+            <section className="v2-hdm-section">
+              <div className="v2-hdm-section-label">Формула</div>
+              <ul className="v2-hdm-list">
+                {riskControlFormula.map((item) => (
+                  <li key={item} className="v2-hdm-list-item">
+                    <span className="v2-hdm-list-arrow" style={{ color }}>→</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {(riskControlBlockers.length > 0 || riskControlWarnings.length > 0) && (
+            <section className="v2-hdm-section">
+              <div className="v2-hdm-section-label">
+                {riskControlBlockers.length > 0 ? "Жёсткие блокировки" : "Предупреждения"}
+              </div>
+              <ul className="v2-hdm-list">
+                {[...riskControlBlockers, ...riskControlWarnings].map((item) => (
+                  <li key={item} className="v2-hdm-list-item">
+                    <span className="v2-hdm-list-arrow" style={{ color }}>→</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section className="v2-hdm-section">
             <div className="v2-hdm-section-label">Как улучшить</div>

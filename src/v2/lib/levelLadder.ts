@@ -69,7 +69,7 @@ export function getAchievements(ctx: AchievementContext): LadderAchievement[] {
     num("trade1", "Первая фиксация", "Закрыта хотя бы одна сделка", closedTrades, 1),
 
     // ── LVL 3: контроль риска ──
-    num("futures70", "Фьючерсы под контролем", "Спекулятивный бюджет и плечо в норме", score("futures"), 70),
+    num("futures70", "Контроль риска в норме", "Лимит активной торговли и плечо в норме", score("futures"), 70),
     num("conc60", "Лимиты соблюдаются", "Концентрация не ниже 60", score("concentration"), 60),
     num("hf60", "Портфель окреп", "Здоровье портфеля выше 60", hf, 60),
     num("move10", "Взял движение", "Позиция в плюсе на 10%+", Math.round(bestOpenPnlPct), 10),

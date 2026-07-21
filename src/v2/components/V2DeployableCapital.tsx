@@ -31,10 +31,9 @@ export function V2DeployableCapital({ portfolio, strategy, futuresShare = 0 }: P
   const deployable = Math.max(freeCash - reserveTarget, 0);
   const reserveShort = pureReserve < reserveTarget;
 
-  // Порядок наполнения (Risk First): стратегия-откуп → фьючи (≤10% капитала) → спот-остаток.
+  // Порядок работы с капиталом: стратегия-откуп → фьючи в пределах лимита → спот-остаток.
   // Стратегия берёт только доступные ступени (не на кулдауне) по канону — база вложенного.
-  // Спекулятивная часть (фьючи) ограничена лимитом 10% и финансируется до спота лишь в его рамках;
-  // всё, что осталось сверх — уходит в спот-добор.
+  // 10% фьючерсов — верхняя граница риска, а не цель для пополнения.
   const strategyCash = Math.min(
     strategy.rules
       .filter((row) => row.buyPct > 0 && row.status !== "cooldown")
@@ -49,14 +48,14 @@ export function V2DeployableCapital({ portfolio, strategy, futuresShare = 0 }: P
   );
   const spotCash = Math.max(remainingAfterStrategy - futuresCash, 0);
 
-  // Сколько ДОЛОЖИТЬ на Hyperliquid, чтобы спекулятивный блок стал ровно 10%
-  // капитала. Занято = маржа открытых фьючей + свободная маржа HL (futuresShare).
+  // Контроль лимита активной торговли. Занято = маржа открытых фьючей +
+  // свободная маржа торгового счёта. Свободный остаток не является задачей.
   // База — вложенный капитал, как в calculateFuturesMarginShare.
   const investedCapital = portfolio.totalInvested || 0;
-  const futuresTarget = MAX_FUTURES_EXPOSURE_SHARE * investedCapital;
+  const futuresLimit = MAX_FUTURES_EXPOSURE_SHARE * investedCapital;
   const futuresUsed = futuresShare * investedCapital;
-  const futuresTopUp = Math.max(futuresTarget - futuresUsed, 0);
-  const futuresOver = futuresUsed > futuresTarget;
+  const futuresRemaining = Math.max(futuresLimit - futuresUsed, 0);
+  const futuresOver = futuresUsed > futuresLimit;
 
   const rows: Array<{
     label: string;
@@ -75,10 +74,8 @@ export function V2DeployableCapital({ portfolio, strategy, futuresShare = 0 }: P
       color: "#8f9ff0",
       hint: investedCapital
         ? futuresOver
-          ? `Лимит 10% превышен на ${money.format(futuresUsed - futuresTarget)} — не пополнять`
-          : futuresTopUp > 0.5
-            ? `Пополнить HL на ${money.format(futuresTopUp)} → ровно 10% (занято ${money.format(futuresUsed)} из ${money.format(futuresTarget)})`
-            : `Лимит 10% выбран полностью (${money.format(futuresUsed)})`
+          ? `Лимит 10% превышен на ${money.format(futuresUsed - futuresLimit)} — новый риск не добавлять`
+          : `Занято ${money.format(futuresUsed)} из лимита ${money.format(futuresLimit)}. Осталось ${money.format(futuresRemaining)}`
         : undefined,
       hintDanger: futuresOver,
     },

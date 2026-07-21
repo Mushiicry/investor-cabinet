@@ -16,7 +16,7 @@ export const CHIP_W = 89, CHIP_H = 52, GAP = 12, CHIP_R = 40;
 export const CHIP_LABEL: Record<string, string> = {
   reserve:         "Резерв",
   crypto:          "Волатильность",
-  futures:         "Фьючерсы",
+  futures:         "Контроль риска",
   concentration:   "Концентрация",
   diversification: "Диверсификация",
   flexibility:     "Гибкость",
@@ -84,7 +84,7 @@ export function scaleValuePts(pts: string, factor: number): string {
 export const SCORE_LABEL: Record<string, string> = {
   reserve:         "Резерв",
   crypto:          "Волатильность",
-  futures:         "Фьючерсы",
+  futures:         "Контроль риска",
   concentration:   "Концентрация",
   diversification: "Диверсификация",
   flexibility:     "Гибкость",
@@ -129,10 +129,11 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
       return "Активы в пределах лимитов";
     }
     case "futures":
+      if ((c.meta?.riskControlBlockers ?? []).length) return c.meta?.riskControlBlockers?.[0] ?? "";
       if ((c.meta?.leverageBreaches ?? []).length) return "Плечо превышено";
       if (c.meta?.futuresCount && c.meta.futuresCount > 3) return `${c.meta.futuresCount}/3 позиций — лимит превышен`;
-      if ((c.meta?.futuresShare ?? 0) > 0.1) return "Начальная маржа выше лимита 10%";
-      return `Маржа ${Math.round((c.meta?.futuresShare ?? 0) * 1000) / 10}%, плечо в норме`;
+      if ((c.meta?.futuresBreachUsd ?? 0) > 0) return "Превышен лимит активной торговли 10%";
+      return `Занято ${Math.round((c.meta?.futuresShare ?? 0) * 1000) / 10}% из лимита 10%, плечо в норме`;
     default:
       return "";
   }
@@ -142,17 +143,17 @@ export type CoreRec = { action: string; gain: number; source: string; critical?:
 
 export type CoreAchievement = { title: string; detail: string };
 
-/**
- * Выполненные цели — показываем как достижения, а не как задачи.
- * Сейчас: спекулятивный счёт профинансирован ровно до лимита 10% капитала.
- */
 export function buildCoreAchievements(all: HealthComponent[]): CoreAchievement[] {
   const out: CoreAchievement[] = [];
   const fm = all.find((c) => c.key === "futures")?.meta;
-  if (fm?.isFutureBudgetFunded && (fm.futuresTargetUsd ?? 0) > 0) {
+  const futuresUsedUsd = fm?.futuresUsedUsd ?? 0;
+  const futuresBreachUsd = fm?.futuresBreachUsd ?? 0;
+  const futuresCapUsd = fm?.futuresCapUsd ?? 0;
+  const futuresRemainingUsd = fm?.futuresRemainingUsd ?? 0;
+  if (futuresUsedUsd > 0 && futuresBreachUsd === 0 && futuresCapUsd > 0) {
     out.push({
-      title: "Фьючерсный счёт укомплектован",
-      detail: `${fmt$(fm.futuresUsedUsd ?? 0)} из ${fmt$(fm.futuresTargetUsd ?? 0)} — ровно 10% капитала. Пополнять больше не нужно.`,
+      title: "Контроль риска в норме",
+      detail: `Занято ${fmt$(futuresUsedUsd)} из ${fmt$(futuresCapUsd)}. Осталось до лимита ${fmt$(futuresRemainingUsd)}.`,
     });
   }
   return out;
@@ -166,15 +167,26 @@ export function buildCoreRecs(
   const deficit = Math.max(0, portfolio.totalPortfolioValue * 0.30 - portfolio.stableReserve);
   const result: CoreRec[] = [];
 
-  // ── Фьючерсный счёт: не добит до 10% капитала → яркий алерт с точной суммой.
-  // Пополнил ровно до лимита → ачивка (см. buildCoreAchievements).
+  // ── Контроль риска: штрафуем только превышение, не свободный остаток. ──
   const fut = all.find((c) => c.key === "futures");
   const fm = fut?.meta;
-  if (fm && !fm.isFutureBudgetFunded && (fm.futuresTopUpUsd ?? 0) >= 1) {
+  const futuresBreachUsd = fm?.futuresBreachUsd ?? 0;
+  const futuresUsedUsd = fm?.futuresUsedUsd ?? 0;
+  const futuresCapUsd = fm?.futuresCapUsd ?? 0;
+  const riskControlBlockers = fm?.riskControlBlockers ?? [];
+  if (riskControlBlockers.length) {
     result.push({
-      action: `Пополнить фьючерсный счёт на ${fmt$(fm.futuresTopUpUsd ?? 0)}`,
+      action: `Не добавлять новый риск: ${riskControlBlockers[0].toLowerCase()}`,
       gain: 6,
-      source: `Спекулятивный бюджет ${fmt$(fm.futuresUsedUsd ?? 0)} из ${fmt$(fm.futuresTargetUsd ?? 0)} (10% капитала) → здоровье +6`,
+      source: "Сначала устранить блокировку контроля риска → здоровье +6",
+      critical: true,
+    });
+  }
+  if (futuresBreachUsd >= 1) {
+    result.push({
+      action: `Сократить фьючерсный риск на ${fmt$(futuresBreachUsd)}`,
+      gain: 6,
+      source: `Занято ${fmt$(futuresUsedUsd)} при лимите ${fmt$(futuresCapUsd)} → здоровье +6`,
       critical: true,
     });
   }
@@ -282,4 +294,3 @@ export function buildCoreRecs(
   }
   return result.slice(0, 5);
 }
-

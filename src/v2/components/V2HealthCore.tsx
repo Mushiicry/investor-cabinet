@@ -490,6 +490,7 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
               const { rx, ry, vx, vy, ax, ay } = chipLayout(i);
               const color = chipColor(c.score);
               const label = CHIP_LABEL[c.key as keyof typeof CHIP_LABEL] ?? c.key;
+              const labelLines = c.key === "futures" ? ["Контроль", "риска"] : [label];
               const cx = rx + CHIP_W / 2 + 1.5;
               const cy = ry + CHIP_H / 2;
 
@@ -583,11 +584,15 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
 
                   {/* Label */}
                   <text x={cx} y={cy - 15}
-                    fontSize="7" fontWeight="800"
+                    fontSize={c.key === "futures" ? "5.6" : "7"} fontWeight="800"
                     fill="rgba(142,210,235,0.88)"
                     fontFamily="var(--v2-sans,system-ui,sans-serif)"
                     letterSpacing="0.4" textAnchor="middle">
-                    {label}
+                    {labelLines.map((line, lineIndex) => (
+                      <tspan key={line} x={cx} dy={lineIndex === 0 ? 0 : 7}>
+                        {line}
+                      </tspan>
+                    ))}
                   </text>
 
                   {/* Score number — всегда чисто-белый, как центральный */}

@@ -57,7 +57,7 @@ function whyLine(c: HealthComponent, portfolio: V2Portfolio): string {
         return `${c.meta.futuresCount} фьючерс-позиции открыты — лимит 3. Каскадная ликвидация становится вероятнее.`;
       if ((c.meta?.leverageBreaches ?? []).length)
         return `Плечо превышено на одной или нескольких позициях. Снизьте до ≤2x альты / ≤3x BTC.`;
-      return `Начальная маржа фьючерсов приближается к лимиту 10% от вложенного капитала.`;
+      return `Контроль риска приближается к лимиту 10% от вложенного капитала.`;
 
     default:
       return "";
@@ -74,7 +74,7 @@ function richDiagnosis(components: HealthComponent[], portfolio: V2Portfolio) {
   }));
   const strong = sorted.filter(c => c.score >= 70).reverse().map<DiagItem>(c => ({
     label: c.label, score: c.score,
-    why: c.key === "futures"     ? "Маржа, плечо и число позиций в пределах правил."
+    why: c.key === "futures"     ? "Занятая часть лимита, плечо и число позиций в пределах правил."
        : c.key === "reserve"     ? `Резерв ${Math.round(portfolio.reserveShare * 100)}% — подушка сформирована.`
        : c.key === "flexibility" ? `Есть ${fmt$(portfolio.deployableCapital)} для маневра.`
        : "В пределах нормы.",
@@ -201,7 +201,7 @@ const EMPTY_TONE = "#55C7FF";
 //
 // Шесть рычагов покрывают все шесть граней здоровья:
 //   резерв → Резерв + Гибкость | выравнивание классов → Диверсификация + Волатильность
-//   крупнейшая позиция → Концентрация | плечо / маржа / число позиций → Фьючерсы
+//   крупнейшая позиция → Концентрация | плечо / маржа / число позиций → Контроль риска
 type SimLevers = {
   reserve: number;       // целевая доля резерва (стейблы)
   rebalance: number;     // 0..1 — выровнять спотовые классы к равным долям
@@ -228,7 +228,7 @@ function buildSimInput(base: HealthInput, levers: SimLevers): HealthInput {
   const equal = newSpot.length > 0 ? newSpotTotal / newSpot.length : 0;
   newSpot = newSpot.map((s) => s + levers.rebalance * (equal - s));
 
-  // 3) Фьючерсы: число позиций, плечо на каждой, маржа.
+  // 3) Контроль риска: число позиций, плечо на каждой, занятая часть лимита.
   const legs = (base.futuresLegs ?? [])
     .slice(0, Math.max(0, Math.round(levers.futuresCount)))
     .map((leg) => ({
@@ -490,10 +490,10 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
 
               {hasFutures && (
                 <>
-                  {/* Маржа фьючерсов → Фьючерсы (вес) */}
+                  {/* Занятая часть лимита активной торговли */}
                   <div className="v2-hp-sim-lever">
                     <div className="v2-hp-sim-lever-top">
-                      <span>Маржа фьючерсов</span>
+                      <span>Контроль риска</span>
                       <span className="v2-hp-sim-lever-val">{(levers.futuresMargin * 100).toFixed(1)}%</span>
                     </div>
                     <input type="range" min="0" max={Math.max(healthInput.futuresShare, 0.1)} step="0.005" value={levers.futuresMargin}
@@ -501,7 +501,7 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
                     <div className="v2-hp-sim-lever-hint">Лимит политики — 10% от вложенного капитала</div>
                   </div>
 
-                  {/* Плечо → Фьючерсы (плечо) */}
+                  {/* Плечо активной торговли */}
                   <div className="v2-hp-sim-lever">
                     <div className="v2-hp-sim-lever-top">
                       <span>Снизить плечо</span>
@@ -512,7 +512,7 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
                     <div className="v2-hp-sim-lever-hint">Меньше плечо — ниже риск ликвидации (≤2x альты, ≤3x BTC/золото)</div>
                   </div>
 
-                  {/* Число позиций → Фьючерсы (количество) */}
+                  {/* Число позиций активной торговли */}
                   {baseLegs.length > 0 && (
                     <div className="v2-hp-sim-lever">
                       <div className="v2-hp-sim-lever-top">

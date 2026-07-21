@@ -42,8 +42,8 @@ describe("health concentration — per-asset score passthrough", () => {
     expect(conc(h).meta?.overLimitAssets).toEqual(["TON"]);
   });
 
-  it("фьючерсы: счёт недофинансирован → баллы сняты + сумма пополнения в мете", () => {
-    // 4.7% из 10% → недофинансирован. Капитал 603.8 → цель 60.38, занято 28.38.
+  it("фьючерсы: свободный остаток до лимита не снимает баллы", () => {
+    // 4.7% из лимита 10% → лимит не превышен. Капитал 603.8 → лимит 60.38, занято 28.38.
     const h = computePortfolioHealth({
       ...base,
       futuresShare: 0.047,
@@ -51,13 +51,14 @@ describe("health concentration — per-asset score passthrough", () => {
       futuresLegs: [],
     });
     const f = h.components.find((c) => c.key === "futures")!;
-    expect(f.meta?.isFutureBudgetFunded).toBe(false);
-    expect(f.meta?.futuresTargetUsd).toBeCloseTo(60.38, 1);
-    expect(f.meta?.futuresTopUpUsd).toBeCloseTo(32.0, 0);
-    expect(f.score).toBeLessThan(100); // штраф за невыполненный план
+    expect(f.meta?.futuresCapUsd).toBeCloseTo(60.38, 1);
+    expect(f.meta?.futuresUsedUsd).toBeCloseTo(28.38, 1);
+    expect(f.meta?.futuresRemainingUsd).toBeCloseTo(32.0, 0);
+    expect(f.meta?.futuresBreachUsd).toBeCloseTo(0, 2);
+    expect(f.score).toBe(100);
   });
 
-  it("фьючерсы: счёт укомплектован ровно на 10% → ачивка, штрафа нет", () => {
+  it("фьючерсы: ровно 10% лимита не штрафуется", () => {
     const h = computePortfolioHealth({
       ...base,
       futuresShare: 0.10,
@@ -65,17 +66,52 @@ describe("health concentration — per-asset score passthrough", () => {
       futuresLegs: [],
     });
     const f = h.components.find((c) => c.key === "futures")!;
-    expect(f.meta?.isFutureBudgetFunded).toBe(true);
-    expect(f.meta?.futuresTopUpUsd).toBeCloseTo(0, 2);
+    expect(f.meta?.futuresRemainingUsd).toBeCloseTo(0, 2);
+    expect(f.meta?.futuresBreachUsd).toBeCloseTo(0, 2);
+    expect(f.meta?.riskControlBlockers).toEqual([]);
     expect(f.score).toBe(100);
   });
 
-  it("фьючерсы: превышение лимита штрафуется жёстче недофинансирования", () => {
-    const under = computePortfolioHealth({ ...base, futuresShare: 0.05, investedCapital: 600, futuresLegs: [] });
+  it("фьючерсы: превышение лимита штрафуется, свободный остаток нет", () => {
+    const under = computePortfolioHealth({ ...base, futuresShare: 0, investedCapital: 600, futuresLegs: [] });
+    const middle = computePortfolioHealth({ ...base, futuresShare: 0.05, investedCapital: 600, futuresLegs: [] });
+    const exact = computePortfolioHealth({ ...base, futuresShare: 0.10, investedCapital: 600, futuresLegs: [] });
     const over = computePortfolioHealth({ ...base, futuresShare: 0.15, investedCapital: 600, futuresLegs: [] });
     const s = (h: ReturnType<typeof computePortfolioHealth>) =>
       h.components.find((c) => c.key === "futures")!.score;
+    expect(s(under)).toBe(100);
+    expect(s(middle)).toBe(100);
+    expect(s(exact)).toBe(100);
     expect(s(over)).toBeLessThan(s(under));
+    expect(over.components.find((c) => c.key === "futures")!.meta?.futuresBreachUsd).toBeCloseTo(30, 2);
+  });
+
+  it("контроль риска: жёсткие блокировки попадают в мету луча", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      futuresShare: 0.16,
+      investedCapital: 600,
+      futuresLegs: [
+        { asset: "MNT LONG", leverage: 3, liqDistance: 0.08 },
+        { asset: "TON LONG", leverage: 2, liqDistance: 0.5 },
+        { asset: "BTC SHORT", leverage: 3, liqDistance: 0.5 },
+        { asset: "SOL LONG", leverage: 1.5, liqDistance: 0.5 },
+      ],
+    });
+    const f = h.components.find((c) => c.key === "futures")!;
+    expect(f.label).toBe("Контроль риска");
+    expect(f.meta?.riskControlBlockers).toEqual([
+      "Превышен лимит 10% активной торговли",
+      "Превышено допустимое плечо",
+      "Открыто больше 3 активных позиций",
+      "Ликвидация слишком близко",
+    ]);
+    expect(f.meta?.riskControlFormula).toEqual([
+      `Лимит активной торговли: ${f.meta?.weightScore}/100`,
+      `Плечо: ${f.meta?.leverageScore}/100`,
+      `Число позиций: ${f.meta?.countScore}/100`,
+      `Запас до ликвидации: ${f.meta?.liquidationScore}/100`,
+    ]);
   });
 
   it("близость к ликвидации: чем ближе — тем больше штраф", () => {
