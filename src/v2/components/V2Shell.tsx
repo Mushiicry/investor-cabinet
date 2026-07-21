@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
 import type { HealthComponent } from "../../lib/portfolioHealth";
 import { V2HealthDetailModal } from "./V2HealthDetailModal";
@@ -45,6 +46,11 @@ type Props = {
 const DESKTOP_DESIGN_WIDTH = 1920;
 const DESKTOP_DESIGN_HEIGHT = 1080;
 const MOBILE_BREAKPOINT = 768;
+// Геометрия сцены — те же значения, что в .v2-lab (padding / колонка / gap).
+const SCENE_PADDING = 18;
+const SCENE_GAP = 18;
+const SIDEBAR_WIDTH = 260;
+const SIDEBAR_COLLAPSED_WIDTH = 64;
 
 function getDesktopViewport() {
   if (window.innerWidth <= MOBILE_BREAKPOINT) {
@@ -188,6 +194,14 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
 
   const criticalCount = alerts.filter((alert) => alert.level === "critical").length;
 
+  // Центр зазора между сайдбаром и контентом в координатах ЭКРАНА.
+  // Сцена шириной 1920 масштабируется и центрируется, поэтому к отступу
+  // сцены добавляем масштабированную ширину колонки и половину зазора.
+  const isMobile = desktopViewport.scale === 1 && window.innerWidth <= MOBILE_BREAKPOINT;
+  const sceneOffset = Math.max(0, (window.innerWidth - DESKTOP_DESIGN_WIDTH * desktopViewport.scale) / 2);
+  const railLeft = sceneOffset +
+    (SCENE_PADDING + (sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH) + SCENE_GAP / 2) * desktopViewport.scale;
+
   return (
     <div
       className={sidebarCollapsed ? "v2-lab is-sidebar-collapsed" : "v2-lab"}
@@ -250,20 +264,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         profileAvatar={profileAvatar}
         onOpenAuth={onOpenAuth}
       />
-      {/* Рычаг на стыке панелей. Живёт вне сайдбара: внутри его обрезал
-          собственный скролл, и от кнопки был виден только огрызок. */}
-      <button
-        className="v2-rail-toggle"
-        type="button"
-        onClick={toggleSidebar}
-        aria-label={sidebarCollapsed ? "Развернуть меню" : "Свернуть меню"}
-        title={sidebarCollapsed ? "Развернуть меню" : "Свернуть меню"}
-      >
-        <span className="v2-rail-toggle-grip" aria-hidden="true" />
-        <svg viewBox="0 0 12 18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-          <path d={sidebarCollapsed ? "M4 4l5 5-5 5" : "M8 4L3 9l5 5"} strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
+
 
       <main className={locked ? "v2-main is-locked" : "v2-main"}>
         {dataStatus && !locked && <DataStatusBadge dataStatus={dataStatus} />}
@@ -369,6 +370,26 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         )}
       </main>
       <V2TabBar activePage={page} onNavigate={onNavigate} criticalCount={criticalCount} />
+
+      {/* Рычаг живёт ВНЕ .v2-lab: у сцены zoom, и fixed-потомок внутри него
+          терял горизонтальное смещение центрирования — рычаг заезжал на
+          сайдбар. Снаружи координата считается явно и не зависит от масштаба. */}
+      {!isMobile && createPortal(
+        <button
+          className="v2-rail-toggle"
+          type="button"
+          style={{ left: `${railLeft}px` }}
+          onClick={toggleSidebar}
+          aria-label={sidebarCollapsed ? "Развернуть меню" : "Свернуть меню"}
+          title={sidebarCollapsed ? "Развернуть меню" : "Свернуть меню"}
+        >
+          <span className="v2-rail-toggle-grip" aria-hidden="true" />
+          <svg viewBox="0 0 12 18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+            <path d={sidebarCollapsed ? "M4 4l5 5-5 5" : "M8 4L3 9l5 5"} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>,
+        document.body
+      )}
 
       {notifOpen && (
         <V2NotificationsPanel alerts={alerts} onClose={() => setNotifOpen(false)} />
