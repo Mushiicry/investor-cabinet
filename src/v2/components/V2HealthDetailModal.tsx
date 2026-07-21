@@ -18,7 +18,7 @@ const WHAT: Record<HealthComponentKey, string> = {
   concentration:
     "У каждого актива свой лимит доли ВНУТРИ крипто-блока: ETH 35% · BTC 20% · SOL/TON/BNB 10% · альткоины 5%; прочие классы — 35% портфеля. Балл = системный риск (крупнейшая позиция от всего портфеля) минус ограниченный штраф за активы сверх лимита. Один перевес снижает балл, но не обнуляет — метрика показывает реальный ущерб при падении, а не только факт нарушения правила.",
   diversification:
-    "Равномерность распределения по разным классам активов: крипта, металлы, фьючерсы, акции. Чем более равномерно — тем устойчивее портфель к шокам в отдельных секторах рынка.",
+    "Диверсификация — распределение рискового капитала по спотовым классам: крипта, металлы и акции. Кэш и фьючерсы не входят в этот луч. Чем меньше зависимость от одного класса, тем устойчивее портфель к шокам в отдельных секторах рынка.",
   flexibility:
     "Запас манёвра — ликвидный кэш для быстрых и выгодных решений. Гибкость — это не просто безопасность, это конкурентное преимущество: покупать лучшие активы в лучший момент, когда другие вынуждены продавать.",
 };
@@ -45,8 +45,8 @@ const HOW: Record<HealthComponentKey, string[]> = {
     "Не усредняйтесь в актив сверх его лимита — шлюз «Проверки» это заблокирует",
   ],
   diversification: [
-    "Добавьте другой класс активов — металлы, акции или стейблы",
-    "Не держите более 80% в одном классе активов",
+    "Добавьте отсутствующий спотовый класс — металлы или акции",
+    "Не держите более 80% рисковой части в одном классе активов",
     "Балансируйте распределение раз в квартал или при значимом изменении портфеля",
   ],
   flexibility: [
@@ -129,8 +129,16 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     return "Концентрация в норме — каждый актив в пределах своего лимита.";
   }
   if (key === "diversification") {
+    const m = c.meta;
+    const blocker = m?.diversificationBlockers?.[0];
+    const warning = m?.diversificationWarnings?.[0];
+    const largest = m?.largestClassName;
+    const largestPct = Math.round((m?.largestClassShareOfRisk ?? 0) * 100);
+    const active = m?.activeClassCount ?? 0;
+    if (blocker) return `${blocker}. Активных классов: ${active}/3. Портфель зависит от одного сектора.`;
+    if (warning && largest) return `${warning}. Крупнейший класс: ${largest}, ${largestPct}% рисковой части.`;
     if (score < 40) return "Портфель слабо диверсифицирован — большинство средств сконцентрировано в одном классе активов.";
-    if (score < 70) return "Диверсификация умеренная. Добавление ещё одного класса активов улучшит устойчивость портфеля.";
+    if (score < 70) return "Диверсификация умеренная. Добавление ещё одного спотового класса улучшит устойчивость портфеля.";
     return "Диверсификация на хорошем уровне — средства распределены по нескольким классам активов.";
   }
   if (key === "flexibility") {
@@ -175,9 +183,15 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
     component.key === "reserve" ? component.meta?.reserveWarnings ?? [] : [];
   const reserveFormula =
     component.key === "reserve" ? component.meta?.reserveFormula ?? [] : [];
-  const factorBlockers = [...riskControlBlockers, ...reserveBlockers];
-  const factorWarnings = [...riskControlWarnings, ...reserveWarnings];
-  const factorFormula = [...riskControlFormula, ...reserveFormula];
+  const diversificationBlockers =
+    component.key === "diversification" ? component.meta?.diversificationBlockers ?? [] : [];
+  const diversificationWarnings =
+    component.key === "diversification" ? component.meta?.diversificationWarnings ?? [] : [];
+  const diversificationFormula =
+    component.key === "diversification" ? component.meta?.diversificationFormula ?? [] : [];
+  const factorBlockers = [...riskControlBlockers, ...reserveBlockers, ...diversificationBlockers];
+  const factorWarnings = [...riskControlWarnings, ...reserveWarnings, ...diversificationWarnings];
+  const factorFormula = [...riskControlFormula, ...reserveFormula, ...diversificationFormula];
 
   const circumference = 2 * Math.PI * 44;
   const dash = (component.score / 100) * circumference;

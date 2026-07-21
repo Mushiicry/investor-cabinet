@@ -91,6 +91,11 @@ export type HealthComponentMeta = {
   rebalanceAddUsd?: number; // то же в $
   otherClassNames?: string[]; // куда добавлять
   missingClassNames?: string[]; // классы с нулевой долей
+  activeClassCount?: number;
+  riskClassTotalShare?: number;
+  diversificationBlockers?: string[];
+  diversificationWarnings?: string[];
+  diversificationFormula?: string[];
   worstLeverage?: number;
   worstLeverageAsset?: string;
   worstLeverageLimit?: number;
@@ -385,10 +390,23 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   // от всего портфеля здесь намеренно не используется, она вводит в заблуждение.
   const riskShares = input.riskCategoryShares;
   const riskTotal = riskShares.reduce((sum, value) => sum + value, 0);
+  const diversificationScore = computeDiversificationScore(input.riskCategoryShares);
   let diversificationMeta: HealthComponentMeta | undefined;
   if (riskTotal > 0 && riskShares.length === DIVERSIFIABLE_CLASSES.length) {
     const maxIdx = riskShares.indexOf(Math.max(...riskShares));
     const largestOfRisk = riskShares[maxIdx] / riskTotal;
+    const missingClassNames = DIVERSIFIABLE_CLASSES.filter((_, i) => riskShares[i] <= 0.001);
+    const activeClassCount = DIVERSIFIABLE_CLASSES.length - missingClassNames.length;
+    const diversificationBlockers: string[] = [];
+    const diversificationWarnings: string[] = [];
+    if (activeClassCount <= 1) {
+      diversificationBlockers.push("Рисковый капитал в одном спотовом классе");
+    } else if (largestOfRisk > 0.8) {
+      diversificationWarnings.push("Крупнейший класс выше 80% рисковой части");
+    }
+    if (missingClassNames.length) {
+      diversificationWarnings.push(`Отсутствуют классы: ${missingClassNames.join(" / ").toLowerCase()}`);
+    }
     // Чтобы крупнейший класс стал ≤80% рискового капитала, в ДРУГИЕ классы
     // нужно добавить X (доля портфеля): largest / (total + X) = 0.8
     const rebalanceAddShare = Math.max(0, riskShares[maxIdx] / 0.8 - riskTotal);
@@ -401,7 +419,17 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
         ? rebalanceAddShare * input.portfolioValue
         : undefined,
       otherClassNames: DIVERSIFIABLE_CLASSES.filter((_, i) => i !== maxIdx),
-      missingClassNames: DIVERSIFIABLE_CLASSES.filter((_, i) => riskShares[i] <= 0.001),
+      missingClassNames,
+      activeClassCount,
+      riskClassTotalShare: riskTotal,
+      diversificationBlockers,
+      diversificationWarnings,
+      diversificationFormula: [
+        `Балл диверсификации: ${diversificationScore}/100`,
+        `Крупнейший класс: ${DIVERSIFIABLE_CLASSES[maxIdx]} ${Math.round(largestOfRisk * 100)}% рисковой части`,
+        `Активных классов: ${activeClassCount}/${DIVERSIFIABLE_CLASSES.length}`,
+        "Учитываются только крипта, металлы и акции",
+      ],
     };
   }
 
@@ -496,9 +524,9 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       key: "diversification",
       label: "Диверсификация",
       color: "#5fe0cf",
-      desc: "Насколько ровно разложен рисковый капитал по спотовым классам (крипта / металлы / акции). Кэш и фьючерсы не учитываются.",
+      desc: "Насколько устойчиво разложен рисковый капитал по спотовым классам: крипта, металлы и акции. Кэш и фьючерсы не учитываются.",
       weight: 0.15,
-      score: computeDiversificationScore(input.riskCategoryShares),
+      score: diversificationScore,
       meta: diversificationMeta,
     },
     {

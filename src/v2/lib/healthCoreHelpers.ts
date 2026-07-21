@@ -118,6 +118,8 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
       if (c.score <= 0) return "Свободных денег нет — манёвра нет";
       return `Свободно ${fmt$(portfolio.deployableCapital)}`;
     case "diversification":
+      if ((c.meta?.diversificationBlockers ?? []).length) return c.meta?.diversificationBlockers?.[0] ?? "";
+      if ((c.meta?.diversificationWarnings ?? []).length) return c.meta?.diversificationWarnings?.[0] ?? "";
       return "Капитал сконцентрирован в одном классе";
     case "crypto":
       return "Доля крипты выше лимита 60%";
@@ -273,6 +275,13 @@ export function buildCoreRecs(
       case "diversification": {
         // Конкретика из модели (portfolioHealth): кто перегружен и сколько добавить
         const m = c.meta;
+        if ((m?.diversificationBlockers ?? []).length) {
+          result.push({
+            action: "Добавить второй спотовый класс",
+            gain: 5,
+            source: "Снизит зависимость от одного класса → здоровье +5",
+          });
+        }
         if (m?.largestClassShareOfRisk && m.largestClassShareOfRisk > 0.8 && m.rebalanceAddUsd) {
           const pct = Math.round(m.largestClassShareOfRisk * 100);
           const others = (m.otherClassNames ?? []).join(" / ").toLowerCase();

@@ -20,6 +20,8 @@ const conc = (h: ReturnType<typeof computePortfolioHealth>) =>
   h.components.find((c) => c.key === "concentration")!;
 const reserve = (h: ReturnType<typeof computePortfolioHealth>) =>
   h.components.find((c) => c.key === "reserve")!;
+const div = (h: ReturnType<typeof computePortfolioHealth>) =>
+  h.components.find((c) => c.key === "diversification")!;
 
 describe("health concentration — per-asset score passthrough", () => {
   it("резерв: ниже пола 10% включает жёсткую блокировку", () => {
@@ -198,6 +200,45 @@ describe("диверсификация калибруется по манифе�
   it("портфель, идеально собранный по лимитам политики, даёт 100", () => {
     // Резерв 30% и фьючерсы 10% → на рисковый спот 60%: крипта 40, металлы 10, акции 10.
     expect(computeDiversificationScore([40, 10, 10])).toBe(100);
+  });
+
+  it("диверсификация: идеальная структура не даёт блокировок и предупреждений", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      riskCategoryShares: [0.4, 0.1, 0.1],
+      portfolioValue: 1000,
+    });
+    const d = div(h);
+    expect(d.score).toBe(100);
+    expect(d.meta?.activeClassCount).toBe(3);
+    expect(d.meta?.diversificationBlockers).toEqual([]);
+    expect(d.meta?.diversificationWarnings).toEqual([]);
+  });
+
+  it("диверсификация: один спотовый класс включает блокировку", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      riskCategoryShares: [0.6, 0, 0],
+      portfolioValue: 1000,
+    });
+    const d = div(h);
+    expect(d.score).toBe(0);
+    expect(d.meta?.largestClassName).toBe("Крипта");
+    expect(d.meta?.activeClassCount).toBe(1);
+    expect(d.meta?.diversificationBlockers).toEqual(["Рисковый капитал в одном спотовом классе"]);
+    expect(d.meta?.missingClassNames).toEqual(["Металлы", "Акции"]);
+  });
+
+  it("диверсификация: отсутствующий класс даёт предупреждение без жёсткой блокировки", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      riskCategoryShares: [0.3, 0.1, 0],
+      portfolioValue: 1000,
+    });
+    const d = div(h);
+    expect(d.meta?.activeClassCount).toBe(2);
+    expect(d.meta?.diversificationBlockers).toEqual([]);
+    expect(d.meta?.diversificationWarnings).toContain("Отсутствуют классы: акции");
   });
 
   it("перевес одного класса всё ещё снижает балл", () => {
