@@ -112,6 +112,10 @@ export type AssetConcentration = {
   worstPortfolioShare: number; // доля худшего актива в портфеле
   largestPortfolioShare: number; // системный: крупнейшая позиция портфеля
   overLimitAssets: string[]; // активы сверх своего лимита
+  altcoinSlotsUsed: number;
+  altcoinSlotsTotal: number;
+  altcoinSlotsFree: number;
+  altcoins: string[];
 };
 
 /**
@@ -132,6 +136,11 @@ export function assetConcentration(
   let largestPortfolioShare = 0;
   let disciplinePenalty = 0;
   const overLimitAssets: string[] = [];
+  const slots = altcoinSlots(
+    positions
+      .filter((position) => position.category === CRYPTO_CATEGORY && position.value > 0)
+      .map((position) => position.asset),
+  );
 
   for (const p of positions) {
     if (!p.value || p.value <= 0 || p.category === CASH_CATEGORY) continue;
@@ -173,6 +182,10 @@ export function assetConcentration(
     worstPortfolioShare,
     largestPortfolioShare,
     overLimitAssets,
+    altcoinSlotsUsed: slots.used,
+    altcoinSlotsTotal: slots.total,
+    altcoinSlotsFree: slots.free,
+    altcoins: slots.altcoins,
   };
 }
 
@@ -235,7 +248,7 @@ export type TradeInput = {
   category?: string;
 };
 
-export type GateCheckKey = "capital" | "position" | "class";
+export type GateCheckKey = "capital" | "position" | "class" | "altcoinSlots";
 export type GateCheckSeverity = "block" | "warn";
 
 export type GateCheck = {
@@ -380,6 +393,13 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   const posBaseBefore = isCryptoAsset ? cryptoBlockValue : total;
   const posBaseAfter = isCryptoAsset ? cryptoBlockValue + amount : total;
   const positionAfterShare = posBaseAfter > 0 ? (posValue + amount) / posBaseAfter : 0;
+  const existingAsset = ctx.positions.find((p) => p.asset === input.asset && p.value > 0);
+  const altSlots = isCryptoAsset
+    ? altcoinSlots(ctx.positions.filter((p) => p.category === CRYPTO_CATEGORY && p.value > 0).map((p) => p.asset))
+    : null;
+  const isAltcoin = isCryptoAsset && !isCryptoMajor(input.asset);
+  const isNewAltcoin =
+    isAltcoin && !altSlots?.altcoins.some((asset) => asset.toUpperCase() === input.asset.trim().toUpperCase()) && !existingAsset;
   checks.push({
     key: "position",
     label: isCryptoAsset
@@ -392,6 +412,21 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
     limit: positionLimit,
     isShare: true,
   });
+
+  if (isNewAltcoin && altSlots) {
+    const afterSlots = altSlots.used + 1;
+    checks.push({
+      key: "altcoinSlots",
+      label: "Альткоин-места по 5%",
+      ok: afterSlots <= altSlots.total,
+      severity: "block",
+      before: altSlots.used,
+      after: afterSlots,
+      limit: altSlots.total,
+      isShare: false,
+      note: "В крипто-блоке есть только 3 места под альткоины по 5%.",
+    });
+  }
 
   // ── Лимит доли класса (жёсткий, кроме кэша) ───────────────────
   // Крипта — фазовый лимит (60% обычно / 80% агрессив / 40% эйфория).
@@ -427,8 +462,9 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
     cap === null
       ? Infinity
       : cap * total - (ctx.allocation.find((a) => a.name === category)?.value ?? 0);
-  const maxSafeAmount = clampMin0(Math.min(greenMax, positionRoom, classRoom));
-  const maxAllowedAmount = clampMin0(Math.min(hardMax, positionRoom, classRoom));
+  const slotRoom = isNewAltcoin && altSlots && altSlots.used >= altSlots.total ? 0 : Infinity;
+  const maxSafeAmount = clampMin0(Math.min(greenMax, positionRoom, classRoom, slotRoom));
+  const maxAllowedAmount = clampMin0(Math.min(hardMax, positionRoom, classRoom, slotRoom));
 
   const hardFailed = checks.filter((c) => !c.ok && c.severity === "block");
   const softFailed = checks.filter((c) => !c.ok && c.severity === "warn");

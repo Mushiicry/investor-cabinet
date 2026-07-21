@@ -125,6 +125,10 @@ export type HealthComponentMeta = {
   worstConcentrationLimit?: number; // его per-asset лимит
   maxAssetLimitUtilization?: number; // доля/лимит (1.0 = ровно на лимите)
   overLimitAssets?: string[]; // все активы сверх своих лимитов
+  altcoinSlotsUsed?: number;
+  altcoinSlotsTotal?: number;
+  altcoinSlotsFree?: number;
+  altcoins?: string[];
   concentrationBlockers?: string[];
   concentrationWarnings?: string[];
   concentrationFormula?: string[];
@@ -237,6 +241,10 @@ export type HealthInput = {
   worstConcentrationPortfolioShare?: number; // доля актива в портфеле
   worstConcentrationLimit?: number; // его per-asset лимит
   overLimitAssets?: string[]; // все активы сверх своих лимитов
+  altcoinSlotsUsed?: number;
+  altcoinSlotsTotal?: number;
+  altcoinSlotsFree?: number;
+  altcoins?: string[];
 };
 
 export type PortfolioHealth = {
@@ -448,10 +456,29 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   const concentrationWorstAsset = input.worstConcentrationAsset;
   const concentrationWorstLimit = input.worstConcentrationLimit ?? 0;
   const concentrationWorstShare = input.worstConcentrationShare ?? 0;
+  const altcoinSlotsUsed = input.altcoinSlotsUsed;
+  const altcoinSlotsTotal = input.altcoinSlotsTotal;
+  const altcoinSlotsFree = input.altcoinSlotsFree;
+  const altcoins = input.altcoins;
   if (usePerAssetConcentration && overLimitAssets.length > 0) {
     concentrationBlockers.push("Актив выше своего лимита");
   } else if (usePerAssetConcentration && concentrationUtil >= 0.85) {
     concentrationWarnings.push("Актив близко к своему лимиту");
+  }
+  if (
+    usePerAssetConcentration &&
+    altcoinSlotsUsed !== undefined &&
+    altcoinSlotsTotal !== undefined &&
+    altcoinSlotsUsed > altcoinSlotsTotal
+  ) {
+    concentrationBlockers.push("Превышен лимит альткоин-мест");
+  } else if (
+    usePerAssetConcentration &&
+    altcoinSlotsUsed !== undefined &&
+    altcoinSlotsTotal !== undefined &&
+    altcoinSlotsUsed === altcoinSlotsTotal
+  ) {
+    concentrationWarnings.push("Все 3 альткоин-места заняты");
   }
   const concentrationFormula = usePerAssetConcentration
     ? [
@@ -462,6 +489,9 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
         `Доля к лимиту: ${Math.round(concentrationUtil * 100)}%`,
         `Текущая доля: ${Math.round(concentrationWorstShare * 100)}%`,
         `Лимит худшего актива: ${Math.round(concentrationWorstLimit * 100)}%`,
+        altcoinSlotsUsed !== undefined && altcoinSlotsTotal !== undefined
+          ? `Альткоин-места: ${altcoinSlotsUsed}/${altcoinSlotsTotal}`
+          : "Альткоин-места: нет данных",
       ]
     : [
         `Балл концентрации: ${concentrationScore}/100`,
@@ -547,6 +577,10 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
             worstConcentrationLimit: input.worstConcentrationLimit,
             maxAssetLimitUtilization: input.maxAssetLimitUtilization,
             overLimitAssets: input.overLimitAssets,
+            altcoinSlotsUsed,
+            altcoinSlotsTotal,
+            altcoinSlotsFree,
+            altcoins,
             concentrationBlockers,
             concentrationWarnings,
             concentrationFormula,

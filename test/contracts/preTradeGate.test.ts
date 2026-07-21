@@ -198,6 +198,31 @@ describe("pre-trade gate", () => {
     expect(s.free).toBe(0);
   });
 
+  it("альткоин-места: новый 4-й альткоин блокируется", () => {
+    const ctx: GateContext = {
+      ...baseCtx,
+      positions: [
+        ...baseCtx.positions,
+        { asset: "ATOM", category: "Крипта", value: 5 },
+        { asset: "INJ", category: "Крипта", value: 5 },
+        { asset: "SEI", category: "Крипта", value: 5 },
+      ],
+      allocation: baseCtx.allocation.map((item) =>
+        item.name === "Крипта" ? { ...item, value: 415 } : item,
+      ),
+    };
+    const v = evaluateTrade(buy({ asset: "PEPE", amountUsd: 1, category: "Крипта" }), ctx);
+    expect(v.status).toBe("block");
+    if (v.status === "block") {
+      const slotCheck = v.checks.find((check) => check.key === "altcoinSlots");
+      expect(slotCheck?.before).toBe(3);
+      expect(slotCheck?.after).toBe(4);
+      expect(slotCheck?.limit).toBe(3);
+      expect(v.reasons).toContain("Альткоин-места по 5%");
+      expect(v.maxAllowedAmount).toBe(0);
+    }
+  });
+
   it("фазовый лимит крипты 80% (агрессив) мягче базовых 60%", () => {
     // Крипта 400→650 = 65% > 60% (обычный), но ≤ 80% (агрессив) → класс ок.
     const ctx: GateContext = {

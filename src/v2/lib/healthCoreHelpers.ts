@@ -125,6 +125,8 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
       return "Доля крипты выше лимита 60%";
     case "concentration": {
       const m = c.meta;
+      if ((m?.concentrationBlockers ?? []).includes("Превышен лимит альткоин-мест")) return "Превышен лимит альткоин-мест";
+      if ((m?.concentrationWarnings ?? []).includes("Все 3 альткоин-места заняты")) return "Все 3 альткоин-места заняты";
       if ((m?.concentrationBlockers ?? []).length) return m?.concentrationBlockers?.[0] ?? "";
       if ((m?.concentrationWarnings ?? []).length) return m?.concentrationWarnings?.[0] ?? "";
       if (m?.worstConcentrationAsset && m.worstConcentrationAsset !== "-" && (m.maxAssetLimitUtilization ?? 0) > 1) {
@@ -229,6 +231,20 @@ export function buildCoreRecs(
   const conc = all.find((c) => c.key === "concentration");
   const cm = conc?.meta;
   const concentrationBlockers = cm?.concentrationBlockers ?? [];
+  if (concentrationBlockers.includes("Превышен лимит альткоин-мест")) {
+    result.push({
+      action: "Сократить лишний альткоин или освободить место",
+      gain: 5,
+      source: "В крипто-блоке только 3 места под альткоины по 5% → здоровье +5",
+    });
+  }
+  if ((cm?.concentrationWarnings ?? []).includes("Все 3 альткоин-места заняты")) {
+    result.push({
+      action: "Не добавлять новые альткоины",
+      gain: 3,
+      source: "Все 3 места под альткоины уже заняты",
+    });
+  }
   if (cm?.worstConcentrationAsset && cm.worstConcentrationAsset !== "-" && (cm.maxAssetLimitUtilization ?? 0) > 1) {
     const limit = Math.round((cm.worstConcentrationLimit ?? 0) * 100);
     const shareBase = Math.round((cm.worstConcentrationShare ?? 0) * 100);

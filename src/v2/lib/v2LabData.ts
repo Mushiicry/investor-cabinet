@@ -270,6 +270,10 @@ export const buildLiveV2Data = (
     worstConcentrationPortfolioShare: concentration.worstPortfolioShare,
     worstConcentrationLimit: concentration.worstLimit,
     overLimitAssets: concentration.overLimitAssets,
+    altcoinSlotsUsed: concentration.altcoinSlotsUsed,
+    altcoinSlotsTotal: concentration.altcoinSlotsTotal,
+    altcoinSlotsFree: concentration.altcoinSlotsFree,
+    altcoins: concentration.altcoins,
   };
   const computedHealth = computePortfolioHealth(liveHealthInput);
   // Честный диагноз: используем собственный расчёт, а не сглаженный health из API.

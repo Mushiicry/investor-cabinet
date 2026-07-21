@@ -100,6 +100,7 @@ describe("health concentration — per-asset score passthrough", () => {
       "Доля к лимиту: 420%",
       "Текущая доля: 42%",
       "Лимит худшего актива: 10%",
+      "Альткоин-места: нет данных",
     ]);
   });
 
@@ -116,6 +117,44 @@ describe("health concentration — per-asset score passthrough", () => {
     });
     expect(conc(h).meta?.concentrationBlockers).toEqual([]);
     expect(conc(h).meta?.concentrationWarnings).toEqual(["Актив близко к своему лимиту"]);
+  });
+
+  it("концентрация: 3 альткоин-места заняты — предупреждение", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      concentrationScore: 78,
+      maxAssetLimitUtilization: 0.7,
+      worstConcentrationAsset: "ATOM",
+      worstConcentrationLimit: 0.05,
+      worstConcentrationShare: 0.035,
+      worstConcentrationPortfolioShare: 0.02,
+      overLimitAssets: [],
+      altcoinSlotsUsed: 3,
+      altcoinSlotsTotal: 3,
+      altcoinSlotsFree: 0,
+      altcoins: ["ATOM", "INJ", "SEI"],
+    });
+    expect(conc(h).meta?.concentrationBlockers).toEqual([]);
+    expect(conc(h).meta?.concentrationWarnings).toEqual(["Все 3 альткоин-места заняты"]);
+    expect(conc(h).meta?.concentrationFormula).toContain("Альткоин-места: 3/3");
+  });
+
+  it("концентрация: больше 3 альткоинов — жёсткая блокировка", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      concentrationScore: 72,
+      maxAssetLimitUtilization: 0.7,
+      worstConcentrationAsset: "ATOM",
+      worstConcentrationLimit: 0.05,
+      worstConcentrationShare: 0.035,
+      worstConcentrationPortfolioShare: 0.02,
+      overLimitAssets: [],
+      altcoinSlotsUsed: 4,
+      altcoinSlotsTotal: 3,
+      altcoinSlotsFree: 0,
+      altcoins: ["ATOM", "INJ", "SEI", "PEPE"],
+    });
+    expect(conc(h).meta?.concentrationBlockers).toEqual(["Превышен лимит альткоин-мест"]);
   });
 
   it("фьючерсы: свободный остаток до лимита не снимает баллы", () => {
