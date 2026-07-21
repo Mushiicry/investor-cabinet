@@ -246,11 +246,25 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
            (метаданные регистрации, иначе часть email). «ИНВЕСТОР» остаётся
            только для гостя. */
         collapsed={sidebarCollapsed}
-        onToggleCollapse={toggleSidebar}
         profileName={profileName || displayName}
         profileAvatar={profileAvatar}
         onOpenAuth={onOpenAuth}
       />
+      {/* Рычаг на стыке панелей. Живёт вне сайдбара: внутри его обрезал
+          собственный скролл, и от кнопки был виден только огрызок. */}
+      <button
+        className="v2-rail-toggle"
+        type="button"
+        onClick={toggleSidebar}
+        aria-label={sidebarCollapsed ? "Развернуть меню" : "Свернуть меню"}
+        title={sidebarCollapsed ? "Развернуть меню" : "Свернуть меню"}
+      >
+        <span className="v2-rail-toggle-grip" aria-hidden="true" />
+        <svg viewBox="0 0 12 18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+          <path d={sidebarCollapsed ? "M4 4l5 5-5 5" : "M8 4L3 9l5 5"} strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
       <main className={locked ? "v2-main is-locked" : "v2-main"}>
         {dataStatus && !locked && <DataStatusBadge dataStatus={dataStatus} />}
         {locked && (

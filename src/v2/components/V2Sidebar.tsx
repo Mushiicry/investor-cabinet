@@ -116,7 +116,6 @@ type Props = {
   transactions?: InvestorTransaction[];
   profileName: string;
   collapsed?: boolean;
-  onToggleCollapse?: () => void;
   profileAvatar: string;
   onOpenAuth: (tab: "signin" | "signup") => void;
   mobileOpen?: boolean;
@@ -126,7 +125,7 @@ type Props = {
 const mainNavItems = navItems.filter(i => i.label !== "Настройки");
 const settingsItem  = navItems.find(i => i.label === "Настройки")!;
 
-export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, positions = [], transactions = [], profileName, profileAvatar, onOpenAuth, mobileOpen = false, onCloseMobile, collapsed = false, onToggleCollapse }: Props) {
+export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, positions = [], transactions = [], profileName, profileAvatar, onOpenAuth, mobileOpen = false, onCloseMobile, collapsed = false }: Props) {
   const { configured, user, displayName, signOut } = useAuth();
   const [levelOpen, setLevelOpen] = useState(false);
   const { level } = computeLevel(healthFactor);
@@ -160,21 +159,7 @@ export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, 
       mobileOpen ? "is-mobile-open" : "",
       collapsed ? "is-collapsed" : "",
     ].filter(Boolean).join(" ")}>
-      {/* Сворачивание — только для десктопа: на мобиле сайдбар и так шторка.
-          Композиция golden layout не меняется, пока владелец не свернёт сам. */}
-      {onToggleCollapse && (
-        <button
-          className="v2-sidebar-collapse"
-          type="button"
-          onClick={onToggleCollapse}
-          aria-label={collapsed ? "Развернуть меню" : "Свернуть меню"}
-          title={collapsed ? "Развернуть меню" : "Свернуть меню"}
-        >
-          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-            <path d={collapsed ? "M7 4l5 5-5 5" : "M11 4L6 9l5 5"} strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-      )}
+
       <button className="v2-sidebar-mob-close" type="button" aria-label="Закрыть меню" onClick={onCloseMobile}>
         <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
           <path d="M4 4l10 10M14 4L4 14" strokeLinecap="round" />
