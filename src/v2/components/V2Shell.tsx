@@ -19,6 +19,8 @@ import { V2PortfolioPage } from "./V2PortfolioPage";
 import type { TonStaking } from "../../hooks/useTonStaking";
 import type { CosmosStaking } from "../../hooks/useCosmosStaking";
 import { V2HealthPage } from "./V2HealthPage";
+import { V2NotificationsPanel } from "./V2NotificationsPanel";
+import { buildPortfolioAlerts, sortAlerts } from "../lib/portfolioAlerts";
 import { V2Sidebar } from "./V2Sidebar";
 import { V2TopMetrics } from "./V2TopMetrics";
 import { V2StarField } from "./V2StarField";
@@ -135,13 +137,43 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     setMenuOpen(false);
   };
 
-  const criticalCount = useMemo(() => {
-    const portfolio = data.portfolio;
-    let n = 0;
-    if (portfolio.totalPortfolioValue > 0 && portfolio.stableReserve < portfolio.totalPortfolioValue * 0.05) n++;
-    if (portfolio.totalPortfolioValue > 0 && portfolio.reserveShare < 0.10) n++;
-    return n;
-  }, [data.portfolio]);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  // Health Factor с прошлого захода — чтобы поймать его просадку.
+  // Читаем один раз при монтировании, перезаписываем уже после сравнения.
+  const healthKey = `mushii-last-health${profileKeySuffix}`;
+  const [previousHealthFactor] = useState<number | null>(() => {
+    const raw = localStorage.getItem(healthKey);
+    const parsed = raw ? Number(raw) : Number.NaN;
+    return Number.isFinite(parsed) ? parsed : null;
+  });
+
+  useEffect(() => {
+    const hf = data.health?.healthFactor;
+    if (typeof hf === "number" && Number.isFinite(hf)) {
+      localStorage.setItem(healthKey, String(hf));
+    }
+  }, [healthKey, data.health?.healthFactor]);
+
+  // Тревоги считаются тем же движком, что и на странице «Сигналы»,
+  // иначе счётчик на колокольчике расходился бы со списком.
+  const alerts = useMemo(
+    () =>
+      sortAlerts(
+        buildPortfolioAlerts({
+          portfolio: data.portfolio,
+          positions: data.positions,
+          allocation: data.allocation,
+          currentFG: data.fearGreedStrategy.currentIndex,
+          health: data.health,
+          interestSignals: data.signals?.interestList ?? [],
+          previousHealthFactor,
+        })
+      ),
+    [data.portfolio, data.positions, data.allocation, data.fearGreedStrategy.currentIndex, data.health, data.signals, previousHealthFactor]
+  );
+
+  const criticalCount = alerts.filter((alert) => alert.level === "critical").length;
 
   return (
     <div
@@ -162,7 +194,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           <span className="v2-mob-brand-title">MUSHII INVEST</span>
           <span className="v2-mob-brand-sub">RISK FIRST / PNL SECOND</span>
         </div>
-        <button className="v2-mob-bell" type="button" aria-label="Уведомления">
+        <button className="v2-mob-bell" type="button" aria-label="Уведомления" onClick={() => setNotifOpen(true)}>
           <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
             <path d="M9 2a4 4 0 00-4 4c0 4-1.6 5-1.6 5h11.2S13 10 13 6a4 4 0 00-4-4z" />
             <path d="M7.4 14a1.6 1.6 0 003.2 0" strokeLinecap="round" />
@@ -308,6 +340,10 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         )}
       </main>
       <V2TabBar activePage={page} onNavigate={onNavigate} criticalCount={criticalCount} />
+
+      {notifOpen && (
+        <V2NotificationsPanel alerts={alerts} onClose={() => setNotifOpen(false)} />
+      )}
 
       {selectedChip && (
         <V2HealthDetailModal

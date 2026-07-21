@@ -4,6 +4,7 @@ import type { V2Portfolio } from "../InvestorCabinetV2Lab";
 import { useMemo, useState } from "react";
 import { V2HealthDetailModal } from "./V2HealthDetailModal";
 import { isEmptyAccount } from "../lib/accountState";
+import { useEscapeClose } from "../../hooks/useEscapeClose";
 
 type Props = {
   portfolio: V2Portfolio;
@@ -250,6 +251,7 @@ function buildSimInput(base: HealthInput, levers: SimLevers): HealthInput {
 export function V2HealthPage({ portfolio, health, healthInput }: Props) {
   const [modal, setModal]   = useState<HealthComponent | null>(null);
   const [simOpen, setSimOpen] = useState(false);
+  useEscapeClose(simOpen, () => setSimOpen(false));
   const hf = health.healthFactor;
   // Пустой/кастдев-аккаунт (кошельки не подключены): 0 — это отсутствие данных,
   // а не «критическое состояние». Показываем спокойный «нет данных» вместо

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components -- хук/хелперы намеренно рядом с компонентом (личный инструмент) */
-import { useEffect } from "react";
+import { useEscapeClose } from "../../hooks/useEscapeClose";
 import { createPortal } from "react-dom";
 import { V2LevelLadder } from "./V2LevelLadder";
 import { getAchievements } from "../lib/levelLadder";
@@ -102,11 +102,7 @@ export function V2InvestorModal({ portfolio, health, positions = [], transaction
   const achievements = getAchievements({ health, portfolio, positions, transactions });
   const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  useEscapeClose(true, onClose);
 
   return createPortal(
     <div className="v2-im-overlay" onClick={onClose}>

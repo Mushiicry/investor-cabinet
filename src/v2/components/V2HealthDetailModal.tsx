@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEscapeClose } from "../../hooks/useEscapeClose";
 import type { HealthComponent, HealthComponentKey } from "../../lib/portfolioHealth";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
 
@@ -140,11 +140,7 @@ function scoreLabel(score: number): string {
 }
 
 export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  useEscapeClose(true, onClose);
 
   const color = scoreColor(component.score);
   const label = scoreLabel(component.score);

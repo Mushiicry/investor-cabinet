@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../../hooks/useAuth";
+import { useEscapeClose } from "../../hooks/useEscapeClose";
 
 type Tab = "signin" | "signup";
 
@@ -9,6 +10,8 @@ type Props = {
 };
 
 export function V2AuthModal({ initialTab = "signin", onClose }: Props) {
+  useEscapeClose(true, onClose);
+
   const { signIn, signUp } = useAuth();
   const [tab, setTab] = useState<Tab>(initialTab);
   const [name, setName] = useState("");

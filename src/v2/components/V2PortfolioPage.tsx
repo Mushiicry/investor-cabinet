@@ -5,6 +5,7 @@ import type { PlaybookCard } from "../../lib/playbookSelectors";
 import type { TonStaking } from "../../hooks/useTonStaking";
 import type { CosmosStaking } from "../../hooks/useCosmosStaking";
 import { CryptoLogo } from "../../components/crypto/CryptoLogo";
+import { useEscapeClose } from "../../hooks/useEscapeClose";
 import { V2StakingCard } from "./V2StakingCard";
 import { V2CosmosStakingCard } from "./V2CosmosStakingCard";
 
@@ -180,6 +181,8 @@ function PlaybookModal({
   position: V2Position;
   onClose: () => void;
 }) {
+  useEscapeClose(true, onClose);
+
   return (
     <div className="v2-pb-overlay" onClick={onClose}>
       <div className="v2-pb-modal" onClick={(event) => event.stopPropagation()}>

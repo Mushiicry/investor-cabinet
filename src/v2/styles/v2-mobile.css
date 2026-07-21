@@ -740,3 +740,167 @@
     line-height: 1.15;
   }
 }
+
+/* ═══ ПАНЕЛЬ УВЕДОМЛЕНИЙ ═══
+   Колокольчик в шапке показывает всё, что горит прямо сейчас: точки интереса
+   у срабатывания, перевес позиций, просадку Health Factor, пустой резерв.
+   Считается тем же движком, что и страница «Сигналы». */
+.v2-notif-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom));
+  background: rgba(2, 6, 16, 0.72);
+  animation: v2-notif-fade 0.18s ease;
+}
+
+@keyframes v2-notif-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.v2-notif-panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 520px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  border: 1px solid rgba(86, 196, 240, 0.24);
+  background: linear-gradient(158deg, rgba(9, 24, 48, 0.98) 0%, rgba(4, 11, 24, 0.99) 100%);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(200, 240, 255, 0.08);
+  animation: v2-notif-slide 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+
+@keyframes v2-notif-slide {
+  from { transform: translateY(-12px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.v2-notif-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid rgba(86, 196, 240, 0.12);
+  flex-shrink: 0;
+}
+
+.v2-notif-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.v2-notif-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(120, 170, 200, 0.65);
+}
+
+.v2-notif-summary {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(220, 240, 255, 0.92);
+}
+
+.v2-notif-close {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  border: 1px solid rgba(86, 196, 240, 0.2);
+  background: rgba(86, 196, 240, 0.06);
+  color: rgba(200, 235, 250, 0.85);
+  cursor: pointer;
+}
+.v2-notif-close svg { width: 15px; height: 15px; }
+
+.v2-notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.v2-notif-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  border: 1px solid rgba(86, 196, 240, 0.1);
+  border-left-width: 3px;
+  background: rgba(12, 26, 42, 0.6);
+}
+
+/* Уровень кодируется левой кромкой — один акцент на строку, без пестроты. */
+.v2-notif-item.level-critical { border-left-color: rgba(220, 80, 80, 0.85); }
+.v2-notif-item.level-warning  { border-left-color: rgba(220, 170, 70, 0.85); }
+.v2-notif-item.level-info     { border-left-color: rgba(86, 196, 240, 0.7); }
+
+.v2-notif-level {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.v2-notif-item.level-critical .v2-notif-level { color: rgba(235, 120, 120, 0.9); }
+.v2-notif-item.level-warning  .v2-notif-level { color: rgba(225, 180, 90, 0.9); }
+.v2-notif-item.level-info     .v2-notif-level { color: rgba(108, 200, 232, 0.8); }
+
+.v2-notif-item-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(225, 242, 255, 0.95);
+  overflow-wrap: break-word;
+}
+
+.v2-notif-item-detail {
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(150, 185, 205, 0.7);
+  overflow-wrap: break-word;
+}
+
+.v2-notif-item-action {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(108, 200, 232, 0.85);
+}
+
+.v2-notif-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 26px 16px;
+  text-align: center;
+}
+
+.v2-notif-empty-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(120, 220, 170, 0.9);
+}
+
+.v2-notif-empty-sub {
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(140, 175, 195, 0.6);
+}
