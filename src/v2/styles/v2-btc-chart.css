@@ -1650,6 +1650,37 @@
   color: rgba(130, 175, 200, 0.55);
   text-align: right;
   white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+/* Расстояние до срабатывания — главное число строки: по нему инвестор
+   решает, куда смотреть первым. */
+.v2-sig-int-dist {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgba(150, 195, 220, 0.75);
+}
+
+.v2-sig-int-dist.is-near {
+  color: rgba(77, 200, 255, 0.95);
+}
+
+.v2-sig-int-dist-abs {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(120, 165, 195, 0.5);
+}
+
+.v2-sig-int-sub {
+  font-size: 10px;
+  color: rgba(120, 165, 195, 0.45);
 }
 
 /* ── Health strip ───────────────────────────────────────────── */

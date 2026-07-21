@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
 import {
   MAX_CRYPTO_EXPOSURE_SHARE,
@@ -10,6 +11,7 @@ import { isEmptyAccount } from "../lib/accountState";
 import { getMarketPsychology } from "../lib/marketPsychology";
 import { altcoinSlots, CRYPTO_ALT_LIMIT } from "../lib/preTradeGate";
 import type { InterestSignal } from "../../types/portfolio";
+import { getSignalDistance, sortByProximity, type SignalDistance } from "../lib/interestSignals";
 
 const CRYPTO_CATEGORIES = new Set(["Крипта", "Crypto"]);
 
@@ -205,12 +207,25 @@ const SIGNAL_STATUS_LABEL: Record<string, string> = {
   ARMED: "Ждёт",
   TRIGGERED: "Сработал",
   ERROR: "Сбой",
+  CHECK: "Проверить",
 };
 
 const formatSignalStatus = (status: string) =>
   SIGNAL_STATUS_LABEL[status.trim().toUpperCase()] ?? (status.trim() || "Активно");
 
+// Расстояние до срабатывания: стрелка вместо знака минус — направление хода
+// читается быстрее, чем математический знак.
+const formatSignalDistance = (distance: SignalDistance) => {
+  const arrow = distance.pct < 0 ? "↓" : "↑";
+  const pct = Math.abs(distance.pct).toLocaleString("ru-RU", { maximumFractionDigits: 1 });
+  return `${arrow} ${pct}%`;
+};
+
+// Сигнал в двух шагах от срабатывания требует другого внимания, чем в двадцати.
+const NEAR_TRIGGER_PCT = 3;
+
 export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStrategy, allocation, interestSignals }: Props) {
+  const orderedSignals = useMemo(() => sortByProximity(interestSignals), [interestSignals]);
   const currentFG = fearGreedStrategy.currentIndex;
   const liveStrategy = buildFearGreedStrategy(
     currentFG,
@@ -406,18 +421,34 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
             <span className="v2-sig-int-bot-badge">{interestSignals.length ? "СИГНАЛЫ API" : "НЕТ ИСТОЧНИКА API"}</span>
           </div>
           <div className="v2-sig-int-list">
-            {interestSignals.length ? (
-              interestSignals.map((signal) => (
-                <div className="v2-sig-int-row" key={signal.id}>
-                  <span className="v2-sig-int-asset">{signal.asset}</span>
-                  <span className="v2-sig-int-range">
-                    {signal.action} {formatSignalMoney(signal.amountUsd)} при {formatSignalMoney(signal.triggerPrice)}
-                  </span>
-                  <span className="v2-sig-int-label">
-                    {formatSignalStatus(signal.status)} · {formatSignalMoney(signal.currentPrice)}
-                  </span>
-                </div>
-              ))
+            {orderedSignals.length ? (
+              orderedSignals.map((signal) => {
+                const distance = getSignalDistance(signal);
+                const isDone = signal.status.trim().toUpperCase() === "TRIGGERED";
+                const isNear = !isDone && !!distance && Math.abs(distance.pct) <= NEAR_TRIGGER_PCT;
+
+                return (
+                  <div className="v2-sig-int-row" key={signal.id}>
+                    <span className="v2-sig-int-asset">{signal.asset}</span>
+                    <span className="v2-sig-int-range">
+                      {signal.action} {formatSignalMoney(signal.amountUsd)} при {formatSignalMoney(signal.triggerPrice)}
+                    </span>
+                    <span className="v2-sig-int-label">
+                      {distance && !isDone ? (
+                        <span className={`v2-sig-int-dist${isNear ? " is-near" : ""}`}>
+                          {formatSignalDistance(distance)}
+                          <span className="v2-sig-int-dist-abs">
+                            {formatSignalMoney(Math.abs(distance.abs))}
+                          </span>
+                        </span>
+                      ) : null}
+                      <span className="v2-sig-int-sub">
+                        {formatSignalStatus(signal.status)} · {formatSignalMoney(signal.currentPrice)}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })
             ) : (
               <div className="v2-sig-int-row">
                 <span className="v2-sig-int-asset">—</span>

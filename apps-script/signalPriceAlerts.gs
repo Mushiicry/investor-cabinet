@@ -144,6 +144,7 @@ function IC_SIGNAL_ALERT_run_() {
     var triggerPrice = IC_SIGNAL_ALERT_toNumber_(row[4], displayRow[4]);
     var source = String(row[5] || displayRow[5] || '').trim();
     var manualStatus = String(row[7] || displayRow[7] || '').trim().toUpperCase();
+    var lastCheck = String(row[8] || displayRow[8] || '').trim();
     var telegramStatus = String(row[10] || displayRow[10] || '').trim();
     var comment = String(row[11] || displayRow[11] || '').trim();
 
@@ -162,7 +163,36 @@ function IC_SIGNAL_ALERT_run_() {
     // Ручная пометка статуса = сигнал снят с дежурства инвестором.
     if (!scriptOwnsStatus) return;
     if (telegramStatus !== 'PENDING') return;
-    if (!IC_SIGNAL_ALERT_shouldTrigger_(id, action, currentPrice, triggerPrice)) return;
+
+    var direction = IC_SIGNAL_ALERT_direction_(id, action);
+
+    // Направление не читается однозначно — молчим и зовём человека. Ложный
+    // алерт в неверную сторону хуже, чем его отсутствие.
+    if (!direction) {
+      priceStatusCheck[index][1] = 'CHECK';
+      failed.push({ id: id, error: 'Направление сигнала не распознано: "' + action + '"' });
+      return;
+    }
+
+    var conditionMet = direction === 'SELL'
+      ? currentPrice >= triggerPrice
+      : currentPrice <= triggerPrice;
+    if (!conditionMet) return;
+
+    // Сигнал должен сначала встать на дежурство при невыполненном условии.
+    // Если при первом же знакомстве со строкой условие уже выполнено — это не
+    // касание цены, а ошибка ввода (перепутано направление либо устаревший
+    // уровень). Ставим CHECK: этот статус скрипт не перезаписывает, сигнал
+    // остаётся снятым с дежурства до решения инвестора.
+    if (!lastCheck) {
+      priceStatusCheck[index][1] = 'CHECK';
+      failed.push({
+        id: id,
+        error: 'Новый сигнал сработал бы сразу при заведении (цена ' + currentPrice +
+          ' против триггера ' + triggerPrice + ') — проверьте направление и уровень'
+      });
+      return;
+    }
 
     var text = IC_SIGNAL_ALERT_buildMessage_(
       id,
@@ -201,10 +231,68 @@ function IC_SIGNAL_ALERT_run_() {
   };
 }
 
-function IC_SIGNAL_ALERT_shouldTrigger_(id, action, currentPrice, triggerPrice) {
-  var isSell = String(id).indexOf('-SELL-') >= 0 || String(action).toLowerCase() === 'продать';
-  if (isSell) return currentPrice >= triggerPrice;
-  return currentPrice <= triggerPrice;
+// Корни, а не точные слова: «Продать», «Продажа», «Продай», «Фиксация»,
+// «Сократить» должны читаться одинаково. Признаки инструмента (шорт/лонг)
+// сюда намеренно не входят — «закрыть шорт» это покупка, а «добавить в шорт»
+// продажа, так что по названию позиции направление не выводится.
+var IC_SIGNAL_ALERT_SELL_STEMS = [
+  'прода', 'продай', 'фиксир', 'фиксац', 'зафиксир', 'сократ', 'сокращ',
+  'разгруз', 'выход', 'выйти', 'тейк', 'профит', 'sell', 'take', 'profit', 'tp'
+];
+
+var IC_SIGNAL_ALERT_BUY_STEMS = [
+  'купи', 'покупк', 'докуп', 'подкуп', 'добор', 'добра', 'добав', 'набор',
+  'набра', 'вход', 'войти', 'откуп', 'buy', 'bid', 'dca'
+];
+
+// Возвращает 'SELL', 'BUY' или null, если направление неоднозначно.
+// null — сознательный отказ угадывать: вызывающий код помечает строку CHECK
+// и не шлёт алерт.
+function IC_SIGNAL_ALERT_direction_(id, action) {
+  var fromId = IC_SIGNAL_ALERT_directionFromId_(id);
+  var fromAction = IC_SIGNAL_ALERT_directionFromAction_(action);
+
+  if (fromId && fromAction && fromId !== fromAction) return null;
+  return fromId || fromAction || null;
+}
+
+function IC_SIGNAL_ALERT_directionFromId_(id) {
+  var normalized = String(id || '').toUpperCase();
+  var isSell = normalized.indexOf('-SELL-') >= 0;
+  var isBuy = normalized.indexOf('-BUY-') >= 0;
+
+  if (isSell && isBuy) return null;
+  if (isSell) return 'SELL';
+  if (isBuy) return 'BUY';
+  return null;
+}
+
+function IC_SIGNAL_ALERT_directionFromAction_(action) {
+  var normalized = String(action || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[^a-zа-я0-9]+/g, ' ')
+    .trim();
+  if (!normalized) return null;
+
+  var words = normalized.split(' ');
+  var matches = function(stems) {
+    return words.some(function(word) {
+      return stems.some(function(stem) {
+        return word.indexOf(stem) === 0;
+      });
+    });
+  };
+
+  var isSell = matches(IC_SIGNAL_ALERT_SELL_STEMS);
+  var isBuy = matches(IC_SIGNAL_ALERT_BUY_STEMS);
+
+  // «Продать/добавить» по шорту — обе стороны в одной формулировке.
+  // Угадывать нельзя, отдаём решение человеку.
+  if (isSell && isBuy) return null;
+  if (isSell) return 'SELL';
+  if (isBuy) return 'BUY';
+  return null;
 }
 
 function IC_SIGNAL_ALERT_priceForSignal_(id, asset, source, primaryMids, xyzMids) {
