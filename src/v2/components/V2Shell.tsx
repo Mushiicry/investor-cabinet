@@ -197,6 +197,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         health={data.health}
         positions={data.positions}
         transactions={data.transactions}
+        profileName={profileName}
         profileAvatar={profileAvatar}
         onOpenAuth={onOpenAuth}
       />
@@ -222,6 +223,11 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             health={data.health}
             fearGreedStrategy={data.fearGreedStrategy}
             allocation={data.allocation}
+            interestSignals={data.signals?.interestList?.length
+              ? data.signals.interestList
+              : data.signals?.interest
+                ? [data.signals.interest]
+                : []}
           />
         ) : page === "gate" ? (
           <V2GatePage

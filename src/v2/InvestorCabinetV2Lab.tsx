@@ -103,6 +103,7 @@ export type V2LabData = {
   fearGreedStrategy: PortfolioState["fearGreedStrategy"];
   history: PortfolioState["history"];
   transactions: PortfolioState["transactions"];
+  signals: PortfolioState["signals"];
   allocation: Array<{ name: string; share: number; value: number }>;
   health: PortfolioHealth;
   healthInput: HealthInput; // входы расчёта — нужны симулятору Health для честного пересчёта

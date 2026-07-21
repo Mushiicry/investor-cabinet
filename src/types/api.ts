@@ -28,6 +28,21 @@ export type FearGreedStrategyApiRule = {
   status?: unknown;
 };
 
+export type InterestSignalApiItem = {
+  id?: unknown;
+  asset?: unknown;
+  action?: unknown;
+  amountUsd?: unknown;
+  triggerPrice?: unknown;
+  source?: unknown;
+  currentPrice?: unknown;
+  status?: unknown;
+  lastCheck?: unknown;
+  triggeredAt?: unknown;
+  telegram?: unknown;
+  comment?: unknown;
+};
+
 export type InvestorApiResponse = {
   success?: boolean;
   /** Лист «Прогресс»: достигнутый уровень лестницы (источник истины). */
@@ -68,6 +83,10 @@ export type InvestorApiResponse = {
   portfolio?: unknown;
   history?: unknown;
   transactions?: unknown;
+  signals?: {
+    interest?: InterestSignalApiItem | null;
+    interestList?: InterestSignalApiItem[];
+  };
   risk?: {
     portfolioValue?: unknown;
     reserve?: unknown;

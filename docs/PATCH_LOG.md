@@ -2573,3 +2573,63 @@ Frontend (коммиты 57fa128, 7a4d743):
 - рекомендации Обзор/Здоровье: живые цифры вместо абстрактных фраз
 - v2-mobile.css: симулятор, breakdown, DCA-зоны, BTC-график full-bleed,
   стейблы, стейк-карта, разделители блоков позиций
+
+---
+
+## 2026-07-21 — Price alerts «Зона интереса»: Sheets → Apps Script → Telegram → сайт
+
+Назначение:
+детерминированные ценовые алерты по зонам интереса. Лист «Сигналы» —
+источник истины, минутный триггер сверяет цены Hyperliquid, шлёт Telegram
+и отмечает срабатывание в таблице. Ордера не выставляются: alert-only,
+исполнение остаётся ручным решением инвестора.
+
+Затронутые файлы:
+- apps-script/signalPriceAlerts.gs (новый) — setup/install/remove/audit/sync/rearm
+- apps-script/appsscript.json — executionApi.access = MYSELF
+- apps-script/Код.js — getSignals(), блок `signals` в JSON API
+- src/types/api.ts, src/types/portfolio.ts — контракт InterestSignal
+- src/services/investorState.ts, src/services/apiValidation.ts — нормализация и валидация
+- src/lib/portfolioCalculations.ts, src/v2/lib/v2LabData.ts — пустой signals в базовом состоянии
+- src/v2/components/V2Shell.tsx, V2SignalsPage.tsx — рендер списка «Зона интереса»
+- src/v2/styles/v2-btc-chart.css — потолок высоты списка на мобиле
+
+Контракт API:
+`signals.interest` (первый сигнал) и `signals.interestList` (все строки листа).
+Поля: id, asset, action, amountUsd, triggerPrice, source, currentPrice,
+status, lastCheck, triggeredAt, telegram, comment.
+
+Логика срабатывания:
+- продажа (id содержит `-SELL-` либо действие «Продать») — при цене >= триггера
+- покупка — при цене <= триггера
+- отправка только при Telegram-статусе PENDING; после отправки SENT + TRIGGERED
+- цены: Hyperliquid allMids; GOLD и SPCXB — через dex=xyz (`xyz:GOLD`, `xyz:SPCX`);
+  BTC SHORT сверяется по цене BTC
+
+Аудит 2026-07-21 — исправлено в этом же патче:
+- запись в лист батчем (было 23 отдельных setValues в минуту — риск выбрать
+  дневную квоту времени триггеров на consumer-аккаунте)
+- LockService против наложения минутных прогонов (защита от дублей алертов)
+- убрана сверка `result.text` в ответе Telegram: ложное несовпадение оставляло
+  сигнал в PENDING и давало дубль каждую минуту
+- ошибка на одной строке больше не роняет прогон: статус ERROR, остальные идут дальше
+- ручные статусы в колонке H (например PAUSED) переживают синк и снимают сигнал
+  с дежурства — раньше затирались на ARMED каждую минуту
+- rearmSignalPriceAlert(id) — возврат сигнала на дежурство
+- фронт: точность триггера по величине цены (0,3068 вместо 0,31), русские статусы
+- мобайл: список ограничен 300px со скроллом (панель занимала 1014px)
+
+Риски:
+- квота времени триггеров на gmail-аккаунте (90 мин/сут) — после батча запас ~3x,
+  но при росте числа сигналов следить за журналом выполнений
+- распознавание продажи завязано на `-SELL-` в id или точное слово «Продать»:
+  новые строки нужно заводить в этом же формате
+- SPCXB тянется только если колонка «Источник» содержит `xyz:SPCX`
+
+Rollback:
+- удалить триггер `syncSignalPriceAlerts` (removeSignalPriceAlertTrigger)
+- вернуть в V2SignalsPage статичную заглушку «Диапазоны отключены»
+- убрать `signals` из doGet — фронт переживает отсутствие ключа (fallback на пустой список)
+
+Deployment impact:
+clasp push + деплой Apps Script; сборка и push в GitHub, Vercel деплоит с `main`.

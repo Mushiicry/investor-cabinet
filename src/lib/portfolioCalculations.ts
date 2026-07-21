@@ -169,6 +169,10 @@ export function buildPortfolioState(positionsInput: PositionInput[], decisions: 
     scenarios,
     history: [],
     transactions: [],
+    signals: {
+      interest: null,
+      interestList: [],
+    },
     fearGreedStrategy: buildFearGreedStrategy(50, invested),
     updatedAt: new Date().toISOString(),
   };

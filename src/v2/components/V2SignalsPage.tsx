@@ -9,6 +9,7 @@ import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import { isEmptyAccount } from "../lib/accountState";
 import { getMarketPsychology } from "../lib/marketPsychology";
 import { altcoinSlots, CRYPTO_ALT_LIMIT } from "../lib/preTradeGate";
+import type { InterestSignal } from "../../types/portfolio";
 
 const CRYPTO_CATEGORIES = new Set(["Крипта", "Crypto"]);
 
@@ -19,6 +20,7 @@ type Props = {
   health: PortfolioHealth;
   fearGreedStrategy: V2LabData["fearGreedStrategy"];
   allocation: V2LabData["allocation"];
+  interestSignals: InterestSignal[];
 };
 
 type AlertLevel = "critical" | "warning" | "info";
@@ -191,7 +193,24 @@ function formatCooldownHours(hours: number) {
   return days > 0 ? `${days}д ${hh}:00` : `${hh}:00`;
 }
 
-export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStrategy, allocation }: Props) {
+// Точность триггера — часть решения: 0.3068 нельзя показывать как 0,31.
+// Разряды подбираем по величине цены, а не фиксируем на двух знаках.
+const formatSignalMoney = (value: number) => {
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  const digits = value >= 1000 ? 0 : value >= 1 ? 4 : 6;
+  return `$${value.toLocaleString("ru-RU", { maximumFractionDigits: digits })}`;
+};
+
+const SIGNAL_STATUS_LABEL: Record<string, string> = {
+  ARMED: "Ждёт",
+  TRIGGERED: "Сработал",
+  ERROR: "Сбой",
+};
+
+const formatSignalStatus = (status: string) =>
+  SIGNAL_STATUS_LABEL[status.trim().toUpperCase()] ?? (status.trim() || "Активно");
+
+export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStrategy, allocation, interestSignals }: Props) {
   const currentFG = fearGreedStrategy.currentIndex;
   const liveStrategy = buildFearGreedStrategy(
     currentFG,
@@ -384,14 +403,28 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
           <div className="v2-sig-panel-label">
             <span className="v2-sig-dot dot-info" />
             Зона интереса
-            <span className="v2-sig-int-bot-badge">НЕТ ИСТОЧНИКА API</span>
+            <span className="v2-sig-int-bot-badge">{interestSignals.length ? "СИГНАЛЫ API" : "НЕТ ИСТОЧНИКА API"}</span>
           </div>
           <div className="v2-sig-int-list">
-            <div className="v2-sig-int-row">
-              <span className="v2-sig-int-asset">—</span>
-              <span className="v2-sig-int-range">Диапазоны отключены</span>
-              <span className="v2-sig-int-label">Нет данных</span>
-            </div>
+            {interestSignals.length ? (
+              interestSignals.map((signal) => (
+                <div className="v2-sig-int-row" key={signal.id}>
+                  <span className="v2-sig-int-asset">{signal.asset}</span>
+                  <span className="v2-sig-int-range">
+                    {signal.action} {formatSignalMoney(signal.amountUsd)} при {formatSignalMoney(signal.triggerPrice)}
+                  </span>
+                  <span className="v2-sig-int-label">
+                    {formatSignalStatus(signal.status)} · {formatSignalMoney(signal.currentPrice)}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="v2-sig-int-row">
+                <span className="v2-sig-int-asset">—</span>
+                <span className="v2-sig-int-range">Диапазоны отключены</span>
+                <span className="v2-sig-int-label">Нет данных</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

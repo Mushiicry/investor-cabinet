@@ -105,6 +105,10 @@ const mockData: V2LabData = {
   fearGreedStrategy: mockFearGreedStrategy,
   history: [],
   transactions: [],
+  signals: {
+    interest: null,
+    interestList: [],
+  },
   allocation: [
     { name: "Крипта", share: 0.627, value: 334 },
     { name: "Металлы", share: 0.026, value: 14 },
@@ -157,6 +161,10 @@ export function buildZeroedV2Data(): V2LabData {
     playbook: [],
     history: [],
     transactions: [],
+    signals: {
+      interest: null,
+      interestList: [],
+    },
     fearGreedStrategy: buildFearGreedStrategy(50, 0),
     allocation: mockData.allocation.map((category) => ({ ...category, share: 0, value: 0 })),
     health: zeroedHealth,
@@ -284,6 +292,7 @@ export const buildLiveV2Data = (
     fearGreedStrategy: state.fearGreedStrategy,
     history: mergeWithLocalSnapshots(state.history, slot),
     transactions: state.transactions,
+    signals: state.signals,
     health,
     healthInput: liveHealthInput,
     playbook: buildPlaybookCards(

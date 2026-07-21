@@ -3167,6 +3167,12 @@
     grid-template-columns: 1fr;
   }
 
+  /* Зона интереса растёт вместе с числом сигналов: на мобиле без потолка
+     панель занимает половину страницы. Держим её как список со скроллом. */
+  .v2-sig-int-list {
+    max-height: 300px;
+  }
+
   .v2-alerts-row {
     display: flex;
     flex-direction: column;

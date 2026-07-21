@@ -219,6 +219,21 @@ export type PortfolioHistoryPoint = {
   comment: string;
 };
 
+export type InterestSignal = {
+  id: string;
+  asset: string;
+  action: string;
+  amountUsd: number;
+  triggerPrice: number;
+  source: string;
+  currentPrice: number;
+  status: string;
+  lastCheck: string;
+  triggeredAt: string;
+  telegram: string;
+  comment: string;
+};
+
 export type PortfolioState = {
   overview: OverviewData;
   portfolio: PositionCalculated[];
@@ -227,6 +242,10 @@ export type PortfolioState = {
   scenarios: ScenarioCard[];
   history: PortfolioHistoryPoint[];
   transactions: InvestorTransaction[];
+  signals: {
+    interest: InterestSignal | null;
+    interestList: InterestSignal[];
+  };
   fearGreedStrategy: FearGreedStrategy;
   updatedAt: string;
 };

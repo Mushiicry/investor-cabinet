@@ -49,6 +49,7 @@ function doGet(e) {
   const risk = ss.getSheetByName("Риск");
   const decisions = ss.getSheetByName("Решения");
   const scenarios = ss.getSheetByName("Сценарии");
+  const signals = ss.getSheetByName("Сигналы");
   const history = ss.getSheetByName("История");
   const transactions = ss.getSheetByName("Транзакции_IMPORT");
   const overviewData = getOverview(overview);
@@ -65,6 +66,7 @@ function doGet(e) {
     risk: getRisk(risk),
     decisions: getDecisions(decisions),
     scenarios: getScenarios(scenarios),
+    signals: getSignals(signals),
     history: getHistory(history),
     transactions: getTransactions(transactions),
     fearGreedStrategy: getFearGreedStrategyReadOnly(ss, overviewData.invested),
@@ -76,6 +78,35 @@ function doGet(e) {
   return ContentService
     .createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getSignals(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) {
+    return { interest: null, interestList: [] };
+  }
+
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).getDisplayValues();
+  const interestList = rows
+    .filter(row => row[0] || row[1])
+    .map(row => ({
+      id: row[0],
+      asset: row[1],
+      action: row[2],
+      amountUsd: parseNumber(row[3]),
+      triggerPrice: parseNumber(row[4]),
+      source: row[5],
+      currentPrice: parseNumber(row[6]),
+      status: row[7],
+      lastCheck: row[8],
+      triggeredAt: row[9],
+      telegram: row[10],
+      comment: row[11]
+    }));
+
+  return {
+    interest: interestList[0] || null,
+    interestList: interestList
+  };
 }
 
 // Реализованный профит по закрытым/зафиксированным позициям — таблица O:U
