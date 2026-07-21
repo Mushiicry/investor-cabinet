@@ -210,7 +210,12 @@ export function V2DCAStrategy({ portfolio, strategy, onNavigate }: Props) {
           </div>
         </div>
         <div className="v2-dca-index-now">
-          <span className="v2-dca-index-val" style={{ color: idxColor }}>{idx}</span>
+          {/* Голое число не отвечало на вопрос «26 — это из чего?».
+              База шкалы должна стоять рядом с оценкой. */}
+          <span className="v2-dca-index-val" style={{ color: idxColor }}>
+            {idx}
+            <span className="v2-dca-index-scale">/ 100</span>
+          </span>
           <div className="v2-dca-index-label-row">
             <span className="v2-dca-index-label" style={{ color: idxColor }}>{indexLabel(idx)}</span>
             <FgIndexTooltip color={idxColor} />

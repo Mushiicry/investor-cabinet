@@ -583,6 +583,17 @@
   gap: 2px;
 }
 
+/* База шкалы рядом с числом: «26» само по себе не отвечает «из чего». */
+.v2-dca-index-scale {
+  margin-left: 4px;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.45;
+  text-shadow: none;
+}
+
 .v2-dca-index-val {
   font-family: "Black Ops One", system-ui, sans-serif;
   font-size: 46px;
