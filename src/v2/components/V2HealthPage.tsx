@@ -47,7 +47,9 @@ function whyLine(c: HealthComponent, portfolio: V2Portfolio): string {
       return `Диверсификация умеренная — добавьте ещё один класс активов.`;
 
     case "crypto":
-      return `Доля волатильных активов превышает лимит 60% — любая просадка крипты бьёт непропорционально.`;
+      if ((c.meta?.survivalBlockers ?? []).length) return c.meta?.survivalBlockers?.[0] ?? "";
+      if ((c.meta?.survivalWarnings ?? []).length) return c.meta?.survivalWarnings?.[0] ?? "";
+      return `${c.meta?.survivalWorstScenario ?? "Худший сценарий"}: просадка около ${Math.round((c.meta?.survivalShockLossPct ?? 0) * 100)}%.`;
 
     case "concentration":
       return `Один актив занимает слишком большую долю. При его резком падении убытки будут значительными.`;
@@ -82,10 +84,10 @@ function richDiagnosis(components: HealthComponent[], portfolio: V2Portfolio) {
   return { weak, strong };
 }
 
-// ── Prescription с конкретным gain ───────────────────────────
+// ── Рекомендации с конкретным приростом ──────────────────────
 type Rx = { action: string; gain: number; source: string };
 
-function buildPrescriptions(components: HealthComponent[], portfolio: V2Portfolio): Rx[] {
+function buildRecommendations(components: HealthComponent[], portfolio: V2Portfolio): Rx[] {
   const sorted = [...components].sort((a, b) => a.score - b.score);
   const weak = sorted.filter(c => c.score < 60).slice(0, 3);
   const reserveTarget = portfolio.totalPortfolioValue * 0.30;
@@ -127,8 +129,8 @@ function buildPrescriptions(components: HealthComponent[], portfolio: V2Portfoli
         break;
       }
       case "crypto":
-        result.push({ action: "Зафиксировать часть волатильных активов в стейблы", gain: 5, source: c.label });
-        result.push({ action: "В зоне жадности (F&G > 70) снижать долю крипты", gain: 3, source: c.label });
+        result.push({ action: "Подготовить лимитные ордера на падение", gain: 5, source: c.label });
+        result.push({ action: "Сохранить покупательскую способность после худшего сценария", gain: 3, source: c.label });
         break;
       case "concentration":
         result.push({ action: "Распределить часть крупнейшей позиции в другие активы", gain: 5, source: c.label });
@@ -200,7 +202,7 @@ const EMPTY_TONE = "#55C7FF";
 // симуляция точна и не разъедется с движком. Реальные сделки НЕ выполняются.
 //
 // Шесть рычагов покрывают все шесть граней здоровья:
-//   резерв → Резерв + Гибкость | выравнивание классов → Диверсификация + Волатильность
+//   резерв → Резерв + Гибкость | выравнивание классов → Диверсификация + Выживаемость
 //   крупнейшая позиция → Концентрация | плечо / маржа / число позиций → Контроль риска
 type SimLevers = {
   reserve: number;       // целевая доля резерва (стейблы)
@@ -240,6 +242,9 @@ function buildSimInput(base: HealthInput, levers: SimLevers): HealthInput {
     ...base,
     cashShare: Math.max(0, base.cashShare + delta),
     reserveShare: Math.max(0, levers.reserve),
+    spotDeployableUsd: base.portfolioValue
+      ? Math.max(0, levers.reserve * base.portfolioValue - 0.1 * base.portfolioValue)
+      : base.spotDeployableUsd,
     cryptoShare: newSpot[0] ?? 0, // крипта — первый спотовый класс (DIVERSIFIABLE_CLASSES)
     riskCategoryShares: newSpot,
     largestShare: Math.max(0, levers.largest),
@@ -263,7 +268,7 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
   const { weak, strong } = isEmpty
     ? { weak: [] as DiagItem[], strong: [] as DiagItem[] }
     : richDiagnosis(health.components, portfolio);
-  const prescriptions = isEmpty ? [] : buildPrescriptions(health.components, portfolio);
+  const recommendations = isEmpty ? [] : buildRecommendations(health.components, portfolio);
   const sortedComponents = [...health.components].sort((a, b) => a.score - b.score);
 
   // ── Симулятор: 6 рычагов поверх реальных входов health ──
@@ -296,12 +301,12 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
   return (
     <div className="v2-hp-page">
 
-      {/* ── Верхний ряд: Score + Diagnosis + Prescription ── */}
+      {/* ── Верхний ряд: оценка + диагноз + рекомендации ── */}
       <div className="v2-hp-top">
 
         {/* Score */}
         <div className="v2-hp-score-card">
-          <div className="v2-hp-score-label">INVESTOR HEALTH SCORE</div>
+          <div className="v2-hp-score-label">ОЦЕНКА ЗДОРОВЬЯ ИНВЕСТОРА</div>
           <ScoreRing value={hf} color={interp.color} />
           <div className="v2-hp-score-interp" style={{ color: interp.color }}>{interp.text}</div>
           <div className="v2-hp-score-sub">{interp.sub}</div>
@@ -317,7 +322,7 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
                 <circle cx="7" cy="7" r="5.5" />
                 <path d="M5 7h4M7 5v4" strokeLinecap="round" />
               </svg>
-              Симулятор Health
+              Симулятор здоровья
             </button>
           )}
         </div>
@@ -371,14 +376,14 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
           )}
         </div>
 
-        {/* Prescription */}
+        {/* Рекомендации */}
         <div className="v2-hp-rx-card">
           <div className="v2-hp-card-title">
-            Prescription
-            <span className="v2-hp-rx-kicker">Что улучшит Health прямо сейчас</span>
+            Рекомендации
+            <span className="v2-hp-rx-kicker">Что улучшит здоровье прямо сейчас</span>
           </div>
           <div className="v2-hp-rx-list">
-            {prescriptions.length === 0 ? (
+            {recommendations.length === 0 ? (
               isEmpty ? (
                 <div className="v2-hp-rx-row">
                   <span className="v2-hp-rx-gain" style={{ color: EMPTY_TONE }}>—</span>
@@ -390,7 +395,7 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
                   <span>Портфель в отличной форме — удерживайте структуру</span>
                 </div>
               )
-            ) : prescriptions.map((p, i) => (
+            ) : recommendations.map((p, i) => (
               <div key={i} className="v2-hp-rx-row">
                 <span className="v2-hp-rx-gain">+{p.gain}</span>
                 <div className="v2-hp-rx-text">
@@ -406,7 +411,7 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
 
       {/* ── Breakdown ── */}
       <div className="v2-hp-breakdown-card">
-        <div className="v2-hp-card-title">Health Breakdown — из чего складывается оценка</div>
+        <div className="v2-hp-card-title">Разбор здоровья — из чего складывается оценка</div>
         <div className="v2-hp-brows">
           {sortedComponents.map(c => (
             <BreakdownRow key={c.key} c={c} empty={isEmpty} onClick={() => setModal(c)} />
@@ -425,7 +430,7 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
           <div className="v2-hp-sim-modal" onClick={e => e.stopPropagation()} role="dialog" aria-label="Симулятор здоровья портфеля">
             <div className="v2-hp-sim-head">
               <div>
-                <div className="v2-hp-sim-title">Симулятор Health</div>
+                <div className="v2-hp-sim-title">Симулятор здоровья</div>
                 <div className="v2-hp-sim-note">Гипотетический расчёт — реальные сделки не выполняются</div>
               </div>
               <button className="v2-hp-sim-x" onClick={() => setSimOpen(false)} aria-label="Закрыть">✕</button>
@@ -466,7 +471,7 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
                 </div>
               </div>
 
-              {/* Выравнивание классов → Диверсификация + Волатильность */}
+              {/* Выравнивание классов → Диверсификация + Выживаемость */}
               <div className="v2-hp-sim-lever">
                 <div className="v2-hp-sim-lever-top">
                   <span>Выровнять классы (крипта / металлы / акции)</span>

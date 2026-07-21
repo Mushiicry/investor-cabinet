@@ -1,5 +1,4 @@
 import {
-  MAX_CRYPTO_EXPOSURE_SHARE,
   MAX_FUTURES_EXPOSURE_SHARE,
   RESERVE_BAND_MAX_SHARE,
   RESERVE_FLOOR_SHARE,
@@ -15,12 +14,21 @@ const score = (value: number) => Math.round(clamp01(value) * 100);
 
 // Пороги мягкой деградации
 const COMFORT_CASH = 0.5; // «Гибкость»: комфортная зона кэша
-const CRYPTO_HARD = 0.9; // «Волатильность»: 100 при ≤60%, 0 при ≥90%
 const CONCENTRATION_SAFE = 0.2; // «Концентрация» (legacy, largestShare): 100 при ≤20%
 const CONCENTRATION_HARD = 0.5; // 0 при ≥50% (лимит на позицию 35%)
 // Per-asset балл считается снаружи (assetConcentration): системный риск по доле
 // портфеля минус ограниченный штраф за активы сверх своих лимитов — сюда приходит
 // готовым в input.concentrationScore, чтобы health не дублировал модель.
+
+// Стресс-сценарии луча «Выживаемость»: не прогноз, а проверка устойчивости.
+const SURVIVAL_CRYPTO_SHOCK = 0.6;
+const SURVIVAL_STOCK_SHOCK = 0.3;
+const SURVIVAL_METAL_SHOCK = 0.5;
+const SURVIVAL_ACTIVE_TRADING_SHOCK = 1;
+const SURVIVAL_COMFORT_LOSS_SHARE = 0.25;
+const SURVIVAL_WARNING_LOSS_SHARE = 0.4;
+const SURVIVAL_BLOCK_LOSS_SHARE = 0.6;
+const SURVIVAL_BUY_POWER_TARGET_SHARE = 0.15;
 
 // Лимиты плеча по фьючерсам (правило инвестора):
 // мажоры (BTC / золото) — до 3x, всё остальное (альты) — до 2x.
@@ -140,6 +148,24 @@ export type HealthComponentMeta = {
   concentrationBlockers?: string[];
   concentrationWarnings?: string[];
   concentrationFormula?: string[];
+  /** Выживаемость: стресс-сценарий сильного падения рынка. */
+  survivalShockLossPct?: number;
+  survivalLossUsd?: number;
+  survivalPortfolioAfterShockShare?: number;
+  survivalPortfolioAfterShockUsd?: number;
+  survivalReserveAfterShockShare?: number;
+  survivalBuyPowerAfterShockUsd?: number;
+  survivalBuyPowerAfterShockShare?: number;
+  survivalLossScore?: number;
+  survivalBuyPowerScore?: number;
+  survivalPlanScore?: number;
+  survivalWorstScenario?: string;
+  survivalScenarios?: { name: string; lossPct: number; lossUsd?: number }[];
+  plannedLimitOrdersUsd?: number;
+  plannedLimitOrdersShare?: number;
+  survivalBlockers?: string[];
+  survivalWarnings?: string[];
+  survivalFormula?: string[];
 };
 
 export type HealthComponent = {
@@ -261,6 +287,12 @@ export type HealthInput = {
   metalSlotsTotal?: number;
   metalSlotsFree?: number;
   metals?: string[];
+  /** Свободная покупательская сила спота, если уже рассчитана выше по цепочке. */
+  spotDeployableUsd?: number;
+  /** Свободная покупательская сила активной торговли, если уже рассчитана выше по цепочке. */
+  futuresDeployableUsd?: number;
+  /** Сумма заранее подготовленных лимитных ордеров. Нет поля = источник ещё не подключён. */
+  plannedLimitOrdersUsd?: number;
 };
 
 export type PortfolioHealth = {
@@ -562,6 +594,121 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     ? "У каждого актива свой лимит: ETH 35% / BTC 20% / SOL·TON·BNB 10% / альты 5% внутри крипто-блока; акции и металлы — 5% портфеля на актив и максимум 2 актива в классе. Балл = системный риск крупнейшей позиции минус ограниченный штраф за активы сверх лимита."
     : "Нет перегруза одним активом (≤35%).";
 
+  // ── Выживаемость: продолжит ли система работать после сильного падения. ──
+  // Это не дубль резерва. Луч смотрит на худший из сценариев, покупательскую
+  // способность после шока и наличие заранее подготовленного плана лимитных
+  // ордеров. Если источник ордеров ещё не подключён, это честно остаётся
+  // предупреждением, а не выдуманными данными.
+  const scenarioCryptoShare = input.riskCategoryShares[0] ?? input.cryptoShare;
+  const scenarioMetalShare = input.riskCategoryShares[1] ?? 0;
+  const scenarioStockShare = input.riskCategoryShares[2] ?? 0;
+  const survivalScenarios = [
+    {
+      name: "Крах крипты",
+      lossPct: Math.min(
+        1,
+        scenarioCryptoShare * SURVIVAL_CRYPTO_SHOCK +
+          input.futuresShare * SURVIVAL_ACTIVE_TRADING_SHOCK
+      ),
+    },
+    {
+      name: "Падение акций США",
+      lossPct: Math.min(1, scenarioStockShare * SURVIVAL_STOCK_SHOCK),
+    },
+    {
+      name: "Обвал золота и металлов",
+      lossPct: Math.min(1, scenarioMetalShare * SURVIVAL_METAL_SHOCK),
+    },
+    {
+      name: "Общий рыночный шок",
+      lossPct: Math.min(
+        1,
+        scenarioCryptoShare * SURVIVAL_CRYPTO_SHOCK +
+          scenarioMetalShare * SURVIVAL_METAL_SHOCK +
+          scenarioStockShare * SURVIVAL_STOCK_SHOCK +
+          input.futuresShare * SURVIVAL_ACTIVE_TRADING_SHOCK
+      ),
+    },
+  ].map((scenario) => ({
+    ...scenario,
+    lossUsd: input.portfolioValue ? scenario.lossPct * input.portfolioValue : undefined,
+  }));
+  const worstSurvivalScenario = survivalScenarios.reduce((worst, current) =>
+    current.lossPct > worst.lossPct ? current : worst
+  );
+  const survivalShockLossPct = worstSurvivalScenario.lossPct;
+  const survivalPortfolioAfterShockShare = Math.max(0, 1 - survivalShockLossPct);
+  const survivalReserveAfterShockShare =
+    survivalPortfolioAfterShockShare > 0 ? reserveShare / survivalPortfolioAfterShockShare : 0;
+  const portfolioValue = input.portfolioValue ?? 0;
+  const reserveAfterShockUsd = portfolioValue ? reserveShare * portfolioValue : undefined;
+  const floorAfterShockUsd =
+    portfolioValue ? RESERVE_FLOOR_SHARE * survivalPortfolioAfterShockShare * portfolioValue : undefined;
+  const derivedBuyPowerAfterShockUsd =
+    reserveAfterShockUsd !== undefined && floorAfterShockUsd !== undefined
+      ? Math.max(0, reserveAfterShockUsd - floorAfterShockUsd)
+      : undefined;
+  const buyPowerAfterShockUsd = input.spotDeployableUsd ?? derivedBuyPowerAfterShockUsd;
+  const buyPowerAfterShockShare =
+    portfolioValue && buyPowerAfterShockUsd !== undefined ? buyPowerAfterShockUsd / portfolioValue : 0;
+  const survivalLossScore = score(
+    (SURVIVAL_BLOCK_LOSS_SHARE - survivalShockLossPct) /
+      (SURVIVAL_BLOCK_LOSS_SHARE - SURVIVAL_COMFORT_LOSS_SHARE)
+  );
+  const survivalBuyPowerScore = score(buyPowerAfterShockShare / SURVIVAL_BUY_POWER_TARGET_SHARE);
+  const plannedLimitOrdersUsd = input.plannedLimitOrdersUsd;
+  const plannedLimitOrdersShare =
+    portfolioValue && plannedLimitOrdersUsd !== undefined ? plannedLimitOrdersUsd / portfolioValue : undefined;
+  let survivalPlanScore = 60;
+  if (plannedLimitOrdersUsd !== undefined) {
+    if (plannedLimitOrdersUsd <= 0) {
+      survivalPlanScore = 40;
+    } else if (buyPowerAfterShockUsd !== undefined && plannedLimitOrdersUsd > buyPowerAfterShockUsd) {
+      survivalPlanScore = 20;
+    } else {
+      survivalPlanScore = 100;
+    }
+  }
+  const survivalScore = Math.round(
+    survivalLossScore * 0.45 + survivalBuyPowerScore * 0.35 + survivalPlanScore * 0.2
+  );
+  const survivalLossUsd = input.portfolioValue
+    ? survivalShockLossPct * input.portfolioValue
+    : undefined;
+  const survivalPortfolioAfterShockUsd = input.portfolioValue
+    ? survivalPortfolioAfterShockShare * input.portfolioValue
+    : undefined;
+  const survivalBlockers: string[] = [];
+  const survivalWarnings: string[] = [];
+  if (survivalShockLossPct >= SURVIVAL_BLOCK_LOSS_SHARE) {
+    survivalBlockers.push("Худший сценарий даёт просадку выше 60%");
+  } else if (survivalShockLossPct >= SURVIVAL_WARNING_LOSS_SHARE) {
+    survivalWarnings.push("Худший сценарий даёт просадку выше 40%");
+  }
+  if (buyPowerAfterShockShare <= 0) {
+    survivalBlockers.push("После шока нет покупательской способности");
+  } else if (buyPowerAfterShockShare < SURVIVAL_BUY_POWER_TARGET_SHARE) {
+    survivalWarnings.push("Покупательская способность после шока ниже цели 15%");
+  }
+  if (plannedLimitOrdersUsd === undefined) {
+    survivalWarnings.push("План лимитных ордеров не подключён");
+  } else if (plannedLimitOrdersUsd <= 0) {
+    survivalWarnings.push("Лимитные ордера на падение не подготовлены");
+  } else if (buyPowerAfterShockUsd !== undefined && plannedLimitOrdersUsd > buyPowerAfterShockUsd) {
+    survivalBlockers.push("Лимитные ордера съедают покупательскую способность");
+  }
+  const survivalFormula = [
+    "Сценарии: крипта −60%, акции −30%, металлы −50%, активная торговля −100%",
+    `Худший сценарий: ${worstSurvivalScenario.name}`,
+    `Оценочная просадка: ${Math.round(survivalShockLossPct * 100)}%`,
+    `Портфель после шока: ${input.portfolioValue ? `$${Math.round(survivalPortfolioAfterShockUsd ?? 0)}` : `${Math.round(survivalPortfolioAfterShockShare * 100)}%`}`,
+    `Покупательская способность после шока: ${buyPowerAfterShockUsd !== undefined ? `$${Math.round(buyPowerAfterShockUsd)}` : `${Math.round(buyPowerAfterShockShare * 100)}%`}`,
+    plannedLimitOrdersUsd !== undefined
+      ? `Лимитные ордера: $${Math.round(plannedLimitOrdersUsd)}`
+      : "Лимитные ордера: источник не подключён",
+    `Балл выживаемости: ${survivalScore}/100`,
+  ];
+
   const components: HealthComponent[] = [
     {
       key: "reserve",
@@ -586,11 +733,30 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     },
     {
       key: "crypto",
-      label: "Сопротивление волатильности",
+      label: "Выживаемость",
       color: "#ad67ff",
-      desc: "Экспозиция в волатильных активах против лимита 60%.",
+      desc: "Стресс-проверка: выдержит ли портфель сильное падение рынка без разрушения резерва и структуры капитала.",
       weight: 0.17,
-      score: score((CRYPTO_HARD - input.cryptoShare) / (CRYPTO_HARD - MAX_CRYPTO_EXPOSURE_SHARE)),
+      score: survivalScore,
+      meta: {
+        survivalShockLossPct,
+        survivalLossUsd,
+        survivalPortfolioAfterShockShare,
+        survivalPortfolioAfterShockUsd,
+        survivalReserveAfterShockShare,
+        survivalBuyPowerAfterShockUsd: buyPowerAfterShockUsd,
+        survivalBuyPowerAfterShockShare: buyPowerAfterShockShare,
+        survivalLossScore,
+        survivalBuyPowerScore,
+        survivalPlanScore,
+        survivalWorstScenario: worstSurvivalScenario.name,
+        survivalScenarios,
+        plannedLimitOrdersUsd,
+        plannedLimitOrdersShare,
+        survivalBlockers,
+        survivalWarnings,
+        survivalFormula,
+      },
     },
     {
       key: "futures",

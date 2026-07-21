@@ -12,7 +12,7 @@ const WHAT: Record<HealthComponentKey, string> = {
   reserve:
     "Резерв — выделенная защитная часть капитала. Пол 10%, цель 30%, коридор нормы 30–60%. Резерв наполняется первым: в работу идёт только то, что сверх него. Это возможность докупать на просадке, не продавать в панике и спокойно пережить турбулентность.",
   crypto:
-    "Сопротивление волатильности — экспозиция в волатильных активах (крипта) против лимита 60%. Выше лимита портфель слишком сильно зависит от движений самого волатильного класса, и любая просадка рынка бьёт непропорционально сильно.",
+    "Выживаемость — стресс-проверка портфеля. Луч отвечает не за прибыль и не за прогноз рынка, а за вопрос: останется ли капитал живым, если завтра рухнет крипта, просядут акции США, золото сложится вниз или активная торговля получит полный стресс.",
   futures:
     "Контроль риска: контроль фьючерсных позиций, плеча, занятой части лимита и близости к ликвидации. Лимиты: занято не более 10% от вложенного капитала, не выше 2x на альтах, не выше 3x на BTC и золоте, максимум 3 позиции. Золото остаётся категорией «Металлы», но его плечо контролируется по тому же правилу и учитывается в лимите позиций; маржа золота в лимит 10% пока не входит.",
   concentration:
@@ -30,9 +30,9 @@ const HOW: Record<HealthComponentKey, string[]> = {
     "Цель — не менее 30% портфеля в выделенном резерве",
   ],
   crypto: [
-    "Зафиксируйте часть прибыли на волатильных позициях в стейблы",
-    "Распределите часть в металлы, акции или другие классы активов",
-    "В зоне жадности (F&G > 70) снижайте экспозицию — в зоне страха можно держать выше",
+    "Подготовьте лимитные ордера на падение до входа в стресс-сценарий",
+    "Сохраните покупательскую способность после худшего сценария",
+    "Не добавляйте новый риск, если после падения система теряет способность покупать и анализировать",
   ],
   futures: [
     "Снизьте плечо до лимита: ≤2x на альтах, ≤3x на BTC и золоте",
@@ -82,9 +82,19 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     return `Резерв в норме — ~${pct}% от портфеля. Продолжайте поддерживать этот уровень.`;
   }
   if (key === "crypto") {
-    if (score < 40) return "Экспозиция в волатильных активах существенно превышает лимит 60%. Портфель сильно зависит от движений крипторынка.";
-    if (score < 70) return "Доля волатильных активов немного выше лимита 60%. Небольшая фиксация улучшит показатель.";
-    return "Экспозиция в волатильных активах в пределах нормы — ниже лимита 60%.";
+    const m = c.meta;
+    const blocker = m?.survivalBlockers?.[0];
+    const warning = m?.survivalWarnings?.[0];
+    const lossPct = Math.round((m?.survivalShockLossPct ?? 0) * 100);
+    const afterUsd = m?.survivalPortfolioAfterShockUsd;
+    const buyPowerUsd = m?.survivalBuyPowerAfterShockUsd;
+    const buyPowerPct = Math.round((m?.survivalBuyPowerAfterShockShare ?? 0) * 100);
+    const scenario = m?.survivalWorstScenario ?? "худший сценарий";
+    const afterText = afterUsd !== undefined ? `останется около ${Math.round(afterUsd)}$` : `останется ${Math.round((m?.survivalPortfolioAfterShockShare ?? 0) * 100)}% портфеля`;
+    const buyPowerText = buyPowerUsd !== undefined ? `покупательская способность около ${Math.round(buyPowerUsd)}$` : `покупательская способность ${buyPowerPct}% портфеля`;
+    if (blocker) return `${blocker}. ${scenario}: просадка около ${lossPct}%, ${afterText}, ${buyPowerText}. Новый риск нельзя добавлять.`;
+    if (warning) return `${warning}. ${scenario}: просадка около ${lossPct}%, ${afterText}, ${buyPowerText}.`;
+    return `Стресс-сценарий выдержан. ${scenario}: просадка около ${lossPct}%, ${afterText}, ${buyPowerText}.`;
   }
   if (key === "futures") {
     const m = c.meta;
@@ -229,23 +239,32 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
     component.key === "concentration" ? component.meta?.concentrationWarnings ?? [] : [];
   const concentrationFormula =
     component.key === "concentration" ? component.meta?.concentrationFormula ?? [] : [];
+  const survivalBlockers =
+    component.key === "crypto" ? component.meta?.survivalBlockers ?? [] : [];
+  const survivalWarnings =
+    component.key === "crypto" ? component.meta?.survivalWarnings ?? [] : [];
+  const survivalFormula =
+    component.key === "crypto" ? component.meta?.survivalFormula ?? [] : [];
   const factorBlockers = [
     ...riskControlBlockers,
     ...reserveBlockers,
     ...diversificationBlockers,
     ...concentrationBlockers,
+    ...survivalBlockers,
   ];
   const factorWarnings = [
     ...riskControlWarnings,
     ...reserveWarnings,
     ...diversificationWarnings,
     ...concentrationWarnings,
+    ...survivalWarnings,
   ];
   const factorFormula = [
     ...riskControlFormula,
     ...reserveFormula,
     ...diversificationFormula,
     ...concentrationFormula,
+    ...survivalFormula,
   ];
 
   const circumference = 2 * Math.PI * 44;

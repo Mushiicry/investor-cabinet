@@ -22,6 +22,8 @@ const reserve = (h: ReturnType<typeof computePortfolioHealth>) =>
   h.components.find((c) => c.key === "reserve")!;
 const div = (h: ReturnType<typeof computePortfolioHealth>) =>
   h.components.find((c) => c.key === "diversification")!;
+const survival = (h: ReturnType<typeof computePortfolioHealth>) =>
+  h.components.find((c) => c.key === "crypto")!;
 
 describe("health concentration — per-asset score passthrough", () => {
   it("резерв: ниже пола 10% включает жёсткую блокировку", () => {
@@ -290,6 +292,46 @@ describe("health concentration — per-asset score passthrough", () => {
     expect(f.meta?.worstLiqAsset).toBe("MNT LONG");
     expect(f.meta?.worstLiqDistance).toBeCloseTo(0.06, 3);
     expect(f.score).toBeLessThan(75); // штраф за ликвидацию ощутимый
+  });
+
+  it("выживаемость: стресс-сценарий выдержан при достаточном резерве", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      reserveShare: 0.3,
+      cashShare: 0.3,
+      riskCategoryShares: [0.4, 0.05, 0],
+      futuresShare: 0.02,
+      portfolioValue: 1000,
+    });
+    const s = survival(h);
+    expect(s.label).toBe("Выживаемость");
+    expect(s.meta?.survivalWorstScenario).toBe("Общий рыночный шок");
+    expect(s.meta?.survivalShockLossPct).toBeCloseTo(0.285, 3);
+    expect(s.meta?.survivalReserveAfterShockShare).toBeCloseTo(0.42, 3);
+    expect(s.meta?.survivalBuyPowerAfterShockUsd).toBeCloseTo(228.5, 1);
+    expect(s.meta?.survivalBlockers).toEqual([]);
+    expect(s.meta?.survivalWarnings).toEqual(["План лимитных ордеров не подключён"]);
+    expect(s.meta?.survivalFormula).toContain("Балл выживаемости: 88/100");
+  });
+
+  it("выживаемость: слабая покупательская способность и большая просадка включают блокировки", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      reserveShare: 0.03,
+      cashShare: 0.03,
+      riskCategoryShares: [0.9, 0, 0],
+      futuresShare: 0.1,
+      portfolioValue: 1000,
+    });
+    const s = survival(h);
+    expect(s.meta?.survivalWorstScenario).toBe("Крах крипты");
+    expect(s.meta?.survivalShockLossPct).toBeCloseTo(0.64, 3);
+    expect(s.meta?.survivalBuyPowerAfterShockUsd).toBeCloseTo(0, 3);
+    expect(s.meta?.survivalBlockers).toEqual([
+      "Худший сценарий даёт просадку выше 60%",
+      "После шока нет покупательской способности",
+    ]);
+    expect(s.score).toBeLessThan(40);
   });
 
   it("без concentrationScore → legacy по largestShare (35% лимит)", () => {

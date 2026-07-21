@@ -15,7 +15,7 @@ export const CHIP_W = 89, CHIP_H = 52, GAP = 12, CHIP_R = 40;
 
 export const CHIP_LABEL: Record<string, string> = {
   reserve:         "Резерв",
-  crypto:          "Волатильность",
+  crypto:          "Выживаемость",
   futures:         "Контроль риска",
   concentration:   "Концентрация",
   diversification: "Диверсификация",
@@ -83,7 +83,7 @@ export function scaleValuePts(pts: string, factor: number): string {
 
 export const SCORE_LABEL: Record<string, string> = {
   reserve:         "Резерв",
-  crypto:          "Волатильность",
+  crypto:          "Выживаемость",
   futures:         "Контроль риска",
   concentration:   "Концентрация",
   diversification: "Диверсификация",
@@ -122,7 +122,11 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
       if ((c.meta?.diversificationWarnings ?? []).length) return c.meta?.diversificationWarnings?.[0] ?? "";
       return "Капитал сконцентрирован в одном классе";
     case "crypto":
-      return "Доля крипты выше лимита 60%";
+      if ((c.meta?.survivalBlockers ?? []).length) return c.meta?.survivalBlockers?.[0] ?? "";
+      if ((c.meta?.survivalWarnings ?? []).length) return c.meta?.survivalWarnings?.[0] ?? "";
+      return c.meta?.survivalWorstScenario
+        ? `${c.meta.survivalWorstScenario}: просадка ${Math.round((c.meta.survivalShockLossPct ?? 0) * 100)}%`
+        : "Стресс-сценарий выдержан";
     case "concentration": {
       const m = c.meta;
       if ((m?.concentrationBlockers ?? []).includes("Превышен лимит альткоин-мест")) return "Превышен лимит альткоин-мест";
@@ -356,7 +360,19 @@ export function buildCoreRecs(
         break;
       }
       case "crypto":
-        result.push({ action: "Зафиксировать часть крипты в стейблы", gain: 5, source: "Снизит волатильность портфеля → здоровье +5" });
+        if ((c.meta?.survivalBlockers ?? []).length) {
+          result.push({
+            action: `Не добавлять риск: ${c.meta?.survivalBlockers?.[0]?.toLowerCase()}`,
+            gain: 6,
+            source: "Сначала пройти стресс-сценарий → здоровье +6",
+            critical: true,
+          });
+        }
+        result.push({
+          action: "Снизить уязвимость к рыночному шоку",
+          gain: 5,
+          source: "План ордеров и покупательская способность после падения → здоровье +5",
+        });
         break;
       case "concentration":
         // Если уже добавили точечную «Сократить <актив>» — не дублируем.

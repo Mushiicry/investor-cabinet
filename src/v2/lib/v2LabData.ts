@@ -263,6 +263,8 @@ export const buildLiveV2Data = (
     futuresLegs,
     portfolioValue: state.overview.portfolioValue,
     investedCapital: state.overview.invested,
+    spotDeployableUsd: state.risk.spotDeployableCash,
+    futuresDeployableUsd: state.risk.futuresDeployableCash,
     concentrationScore: concentration.score,
     maxAssetLimitUtilization: concentration.maxUtilization,
     worstConcentrationAsset: concentration.worstAsset,
