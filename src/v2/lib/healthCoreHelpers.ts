@@ -125,6 +125,8 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
       return "Доля крипты выше лимита 60%";
     case "concentration": {
       const m = c.meta;
+      if ((m?.concentrationBlockers ?? []).length) return m?.concentrationBlockers?.[0] ?? "";
+      if ((m?.concentrationWarnings ?? []).length) return m?.concentrationWarnings?.[0] ?? "";
       if (m?.worstConcentrationAsset && m.worstConcentrationAsset !== "-" && (m.maxAssetLimitUtilization ?? 0) > 1) {
         const limit = Math.round((m.worstConcentrationLimit ?? 0) * 100);
         return `${m.worstConcentrationAsset} выше своего лимита ${limit}%`;
@@ -226,12 +228,15 @@ export function buildCoreRecs(
   // Конкретный актив и его лимит — из меты.
   const conc = all.find((c) => c.key === "concentration");
   const cm = conc?.meta;
+  const concentrationBlockers = cm?.concentrationBlockers ?? [];
   if (cm?.worstConcentrationAsset && cm.worstConcentrationAsset !== "-" && (cm.maxAssetLimitUtilization ?? 0) > 1) {
     const limit = Math.round((cm.worstConcentrationLimit ?? 0) * 100);
     const shareBase = Math.round((cm.worstConcentrationShare ?? 0) * 100);
     const over = cm.overLimitAssets?.length ?? 1;
     result.push({
-      action: `Сократить ${cm.worstConcentrationAsset} — ${shareBase}% при лимите ${limit}%`,
+      action: concentrationBlockers.length
+        ? `Не докупать ${cm.worstConcentrationAsset}: ${concentrationBlockers[0].toLowerCase()}`
+        : `Сократить ${cm.worstConcentrationAsset} — ${shareBase}% при лимите ${limit}%`,
       gain: 5,
       source:
         over > 1

@@ -118,12 +118,18 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     const m = c.meta;
     const worst = m?.worstConcentrationAsset;
     const overCount = m?.overLimitAssets?.length ?? 0;
+    const blocker = m?.concentrationBlockers?.[0];
+    const warning = m?.concentrationWarnings?.[0];
     if (worst && worst !== "-" && overCount > 0 && (m?.maxAssetLimitUtilization ?? 0) > 1) {
       const shareBase = Math.round((m?.worstConcentrationShare ?? 0) * 100);
       const limit = Math.round((m?.worstConcentrationLimit ?? 0) * 100);
       const portShare = Math.round((m?.worstConcentrationPortfolioShare ?? 0) * 100);
       const others = overCount > 1 ? ` И ещё ${overCount - 1} актив(а) сверх лимита.` : "";
-      return `${worst} превышает свой лимит ${limit}% — сейчас ${shareBase}% (в портфеле ${portShare}%).${others} Балл снижен, но не обнулён: пока позиция не разрослась в портфеле, системный риск умеренный. Не докупайте ${worst} — шлюз «Проверки» заблокирует.`;
+      return `${blocker ?? "Актив выше своего лимита"}: ${worst} сейчас ${shareBase}% при лимите ${limit}% (в портфеле ${portShare}%).${others} Не докупайте и не усредняйте ${worst}, пока доля не вернётся в лимит.`;
+    }
+    if (warning && worst && worst !== "-") {
+      const util = Math.round((m?.maxAssetLimitUtilization ?? 0) * 100);
+      return `${warning}: ${worst} уже использует ${util}% своего лимита. Новые покупки этого актива требуют осторожности.`;
     }
     if (score < 70) return "Есть актив близко к своему лимиту. Слегка распределите, чтобы не упереться в потолок.";
     return "Концентрация в норме — каждый актив в пределах своего лимита.";
@@ -189,9 +195,30 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
     component.key === "diversification" ? component.meta?.diversificationWarnings ?? [] : [];
   const diversificationFormula =
     component.key === "diversification" ? component.meta?.diversificationFormula ?? [] : [];
-  const factorBlockers = [...riskControlBlockers, ...reserveBlockers, ...diversificationBlockers];
-  const factorWarnings = [...riskControlWarnings, ...reserveWarnings, ...diversificationWarnings];
-  const factorFormula = [...riskControlFormula, ...reserveFormula, ...diversificationFormula];
+  const concentrationBlockers =
+    component.key === "concentration" ? component.meta?.concentrationBlockers ?? [] : [];
+  const concentrationWarnings =
+    component.key === "concentration" ? component.meta?.concentrationWarnings ?? [] : [];
+  const concentrationFormula =
+    component.key === "concentration" ? component.meta?.concentrationFormula ?? [] : [];
+  const factorBlockers = [
+    ...riskControlBlockers,
+    ...reserveBlockers,
+    ...diversificationBlockers,
+    ...concentrationBlockers,
+  ];
+  const factorWarnings = [
+    ...riskControlWarnings,
+    ...reserveWarnings,
+    ...diversificationWarnings,
+    ...concentrationWarnings,
+  ];
+  const factorFormula = [
+    ...riskControlFormula,
+    ...reserveFormula,
+    ...diversificationFormula,
+    ...concentrationFormula,
+  ];
 
   const circumference = 2 * Math.PI * 44;
   const dash = (component.score / 100) * circumference;

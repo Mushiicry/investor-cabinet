@@ -125,6 +125,9 @@ export type HealthComponentMeta = {
   worstConcentrationLimit?: number; // его per-asset лимит
   maxAssetLimitUtilization?: number; // доля/лимит (1.0 = ровно на лимите)
   overLimitAssets?: string[]; // все активы сверх своих лимитов
+  concentrationBlockers?: string[];
+  concentrationWarnings?: string[];
+  concentrationFormula?: string[];
 };
 
 export type HealthComponent = {
@@ -438,6 +441,33 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   const concentrationScore = usePerAssetConcentration
     ? input.concentrationScore!
     : score((CONCENTRATION_HARD - input.largestShare) / (CONCENTRATION_HARD - CONCENTRATION_SAFE));
+  const concentrationBlockers: string[] = [];
+  const concentrationWarnings: string[] = [];
+  const overLimitAssets = input.overLimitAssets ?? [];
+  const concentrationUtil = input.maxAssetLimitUtilization ?? 0;
+  const concentrationWorstAsset = input.worstConcentrationAsset;
+  const concentrationWorstLimit = input.worstConcentrationLimit ?? 0;
+  const concentrationWorstShare = input.worstConcentrationShare ?? 0;
+  if (usePerAssetConcentration && overLimitAssets.length > 0) {
+    concentrationBlockers.push("Актив выше своего лимита");
+  } else if (usePerAssetConcentration && concentrationUtil >= 0.85) {
+    concentrationWarnings.push("Актив близко к своему лимиту");
+  }
+  const concentrationFormula = usePerAssetConcentration
+    ? [
+        `Балл концентрации: ${concentrationScore}/100`,
+        concentrationWorstAsset && concentrationWorstAsset !== "-"
+          ? `Худший актив: ${concentrationWorstAsset}`
+          : "Худший актив: нет",
+        `Доля к лимиту: ${Math.round(concentrationUtil * 100)}%`,
+        `Текущая доля: ${Math.round(concentrationWorstShare * 100)}%`,
+        `Лимит худшего актива: ${Math.round(concentrationWorstLimit * 100)}%`,
+      ]
+    : [
+        `Балл концентрации: ${concentrationScore}/100`,
+        `Крупнейшая позиция: ${Math.round(input.largestShare * 100)}% портфеля`,
+        "Лимит legacy-модели: 35% портфеля",
+      ];
   const concentrationDesc = usePerAssetConcentration
     ? "У каждого актива свой лимит: ETH 35% / BTC 20% / SOL·TON·BNB 10% / альты 5% ВНУТРИ крипто-блока; прочие классы — 35% портфеля. Балл = системный риск (крупнейшая позиция от портфеля) минус ограниченный штраф за активы сверх лимита — один перевес не обнуляет метрику."
     : "Нет перегруза одним активом (≤35%).";
@@ -517,8 +547,11 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
             worstConcentrationLimit: input.worstConcentrationLimit,
             maxAssetLimitUtilization: input.maxAssetLimitUtilization,
             overLimitAssets: input.overLimitAssets,
+            concentrationBlockers,
+            concentrationWarnings,
+            concentrationFormula,
           }
-        : undefined,
+        : { concentrationFormula },
     },
     {
       key: "diversification",

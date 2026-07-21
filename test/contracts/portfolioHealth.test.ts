@@ -92,6 +92,30 @@ describe("health concentration — per-asset score passthrough", () => {
     expect(conc(h).score).toBeGreaterThan(0);
     expect(conc(h).meta?.worstConcentrationAsset).toBe("TON");
     expect(conc(h).meta?.overLimitAssets).toEqual(["TON"]);
+    expect(conc(h).meta?.concentrationBlockers).toEqual(["Актив выше своего лимита"]);
+    expect(conc(h).meta?.concentrationWarnings).toEqual([]);
+    expect(conc(h).meta?.concentrationFormula).toEqual([
+      "Балл концентрации: 56/100",
+      "Худший актив: TON",
+      "Доля к лимиту: 420%",
+      "Текущая доля: 42%",
+      "Лимит худшего актива: 10%",
+    ]);
+  });
+
+  it("концентрация: близко к лимиту — предупреждение без блокировки", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      concentrationScore: 82,
+      maxAssetLimitUtilization: 0.9,
+      worstConcentrationAsset: "BTC",
+      worstConcentrationLimit: 0.2,
+      worstConcentrationShare: 0.18,
+      worstConcentrationPortfolioShare: 0.12,
+      overLimitAssets: [],
+    });
+    expect(conc(h).meta?.concentrationBlockers).toEqual([]);
+    expect(conc(h).meta?.concentrationWarnings).toEqual(["Актив близко к своему лимиту"]);
   });
 
   it("фьючерсы: свободный остаток до лимита не снимает баллы", () => {
@@ -192,7 +216,11 @@ describe("health concentration — per-asset score passthrough", () => {
   it("без concentrationScore → legacy по largestShare (35% лимит)", () => {
     const h = computePortfolioHealth({ ...base, largestShare: 0.5 });
     expect(conc(h).score).toBe(0); // largestShare 0.5 = CONCENTRATION_HARD
-    expect(conc(h).meta).toBeUndefined();
+    expect(conc(h).meta?.concentrationFormula).toEqual([
+      "Балл концентрации: 0/100",
+      "Крупнейшая позиция: 50% портфеля",
+      "Лимит legacy-модели: 35% портфеля",
+    ]);
   });
 });
 
