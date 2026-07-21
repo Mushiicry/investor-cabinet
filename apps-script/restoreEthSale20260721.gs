@@ -168,8 +168,29 @@ function IC_FIX_ETH_addClosedRow_(sheet, dryRun) {
   }
   if (!headerRow || !totalRow) return { status: 'BLOCK_NOT_FOUND' };
 
+  // Строка ETH могла быть добавлена ранней версией функции — только по одной
+  // сделке 21.07 (0.014 ETH, +2.11$). Обновляем её до полного пересчёта по
+  // блокчейну, а не выходим с «уже есть».
   for (var r = headerRow + 1; r < totalRow; r += 1) {
-    if (String(scan[r - 1][0]).trim() === 'ETH') return { status: 'ALREADY_PRESENT', row: r };
+    if (String(scan[r - 1][0]).trim() !== 'ETH') continue;
+
+    var currentQty = Number(scan[r - 1][2]) || 0;
+    if (Math.abs(currentQty - cfg.quantityClosed) < 1e-6) {
+      return { status: 'ALREADY_FULL', row: r, quantityClosed: currentQty };
+    }
+    if (dryRun) {
+      return {
+        status: 'WOULD_UPDATE', row: r,
+        было: { quantityClosed: currentQty, realizedProfitUsd: Number(scan[r - 1][5]) || 0 },
+        станет: cfg
+      };
+    }
+
+    sheet.getRange(r, 15, 1, 7).setValues([[
+      'ETH', 'FIXED', cfg.quantityClosed, cfg.avgEntry, cfg.exitPrice, cfg.profitUsd, cfg.profitPct
+    ]]);
+    var updatedTotal = IC_FIX_ETH_refreshTotal_(sheet, headerRow, totalRow);
+    return { status: 'UPDATED', row: r, былоQty: currentQty, новыйИтог: updatedTotal };
   }
 
   var freeRow = 0;
@@ -205,15 +226,23 @@ function IC_FIX_ETH_addClosedRow_(sheet, dryRun) {
   ]]);
 
   if (!totalFormula) {
-    var sum = 0;
-    sheet.getRange(headerRow + 1, 20, totalRow - headerRow - 1, 1).getValues()
-      .forEach(function(cell) { sum += Number(cell[0]) || 0; });
-    sheet.getRange(totalRow, 20).setValue(sum);
-    plan.newTotal = sum;
+    plan.newTotal = IC_FIX_ETH_refreshTotal_(sheet, headerRow, totalRow);
   }
 
   plan.status = 'ADDED';
   return plan;
+}
+
+// Итог реализованного: формулу не трогаем (строка внутри её диапазона),
+// константу пересчитываем по строкам блока.
+function IC_FIX_ETH_refreshTotal_(sheet, headerRow, totalRow) {
+  if (sheet.getRange(totalRow, 20).getFormula()) return null;
+
+  var sum = 0;
+  sheet.getRange(headerRow + 1, 20, totalRow - headerRow - 1, 1).getValues()
+    .forEach(function(cell) { sum += Number(cell[0]) || 0; });
+  sheet.getRange(totalRow, 20).setValue(sum);
+  return sum;
 }
 
 function IC_FIX_ETH_canShiftTotals_(sheet, totalRow) {

@@ -12,6 +12,8 @@ type Props = {
   history: PortfolioHistoryPoint[];
   transactions: InvestorTransaction[];
   positions: V2Position[];
+  /** Единственный источник зафиксированной прибыли — блок закрытых позиций. */
+  realizedPnlUsd?: number;
 };
 
 const money = new Intl.NumberFormat("ru-RU", {
@@ -172,7 +174,7 @@ function EquityCurve({ points }: { points: PortfolioHistoryPoint[] }) {
   );
 }
 
-export function V2ReportsPage({ history, transactions, positions }: Props) {
+export function V2ReportsPage({ history, transactions, positions, realizedPnlUsd }: Props) {
   const sortedHistory = useMemo(() => getSortedPortfolioHistory(history), [history]);
   const newestFirst = useMemo(() => [...sortedHistory].reverse(), [sortedHistory]);
   const summary = useMemo(() => getPortfolioHistorySummary(sortedHistory), [sortedHistory]);
@@ -201,22 +203,9 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
     return m;
   }, [positions]);
 
-  // Итого зафиксировано с продаж (сумма реализованного PnL по всем сделкам-продажам).
-  const totalRealized = useMemo(() => {
-    const trades = dedupeTrades(
-      transactions.filter((t) => !isTransfer(t.action) && !isEmptyRow(t)),
-    );
-    let sum = 0;
-    let has = false;
-    for (const t of trades) {
-      const r = computeRealizedPnl(t, avgEntryByAsset);
-      if (r != null) {
-        sum += r;
-        has = true;
-      }
-    }
-    return has ? sum : null;
-  }, [transactions, avgEntryByAsset]);
+  // Зафиксированная прибыль приходит из блока закрытых позиций «Расчетов» —
+  // единственного источника. Прежняя оценка по журналу сделок давала второе,
+  // другое число рядом и путала: какое из них правда.
 
   return (
     <section className="v2-reports-page" aria-label="Отчёты">
@@ -234,7 +223,9 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
           <strong className="v2-rep-kpi-value">{latest ? fmtUSD(latest.invested) : "—"}</strong>
         </div>
         <div className="v2-rep-kpi">
-          <span className="v2-rep-kpi-label">PnL</span>
+          {/* Уточнение по решению владельца: это прибыль по ОТКРЫТЫМ позициям.
+              Зафиксированная живёт отдельной строкой ниже. */}
+          <span className="v2-rep-kpi-label">Нереализованный PnL</span>
           <strong className={`v2-rep-kpi-value ${latest && latest.pnl >= 0 ? "v2-rep-accent" : ""}`}>
             {latest ? signedMoney(latest.pnl) : "—"}
           </strong>
@@ -246,14 +237,12 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
           </strong>
         </div>
         <div className="v2-rep-kpi">
-          <span className="v2-rep-kpi-label" title="Оценка по текущей средней цене входа. Для точного налогового/бухгалтерского учёта нужен лотовый (FIFO) расчёт с учётом комиссий.">
-            Зафиксировано с продаж
-            {/* Другое число, чем «Реализовано за всё время» на «Портфеле»:
-                там ручной блок закрытых позиций, здесь расчёт по журналу. */}
-            <V2SourceTag source="computed" title="Оценка по журналу сделок и текущей средней цене входа — не равна ручному блоку закрытых позиций" />
+          <span className="v2-rep-kpi-label">
+            Реализованный PnL
+            <V2SourceTag source="manual" title="Блок закрытых позиций в «Расчетах» — заполняется вручную" />
           </span>
-          <strong className={`v2-rep-kpi-value v2-rep-cell-pnl ${totalRealized != null && totalRealized >= 0 ? "is-pos" : "is-neg"}`}>
-            {totalRealized != null ? `≈ ${signedMoney(totalRealized)}` : "—"}
+          <strong className={`v2-rep-kpi-value v2-rep-cell-pnl ${(realizedPnlUsd ?? 0) >= 0 ? "is-pos" : "is-neg"}`}>
+            {typeof realizedPnlUsd === "number" ? signedMoney(realizedPnlUsd) : "—"}
           </strong>
         </div>
       </div>

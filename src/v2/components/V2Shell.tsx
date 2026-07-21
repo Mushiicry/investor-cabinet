@@ -271,7 +271,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             fearGreedStrategy={data.fearGreedStrategy}
           />
         ) : page === "reports" ? (
-          <V2ReportsPage history={data.history} transactions={data.transactions} positions={data.positions} />
+          <V2ReportsPage history={data.history} transactions={data.transactions} positions={data.positions} realizedPnlUsd={data.portfolio.realizedPnlUsd} />
         ) : page === "portfolio" ? (
           <V2PortfolioPage
             positions={data.positions}
