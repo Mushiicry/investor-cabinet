@@ -1,9 +1,5 @@
 import { useRef, useState } from "react";
 
-type Lang     = "ru" | "en";
-type Currency = "USD" | "RUB" | "EUR";
-type Theme    = "dark" | "light";
-
 type Props = {
   initialName:   string;
   initialAvatar: string;
@@ -11,9 +7,6 @@ type Props = {
 };
 
 export function V2SettingsPage({ initialName, initialAvatar, onSave }: Props) {
-  const [lang,     setLang]     = useState<Lang>("ru");
-  const [currency, setCurrency] = useState<Currency>("USD");
-  const [theme,    setTheme]    = useState<Theme>("dark");
   const [name,     setName]     = useState(initialName);
   const [avatar,   setAvatar]   = useState(initialAvatar);
   const [saved,    setSaved]    = useState(false);
@@ -93,61 +86,29 @@ export function V2SettingsPage({ initialName, initialAvatar, onSave }: Props) {
         </button>
       </div>
 
+      {/* Язык, валюта и тема раньше были переключателями, которые ничего не
+          меняли: состояние жило в useState и никуда не сохранялось. Для
+          продукта, построенного на доверии к цифрам, фальшивый контрол
+          дороже отсутствующего — показываем текущие параметры фактами. */}
       <div className="v2-settings-grid">
 
-        {/* Язык */}
         <div className="v2-settings-card">
-          <div className="v2-settings-card-label">Язык</div>
-          <div className="v2-settings-card-desc">Язык интерфейса платформы</div>
-          <div className="v2-settings-options">
-            {(["ru", "en"] as Lang[]).map(l => (
-              <button
-                key={l}
-                className={`v2-settings-opt${lang === l ? " is-active" : ""}`}
-                onClick={() => setLang(l)}
-              >
-                {l === "ru" ? "🇷🇺 Русский" : "🇺🇸 English"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Валюта */}
-        <div className="v2-settings-card">
-          <div className="v2-settings-card-label">Валюта</div>
-          <div className="v2-settings-card-desc">Отображение стоимости портфеля</div>
-          <div className="v2-settings-options">
-            {(["USD", "RUB", "EUR"] as Currency[]).map(c => (
-              <button
-                key={c}
-                className={`v2-settings-opt${currency === c ? " is-active" : ""}`}
-                onClick={() => setCurrency(c)}
-              >
-                {c === "USD" ? "$ USD" : c === "RUB" ? "₽ RUB" : "€ EUR"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Тема */}
-        <div className="v2-settings-card">
-          <div className="v2-settings-card-label">Тема</div>
-          <div className="v2-settings-card-desc">Светлая тема пока в разработке</div>
-          <div className="v2-settings-options">
-            <button
-              className={`v2-settings-opt${theme === "dark" ? " is-active" : ""}`}
-              onClick={() => setTheme("dark")}
-            >
-              🌑 Тёмная
-            </button>
-            <button
-              className={`v2-settings-opt v2-settings-opt--soon${theme === "light" ? " is-active" : ""}`}
-              onClick={() => setTheme("light")}
-            >
-              ☀️ Светлая
-              <span className="v2-settings-soon">скоро</span>
-            </button>
-          </div>
+          <div className="v2-settings-card-label">Параметры интерфейса</div>
+          <div className="v2-settings-card-desc">Зафиксированы для этой версии кабинета</div>
+          <dl className="v2-settings-facts">
+            <div className="v2-settings-fact">
+              <dt>Язык</dt>
+              <dd>Русский</dd>
+            </div>
+            <div className="v2-settings-fact">
+              <dt>Валюта учёта</dt>
+              <dd>USD</dd>
+            </div>
+            <div className="v2-settings-fact">
+              <dt>Тема</dt>
+              <dd>Тёмная</dd>
+            </div>
+          </dl>
         </div>
 
       </div>
