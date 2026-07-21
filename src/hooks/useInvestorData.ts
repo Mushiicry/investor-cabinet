@@ -118,8 +118,13 @@ export function useInvestorData(
           };
         });
       } catch (error) {
-        console.error("INVESTOR DATA LOAD ERROR", error);
+        // Отмена запроса — штатное событие (размонтирование, повторная загрузка,
+        // таймаут перед ретраем). Логировать её как ошибку значит зашумлять
+        // консоль и маскировать настоящие сбои.
+        const aborted = error instanceof DOMException && error.name === "AbortError";
+        if (!aborted) console.error("INVESTOR DATA LOAD ERROR", error);
         if (!isMounted) return;
+        if (aborted) return;
 
         setState((prev) => ({
           ...prev,
