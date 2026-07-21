@@ -70,6 +70,40 @@ function IC_FIX_ETH_SALE_run_(dryRun) {
   return report;
 }
 
+// Сдвигать итоги можно, только если строки под ними (O..U) реально пустые.
+function IC_FIX_ETH_SALE_canShiftTotals_(sheet, totalRow) {
+  var below = sheet.getRange(totalRow + 1, 15, 3, 7).getValues();
+  var landing = below[2]; // строка, куда уедет вторая итоговая (realizedProfitPct)
+  var occupied = landing.filter(function(cell) { return String(cell).trim() !== ''; });
+  if (occupied.length) return { ok: false, reason: 'строка ' + (totalRow + 3) + ' в O:U не пуста' };
+  return { ok: true };
+}
+
+function IC_FIX_ETH_SALE_shiftTotalsDown_(sheet, totalRow) {
+  // Двигаем снизу вверх, чтобы не затереть ещё не перенесённую строку.
+  for (var offset = 1; offset >= 0; offset -= 1) {
+    var from = totalRow + offset;
+    var to = from + 1;
+    var formulas = sheet.getRange(from, 15, 1, 7).getFormulas()[0];
+    var values = sheet.getRange(from, 15, 1, 7).getValues()[0];
+
+    for (var col = 0; col < 7; col += 1) {
+      var target = sheet.getRange(to, 15 + col);
+      if (formulas[col]) target.setFormula(IC_FIX_ETH_SALE_growRange_(formulas[col]));
+      else target.setValue(values[col]);
+    }
+  }
+  sheet.getRange(totalRow, 15, 1, 7).clearContent();
+}
+
+// Итог суммирует строки блока: раз блок вырос на строку, конец диапазона
+// в формуле тоже должен сдвинуться (T2:T7 → T2:T8).
+function IC_FIX_ETH_SALE_growRange_(formula) {
+  return String(formula).replace(/([A-Z]{1,2})(\d+):([A-Z]{1,2})(\d+)/g, function(_, c1, r1, c2, r2) {
+    return c1 + r1 + ':' + c2 + (Number(r2) + 1);
+  });
+}
+
 function IC_FIX_ETH_SALE_readEthAvgEntry_(calcSheet) {
   var lastRow = calcSheet.getLastRow();
   var assets = calcSheet.getRange(1, 1, lastRow, 4).getValues();
@@ -161,11 +195,24 @@ function IC_FIX_ETH_SALE_addClosedRow_(sheet, avgEntry, exitPrice, realizedUsd, 
     }
   };
 
+  // Свободной строки внутри блока нет — сдвигаем две итоговые строки на одну
+  // вниз и занимаем освободившееся место. insertRow НЕ используем: вставка
+  // сдвинула бы служебные диапазоны всего листа (анти-паттерн HANDOFF §3.8).
   if (!freeRow) {
-    // Свободной строки нет. Структуру блока не ломаем (insertRow сдвигает
-    // служебные диапазоны листа) — оставляем решение владельцу.
-    plan.status = 'NO_FREE_ROW';
-    return plan;
+    var shiftCheck = IC_FIX_ETH_SALE_canShiftTotals_(sheet, totalRow);
+    if (!shiftCheck.ok) {
+      plan.status = 'NO_FREE_ROW';
+      plan.blockedBy = shiftCheck.reason;
+      return plan;
+    }
+    plan.shiftTotals = true;
+    if (dryRun) { plan.status = 'WOULD_SHIFT_AND_ADD'; return plan; }
+    IC_FIX_ETH_SALE_shiftTotalsDown_(sheet, totalRow);
+    freeRow = totalRow;
+    totalRow += 1;
+    plan.totalRow = totalRow;
+    plan.freeRow = freeRow;
+    totalFormula = sheet.getRange(totalRow, 20).getFormula();
   }
 
   if (dryRun) { plan.status = 'WOULD_ADD'; return plan; }
