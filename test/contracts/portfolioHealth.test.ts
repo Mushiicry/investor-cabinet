@@ -18,8 +18,58 @@ const base: HealthInput = {
 
 const conc = (h: ReturnType<typeof computePortfolioHealth>) =>
   h.components.find((c) => c.key === "concentration")!;
+const reserve = (h: ReturnType<typeof computePortfolioHealth>) =>
+  h.components.find((c) => c.key === "reserve")!;
 
 describe("health concentration — per-asset score passthrough", () => {
+  it("резерв: ниже пола 10% включает жёсткую блокировку", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      reserveShare: 0.05,
+      cashShare: 0.05,
+      portfolioValue: 1000,
+    });
+    const r = reserve(h);
+    expect(r.label).toBe("Резерв");
+    expect(r.score).toBe(15);
+    expect(r.meta?.reserveBlockers).toEqual(["Резерв ниже пола 10%"]);
+    expect(r.meta?.reserveFloorShortfallUsd).toBeCloseTo(50, 2);
+    expect(r.meta?.reserveTargetShortfallUsd).toBeCloseTo(250, 2);
+  });
+
+  it("резерв: коридор 30–60% даёт норму без блокировок и предупреждений", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      reserveShare: 0.3,
+      cashShare: 0.3,
+      portfolioValue: 1000,
+    });
+    const r = reserve(h);
+    expect(r.score).toBe(100);
+    expect(r.meta?.reserveBlockers).toEqual([]);
+    expect(r.meta?.reserveWarnings).toEqual([]);
+    expect(r.meta?.reserveFormula).toEqual([
+      "Текущий резерв: 30%",
+      "Пол: 10%",
+      "Цель: 30%",
+      "Норма: 30–60%",
+    ]);
+  });
+
+  it("резерв: выше 60% предупреждает о простаивающем капитале", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      reserveShare: 0.7,
+      cashShare: 0.7,
+      portfolioValue: 1000,
+    });
+    const r = reserve(h);
+    expect(r.score).toBe(75);
+    expect(r.meta?.reserveBlockers).toEqual([]);
+    expect(r.meta?.reserveWarnings).toEqual(["Резерв выше 60% — капитал простаивает"]);
+    expect(r.meta?.reserveIdleUsd).toBeCloseTo(100, 2);
+  });
+
   it("готовый concentrationScore используется как есть", () => {
     const h = computePortfolioHealth({ ...base, concentrationScore: 63 });
     expect(conc(h).score).toBe(63);

@@ -10,7 +10,7 @@ type Props = {
 
 const WHAT: Record<HealthComponentKey, string> = {
   reserve:
-    "Ваша «подушка безопасности» — выделенный резерв (стейблы) относительно цели 30% от портфеля. По принципу Risk First резерв наполняется первым: в работу идёт только то, что сверх него. Резерв — это возможность докупать на просадке, не продавать в панике и спокойно пережить турбулентность.",
+    "Резерв — выделенная защитная часть капитала. Пол 10%, цель 30%, коридор нормы 30–60%. Резерв наполняется первым: в работу идёт только то, что сверх него. Это возможность докупать на просадке, не продавать в панике и спокойно пережить турбулентность.",
   crypto:
     "Сопротивление волатильности — экспозиция в волатильных активах (крипта) против лимита 60%. Выше лимита портфель слишком сильно зависит от движений самого волатильного класса, и любая просадка рынка бьёт непропорционально сильно.",
   futures:
@@ -61,6 +61,20 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
   const pct = Math.round(portfolio.reserveShare * 100);
 
   if (key === "reserve") {
+    const m = c.meta;
+    const reserveWarnings = m?.reserveWarnings ?? [];
+    const reserveBlockers = m?.reserveBlockers ?? [];
+    const reserveTargetShortfallUsd = m?.reserveTargetShortfallUsd ?? 0;
+    const reserveIdleUsd = m?.reserveIdleUsd ?? 0;
+    if (reserveBlockers.length) {
+      return `${reserveBlockers[0]}. До цели 30% не хватает ${Math.round(reserveTargetShortfallUsd)}$. Новые рисковые действия нужно поставить на паузу.`;
+    }
+    if (reserveWarnings.includes("Резерв ниже цели 30%")) {
+      return `Резерв ~${pct}% — ниже целевых 30%. До цели не хватает ${Math.round(reserveTargetShortfallUsd)}$.`;
+    }
+    if (reserveWarnings.includes("Резерв выше 60% — капитал простаивает")) {
+      return `Резерв ~${pct}% — выше коридора нормы. Около ${Math.round(reserveIdleUsd)}$ сверх 60% простаивает без работы.`;
+    }
     if (score <= 0) return "Выделенного резерва нет — 0. Портфель полностью без подушки: на просадке нечем докупать и нечем закрыть форс-мажор. Это лечится в первую очередь.";
     if (score < 40) return `Резерв ~${pct}% от портфеля — значительно ниже цели 30%. При просадке не будет ресурса для покупок по выгодным ценам.`;
     if (score < 70) return `Резерв ~${pct}% — ниже целевых 30%. Небольшое пополнение значительно улучшит показатель.`;
@@ -155,6 +169,15 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
     component.key === "futures" ? component.meta?.riskControlWarnings ?? [] : [];
   const riskControlFormula =
     component.key === "futures" ? component.meta?.riskControlFormula ?? [] : [];
+  const reserveBlockers =
+    component.key === "reserve" ? component.meta?.reserveBlockers ?? [] : [];
+  const reserveWarnings =
+    component.key === "reserve" ? component.meta?.reserveWarnings ?? [] : [];
+  const reserveFormula =
+    component.key === "reserve" ? component.meta?.reserveFormula ?? [] : [];
+  const factorBlockers = [...riskControlBlockers, ...reserveBlockers];
+  const factorWarnings = [...riskControlWarnings, ...reserveWarnings];
+  const factorFormula = [...riskControlFormula, ...reserveFormula];
 
   const circumference = 2 * Math.PI * 44;
   const dash = (component.score / 100) * circumference;
@@ -211,11 +234,11 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
             <p className="v2-hdm-text v2-hdm-text--why">{why}</p>
           </section>
 
-          {riskControlFormula.length > 0 && (
+          {factorFormula.length > 0 && (
             <section className="v2-hdm-section">
               <div className="v2-hdm-section-label">Формула</div>
               <ul className="v2-hdm-list">
-                {riskControlFormula.map((item) => (
+                {factorFormula.map((item) => (
                   <li key={item} className="v2-hdm-list-item">
                     <span className="v2-hdm-list-arrow" style={{ color }}>→</span>
                     {item}
@@ -225,13 +248,13 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
             </section>
           )}
 
-          {(riskControlBlockers.length > 0 || riskControlWarnings.length > 0) && (
+          {(factorBlockers.length > 0 || factorWarnings.length > 0) && (
             <section className="v2-hdm-section">
               <div className="v2-hdm-section-label">
-                {riskControlBlockers.length > 0 ? "Жёсткие блокировки" : "Предупреждения"}
+                {factorBlockers.length > 0 ? "Жёсткие блокировки" : "Предупреждения"}
               </div>
               <ul className="v2-hdm-list">
-                {[...riskControlBlockers, ...riskControlWarnings].map((item) => (
+                {[...factorBlockers, ...factorWarnings].map((item) => (
                   <li key={item} className="v2-hdm-list-item">
                     <span className="v2-hdm-list-arrow" style={{ color }}>→</span>
                     {item}

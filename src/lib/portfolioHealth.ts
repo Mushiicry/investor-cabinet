@@ -73,7 +73,16 @@ export type HealthComponentKey =
 
 export type HealthComponentMeta = {
   reserveUsd?: number;
+  reserveShare?: number;
+  reserveFloorUsd?: number;
   reserveTargetUsd?: number;
+  reserveBandMaxUsd?: number;
+  reserveFloorShortfallUsd?: number;
+  reserveTargetShortfallUsd?: number;
+  reserveIdleUsd?: number;
+  reserveBlockers?: string[];
+  reserveWarnings?: string[];
+  reserveFormula?: string[];
   /** Диверсификация: крупнейший класс и конкретика для ребаланса */
   largestClassName?: string;
   largestClassShareOfRisk?: number; // доля крупнейшего класса в РИСКОВОМ капитале (0..1)
@@ -234,9 +243,46 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   const reserveShare = input.reserveShare ?? input.cashShare;
   const reserveScore = computeReserveScore(reserveShare);
   const reserveUsd = input.portfolioValue ? reserveShare * input.portfolioValue : undefined;
+  const reserveFloorUsd = input.portfolioValue
+    ? RESERVE_FLOOR_SHARE * input.portfolioValue
+    : undefined;
   const reserveTargetUsd = input.portfolioValue
     ? RESERVE_TARGET_SHARE * input.portfolioValue
     : undefined;
+  const reserveBandMaxUsd = input.portfolioValue
+    ? RESERVE_BAND_MAX_SHARE * input.portfolioValue
+    : undefined;
+  const reserveFloorShortfallUsd =
+    reserveFloorUsd !== undefined && reserveUsd !== undefined
+      ? Math.max(0, reserveFloorUsd - reserveUsd)
+      : undefined;
+  const reserveTargetShortfallUsd =
+    reserveTargetUsd !== undefined && reserveUsd !== undefined
+      ? Math.max(0, reserveTargetUsd - reserveUsd)
+      : undefined;
+  const reserveIdleUsd =
+    reserveBandMaxUsd !== undefined && reserveUsd !== undefined
+      ? Math.max(0, reserveUsd - reserveBandMaxUsd)
+      : undefined;
+  const reserveBlockers: string[] = [];
+  const reserveWarnings: string[] = [];
+  if (reserveShare <= 0) {
+    reserveBlockers.push("Резерв отсутствует");
+  } else if (reserveShare < RESERVE_FLOOR_SHARE) {
+    reserveBlockers.push("Резерв ниже пола 10%");
+  }
+  if (reserveShare >= RESERVE_FLOOR_SHARE && reserveShare < RESERVE_TARGET_SHARE) {
+    reserveWarnings.push("Резерв ниже цели 30%");
+  }
+  if (reserveShare > RESERVE_BAND_MAX_SHARE) {
+    reserveWarnings.push("Резерв выше 60% — капитал простаивает");
+  }
+  const reserveFormula = [
+    `Текущий резерв: ${Math.round(reserveShare * 100)}%`,
+    `Пол: ${Math.round(RESERVE_FLOOR_SHARE * 100)}%`,
+    `Цель: ${Math.round(RESERVE_TARGET_SHARE * 100)}%`,
+    `Норма: ${Math.round(RESERVE_TARGET_SHARE * 100)}–${Math.round(RESERVE_BAND_MAX_SHARE * 100)}%`,
+  ];
 
   // ── Контроль риска: 10% — верхняя граница, а не цель пополнения ──
   // Активная торговля остаётся разрешённой частью системы, но здоровье не должно
@@ -373,10 +419,22 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       key: "reserve",
       label: "Резерв",
       color: "#56d8f5",
-      desc: "Выделенный резерв (стейблы). Коридор 30–60% = 100 баллов; выше — штраф за простаивающий капитал.",
+      desc: "Выделенный резерв. Пол 10%, цель 30%, коридор нормы 30–60%. Ниже пола новые рисковые действия запрещены; выше 60% начинается штраф за простой капитала.",
       weight: 0.2,
       score: reserveScore,
-      meta: { reserveUsd, reserveTargetUsd },
+      meta: {
+        reserveUsd,
+        reserveShare,
+        reserveFloorUsd,
+        reserveTargetUsd,
+        reserveBandMaxUsd,
+        reserveFloorShortfallUsd,
+        reserveTargetShortfallUsd,
+        reserveIdleUsd,
+        reserveBlockers,
+        reserveWarnings,
+        reserveFormula,
+      },
     },
     {
       key: "crypto",

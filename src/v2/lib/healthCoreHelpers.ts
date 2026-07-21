@@ -108,6 +108,8 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
   const targetUsd  = Math.round(portfolio.totalPortfolioValue * 0.30);
   switch (c.key) {
     case "reserve":
+      if ((c.meta?.reserveBlockers ?? []).length) return c.meta?.reserveBlockers?.[0] ?? "";
+      if ((c.meta?.reserveWarnings ?? []).length) return c.meta?.reserveWarnings?.[0] ?? "";
       if (c.score <= 0) return `Резерв $0 — подушки нет, нечем откупать`;
       if (c.score < 50)
         return `${reservePct}% от цели 30%. Дефицит ${fmt$(Math.max(0, targetUsd - reserveUsd))}`;
@@ -166,6 +168,18 @@ export function buildCoreRecs(
 ): CoreRec[] {
   const deficit = Math.max(0, portfolio.totalPortfolioValue * 0.30 - portfolio.stableReserve);
   const result: CoreRec[] = [];
+  const reserve = all.find((c) => c.key === "reserve");
+  const rm = reserve?.meta;
+  const reserveBlockers = rm?.reserveBlockers ?? [];
+  const reserveTargetShortfallUsd = rm?.reserveTargetShortfallUsd ?? deficit;
+  if (reserveBlockers.length) {
+    result.push({
+      action: `Не открывать новые позиции: ${reserveBlockers[0].toLowerCase()}`,
+      gain: 7,
+      source: "Сначала восстановить резерв → здоровье +7",
+      critical: true,
+    });
+  }
 
   // ── Контроль риска: штрафуем только превышение, не свободный остаток. ──
   const fut = all.find((c) => c.key === "futures");
@@ -236,7 +250,7 @@ export function buildCoreRecs(
   // ── Критический сигнал: резерв сильно ниже цели ──
   if (deficit > portfolio.totalPortfolioValue * 0.10) {
     result.push({
-      action: deficit > 0 ? `Пополнить резерв на ${fmt$(deficit)} до целевых 30%` : "Поддерживать резерв выше 30%",
+      action: reserveTargetShortfallUsd > 0 ? `Пополнить резерв на ${fmt$(reserveTargetShortfallUsd)} до целевых 30%` : "Поддерживать резерв выше 30%",
       gain: 6,
       source: "Резерв вернётся к норме → здоровье +6",
       critical: true,
@@ -248,7 +262,7 @@ export function buildCoreRecs(
       case "reserve":
         if (!result.some(r => r.source.startsWith("Резерв")))
           result.push({
-            action: deficit > 0 ? `Пополнить резерв на ${fmt$(deficit)}` : "Поддерживать резерв выше 30%",
+            action: reserveTargetShortfallUsd > 0 ? `Пополнить резерв на ${fmt$(reserveTargetShortfallUsd)}` : "Поддерживать резерв выше 30%",
             gain: 6, source: "Резерв вернётся к норме → здоровье +6"
           });
         result.push({ action: "Не открывать новые позиции, пока резерв не достигнут", gain: 3, source: "Сохранит подушку и манёвр → здоровье +3" });
