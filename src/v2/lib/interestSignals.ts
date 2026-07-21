@@ -55,3 +55,62 @@ export function sortByProximity(signals: InterestSignal[]): InterestSignal[] {
     })
     .map((item) => item.signal);
 }
+
+/** Актив со своими точками входа/выхода — одна кнопка в сетке монет. */
+export type AssetSignalGroup = {
+  asset: string;
+  signals: InterestSignal[];
+  /** Ближайшая к срабатыванию точка актива — по ней сортируются монеты. */
+  nearest: SignalDistance | null;
+  /** Есть строки, снятые с дежурства (CHECK/ERROR) — актив требует внимания. */
+  needsAttention: boolean;
+  /** Сколько точек ещё ждут срабатывания. */
+  waitingCount: number;
+};
+
+/**
+ * Группировка по активу: 23 строки списком читаются тяжело, а по монетам
+ * это 10 кнопок. Порядок монет — по близости их ближайшей точки, чтобы
+ * первым в сетке стоял актив, за которым надо следить сегодня.
+ */
+export function groupByAsset(signals: InterestSignal[]): AssetSignalGroup[] {
+  const groups = new Map<string, InterestSignal[]>();
+
+  signals.forEach((signal) => {
+    const asset = signal.asset.trim() || "—";
+    const bucket = groups.get(asset);
+    if (bucket) bucket.push(signal);
+    else groups.set(asset, [signal]);
+  });
+
+  return [...groups.entries()]
+    .map(([asset, assetSignals]) => {
+      const ordered = sortByProximity(assetSignals);
+      const waiting = ordered.filter(
+        (signal) => !DONE_STATUSES.has(normalizeStatus(signal.status))
+      );
+      const nearest = waiting
+        .map(getSignalDistance)
+        .filter((distance): distance is SignalDistance => distance !== null)
+        .reduce<SignalDistance | null>(
+          (best, distance) =>
+            !best || Math.abs(distance.pct) < Math.abs(best.pct) ? distance : best,
+          null
+        );
+
+      return {
+        asset,
+        signals: ordered,
+        nearest,
+        needsAttention: ordered.some((signal) =>
+          ATTENTION_STATUSES.has(normalizeStatus(signal.status))
+        ),
+        waitingCount: waiting.length,
+      };
+    })
+    .sort((a, b) => {
+      if (a.needsAttention !== b.needsAttention) return a.needsAttention ? -1 : 1;
+      if (!a.nearest || !b.nearest) return a.nearest ? -1 : b.nearest ? 1 : 0;
+      return Math.abs(a.nearest.pct) - Math.abs(b.nearest.pct);
+    });
+}

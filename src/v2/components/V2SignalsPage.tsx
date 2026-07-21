@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
 import {
   MAX_CRYPTO_EXPOSURE_SHARE,
@@ -11,7 +11,13 @@ import { isEmptyAccount } from "../lib/accountState";
 import { getMarketPsychology } from "../lib/marketPsychology";
 import { altcoinSlots, CRYPTO_ALT_LIMIT } from "../lib/preTradeGate";
 import type { InterestSignal } from "../../types/portfolio";
-import { getSignalDistance, sortByProximity, type SignalDistance } from "../lib/interestSignals";
+import {
+  getSignalDistance,
+  groupByAsset,
+  sortByProximity,
+  type SignalDistance,
+} from "../lib/interestSignals";
+import { CryptoLogo } from "../../components/crypto/CryptoLogo";
 
 const CRYPTO_CATEGORIES = new Set(["Крипта", "Crypto"]);
 
@@ -224,8 +230,16 @@ const formatSignalDistance = (distance: SignalDistance) => {
 // Сигнал в двух шагах от срабатывания требует другого внимания, чем в двадцати.
 const NEAR_TRIGGER_PCT = 3;
 
+// В сигналах актив зовётся GOLD, а логотип заведён под позицию GOLD LONG.
+const LOGO_ASSET_ALIAS: Record<string, string> = { GOLD: "GOLD LONG" };
+const logoAssetFor = (asset: string) => LOGO_ASSET_ALIAS[asset] ?? asset;
+
 export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStrategy, allocation, interestSignals }: Props) {
-  const orderedSignals = useMemo(() => sortByProximity(interestSignals), [interestSignals]);
+  const [openAsset, setOpenAsset] = useState<string | null>(null);
+  const assetGroups = useMemo(() => groupByAsset(interestSignals), [interestSignals]);
+  const openGroup = assetGroups.find((group) => group.asset === openAsset) ?? null;
+  const nearestSignal = useMemo(() => sortByProximity(interestSignals)[0] ?? null, [interestSignals]);
+  const nearestDistance = nearestSignal ? getSignalDistance(nearestSignal) : null;
   const currentFG = fearGreedStrategy.currentIndex;
   const liveStrategy = buildFearGreedStrategy(
     currentFG,
@@ -420,43 +434,106 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
             Зона интереса
             <span className="v2-sig-int-bot-badge">{interestSignals.length ? "СИГНАЛЫ API" : "НЕТ ИСТОЧНИКА API"}</span>
           </div>
-          <div className="v2-sig-int-list">
-            {orderedSignals.length ? (
-              orderedSignals.map((signal) => {
-                const distance = getSignalDistance(signal);
-                const isDone = signal.status.trim().toUpperCase() === "TRIGGERED";
-                const isNear = !isDone && !!distance && Math.abs(distance.pct) <= NEAR_TRIGGER_PCT;
+          {assetGroups.length ? (
+            <>
+              <div className="v2-sig-coin-grid">
+                {assetGroups.map((group) => {
+                  const isOpen = group.asset === openAsset;
+                  const isNear =
+                    !!group.nearest && Math.abs(group.nearest.pct) <= NEAR_TRIGGER_PCT;
 
-                return (
-                  <div className="v2-sig-int-row" key={signal.id}>
-                    <span className="v2-sig-int-asset">{signal.asset}</span>
-                    <span className="v2-sig-int-range">
-                      {signal.action} {formatSignalMoney(signal.amountUsd)} при {formatSignalMoney(signal.triggerPrice)}
-                    </span>
-                    <span className="v2-sig-int-label">
-                      {distance && !isDone ? (
-                        <span className={`v2-sig-int-dist${isNear ? " is-near" : ""}`}>
-                          {formatSignalDistance(distance)}
-                          <span className="v2-sig-int-dist-abs">
-                            {formatSignalMoney(Math.abs(distance.abs))}
+                  return (
+                    <button
+                      key={group.asset}
+                      type="button"
+                      className={[
+                        "v2-sig-coin",
+                        isOpen ? "is-open" : "",
+                        group.needsAttention ? "is-alert" : "",
+                        isNear ? "is-near" : "",
+                      ].filter(Boolean).join(" ")}
+                      aria-expanded={isOpen}
+                      onClick={() => setOpenAsset((prev) => (prev === group.asset ? null : group.asset))}
+                    >
+                      <CryptoLogo asset={logoAssetFor(group.asset)} className="v2-sig-coin-logo" />
+                      <span className="v2-sig-coin-ticker">{group.asset}</span>
+                      <span className="v2-sig-coin-meta">
+                        {group.needsAttention
+                          ? "проверить"
+                          : group.nearest
+                            ? formatSignalDistance(group.nearest)
+                            : `${group.waitingCount} точки`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="v2-sig-int-list">
+                {openGroup ? (
+                  openGroup.signals.map((signal) => {
+                    const distance = getSignalDistance(signal);
+                    const isDone = signal.status.trim().toUpperCase() === "TRIGGERED";
+                    const isNear = !isDone && !!distance && Math.abs(distance.pct) <= NEAR_TRIGGER_PCT;
+
+                    return (
+                      <div className="v2-sig-int-row" key={signal.id}>
+                        <span className="v2-sig-int-range">
+                          {signal.action} {formatSignalMoney(signal.amountUsd)} при {formatSignalMoney(signal.triggerPrice)}
+                        </span>
+                        <span className="v2-sig-int-label">
+                          {distance && !isDone ? (
+                            <span className={`v2-sig-int-dist${isNear ? " is-near" : ""}`}>
+                              {formatSignalDistance(distance)}
+                              <span className="v2-sig-int-dist-abs">
+                                {formatSignalMoney(Math.abs(distance.abs))}
+                              </span>
+                            </span>
+                          ) : null}
+                          <span className="v2-sig-int-sub">
+                            {formatSignalStatus(signal.status)} · {formatSignalMoney(signal.currentPrice)}
                           </span>
                         </span>
-                      ) : null}
-                      <span className="v2-sig-int-sub">
-                        {formatSignalStatus(signal.status)} · {formatSignalMoney(signal.currentPrice)}
-                      </span>
-                    </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  // Пока монета не выбрана, панель всё равно отвечает на главный
+                  // вопрос: за чем следить сегодня.
+                  <div className="v2-sig-int-hint">
+                    {nearestSignal ? (
+                      <>
+                        <span className="v2-sig-int-hint-label">Ближайшая точка</span>
+                        <span className="v2-sig-int-hint-main">
+                          {nearestSignal.asset} · {nearestSignal.action}{" "}
+                          {formatSignalMoney(nearestSignal.amountUsd)} при{" "}
+                          {formatSignalMoney(nearestSignal.triggerPrice)}
+                        </span>
+                        {nearestDistance ? (
+                          <span className="v2-sig-int-dist is-near">
+                            {formatSignalDistance(nearestDistance)}
+                            <span className="v2-sig-int-dist-abs">
+                              {formatSignalMoney(Math.abs(nearestDistance.abs))}
+                            </span>
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <span className="v2-sig-int-hint-label">Нет активных точек</span>
+                    )}
+                    <span className="v2-sig-int-hint-note">Нажмите монету — покажу её точки</span>
                   </div>
-                );
-              })
-            ) : (
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="v2-sig-int-list">
               <div className="v2-sig-int-row">
-                <span className="v2-sig-int-asset">—</span>
                 <span className="v2-sig-int-range">Диапазоны отключены</span>
                 <span className="v2-sig-int-label">Нет данных</span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
