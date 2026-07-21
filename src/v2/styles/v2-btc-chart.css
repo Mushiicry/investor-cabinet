@@ -2749,7 +2749,9 @@
   }
 
   .v2-main {
-    padding: calc(68px + 10px) 12px calc(60px + env(safe-area-inset-bottom, 0px) + 8px);
+    /* Снизу — высота таб-бара (плашки-ячейки с полями) плюс запас, иначе
+       последний блок страницы уезжает под панель. */
+    padding: calc(68px + 10px) 12px calc(74px + env(safe-area-inset-bottom, 0px) + 8px);
     gap: 14px;
   }
 
@@ -2757,13 +2759,16 @@
   .v2-tab-bar {
     display: flex;
     align-items: stretch;
+    gap: 8px;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     z-index: 200;
-    height: calc(56px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+    /* Каждая вкладка — отдельная ячейка, поэтому бару нужны поля со всех
+       сторон: иначе крайние плашки упираются в края экрана и подрезаются. */
+    padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px));
     /* iOS Safari: position:fixed + backdrop-filter отклеивает бар — он едет со
        скроллом на середину экрана. Фон и так почти непрозрачный, поэтому делаем
        его ПОЛНОСТЬЮ непрозрачным и убираем backdrop-filter — бар прибит к низу. */
@@ -2772,44 +2777,56 @@
     box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.55), 0 -1px 0 rgba(86, 196, 240, 0.06);
   }
 
+  /* Плашка вкладки — самостоятельная ячейка: обводка, объём внутренним
+     бликом и тенью под корпусом. Активная подсвечивается холодным неоном
+     снизу — один акцентный цвет, без разноцветья. */
   .v2-tab-item {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding: 6px 4px 2px;
-    background: none;
-    border: none;
+    gap: 4px;
+    padding: 8px 4px 7px;
+    border-radius: 14px;
+    border: 1px solid rgba(86, 196, 240, 0.12);
+    background: linear-gradient(180deg, rgba(13, 28, 46, 0.9) 0%, rgba(6, 14, 26, 0.95) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(200, 240, 255, 0.06),
+      0 2px 8px rgba(0, 0, 0, 0.45);
     cursor: pointer;
-    color: rgba(141, 167, 181, 0.42);
-    transition: color 0.18s ease;
+    color: rgba(141, 167, 181, 0.5);
+    transition: color 0.18s ease, border-color 0.18s ease, box-shadow 0.22s ease, transform 0.18s ease;
     position: relative;
     -webkit-tap-highlight-color: transparent;
   }
 
+  .v2-tab-item:active {
+    transform: translateY(1px);
+  }
+
   .v2-tab-item.is-active {
     color: #56d8f5;
+    border-color: rgba(86, 216, 245, 0.42);
+    background: linear-gradient(180deg, rgba(20, 46, 70, 0.95) 0%, rgba(8, 20, 36, 0.98) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(200, 240, 255, 0.12),
+      0 0 18px -4px rgba(86, 216, 245, 0.45),
+      0 2px 10px rgba(0, 0, 0, 0.5);
   }
 
-  .v2-tab-item.is-center {
-    position: relative;
-  }
-
-  .v2-tab-item.is-center .v2-tab-icon {
-    background: radial-gradient(ellipse at 50% 30%, rgba(86, 196, 240, 0.18), transparent 70%);
-    border: 1px solid rgba(86, 196, 240, 0.22);
-    border-radius: 10px;
-    width: 36px;
-    height: 28px;
-    box-shadow: 0 0 14px rgba(86, 196, 240, 0.12);
-  }
-
-  .v2-tab-item.is-center.is-active .v2-tab-icon {
-    border-color: rgba(86, 196, 240, 0.55);
-    box-shadow: 0 0 18px rgba(86, 196, 240, 0.28);
-    background: radial-gradient(ellipse at 50% 30%, rgba(86, 196, 240, 0.26), transparent 70%);
+  /* Неоновая полоса под активной вкладкой */
+  .v2-tab-item.is-active::after {
+    content: "";
+    position: absolute;
+    left: 22%;
+    right: 22%;
+    bottom: 4px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, #56d8f5, transparent);
+    box-shadow: 0 0 10px rgba(86, 216, 245, 0.9);
   }
 
   .v2-tab-icon {

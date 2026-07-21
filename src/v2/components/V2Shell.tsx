@@ -84,7 +84,7 @@ function DataStatusBadge({ dataStatus }: { dataStatus: NonNullable<Props["dataSt
 }
 
 export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, staking, cosmosStaking, dataStatus }: Props) {
-  const { user } = useAuth();
+  const { user, displayName } = useAuth();
   // Профиль (имя/аватар) храним отдельно на каждый аккаунт — чтобы аватар и имя
   // одного пользователя не показывались другому на том же устройстве.
   const profileKeySuffix = user ? `:${user.id}` : "";
@@ -197,7 +197,10 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         health={data.health}
         positions={data.positions}
         transactions={data.transactions}
-        profileName={profileName}
+        /* Имя из настроек профиля, а если его не задавали — имя аккаунта
+           (метаданные регистрации, иначе часть email). «ИНВЕСТОР» остаётся
+           только для гостя. */
+        profileName={profileName || displayName}
         profileAvatar={profileAvatar}
         onOpenAuth={onOpenAuth}
       />

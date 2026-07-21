@@ -27,38 +27,21 @@ const TABS = [
     ),
   },
   {
-    page: "risk" as V2Page,
-    label: "Решения",
-    isCenter: true,
+    page: "health" as V2Page,
+    label: "Здоровье",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <circle cx="9" cy="9" r="7" />
-        <circle cx="9" cy="9" r="3.5" />
-        <circle cx="9" cy="9" r=".9" fill="currentColor" stroke="none" />
+        <path d="M15.3 4.6a3.6 3.6 0 00-5.1 0L9 5.8 7.8 4.6a3.6 3.6 0 10-5.1 5.1L9 16l6.3-6.3a3.6 3.6 0 000-5.1z" strokeLinejoin="round" />
       </svg>
     ),
   },
   {
-    page: "scenarios" as V2Page,
-    label: "Сценарии",
+    page: "signals" as V2Page,
+    label: "Сигналы",
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <circle cx="4" cy="9" r="1.6" />
-        <path d="M5.6 9h2.8" strokeLinecap="round" />
-        <circle cx="9" cy="4.5" r="1.6" />
-        <circle cx="9" cy="13.5" r="1.6" />
-        <path d="M8.4 9 6.4 4.5M8.4 9 6.4 13.5" strokeLinecap="round" />
-        <path d="M10.6 4.5H14M10.6 13.5H14" strokeLinecap="round" opacity=".5" />
-      </svg>
-    ),
-  },
-  {
-    page: "settings" as V2Page,
-    label: "Профиль",
-    icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <circle cx="9" cy="6" r="3" />
-        <path d="M2 16c0-3.3 3.1-6 7-6s7 2.7 7 6" strokeLinecap="round" />
+        <path d="M9 2a4.5 4.5 0 00-4.5 4.5c0 3.4-1.3 4.6-1.3 4.6h11.6s-1.3-1.2-1.3-4.6A4.5 4.5 0 009 2z" strokeLinejoin="round" />
+        <path d="M7.6 14a1.6 1.6 0 002.8 0" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -74,13 +57,12 @@ export function V2TabBar({ activePage, onNavigate, criticalCount = 0 }: Props) {
           className={[
             "v2-tab-item",
             activePage === tab.page ? "is-active" : "",
-            tab.isCenter ? "is-center" : "",
           ].filter(Boolean).join(" ")}
           onClick={() => onNavigate(tab.page)}
         >
           <span className="v2-tab-icon">
             {tab.icon}
-            {tab.page === "risk" && criticalCount > 0 && (
+            {tab.page === "signals" && criticalCount > 0 && (
               <span className="v2-tab-badge">{criticalCount}</span>
             )}
           </span>
