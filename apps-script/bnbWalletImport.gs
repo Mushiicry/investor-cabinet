@@ -70,9 +70,10 @@ function syncBnbWalletBalances() {
   var updated = [];
 
   var prev = IC_BNB_readLastBalances_(balances);
+  var blockTag = IC_BNB_fetchBlockTag_();
 
   // USDT (BSC) → 'USDT BNB'
-  var usdt = IC_BNB_fetchErc20Balance_(IC_BNB_WALLET_ADDRESS, IC_BNB_USDT_CONTRACT, 18);
+  var usdt = IC_BNB_fetchErc20Balance_(IC_BNB_WALLET_ADDRESS, IC_BNB_USDT_CONTRACT, 18, blockTag);
   if (usdt !== null) {
     IC_BNB_assertSane_('USDT BNB', usdt, IC_BNB_SANE_LIMITS['USDT BNB']);
     IC_BNB_appendBalanceRow_(balances, 'USDT BNB', usdt, IC_BNB_USDT_CONTRACT, syncAt);
@@ -81,7 +82,7 @@ function syncBnbWalletBalances() {
   }
 
   // USDC (BSC) → 'USDC BNB' (нужен для классификации покупок/пополнений)
-  var usdc = IC_BNB_fetchErc20Balance_(IC_BNB_WALLET_ADDRESS, IC_BNB_USDC_CONTRACT, 18);
+  var usdc = IC_BNB_fetchErc20Balance_(IC_BNB_WALLET_ADDRESS, IC_BNB_USDC_CONTRACT, 18, blockTag);
   if (usdc !== null) {
     IC_BNB_assertSane_(IC_BNB_USDC_CALC_ASSET, usdc, IC_BNB_SANE_LIMITS['USDC BNB']);
     IC_BNB_appendBalanceRow_(balances, IC_BNB_USDC_CALC_ASSET, usdc, IC_BNB_USDC_CONTRACT, syncAt);
@@ -92,7 +93,7 @@ function syncBnbWalletBalances() {
   // Токен акций
   var stock = null;
   if (IC_BNB_STOCK_CONTRACT) {
-    stock = IC_BNB_fetchErc20Balance_(IC_BNB_WALLET_ADDRESS, IC_BNB_STOCK_CONTRACT, IC_BNB_STOCK_DECIMALS);
+    stock = IC_BNB_fetchErc20Balance_(IC_BNB_WALLET_ADDRESS, IC_BNB_STOCK_CONTRACT, IC_BNB_STOCK_DECIMALS, blockTag);
     if (stock !== null) {
       IC_BNB_assertSane_(IC_BNB_STOCK_SYMBOL, stock, IC_BNB_SANE_LIMITS.STOCK);
       IC_BNB_appendBalanceRow_(balances, IC_BNB_STOCK_SYMBOL, stock, IC_BNB_STOCK_CONTRACT, syncAt);
@@ -102,7 +103,7 @@ function syncBnbWalletBalances() {
   }
 
   // Нативный BNB (газовый токен = крипто-позиция)
-  var bnb = IC_BNB_fetchNativeBalance_(IC_BNB_WALLET_ADDRESS);
+  var bnb = IC_BNB_fetchNativeBalance_(IC_BNB_WALLET_ADDRESS, blockTag);
   if (bnb !== null) {
     IC_BNB_assertSane_(IC_BNB_NATIVE_SYMBOL, bnb, IC_BNB_SANE_LIMITS.BNB);
     IC_BNB_appendBalanceRow_(balances, IC_BNB_NATIVE_SYMBOL, bnb, 'NATIVE', syncAt);
@@ -487,16 +488,31 @@ function IC_BNB_appendBalanceRow_(sheet, asset, quantity, contract, syncAt) {
 }
 
 // ── RPC с failover и ретраями (паттерн Solana) ────────────────────
-function IC_BNB_fetchErc20Balance_(address, contractAddress, decimals) {
+
+// Все балансы одного прогона читаются на одном блоке: запросы уходят на разные
+// ноды (failover), и своп USDC→акции мог попасть в снимок наполовину — тогда
+// дельты расходятся по прогонам и сделка теряется. Отступ в 5 блоков (~15 с)
+// нужен, чтобы состояние было у всех провайдеров из списка.
+var IC_BNB_BLOCK_LAG = 5;
+
+function IC_BNB_fetchBlockTag_() {
+  var raw = IC_BNB_rpcCall_('eth_blockNumber', []);
+  if (raw === null) return 'latest';
+  var head = parseInt(raw, 16);
+  if (!isFinite(head) || head <= IC_BNB_BLOCK_LAG) return 'latest';
+  return '0x' + (head - IC_BNB_BLOCK_LAG).toString(16);
+}
+
+function IC_BNB_fetchErc20Balance_(address, contractAddress, decimals, blockTag) {
   var data = '0x70a08231' + '000000000000000000000000' + address.replace(/^0x/, '').toLowerCase();
-  var result = IC_BNB_rpcCall_('eth_call', [{ to: contractAddress, data: data }, 'latest']);
+  var result = IC_BNB_rpcCall_('eth_call', [{ to: contractAddress, data: data }, blockTag || 'latest']);
   if (result === null) return null;
   return IC_BNB_hexUnits_(result, decimals);
 }
 
 // Нативный баланс BNB (eth_getBalance, 18 знаков). null → RPC не ответил, скип.
-function IC_BNB_fetchNativeBalance_(address) {
-  var result = IC_BNB_rpcCall_('eth_getBalance', [address, 'latest']);
+function IC_BNB_fetchNativeBalance_(address, blockTag) {
+  var result = IC_BNB_rpcCall_('eth_getBalance', [address, blockTag || 'latest']);
   if (result === null) return null;
   return IC_BNB_hexUnits_(result, 18);
 }

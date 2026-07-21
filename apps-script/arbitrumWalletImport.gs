@@ -13,6 +13,9 @@ var IC_EVM_ARBITRUM_NATIVE_USDC = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
 // вывод 61.34 USDT с Bybit + свап в USDC прошли мимо отчётов).
 var IC_EVM_ARBITRUM_USDT = '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9';
 var IC_EVM_USDT_CALC_ASSET = 'USDT ARB'; // имя строки в «Расчетах»
+// Порог «заметного» движения актива (ETH). Ниже — газ и пыль, выше — событие,
+// которое обязано попасть в историю, даже если пары в стейблах не нашлось.
+var IC_EVM_UNPAIRED_ASSET_THRESHOLD = 0.0002;
 
 function setupArbitrumWalletImport() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -29,11 +32,12 @@ function syncArbitrumWalletBalances() {
   var wallets = IC_EVM_readWalletConfig_(walletSheet);
   var previousBalances = IC_EVM_readBalanceTotals_(balanceSheet);
   var syncStartedAt = new Date();
+  var blockTag = IC_EVM_fetchBlockTag_();
   var rows = [];
 
   wallets.forEach(function(wallet) {
     if (wallet.chain !== IC_EVM_DEFAULT_CHAIN || wallet.status !== 'ACTIVE') return;
-    rows = rows.concat(IC_EVM_fetchWalletBalanceRows_(wallet, syncStartedAt));
+    rows = rows.concat(IC_EVM_fetchWalletBalanceRows_(wallet, syncStartedAt, blockTag));
     IC_EVM_updateWalletSyncState_(walletSheet, wallet.rowIndex, syncStartedAt);
   });
 
@@ -107,23 +111,23 @@ function IC_EVM_readWalletConfig_(sheet) {
   });
 }
 
-function IC_EVM_fetchWalletBalanceRows_(wallet, syncStartedAt) {
+function IC_EVM_fetchWalletBalanceRows_(wallet, syncStartedAt, blockTag) {
   var rows = [];
   var syncAt = Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss");
 
   if (IC_EVM_isAllowedWalletAsset_(wallet, 'ETH')) {
-    var ethQuantity = IC_EVM_fetchNativeBalance_(wallet.address);
+    var ethQuantity = IC_EVM_fetchNativeBalance_(wallet.address, blockTag);
     if (ethQuantity) rows.push(IC_EVM_balanceRow_(wallet, 'ETH', 'NATIVE', ethQuantity, syncAt, 'ETH', 18, 'Arbitrum public RPC eth_getBalance'));
   }
 
   if (IC_EVM_isAllowedWalletAsset_(wallet, 'USDC')) {
-    var usdcQuantity = IC_EVM_fetchErc20Balance_(wallet.address, IC_EVM_ARBITRUM_NATIVE_USDC, 6);
+    var usdcQuantity = IC_EVM_fetchErc20Balance_(wallet.address, IC_EVM_ARBITRUM_NATIVE_USDC, 6, blockTag);
     if (usdcQuantity) rows.push(IC_EVM_balanceRow_(wallet, 'USDC', 'ERC20_NATIVE', usdcQuantity, syncAt, IC_EVM_ARBITRUM_NATIVE_USDC, 6, 'Arbitrum native USDC balanceOf'));
   }
 
   // USDT мониторим всегда (не зависит от allowedAssets): нужен для детекта
   // пополнений и обменов стейбл-в-стейбл.
-  var usdtQuantity = IC_EVM_fetchErc20Balance_(wallet.address, IC_EVM_ARBITRUM_USDT, 6);
+  var usdtQuantity = IC_EVM_fetchErc20Balance_(wallet.address, IC_EVM_ARBITRUM_USDT, 6, blockTag);
   if (usdtQuantity) rows.push(IC_EVM_balanceRow_(wallet, 'USDT', 'ERC20', usdtQuantity, syncAt, IC_EVM_ARBITRUM_USDT, 6, 'Arbitrum USDT balanceOf'));
 
   return rows;
@@ -197,6 +201,17 @@ function IC_EVM_applyBalanceDeltas_(calculationsSheet, importSheet, previousBala
     IC_EVM_applyStableDelta_(calculationsSheet, 'USDC', usdcDelta);
     if (importSheet) IC_EVM_appendBalanceDeltaSellAuditRow_(importSheet, 'ETH', ethSold, impliedSellPrice, usdcReceived, sale, syncStartedAt);
     return;
+  }
+
+  // ── Движение ETH без встречного стейбла ──
+  // Раньше такая дельта проглатывалась молча: количество в «Расчетах»
+  // обновлялось, а в истории не появлялось ничего. Так пропала продажа
+  // 2026-07-21. Порог отсекает газ (комиссия Arbitrum — тысячные цента).
+  if (importSheet && Math.abs(ethDelta) > IC_EVM_UNPAIRED_ASSET_THRESHOLD) {
+    IC_EVM_appendStableFlowAuditRow_(importSheet,
+      ethDelta > 0 ? 'Пополнение' : 'Вывод',
+      'ETH', Math.abs(ethDelta), 0,
+      'Движение ETH без встречного стейбла — проверьте вручную', syncStartedAt);
   }
 
   // ── Обмен стейбл-в-стейбл (USDT <-> USDC): дельты противоположны и почти
@@ -339,17 +354,33 @@ function IC_EVM_appendBalanceDeltaSellAuditRow_(sheet, asset, assetSold, implied
   ]]);
 }
 
-function IC_EVM_fetchNativeBalance_(address) {
-  var result = IC_EVM_rpcCall_('eth_getBalance', [address, 'latest']);
+// Высота блока для снимка балансов. Все балансы кошелька обязаны читаться
+// на ОДНОМ блоке: с 'latest' запросы уходят на разные ноды публичного пула,
+// и своп ETH→USDC может попасть в снимок наполовину (USDC уже пришёл, ETH ещё
+// старый). Тогда дельты расходятся по разным прогонам и продажа теряется —
+// кейс 2026-07-21: своп 0.014 ETH записался как «Пополнение USDC».
+// Небольшой отступ от головы цепочки: ноды публичного пула отстают друг от
+// друга на доли секунды, и запрос свежайшего блока часть из них ещё не видит.
+// ~20 блоков Arbitrum ≈ 5 секунд — состояние гарантированно есть у всех.
+var IC_EVM_BLOCK_LAG = 20;
+
+function IC_EVM_fetchBlockTag_() {
+  var head = parseInt(IC_EVM_rpcCall_('eth_blockNumber', []), 16);
+  if (!isFinite(head) || head <= IC_EVM_BLOCK_LAG) return 'latest';
+  return '0x' + (head - IC_EVM_BLOCK_LAG).toString(16);
+}
+
+function IC_EVM_fetchNativeBalance_(address, blockTag) {
+  var result = IC_EVM_rpcCall_('eth_getBalance', [address, blockTag || 'latest']);
   return IC_EVM_hexUnits_(result, 18);
 }
 
-function IC_EVM_fetchErc20Balance_(address, contractAddress, decimals) {
+function IC_EVM_fetchErc20Balance_(address, contractAddress, decimals, blockTag) {
   var data = '0x70a08231' + IC_EVM_padAddress_(address);
   var result = IC_EVM_rpcCall_('eth_call', [{
     to: contractAddress,
     data: data
-  }, 'latest']);
+  }, blockTag || 'latest']);
 
   return IC_EVM_hexUnits_(result, decimals);
 }
