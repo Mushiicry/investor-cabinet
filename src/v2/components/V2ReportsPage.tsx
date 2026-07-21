@@ -284,16 +284,18 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
                     const pnlTone = point.pnl >= 0 ? "is-pos" : "is-neg";
 
                     return (
+                      // data-label подставляется как подпись поля в мобильной
+                      // карточке (заголовок таблицы там скрыт).
                       <div key={`${point.date}-${index}`} className="v2-rep-row">
-                        <span className="v2-rep-cell-date">{fmtDate(point.date)}</span>
-                        <span className="v2-rep-cell-amount">{fmtUSD(point.portfolioValue)}</span>
-                        <span className="v2-rep-cell-price">{fmtUSD(point.invested)}</span>
-                        <span className={`v2-rep-cell-pnl ${pnlTone}`}>{signedMoney(point.pnl)}</span>
-                        <span className={`v2-rep-cell-pnl ${pnlTone}`}>{fmtPct(point.pnlPct)}</span>
-                        <span className="v2-rep-cell-price">{fmtUSD(point.reserve)}</span>
-                        <span className="v2-rep-cell-fg">{Math.round(point.positionsCount)}</span>
-                        <span className="v2-rep-tag is-manual">{source}</span>
-                        <span className="v2-rep-cell-price" title={note}>{note}</span>
+                        <span className="v2-rep-cell-date" data-label="Дата">{fmtDate(point.date)}</span>
+                        <span className="v2-rep-cell-amount" data-label="Портфель">{fmtUSD(point.portfolioValue)}</span>
+                        <span className="v2-rep-cell-price" data-label="Вложено">{fmtUSD(point.invested)}</span>
+                        <span className={`v2-rep-cell-pnl ${pnlTone}`} data-label="PnL">{signedMoney(point.pnl)}</span>
+                        <span className={`v2-rep-cell-pnl ${pnlTone}`} data-label="PnL %">{fmtPct(point.pnlPct)}</span>
+                        <span className="v2-rep-cell-price" data-label="Резерв">{fmtUSD(point.reserve)}</span>
+                        <span className="v2-rep-cell-fg" data-label="Позиции">{Math.round(point.positionsCount)}</span>
+                        <span className="v2-rep-tag is-manual" data-label="Источник">{source}</span>
+                        <span className="v2-rep-cell-price" data-label="Заметка" title={note}>{note}</span>
                       </div>
                     );
                   })
@@ -339,13 +341,13 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
                       className={`v2-rep-row ${transactionTone(transaction)}`}
                       title={details}
                     >
-                      <span className="v2-rep-cell-date">{fmtDate(transaction.date)}</span>
-                      <span className="v2-rep-cell-asset">{transaction.asset || transaction.rawAsset || "—"}</span>
+                      <span className="v2-rep-cell-date" data-label="Дата">{fmtDate(transaction.date)}</span>
+                      <span className="v2-rep-cell-asset" data-label="Актив">{transaction.asset || transaction.rawAsset || "—"}</span>
                       <span className={`v2-rep-type-chip ${transactionTone(transaction)}`}>
                         {displayAction(transaction)}
                       </span>
-                      <span className="v2-rep-cell-price">{fmtQuantity(transaction.quantity || transaction.rawAmount)}</span>
-                      <span className="v2-rep-cell-price">
+                      <span className="v2-rep-cell-price" data-label="Количество">{fmtQuantity(transaction.quantity || transaction.rawAmount)}</span>
+                      <span className="v2-rep-cell-price" data-label="Цена">
                         {(() => {
                           const apy = isStaking(transaction.action)
                             ? stakingApy(transaction.asset || transaction.rawAsset)
@@ -360,24 +362,25 @@ export function V2ReportsPage({ history, transactions, positions }: Props) {
                           return transaction.price ? fmtUSD(transaction.price) : "—";
                         })()}
                       </span>
-                      <span className="v2-rep-cell-amount">{transaction.amount ? fmtUSD(transaction.amount) : "—"}</span>
+                      <span className="v2-rep-cell-amount" data-label="Сумма">{transaction.amount ? fmtUSD(transaction.amount) : "—"}</span>
                       {(() => {
                         const realized = computeRealizedPnl(transaction, avgEntryByAsset);
-                        if (realized == null) return <span className="v2-rep-cell-price">—</span>;
+                        if (realized == null) return <span className="v2-rep-cell-price" data-label="PnL сделки">—</span>;
                         return (
                           <span
                             className={`v2-rep-cell-pnl ${realized >= 0 ? "is-pos" : "is-neg"}`}
+                            data-label="PnL сделки"
                             title="Реализованный PnL: (цена продажи − средняя цена входа) × количество"
                           >
                             {signedMoney(realized)}
                           </span>
                         );
                       })()}
-                      <span className="v2-rep-cell-fg">{transaction.chain || transaction.walletId || "—"}</span>
-                      <span className={`v2-rep-tag ${transaction.status === "APPROVED" ? "is-strategy" : "is-manual"}`}>
+                      <span className="v2-rep-cell-fg" data-label="Сеть">{transaction.chain || transaction.walletId || "—"}</span>
+                      <span className={`v2-rep-tag ${transaction.status === "APPROVED" ? "is-strategy" : "is-manual"}`} data-label="Статус">
                         {transaction.status || "—"}
                       </span>
-                      <span className="v2-rep-cell-price" title={transactionId}>
+                      <span className="v2-rep-cell-price" data-label="Транзакция" title={transactionId}>
                         {transactionId ? `${transactionId.slice(0, 8)}…` : "—"}
                       </span>
                     </div>

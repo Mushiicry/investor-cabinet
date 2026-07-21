@@ -538,19 +538,84 @@
     min-width: 0;
     max-width: 100%;
   }
+  /* Таблица 1140px в горизонтальном свайпе показывала 2 колонки из 9-10:
+     чтобы увидеть PnL сделки, приходилось мотать вправо. Разворачиваем
+     строку в карточку — подписи берём из data-label ячеек, как это уже
+     сделано на «Портфеле». */
   .v2-rep-table {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow-x: visible;
     max-width: 100%;
     flex-shrink: 1; /* база даёт flex-shrink: 0 — таблица распирала панель */
   }
-  .v2-rep-table-head,
-  .v2-rep-row {
-    min-width: 1140px; /* родная ширина сетки — прокручивается, не режется */
+  .v2-rep-table-head {
+    display: none;
   }
-  .v2-rep-transaction-table .v2-rep-table-head,
-  .v2-rep-transaction-table .v2-rep-row {
-    min-width: 1140px;
+  .v2-rep-table-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0;
+    /* Журнал скроллится внутри панели. На тач-экране импульс не должен
+       перескакивать на страницу, когда список докручен до края. */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .v2-rep-transaction-table .v2-rep-row,
+  .v2-rep-row {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    padding: 12px 14px;
+    border: 1px solid rgba(77, 200, 255, 0.09);
+    border-radius: 12px;
+    background: rgba(10, 22, 36, 0.55);
+    height: auto;
+    min-height: 0;
+  }
+  /* Подпись поля над значением: без шапки таблицы числа безымянны.
+     База центрирует все ячейки кроме первой — на карточке равняем по левому краю. */
+  .v2-rep-row > *,
+  .v2-rep-row > *:not(:first-child) {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-self: stretch;
+    justify-content: flex-start;
+    gap: 2px;
+    min-width: 0;
+    text-align: left;
+    padding: 0;
+    overflow-wrap: anywhere;
+  }
+  .v2-rep-row > *[data-label]::before {
+    content: attr(data-label);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: rgba(100, 145, 170, 0.55);
+  }
+  /* Дата — шапка карточки, плашка действия рядом с ней. */
+  .v2-rep-row > .v2-rep-cell-date {
+    grid-column: 1 / -1;
+    font-weight: 700;
+  }
+  /* Плашки (действие, источник, статус) несут значение своим видом —
+     подпись сверху им не нужна и сломала бы фон. */
+  .v2-rep-row > .v2-rep-type-chip,
+  .v2-rep-row > .v2-rep-tag {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    align-self: start;
+    justify-self: start;
+    width: fit-content;
+    max-width: 100%;
+  }
+  .v2-rep-row > .v2-rep-type-chip::before,
+  .v2-rep-row > .v2-rep-tag::before {
+    display: none;
   }
 }
 
