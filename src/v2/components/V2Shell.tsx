@@ -138,6 +138,20 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
 
   const [notifOpen, setNotifOpen] = useState(false);
 
+  // Свёрнутый сайдбар запоминаем: это осознанный выбор рабочего режима,
+  // а не разовое действие.
+  const collapseKey = "mushii-sidebar-collapsed";
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem(collapseKey) === "1"
+  );
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      localStorage.setItem(collapseKey, prev ? "0" : "1");
+      return !prev;
+    });
+  };
+
   // Health Factor с прошлого захода — чтобы поймать его просадку.
   // Читаем один раз при монтировании, перезаписываем уже после сравнения.
   const healthKey = `mushii-last-health${profileKeySuffix}`;
@@ -176,7 +190,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
 
   return (
     <div
-      className="v2-lab"
+      className={sidebarCollapsed ? "v2-lab is-sidebar-collapsed" : "v2-lab"}
       style={{
         "--v2-desktop-scale": desktopViewport.scale,
         "--v2-logical-height": `${desktopViewport.logicalHeight}px`,
@@ -231,6 +245,8 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         /* Имя из настроек профиля, а если его не задавали — имя аккаунта
            (метаданные регистрации, иначе часть email). «ИНВЕСТОР» остаётся
            только для гостя. */
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebar}
         profileName={profileName || displayName}
         profileAvatar={profileAvatar}
         onOpenAuth={onOpenAuth}

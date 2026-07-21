@@ -707,3 +707,68 @@ body:has(.v2-lab) {
 @media (max-width: 768px) {
   .v2-datastatus { top: 8px; right: 10px; padding: 4px 9px; font-size: 9.5px; }
 }
+
+/* ═══ СВОРАЧИВАЕМЫЙ САЙДБАР (десктоп) ═══
+   Композиция golden layout по умолчанию не меняется: свёрнутое состояние —
+   осознанный выбор владельца, который запоминается между сессиями. */
+.v2-sidebar-collapse {
+  position: absolute;
+  top: 14px;
+  right: -11px;
+  z-index: 5;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(86, 196, 240, 0.22);
+  background: linear-gradient(180deg, #0d1c2e 0%, #060e1a 100%);
+  color: rgba(160, 210, 235, 0.75);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+.v2-sidebar-collapse svg { width: 11px; height: 11px; }
+
+/* Кнопка не мозолит глаза: появляется при наведении на сайдбар. */
+.v2-sidebar:hover .v2-sidebar-collapse,
+.v2-sidebar-collapse:focus-visible {
+  opacity: 1;
+}
+.v2-sidebar-collapse:hover {
+  color: #8fe4ff;
+  border-color: rgba(86, 196, 240, 0.5);
+}
+
+.v2-lab.is-sidebar-collapsed {
+  grid-template-columns: 64px 1fr;
+}
+
+/* В свёрнутом виде остаются только иконки навигации. */
+.v2-sidebar.is-collapsed {
+  padding-left: 10px;
+  padding-right: 10px;
+  align-items: center;
+}
+.v2-sidebar.is-collapsed .v2-nav-label,
+.v2-sidebar.is-collapsed .v2-brand > div:not(.v2-brand-mark),
+.v2-sidebar.is-collapsed .v2-sidebar-profile-info,
+.v2-sidebar.is-collapsed .v2-sidebar-profile-arrow,
+.v2-sidebar.is-collapsed .v2-auth-account,
+.v2-sidebar.is-collapsed .v2-nav-section-label {
+  display: none;
+}
+.v2-sidebar.is-collapsed .v2-brand {
+  grid-template-columns: 42px;
+  justify-content: center;
+  gap: 0;
+}
+.v2-sidebar.is-collapsed .v2-nav-item {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+.v2-sidebar.is-collapsed .v2-sidebar-collapse {
+  opacity: 1;
+}
