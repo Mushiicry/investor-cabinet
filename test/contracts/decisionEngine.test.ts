@@ -199,6 +199,23 @@ describe("движок решений", () => {
     );
   });
 
+  it("блокирует NOM из подключённого источника Binance Monitoring", () => {
+    const decision = evaluateDecision(
+      { asset: "Nom", amountUsd: 15, category: "Крипта", buyPrice: 11 },
+      { ...baseCtx, assetQuality: BINANCE_MONITORING_ASSET_QUALITY },
+    );
+
+    expect(decision.status).toBe("БЛОКИРОВКА");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "качество_актива",
+          text: "NOM: токен находится в списке мониторинга Binance",
+        }),
+      ]),
+    );
+  });
+
   it("считает новую среднюю входа при усреднении покупки", () => {
     const preview = calculateAveragingPreview(
       { asset: "ETH", amountUsd: 25, category: "Крипта", buyPrice: 1516 },
