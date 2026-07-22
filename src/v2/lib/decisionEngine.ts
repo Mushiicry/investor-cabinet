@@ -11,6 +11,10 @@ import {
   type TradeInput,
 } from "./preTradeGate";
 
+export type DecisionTradeInput = TradeInput & {
+  buyPrice?: number;
+};
+
 export type DecisionStatus =
   | "РАЗРЕШЕНО"
   | "РАЗРЕШЕНО_С_ЛИМИТОМ"
@@ -50,8 +54,20 @@ export type DecisionResult = {
   maxAllowedAmount: number;
   recommendedAction: string;
   gate: GateVerdict;
+  tradePreview: TradePreview | null;
   survivalBefore?: SurvivalResult;
   survivalAfter?: SurvivalResult;
+};
+
+export type TradePreview = {
+  asset: string;
+  amountUsd: number;
+  buyPrice: number;
+  currentCostBasis: number;
+  currentQuantity: number;
+  addedQuantity: number;
+  averageEntryBefore: number | null;
+  averageEntryAfter: number;
 };
 
 function reasonKind(label: string): DecisionReasonKind {
@@ -97,6 +113,35 @@ function survivalInput(ctx: DecisionContext, input: TradeInput, postBuy: boolean
   };
 }
 
+export function calculateAveragingPreview(
+  input: DecisionTradeInput,
+  ctx: DecisionContext,
+): TradePreview | null {
+  const buyPrice = input.buyPrice ?? 0;
+  if (!Number.isFinite(input.amountUsd) || input.amountUsd <= 0) return null;
+  if (!Number.isFinite(buyPrice) || buyPrice <= 0) return null;
+
+  const existing = ctx.positions.find((position) => position.asset === input.asset);
+  const currentCostBasis = Math.max(0, existing?.invested ?? 0);
+  const averageEntryBefore = existing?.avgEntry && existing.avgEntry > 0 ? existing.avgEntry : null;
+  const currentQuantity =
+    averageEntryBefore && currentCostBasis > 0 ? currentCostBasis / averageEntryBefore : 0;
+  const addedQuantity = input.amountUsd / buyPrice;
+  const averageEntryAfter =
+    (currentCostBasis + input.amountUsd) / (currentQuantity + addedQuantity);
+
+  return {
+    asset: input.asset,
+    amountUsd: input.amountUsd,
+    buyPrice,
+    currentCostBasis,
+    currentQuantity,
+    addedQuantity,
+    averageEntryBefore,
+    averageEntryAfter,
+  };
+}
+
 function statusFrom(
   gate: GateVerdict,
   hardReasons: DecisionReason[],
@@ -120,7 +165,7 @@ function recommendedAction(status: DecisionStatus, reasons: DecisionReason[], ma
   return "Сделка проходит проверку риска";
 }
 
-export function evaluateDecision(input: TradeInput, ctx: DecisionContext): DecisionResult {
+export function evaluateDecision(input: DecisionTradeInput, ctx: DecisionContext): DecisionResult {
   const gate = evaluateTrade(input, ctx);
   if (gate.status === "idle") {
     const reason: DecisionReason = { kind: "ввод", severity: "info", text: gate.message };
@@ -132,6 +177,7 @@ export function evaluateDecision(input: TradeInput, ctx: DecisionContext): Decis
       maxAllowedAmount: 0,
       recommendedAction: recommendedAction("ЖДАТЬ", [reason], 0),
       gate,
+      tradePreview: calculateAveragingPreview(input, ctx),
     };
   }
 
@@ -173,6 +219,7 @@ export function evaluateDecision(input: TradeInput, ctx: DecisionContext): Decis
     maxAllowedAmount: gate.maxAllowedAmount,
     recommendedAction: recommendedAction(status, hardReasons, gate.maxSafeAmount),
     gate,
+    tradePreview: calculateAveragingPreview(input, ctx),
     survivalBefore,
     survivalAfter,
   };

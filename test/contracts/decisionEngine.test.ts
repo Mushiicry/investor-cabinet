@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { evaluateDecision, type DecisionContext } from "../../src/v2/lib/decisionEngine";
+import {
+  calculateAveragingPreview,
+  evaluateDecision,
+  type DecisionContext,
+} from "../../src/v2/lib/decisionEngine";
 
 const baseCtx: DecisionContext = {
   totalPortfolioValue: 1000,
   stableReserve: 600,
   spotDeployable: 200,
   positions: [
-    { asset: "ETH", category: "Крипта", value: 100 },
-    { asset: "SOL", category: "Крипта", value: 40 },
-    { asset: "GOLD", category: "Металлы", value: 30 },
+    { asset: "ETH", category: "Крипта", value: 100, avgEntry: 1776, invested: 25 },
+    { asset: "SOL", category: "Крипта", value: 40, avgEntry: 77, invested: 38 },
+    { asset: "GOLD", category: "Металлы", value: 30, avgEntry: 4300, invested: 28 },
   ],
   allocation: [
     { name: "Крипта", value: 400 },
@@ -129,5 +133,31 @@ describe("движок решений", () => {
         }),
       ]),
     );
+  });
+
+  it("считает новую среднюю входа при усреднении покупки", () => {
+    const preview = calculateAveragingPreview(
+      { asset: "ETH", amountUsd: 25, category: "Крипта", buyPrice: 1516 },
+      baseCtx,
+    );
+
+    const oldQty = 25 / 1776;
+    const addedQty = 25 / 1516;
+    const expectedAvg = 50 / (oldQty + addedQty);
+
+    expect(preview?.averageEntryBefore).toBe(1776);
+    expect(preview?.addedQuantity).toBeCloseTo(addedQty, 8);
+    expect(preview?.averageEntryAfter).toBeCloseTo(expectedAvg, 6);
+    expect(preview?.averageEntryAfter).toBeLessThan(1776);
+    expect(preview?.averageEntryAfter).toBeGreaterThan(1516);
+  });
+
+  it("не считает усреднение без цены покупки", () => {
+    expect(
+      calculateAveragingPreview(
+        { asset: "ETH", amountUsd: 25, category: "Крипта" },
+        baseCtx,
+      ),
+    ).toBeNull();
   });
 });

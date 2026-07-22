@@ -272,6 +272,9 @@ export type GatePosition = {
   asset: string;
   category: string;
   value: number; // текущая стоимость позиции, $
+  avgEntry?: number;
+  currentPrice?: number;
+  invested?: number;
 };
 
 export type GateAllocation = {

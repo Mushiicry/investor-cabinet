@@ -80,7 +80,6 @@
   flex-direction: column;
   gap: 6px;
 }
-.v2-gate-field:last-child,
 .v2-gate-field:has(.v2-gate-source) {
   grid-column: 1 / -1;
 }
@@ -163,8 +162,8 @@
 .v2-gate-verdict-badge {
   font-family: "Space Grotesk", sans-serif;
   font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.14em;
+  font-size: 12px;
+  letter-spacing: 0.08em;
   padding: 5px 12px;
   border-radius: 8px;
 }
@@ -307,6 +306,57 @@
   color: rgba(170, 195, 218, 0.8);
 }
 
+.v2-gate-average,
+.v2-gate-survival {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(10, 24, 42, 0.55);
+  border: 1px solid rgba(90, 150, 200, 0.22);
+}
+.v2-gate-average.is-muted {
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(170, 200, 224, 0.75);
+}
+.v2-gate-average-title {
+  margin-bottom: 9px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(140, 180, 214, 0.72);
+}
+.v2-gate-average-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px 14px;
+  align-items: baseline;
+  font-size: 13px;
+}
+.v2-gate-average-grid span {
+  color: rgba(160, 195, 220, 0.78);
+}
+.v2-gate-average-grid strong {
+  color: rgba(225, 242, 255, 0.95);
+  font-variant-numeric: tabular-nums;
+}
+.v2-gate-survival {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  font-size: 13px;
+  color: rgba(170, 205, 230, 0.82);
+}
+.v2-gate-survival strong {
+  color: rgba(225, 242, 255, 0.95);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.v2-gate-survival span:last-child {
+  grid-column: 1 / -1;
+  color: rgba(150, 185, 214, 0.75);
+}
+
 .v2-gate-foot {
   font-size: 12px;
   line-height: 1.5;
@@ -330,5 +380,9 @@
     grid-column: 2;
     text-align: left;
     white-space: normal;
+  }
+  .v2-gate-survival,
+  .v2-gate-average-grid {
+    grid-template-columns: 1fr;
   }
 }
