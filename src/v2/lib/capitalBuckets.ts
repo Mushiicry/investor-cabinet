@@ -22,6 +22,7 @@ export type CapitalBucketsInput = {
   stableReserve: number;
   allocation: AllocationItem[];
   strategyRules?: StrategyRule[];
+  futuresDeployableUsd?: number;
 };
 
 export type CapitalBuckets = {
@@ -30,6 +31,7 @@ export type CapitalBuckets = {
   workCashUsd: number;
   futuresBudgetUsd: number;
   averagingBudgetUsd: number;
+  spotBudgetUsd: number;
   metalsBudgetUsd: number;
   stocksBudgetUsd: number;
   cryptoSpotBudgetUsd: number;
@@ -59,7 +61,9 @@ export function buildCapitalBuckets(input: CapitalBucketsInput): CapitalBuckets 
   const currentMetals = clampMin0(allocationValue(input.allocation, "Металлы"));
   const currentStocks = clampMin0(allocationValue(input.allocation, "Акции"));
 
-  const futuresTarget = clampMin0(total * MAX_FUTURES_EXPOSURE_SHARE - currentFutures);
+  const futuresTarget = clampMin0(
+    input.futuresDeployableUsd ?? total * MAX_FUTURES_EXPOSURE_SHARE - currentFutures,
+  );
   const averagingTarget = clampMin0(
     (input.strategyRules ?? [])
       .filter((rule) => rule.buyPct > 0 && rule.status !== "cooldown")
@@ -71,15 +75,14 @@ export function buildCapitalBuckets(input: CapitalBucketsInput): CapitalBuckets 
 
   let futuresBudget = 0;
   let averagingBudget = 0;
-  let metalsBudget = 0;
-  let stocksBudget = 0;
 
-  [futuresBudget, remaining] = takeBudget(remaining, futuresTarget);
   [averagingBudget, remaining] = takeBudget(remaining, averagingTarget);
-  [metalsBudget, remaining] = takeBudget(remaining, metalsTarget);
-  [stocksBudget, remaining] = takeBudget(remaining, stocksTarget);
+  [futuresBudget, remaining] = takeBudget(remaining, Math.min(futuresTarget, total * MAX_FUTURES_EXPOSURE_SHARE));
 
-  const cryptoSpotBudget = Math.min(remaining, cryptoTarget);
+  const spotBudget = remaining;
+  const metalsBudget = Math.min(spotBudget, metalsTarget);
+  const stocksBudget = Math.min(spotBudget, stocksTarget);
+  const cryptoSpotBudget = Math.min(spotBudget, cryptoTarget);
 
   return {
     freeCashUsd: freeCash,
@@ -87,6 +90,7 @@ export function buildCapitalBuckets(input: CapitalBucketsInput): CapitalBuckets 
     workCashUsd: clampMin0(freeCash - lockedReserve),
     futuresBudgetUsd: futuresBudget,
     averagingBudgetUsd: averagingBudget,
+    spotBudgetUsd: spotBudget,
     metalsBudgetUsd: metalsBudget,
     stocksBudgetUsd: stocksBudget,
     cryptoSpotBudgetUsd: cryptoSpotBudget,

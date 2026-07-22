@@ -1,12 +1,14 @@
 import type { CSSProperties } from "react";
 import type { FearGreedStrategy } from "../../types/portfolio";
-import type { V2Portfolio } from "../InvestorCabinetV2Lab";
+import type { V2LabData, V2Portfolio } from "../InvestorCabinetV2Lab";
 import { MAX_FUTURES_EXPOSURE_SHARE, RESERVE_TARGET_SHARE } from "../../config/riskRules";
+import { buildCapitalBuckets } from "../lib/capitalBuckets";
 
 const RESERVE_TARGET_PCT = RESERVE_TARGET_SHARE;
 
 type Props = {
   portfolio: V2Portfolio;
+  allocation: V2LabData["allocation"];
   strategy: FearGreedStrategy;
   /** Спекулятивная нагрузка 0..1 (маржа открытых фьючей + свободная маржа HL). */
   futuresShare?: number;
@@ -19,34 +21,19 @@ const money = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 2,
 });
 
-export function V2DeployableCapital({ portfolio, strategy, futuresShare = 0 }: Props) {
-  const freeCash =
-    portfolio.stableReserve || portfolio.spotDeployable + portfolio.futuresDeployable;
-
-  // Risk First: резерв наполняется ПЕРВЫМ до цели 30%.
-  // В работу можно пустить только излишек сверх резерва.
+export function V2DeployableCapital({ portfolio, allocation, strategy, futuresShare = 0 }: Props) {
   const totalPortfolio = portfolio.totalPortfolioValue || 0;
   const reserveTarget = totalPortfolio * RESERVE_TARGET_PCT;
-  const pureReserve = Math.min(freeCash, reserveTarget);
-  const deployable = Math.max(freeCash - reserveTarget, 0);
+  const buckets = buildCapitalBuckets({
+    totalPortfolioValue: portfolio.totalPortfolioValue,
+    stableReserve: portfolio.stableReserve || portfolio.spotDeployable + portfolio.futuresDeployable,
+    allocation,
+    strategyRules: strategy.rules,
+    futuresDeployableUsd: portfolio.futuresDeployable,
+  });
+  const deployable = buckets.workCashUsd;
+  const pureReserve = buckets.lockedReserveUsd;
   const reserveShort = pureReserve < reserveTarget;
-
-  // Порядок работы с капиталом: стратегия-откуп → фьючи в пределах лимита → спот-остаток.
-  // Стратегия берёт только доступные ступени (не на кулдауне) по канону — база вложенного.
-  // 10% фьючерсов — верхняя граница риска, а не цель для пополнения.
-  const strategyCash = Math.min(
-    strategy.rules
-      .filter((row) => row.buyPct > 0 && row.status !== "cooldown")
-      .reduce((sum, row) => sum + row.buyAmount, 0),
-    deployable
-  );
-  const remainingAfterStrategy = Math.max(deployable - strategyCash, 0);
-  const futuresCash = Math.min(
-    portfolio.futuresDeployable,
-    MAX_FUTURES_EXPOSURE_SHARE * totalPortfolio,
-    remainingAfterStrategy
-  );
-  const spotCash = Math.max(remainingAfterStrategy - futuresCash, 0);
 
   // Контроль лимита активной торговли. Занято = маржа открытых фьючей +
   // свободная маржа торгового счёта. Свободный остаток не является задачей.
@@ -65,11 +52,11 @@ export function V2DeployableCapital({ portfolio, strategy, futuresShare = 0 }: P
     hint?: string;
     hintDanger?: boolean;
   }> = [
-    { label: "Стратегия", value: strategyCash, glyph: "⚡", color: "#5fe0cf" },
-    { label: "Спот", value: spotCash, glyph: "○", color: "#56d8f5" },
+    { label: "Усреднение", value: buckets.averagingBudgetUsd, glyph: "◇", color: "#5fe0cf" },
+    { label: "Спот", value: buckets.spotBudgetUsd, glyph: "○", color: "#56d8f5" },
     {
-      label: "Фьючи",
-      value: futuresCash,
+      label: "Фьючерсы",
+      value: buckets.futuresBudgetUsd,
       glyph: "↗",
       color: "#8f9ff0",
       hint: investedCapital
@@ -78,6 +65,20 @@ export function V2DeployableCapital({ portfolio, strategy, futuresShare = 0 }: P
           : `Занято ${money.format(futuresUsed)} из лимита ${money.format(futuresLimit)}. Осталось ${money.format(futuresRemaining)}`
         : undefined,
       hintDanger: futuresOver,
+    },
+    {
+      label: "Металлы до",
+      value: buckets.metalsBudgetUsd,
+      glyph: "◆",
+      color: "#e2b66b",
+      hint: "Класс металлов ограничен 10% портфеля",
+    },
+    {
+      label: "Акции до",
+      value: buckets.stocksBudgetUsd,
+      glyph: "□",
+      color: "#76dcaa",
+      hint: "Класс акций ограничен 10% портфеля",
     },
   ];
 

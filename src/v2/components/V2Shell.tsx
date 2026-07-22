@@ -340,6 +340,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             <div className="v2-capital-dropdown-inner">
               <V2DeployableCapital
                 portfolio={data.portfolio}
+                allocation={data.allocation}
                 strategy={data.fearGreedStrategy}
                 futuresShare={data.risk.futuresShare}
               />

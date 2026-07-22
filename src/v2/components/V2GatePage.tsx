@@ -47,9 +47,9 @@ function bucketRows(buckets: CapitalBuckets) {
     { label: "Резерв", value: buckets.lockedReserveUsd },
     { label: "Фьючерсы", value: buckets.futuresBudgetUsd },
     { label: "Усреднение", value: buckets.averagingBudgetUsd },
-    { label: "Металлы", value: buckets.metalsBudgetUsd },
-    { label: "Акции", value: buckets.stocksBudgetUsd },
-    { label: "Крипто-спот", value: buckets.cryptoSpotBudgetUsd },
+    { label: "Спот", value: buckets.spotBudgetUsd },
+    { label: "Металлы до", value: buckets.metalsBudgetUsd },
+    { label: "Акции до", value: buckets.stocksBudgetUsd },
   ];
 }
 
@@ -86,8 +86,9 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
         stableReserve: portfolio.stableReserve,
         allocation: allocation.map((a) => ({ name: a.name, value: a.value })),
         strategyRules: fearGreedStrategy.rules,
+        futuresDeployableUsd: portfolio.futuresDeployable,
       }),
-    [portfolio.totalPortfolioValue, portfolio.stableReserve, allocation, fearGreedStrategy.rules],
+    [portfolio.totalPortfolioValue, portfolio.stableReserve, portfolio.futuresDeployable, allocation, fearGreedStrategy.rules],
   );
 
   const ctx: GateContext = useMemo(() => {
@@ -202,7 +203,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
         </div>
         <div className="v2-gate-plan">
           Плановый крипто-блок: {usd(capitalBuckets.currentCryptoBlockUsd)} куплено +{" "}
-          {usd(capitalBuckets.cryptoSpotBudgetUsd)} ручной спот +{" "}
+          {usd(capitalBuckets.cryptoSpotBudgetUsd)} спот по умолчанию +{" "}
           {usd(capitalBuckets.averagingBudgetUsd)} усреднение ={" "}
           <strong>{usd(capitalBuckets.plannedCryptoBlockUsd)}</strong>
         </div>
