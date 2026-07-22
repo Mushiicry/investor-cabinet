@@ -1,4 +1,5 @@
 import { calculateSurvival, type SurvivalResult } from "../../lib/survivalEngine";
+import { evaluateAssetQuality, type AssetQualitySource } from "./assetQualityGate";
 import {
   CASH_CATEGORY,
   CRYPTO_CATEGORY,
@@ -29,6 +30,7 @@ export type DecisionReasonKind =
   | "класс"
   | "слоты"
   | "выживаемость"
+  | "качество_актива"
   | "дисциплина"
   | "рыночная_лестница"
   | "ввод";
@@ -42,6 +44,7 @@ export type DecisionReason = {
 export type DecisionContext = GateContext & {
   futuresShare?: number;
   plannedLimitOrdersUsd?: number;
+  assetQuality?: AssetQualitySource;
   disciplineBlockers?: string[];
   disciplineWarnings?: string[];
 };
@@ -183,6 +186,7 @@ export function evaluateDecision(input: DecisionTradeInput, ctx: DecisionContext
 
   const survivalBefore = calculateSurvival(survivalInput(ctx, input, false));
   const survivalAfter = calculateSurvival(survivalInput(ctx, input, true));
+  const category = resolveCategory(input, ctx);
   const hardReasons: DecisionReason[] = gate.reasons.map((text) => ({
     kind: reasonKind(text),
     severity: "block",
@@ -193,6 +197,16 @@ export function evaluateDecision(input: DecisionTradeInput, ctx: DecisionContext
     severity: "warn",
     text,
   }));
+
+  if (category === CRYPTO_CATEGORY && ctx.assetQuality) {
+    const assetQuality = evaluateAssetQuality(input.asset, ctx.assetQuality);
+    for (const blocker of assetQuality.blockers) {
+      hardReasons.push({ kind: "качество_актива", severity: "block", text: blocker });
+    }
+    for (const warning of assetQuality.warnings) {
+      warnings.push({ kind: "качество_актива", severity: "warn", text: warning });
+    }
+  }
 
   for (const blocker of survivalAfter.survivalBlockers) {
     hardReasons.push({ kind: "выживаемость", severity: "block", text: blocker });

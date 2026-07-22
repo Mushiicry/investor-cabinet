@@ -135,6 +135,52 @@ describe("движок решений", () => {
     );
   });
 
+  it("блокирует крипто-покупку, если токен вне топ-100", () => {
+    const decision = evaluateDecision(
+      { asset: "PEPE", amountUsd: 5, category: "Крипта" },
+      {
+        ...baseCtx,
+        assetQuality: {
+          connected: true,
+          records: [{ asset: "PEPE", cmcRank: 140, binanceMonitoring: false }],
+        },
+      },
+    );
+
+    expect(decision.status).toBe("БЛОКИРОВКА");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "качество_актива",
+          text: "PEPE: токен вне топ-100 CoinMarketCap",
+        }),
+      ]),
+    );
+  });
+
+  it("блокирует крипто-покупку, если токен в мониторинге Binance", () => {
+    const decision = evaluateDecision(
+      { asset: "ATOM", amountUsd: 5, category: "Крипта" },
+      {
+        ...baseCtx,
+        assetQuality: {
+          connected: true,
+          records: [{ asset: "ATOM", cmcRank: 55, binanceMonitoring: true }],
+        },
+      },
+    );
+
+    expect(decision.status).toBe("БЛОКИРОВКА");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "качество_актива",
+          text: "ATOM: токен находится в списке мониторинга Binance",
+        }),
+      ]),
+    );
+  });
+
   it("считает новую среднюю входа при усреднении покупки", () => {
     const preview = calculateAveragingPreview(
       { asset: "ETH", amountUsd: 25, category: "Крипта", buyPrice: 1516 },
