@@ -26,6 +26,8 @@ const survival = (h: ReturnType<typeof computePortfolioHealth>) =>
   h.components.find((c) => c.key === "crypto")!;
 const discipline = (h: ReturnType<typeof computePortfolioHealth>) =>
   h.components.find((c) => c.key === "flexibility")!;
+const scoreOf = (h: ReturnType<typeof computePortfolioHealth>, key: string) =>
+  h.components.find((c) => c.key === key)!.score;
 
 describe("health concentration — per-asset score passthrough", () => {
   it("резерв: ниже пола 10% включает жёсткую блокировку", () => {
@@ -371,6 +373,106 @@ describe("health concentration — per-asset score passthrough", () => {
       "Повторяется покупка из страха упустить рост",
     ]);
     expect(d.score).toBeLessThan(40);
+  });
+
+  it("здоровье 100 достижимо в защитной версии стратегии с подключёнными источниками", () => {
+    const h = computePortfolioHealth({
+      cashShare: 0.4,
+      reserveShare: 0.4,
+      cryptoShare: 0.2,
+      futuresShare: 0,
+      largestShare: 0.05,
+      riskCategoryShares: [0.2, 0.1, 0.1],
+      portfolioValue: 1000,
+      investedCapital: 600,
+      concentrationScore: 100,
+      maxAssetLimitUtilization: 0.5,
+      worstConcentrationAsset: "ETH",
+      worstConcentrationLimit: 0.35,
+      worstConcentrationShare: 0.175,
+      worstConcentrationPortfolioShare: 0.05,
+      overLimitAssets: [],
+      altcoinSlotsUsed: 2,
+      altcoinSlotsTotal: 3,
+      altcoinSlotsFree: 1,
+      stockSlotsUsed: 1,
+      stockSlotsTotal: 2,
+      stockSlotsFree: 1,
+      metalSlotsUsed: 1,
+      metalSlotsTotal: 2,
+      metalSlotsFree: 1,
+      spotDeployableUsd: 250,
+      plannedLimitOrdersUsd: 150,
+      disciplineJournalCoverage: 1,
+      disciplineViolations30d: 0,
+      fomoEvents30d: 0,
+      revengeTrades30d: 0,
+      overtradingDays30d: 0,
+      disciplineCooldownActive: false,
+      futuresLegs: [],
+    });
+
+    expect(h.healthFactor).toBe(100);
+    expect(scoreOf(h, "reserve")).toBe(100);
+    expect(scoreOf(h, "crypto")).toBe(100);
+    expect(scoreOf(h, "futures")).toBe(100);
+    expect(scoreOf(h, "concentration")).toBe(100);
+    expect(scoreOf(h, "diversification")).toBe(100);
+    expect(scoreOf(h, "flexibility")).toBe(100);
+    expect(h.components.flatMap((component) => [
+      ...(component.meta?.reserveBlockers ?? []),
+      ...(component.meta?.riskControlBlockers ?? []),
+      ...(component.meta?.concentrationBlockers ?? []),
+      ...(component.meta?.diversificationBlockers ?? []),
+      ...(component.meta?.survivalBlockers ?? []),
+      ...(component.meta?.disciplineBlockers ?? []),
+    ])).toEqual([]);
+  });
+
+  it("максимально загруженный риск-бюджет не маскируется под идеальные 100 здоровья", () => {
+    const h = computePortfolioHealth({
+      cashShare: 0.3,
+      reserveShare: 0.3,
+      cryptoShare: 0.4,
+      futuresShare: 0.1,
+      largestShare: 0.05,
+      riskCategoryShares: [0.4, 0.1, 0.1],
+      portfolioValue: 1000,
+      investedCapital: 600,
+      concentrationScore: 100,
+      maxAssetLimitUtilization: 0.5,
+      worstConcentrationAsset: "ETH",
+      worstConcentrationLimit: 0.35,
+      worstConcentrationShare: 0.175,
+      worstConcentrationPortfolioShare: 0.05,
+      overLimitAssets: [],
+      altcoinSlotsUsed: 2,
+      altcoinSlotsTotal: 3,
+      altcoinSlotsFree: 1,
+      stockSlotsUsed: 1,
+      stockSlotsTotal: 2,
+      stockSlotsFree: 1,
+      metalSlotsUsed: 1,
+      metalSlotsTotal: 2,
+      metalSlotsFree: 1,
+      spotDeployableUsd: 240,
+      plannedLimitOrdersUsd: 150,
+      disciplineJournalCoverage: 1,
+      disciplineViolations30d: 0,
+      fomoEvents30d: 0,
+      revengeTrades30d: 0,
+      overtradingDays30d: 0,
+      disciplineCooldownActive: false,
+      futuresLegs: [],
+    });
+    const s = survival(h);
+
+    expect(s.meta?.survivalWorstScenario).toBe("Общий рыночный шок");
+    expect(s.meta?.survivalShockLossPct).toBeCloseTo(0.42, 3);
+    expect(s.meta?.survivalWarnings).toContain("Худший сценарий даёт просадку выше 40%");
+    expect(s.score).toBeLessThan(100);
+    expect(h.healthFactor).toBeLessThan(100);
+    expect(h.healthFactor).toBeGreaterThanOrEqual(90);
   });
 
   it("без concentrationScore → legacy по largestShare (35% лимит)", () => {
