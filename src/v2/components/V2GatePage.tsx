@@ -93,7 +93,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
     [portfolio.totalPortfolioValue, portfolio.stableReserve, portfolio.futuresDeployable, allocation, fearGreedStrategy.rules],
   );
 
-  const activeAssetQuality = assetQuality.connected ? assetQuality : BINANCE_MONITORING_ASSET_QUALITY;
+  const activeAssetQuality = assetQuality?.connected ? assetQuality : BINANCE_MONITORING_ASSET_QUALITY;
 
   const ctx: GateContext = useMemo(() => {
     const strategy = buildFearGreedStrategy(

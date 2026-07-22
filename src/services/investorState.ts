@@ -22,6 +22,13 @@ const toBoolean = (value: unknown, fallback = false) => {
   return fallback;
 };
 
+const emptyAssetQuality: AssetQualitySource = {
+  connected: false,
+  records: [],
+  cmcTop100Connected: false,
+  binanceMonitoringConnected: false,
+};
+
 const normalizeInterestSignal = (
   value: unknown,
   fallback: InterestSignal | null
@@ -84,15 +91,16 @@ const normalizeAssetQualityRecord = (value: unknown): AssetQualityRecord | null 
 
 const normalizeAssetQuality = (
   value: InvestorApiResponse["assetQuality"],
-  fallback: AssetQualitySource,
+  fallback?: AssetQualitySource,
 ): AssetQualitySource => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return fallback;
+  const safeFallback = fallback ?? emptyAssetQuality;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return safeFallback;
 
   const records = Array.isArray(value.records)
     ? value.records
         .map((item) => normalizeAssetQualityRecord(item))
         .filter((item): item is AssetQualityRecord => item !== null)
-    : fallback.records;
+    : safeFallback.records;
   const hasTop100 = records.some((item) => item.cmcRank !== null && item.cmcRank <= 100);
   const hasMonitoring = records.some((item) => item.binanceMonitoring);
 
@@ -101,8 +109,8 @@ const normalizeAssetQuality = (
     connected: toBoolean(value.connected, records.length > 0),
     cmcTop100Connected: toBoolean(value.cmcTop100Connected, hasTop100),
     binanceMonitoringConnected: toBoolean(value.binanceMonitoringConnected, hasMonitoring),
-    updatedAt: toText(value.updatedAt, fallback.updatedAt),
-    source: toText(value.source, fallback.source),
+    updatedAt: toText(value.updatedAt, safeFallback.updatedAt),
+    source: toText(value.source, safeFallback.source),
   };
 };
 

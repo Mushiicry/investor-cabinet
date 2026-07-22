@@ -12,6 +12,13 @@ type CachedInvestorState = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
+const emptyAssetQuality = {
+  connected: false,
+  records: [],
+  cmcTop100Connected: false,
+  binanceMonitoringConnected: false,
+};
+
 const normalizeCachedPortfolioState = (value: unknown): PortfolioState | null => {
   if (!isRecord(value)) return null;
 
@@ -43,6 +50,7 @@ const normalizeCachedPortfolioState = (value: unknown): PortfolioState | null =>
       history: Array.isArray(value.history) ? value.history : [],
       transactions: Array.isArray(value.transactions) ? value.transactions : [],
       fearGreedStrategy: cachedState.fearGreedStrategy ?? buildFearGreedStrategy(50, cachedState.overview.invested),
+      assetQuality: cachedState.assetQuality ?? emptyAssetQuality,
     };
   }
 

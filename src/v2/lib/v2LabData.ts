@@ -13,6 +13,12 @@ import type { PortfolioState } from "../../types/portfolio";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 
 const mockFearGreedStrategy = buildFearGreedStrategy(42, 710570);
+const emptyAssetQuality = {
+  connected: false,
+  records: [],
+  cmcTop100Connected: false,
+  binanceMonitoringConnected: false,
+};
 
 // Входы health вынесены в константу: их же отдаём наружу как healthInput,
 // чтобы симулятор мог пересчитывать здоровье реальным computePortfolioHealth().
@@ -110,10 +116,7 @@ const mockData: V2LabData = {
     interestList: [],
   },
   assetQuality: {
-    connected: false,
-    records: [],
-    cmcTop100Connected: false,
-    binanceMonitoringConnected: false,
+    ...emptyAssetQuality,
   },
   allocation: [
     { name: "Крипта", share: 0.627, value: 334 },
@@ -172,10 +175,7 @@ export function buildZeroedV2Data(): V2LabData {
       interestList: [],
     },
     assetQuality: {
-      connected: false,
-      records: [],
-      cmcTop100Connected: false,
-      binanceMonitoringConnected: false,
+      ...emptyAssetQuality,
     },
     fearGreedStrategy: buildFearGreedStrategy(50, 0),
     allocation: mockData.allocation.map((category) => ({ ...category, share: 0, value: 0 })),
@@ -319,7 +319,7 @@ export const buildLiveV2Data = (
     history: mergeWithLocalSnapshots(state.history, slot),
     transactions: state.transactions,
     signals: state.signals,
-    assetQuality: state.assetQuality,
+    assetQuality: state.assetQuality ?? emptyAssetQuality,
     health,
     healthInput: liveHealthInput,
     playbook: buildPlaybookCards(
