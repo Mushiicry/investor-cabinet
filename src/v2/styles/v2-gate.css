@@ -324,6 +324,17 @@
   font-size: 13px;
   padding: 10px;
 }
+.v2-gate-fix.is-blocked {
+  cursor: not-allowed;
+  border-color: rgba(255, 95, 120, 0.5);
+  background: rgba(95, 25, 35, 0.46);
+  color: rgba(255, 185, 195, 0.96);
+  box-shadow: none;
+}
+.v2-gate-fix.is-blocked:hover {
+  background: rgba(95, 25, 35, 0.46);
+  box-shadow: none;
+}
 .v2-gate-nofix {
   margin-top: 14px;
   font-size: 13px;

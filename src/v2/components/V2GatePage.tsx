@@ -174,6 +174,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
           : "is-idle";
 
   const badgeText = decision.status;
+  const hasAssetQualityBlock = decision.reasons.some((reason) => reason.kind === "качество_актива");
 
   return (
     <div className="v2-gate-page">
@@ -367,7 +368,12 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
               </div>
             )}
 
-            {decision.status === "БЛОКИРОВКА" && decision.maxAllowedAmount > 0 && (
+            {decision.status === "БЛОКИРОВКА" && hasAssetQualityBlock && (
+              <button type="button" className="v2-gate-fix is-blocked" disabled>
+                Заблокировано — актив запрещён политикой риска
+              </button>
+            )}
+            {decision.status === "БЛОКИРОВКА" && !hasAssetQualityBlock && decision.maxAllowedAmount > 0 && (
               <button
                 type="button"
                 className="v2-gate-fix"
@@ -378,7 +384,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
                   : `Максимум допустимо ${usd(decision.maxAllowedAmount)}`}
               </button>
             )}
-            {decision.status === "БЛОКИРОВКА" && decision.maxAllowedAmount <= 0 && (
+            {decision.status === "БЛОКИРОВКА" && !hasAssetQualityBlock && decision.maxAllowedAmount <= 0 && (
               <div className="v2-gate-nofix">
                 Безопасного объёма для добора этого актива сейчас нет — лимит уже на пределе.
               </div>
