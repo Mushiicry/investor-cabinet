@@ -26,6 +26,13 @@ import { V2Sidebar } from "./V2Sidebar";
 import { V2TopMetrics } from "./V2TopMetrics";
 import { V2StarField } from "./V2StarField";
 import { useAuth } from "../../hooks/useAuth";
+import {
+  appendDecisionJournalEntry,
+  readDecisionJournal,
+  removeDecisionJournalEntry,
+  type DecisionJournalDraft,
+  type DecisionJournalEntry,
+} from "../lib/decisionJournal";
 
 type Props = {
   data: V2LabData;
@@ -99,13 +106,17 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
   const avatarKey = `mushii-profile-avatar${profileKeySuffix}`;
   const [profileName,   setProfileName]   = useState(() => localStorage.getItem(nameKey)   ?? "");
   const [profileAvatar, setProfileAvatar] = useState(() => localStorage.getItem(avatarKey) ?? "");
+  const [decisionJournal, setDecisionJournal] = useState<DecisionJournalEntry[]>(() =>
+    readDecisionJournal(profileKeySuffix),
+  );
 
   // При смене аккаунта подгружаем его профиль (или пустой у нового пользователя).
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- синк профиля из localStorage при смене аккаунта
     setProfileName(localStorage.getItem(nameKey)   ?? "");
     setProfileAvatar(localStorage.getItem(avatarKey) ?? "");
-  }, [nameKey, avatarKey]);
+    setDecisionJournal(readDecisionJournal(profileKeySuffix));
+  }, [nameKey, avatarKey, profileKeySuffix]);
   const [selectedChip, setSelectedChip] = useState<HealthComponent | null>(null);
   const [capitalOpen, setCapitalOpen] = useState(false);
   const [desktopViewport, setDesktopViewport] = useState(getDesktopViewport);
@@ -132,6 +143,14 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     setProfileAvatar(avatar);
     localStorage.setItem(nameKey,   name);
     localStorage.setItem(avatarKey, avatar);
+  }
+
+  function handleSaveDecision(draft: DecisionJournalDraft) {
+    setDecisionJournal((current) => appendDecisionJournalEntry(current, draft, profileKeySuffix));
+  }
+
+  function handleDeleteDecision(id: string) {
+    setDecisionJournal((current) => removeDecisionJournalEntry(current, id, profileKeySuffix));
   }
 
   // Мобильное меню-шторка: на ≤768px сайдбар (все 8 страниц + Выход) скрыт,
@@ -303,9 +322,17 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             assetQuality={data.assetQuality}
             healthInput={data.healthInput}
             futuresShare={data.risk.futuresShare}
+            onSaveDecision={handleSaveDecision}
           />
         ) : page === "reports" ? (
-          <V2ReportsPage history={data.history} transactions={data.transactions} positions={data.positions} realizedPnlUsd={data.portfolio.realizedPnlUsd} />
+          <V2ReportsPage
+            history={data.history}
+            transactions={data.transactions}
+            positions={data.positions}
+            realizedPnlUsd={data.portfolio.realizedPnlUsd}
+            decisionJournal={decisionJournal}
+            onDeleteDecision={handleDeleteDecision}
+          />
         ) : page === "portfolio" ? (
           <V2PortfolioPage
             positions={data.positions}

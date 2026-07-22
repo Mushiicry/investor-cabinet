@@ -7,6 +7,7 @@ import {
 import type { InvestorTransaction, PortfolioHistoryPoint } from "../../types/portfolio";
 import type { V2Position } from "../InvestorCabinetV2Lab";
 import { stakingApy } from "../../config/stakingRules";
+import type { DecisionJournalEntry } from "../lib/decisionJournal";
 
 type Props = {
   history: PortfolioHistoryPoint[];
@@ -14,6 +15,8 @@ type Props = {
   positions: V2Position[];
   /** Единственный источник зафиксированной прибыли — блок закрытых позиций. */
   realizedPnlUsd?: number;
+  decisionJournal?: DecisionJournalEntry[];
+  onDeleteDecision?: (id: string) => void;
 };
 
 const money = new Intl.NumberFormat("ru-RU", {
@@ -39,6 +42,7 @@ function fmtDate(value: string) {
 const fmtUSD = (value: number) => money.format(value);
 const fmtPct = (value: number) => `${value > 0 ? "+" : ""}${(value * 100).toFixed(2)}%`;
 const signedMoney = (value: number) => `${value > 0 ? "+" : ""}${fmtUSD(value)}`;
+const signedScore = (value: number) => (value > 0 ? `+${value}` : String(value));
 
 function fmtQuantity(value: number) {
   return new Intl.NumberFormat("ru-RU", {
@@ -174,7 +178,14 @@ function EquityCurve({ points }: { points: PortfolioHistoryPoint[] }) {
   );
 }
 
-export function V2ReportsPage({ history, transactions, positions, realizedPnlUsd }: Props) {
+export function V2ReportsPage({
+  history,
+  transactions,
+  positions,
+  realizedPnlUsd,
+  decisionJournal = [],
+  onDeleteDecision,
+}: Props) {
   const sortedHistory = useMemo(() => getSortedPortfolioHistory(history), [history]);
   const newestFirst = useMemo(() => [...sortedHistory].reverse(), [sortedHistory]);
   const summary = useMemo(() => getPortfolioHistorySummary(sortedHistory), [sortedHistory]);
@@ -295,6 +306,61 @@ export function V2ReportsPage({ history, transactions, positions, realizedPnlUsd
                   })
                 )}
               </div>
+            </div>
+          </div>
+
+          <div className="v2-panel v2-rep-journal-panel v2-rep-decision-panel">
+            <div className="v2-rep-journal-header">
+              <span className="v2-panel-kicker">Журнал решений</span>
+              <V2SourceTag source="manual" title="Снимки проверки сделки, сохранённые вручную на этом устройстве" />
+            </div>
+
+            <div className="v2-rep-decision-list">
+              {decisionJournal.length === 0 ? (
+                <div className="v2-rep-empty">Пока нет сохранённых решений</div>
+              ) : decisionJournal.slice(0, 8).map((entry) => (
+                <div key={entry.id} className={`v2-rep-decision-row ${entry.status === "БЛОКИРОВКА" ? "is-block" : ""}`}>
+                  <div className="v2-rep-decision-main">
+                    <span className="v2-rep-cell-date">{fmtDate(entry.createdAt)}</span>
+                    <strong>{entry.asset}</strong>
+                    <span className="v2-rep-decision-muted">{entry.category}</span>
+                    <div className="v2-rep-decision-actions">
+                      <span className={`v2-rep-decision-status ${entry.status === "БЛОКИРОВКА" ? "is-block" : "is-ok"}`}>
+                        {entry.status}
+                      </span>
+                      {onDeleteDecision && (
+                        <button type="button" onClick={() => onDeleteDecision(entry.id)}>
+                          Удалить
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="v2-rep-decision-grid">
+                    <span>Сумма</span>
+                    <strong>{fmtUSD(entry.amountUsd)}</strong>
+                    <span>Цена</span>
+                    <strong>{entry.buyPrice ? fmtUSD(entry.buyPrice) : "—"}</strong>
+                    <span>Здоровье</span>
+                    <strong>
+                      {entry.healthBefore ?? "—"}
+                      {entry.healthApplicable && entry.healthAfter !== null
+                        ? ` → ${entry.healthAfter} ${entry.healthDelta !== null ? signedScore(entry.healthDelta) : ""}`
+                        : " → не применяется"}
+                    </strong>
+                    <span>Сетап</span>
+                    <strong>{entry.setup || "—"}</strong>
+                    <span>Состояние</span>
+                    <strong>{entry.emotion || "—"}</strong>
+                    <span>Выживаемость</span>
+                    <strong>{entry.survivalStatus || "—"}</strong>
+                  </div>
+                  {(entry.reasons.length > 0 || entry.note) && (
+                    <div className="v2-rep-decision-note">
+                      {entry.reasons[0] || entry.note}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 

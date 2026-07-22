@@ -480,6 +480,75 @@
   color: rgba(242, 180, 188, 0.9);
 }
 
+.v2-gate-journal {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(90, 150, 200, 0.22);
+  background: rgba(8, 24, 42, 0.48);
+}
+.v2-gate-journal-title {
+  margin-bottom: 10px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(140, 180, 214, 0.72);
+}
+.v2-gate-journal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.v2-gate-journal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.v2-gate-journal-field.is-wide {
+  margin-top: 10px;
+}
+.v2-gate-journal-field span {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(120, 165, 200, 0.7);
+}
+.v2-gate-journal-field select,
+.v2-gate-journal-field input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(80, 140, 190, 0.26);
+  background: rgba(6, 18, 32, 0.72);
+  color: rgba(220, 238, 252, 0.94);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 13px;
+}
+.v2-gate-save {
+  margin-top: 12px;
+  width: 100%;
+  cursor: pointer;
+  border: 1px solid rgba(90, 180, 255, 0.48);
+  background: rgba(28, 76, 114, 0.34);
+  color: rgba(220, 240, 252, 0.98);
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+.v2-gate-save:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.v2-gate-save-note {
+  margin-top: 8px;
+  font-size: 12px;
+  color: rgba(120, 230, 170, 0.85);
+}
+
 .v2-gate-foot {
   font-size: 12px;
   line-height: 1.5;
@@ -505,7 +574,8 @@
     white-space: normal;
   }
   .v2-gate-survival,
-  .v2-gate-average-grid {
+  .v2-gate-average-grid,
+  .v2-gate-journal-grid {
     grid-template-columns: 1fr;
   }
   .v2-gate-buckets {

@@ -756,6 +756,125 @@
   white-space: nowrap;
 }
 
+.v2-rep-decision-panel {
+  gap: 10px;
+}
+
+.v2-rep-decision-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 430px;
+  overflow-y: auto;
+}
+
+.v2-rep-decision-row {
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(70, 145, 220, 0.2);
+  border-radius: 9px;
+  background: rgba(8, 22, 40, 0.58);
+  padding: 11px 12px;
+}
+
+.v2-rep-decision-row.is-block {
+  border-color: rgba(255, 95, 120, 0.28);
+  background: rgba(58, 18, 28, 0.32);
+}
+
+.v2-rep-decision-main {
+  display: grid;
+  grid-template-columns: 150px 70px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.v2-rep-decision-main strong {
+  color: rgba(232, 244, 252, 0.96);
+  font-size: 15px;
+}
+
+.v2-rep-decision-muted {
+  color: rgba(145, 180, 210, 0.72);
+  font-size: 12px;
+}
+
+.v2-rep-decision-status {
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(190, 245, 220, 0.96);
+  background: rgba(20, 90, 60, 0.36);
+  border: 1px solid rgba(80, 220, 150, 0.28);
+}
+
+.v2-rep-decision-status.is-block {
+  color: rgba(255, 190, 198, 0.96);
+  background: rgba(105, 28, 42, 0.42);
+  border-color: rgba(255, 95, 120, 0.34);
+}
+
+.v2-rep-decision-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.v2-rep-decision-actions button {
+  border: 1px solid rgba(120, 165, 205, 0.22);
+  background: rgba(12, 28, 46, 0.58);
+  color: rgba(165, 198, 224, 0.82);
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.v2-rep-decision-actions button:hover {
+  border-color: rgba(255, 95, 120, 0.36);
+  color: rgba(255, 185, 195, 0.95);
+}
+
+.v2-rep-decision-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin-top: 10px;
+}
+
+.v2-rep-decision-grid span {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(120, 160, 200, 0.6);
+}
+
+.v2-rep-decision-grid strong {
+  min-width: 0;
+  color: rgba(216, 236, 250, 0.9);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2-rep-decision-note {
+  margin-top: 9px;
+  border-left: 2px solid rgba(230, 170, 95, 0.65);
+  padding-left: 9px;
+  color: rgba(230, 205, 172, 0.86);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .v2-rep-empty {
   padding: 32px;
   text-align: center;

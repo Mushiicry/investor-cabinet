@@ -16,6 +16,7 @@ import {
 import { evaluateDecision } from "../lib/decisionEngine";
 import { buildCapitalBuckets, type CapitalBuckets } from "../lib/capitalBuckets";
 import { BINANCE_MONITORING_ASSET_QUALITY } from "../lib/assetQualitySource";
+import type { DecisionJournalDraft } from "../lib/decisionJournal";
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -25,10 +26,13 @@ type Props = {
   assetQuality: V2LabData["assetQuality"];
   healthInput: V2LabData["healthInput"];
   futuresShare?: number;
+  onSaveDecision?: (draft: DecisionJournalDraft) => void;
 };
 
 const NEW_ASSET = "__new__";
 const CATEGORIES = [CRYPTO_CATEGORY, METALS_CATEGORY, STOCKS_CATEGORY, FUTURES_CATEGORY];
+const SETUPS = ["Плановый добор", "Усреднение", "Ребаланс", "Защитное действие", "Учебная сделка"];
+const EMOTIONS = ["Спокойно", "Сомнение", "Страх упустить рост", "Спешка", "После убытка"];
 
 const pct = (share: number) => `${(share * 100).toFixed(1)}%`;
 const usd = (v: number) => `${Math.round(v).toLocaleString("ru-RU")}$`;
@@ -65,6 +69,7 @@ export function V2GatePage({
   assetQuality,
   healthInput,
   futuresShare = 0,
+  onSaveDecision,
 }: Props) {
   const empty = isEmptyAccount(portfolio);
 
@@ -75,6 +80,10 @@ export function V2GatePage({
   const [buyPrice, setBuyPrice] = useState<string>(() =>
     positions[0]?.currentPrice && positions[0].currentPrice > 0 ? String(positions[0].currentPrice) : "",
   );
+  const [setup, setSetup] = useState(SETUPS[0]);
+  const [emotion, setEmotion] = useState(EMOTIONS[0]);
+  const [journalNote, setJournalNote] = useState("");
+  const [savedMarker, setSavedMarker] = useState<{ signature: string; savedAt: string } | null>(null);
 
   const isNew = asset === NEW_ASSET;
   const resolvedAsset = isNew ? newAsset.trim().toUpperCase() : asset;
@@ -153,6 +162,16 @@ export function V2GatePage({
     [resolvedAsset, amountNum, category, buyPriceNum, ctx],
   );
   const verdict = decision.gate;
+  const decisionSignature = [
+    resolvedAsset,
+    category,
+    amount,
+    buyPrice,
+    setup,
+    emotion,
+    journalNote,
+    decision.status,
+  ].join("|");
 
   // Капитал под спот: зелёный лимит (сверх 30%) и потолок до пола ФАЗЫ.
   const greenMax = Math.max(portfolio.spotDeployable || 0, 0);
@@ -186,6 +205,21 @@ export function V2GatePage({
 
   const badgeText = decision.status;
   const hasAssetQualityBlock = decision.reasons.some((reason) => reason.kind === "качество_актива");
+  const canSaveDecision = Boolean(onSaveDecision) && decision.status !== "ЖДАТЬ" && Boolean(resolvedAsset);
+  const saveDecision = () => {
+    if (!onSaveDecision || !canSaveDecision) return;
+    onSaveDecision({
+      asset: resolvedAsset,
+      category,
+      amountUsd: amountNum,
+      buyPrice: buyPriceNum,
+      decision,
+      setup,
+      emotion,
+      note: journalNote.trim(),
+    });
+    setSavedMarker({ signature: decisionSignature, savedAt: new Date().toISOString() });
+  };
 
   return (
     <div className="v2-gate-page">
@@ -453,6 +487,49 @@ export function V2GatePage({
                 {verdict.fearGreed.text}
               </div>
             )}
+
+            <div className="v2-gate-journal">
+              <div className="v2-gate-journal-title">Журнал решения</div>
+              <div className="v2-gate-journal-grid">
+                <label className="v2-gate-journal-field">
+                  <span>Сетап</span>
+                  <select value={setup} onChange={(event) => setSetup(event.target.value)}>
+                    {SETUPS.map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="v2-gate-journal-field">
+                  <span>Состояние</span>
+                  <select value={emotion} onChange={(event) => setEmotion(event.target.value)}>
+                    {EMOTIONS.map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label className="v2-gate-journal-field is-wide">
+                <span>Заметка</span>
+                <input
+                  value={journalNote}
+                  onChange={(event) => setJournalNote(event.target.value)}
+                  placeholder="Почему это решение принимается сейчас"
+                />
+              </label>
+              <button
+                type="button"
+                className="v2-gate-save"
+                disabled={!canSaveDecision}
+                onClick={saveDecision}
+              >
+                Сохранить решение
+              </button>
+              {savedMarker?.signature === decisionSignature && (
+                <div className="v2-gate-save-note">
+                  Снимок сохранён: {new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(savedMarker.savedAt))}
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>
