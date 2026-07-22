@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { V2HealthDetailModal } from "./V2HealthDetailModal";
 import { isEmptyAccount } from "../lib/accountState";
 import { useEscapeClose } from "../../hooks/useEscapeClose";
+import { buildCoreRecs } from "../lib/healthCoreHelpers";
 
 type Props = {
   portfolio: V2Portfolio;
@@ -82,67 +83,6 @@ function richDiagnosis(components: HealthComponent[], portfolio: V2Portfolio) {
        : "В пределах нормы.",
   }));
   return { weak, strong };
-}
-
-// ── Рекомендации с конкретным приростом ──────────────────────
-type Rx = { action: string; gain: number; source: string };
-
-function buildRecommendations(components: HealthComponent[], portfolio: V2Portfolio): Rx[] {
-  const sorted = [...components].sort((a, b) => a.score - b.score);
-  const weak = sorted.filter(c => c.score < 60).slice(0, 3);
-  const reserveTarget = portfolio.totalPortfolioValue * 0.30;
-  const deficit = Math.max(0, reserveTarget - portfolio.stableReserve);
-
-  const result: Rx[] = [];
-  for (const c of weak) {
-    switch (c.key) {
-      case "reserve":
-        result.push({ action: deficit > 0 ? `Пополнить резерв на ${fmt$(deficit)} до 30%` : "Поддерживать резерв выше 30%", gain: 6, source: c.label });
-        result.push({ action: "Не открывать новые позиции пока резерв не достигнут", gain: 3, source: c.label });
-        break;
-      case "flexibility":
-        result.push({ action: "Заполнить журнал решений по открытым сделкам", gain: 4, source: c.label });
-        result.push({ action: "Поставить паузу на сделки вне плана", gain: 3, source: c.label });
-        break;
-      case "diversification": {
-        // Умный расчёт из модели: кто перегружен, сколько $ и куда добавить
-        const m = c.meta;
-        if (m?.largestClassShareOfRisk && m.largestClassShareOfRisk > 0.8 && m.rebalanceAddUsd) {
-          const pct = Math.round(m.largestClassShareOfRisk * 100);
-          const portfolioPct = Math.round((m.largestClassShareOfPortfolio ?? 0) * 100);
-          const others = (m.otherClassNames ?? []).join(" / ").toLowerCase();
-          result.push({
-            action: `${m.largestClassName}: ${portfolioPct}% портфеля, но ${pct}% рисковой части (без кэша) — лимит 80%. Добавить ≈${fmt$(m.rebalanceAddUsd)} в ${others}`,
-            gain: 4,
-            source: c.label,
-          });
-        } else if (m?.missingClassNames?.length) {
-          result.push({
-            action: `Добавить отсутствующий класс: ${m.missingClassNames.join(" / ").toLowerCase()}`,
-            gain: 4,
-            source: c.label,
-          });
-        } else {
-          result.push({ action: "Выравнивать классы к лимитам: крипта 60% / металлы 10% / акции 10%", gain: 4, source: c.label });
-        }
-        result.push({ action: "Не держать более 80% рискового капитала в одном классе", gain: 3, source: c.label });
-        break;
-      }
-      case "crypto":
-        result.push({ action: "Подготовить лимитные ордера на падение", gain: 5, source: c.label });
-        result.push({ action: "Сохранить покупательскую способность после худшего сценария", gain: 3, source: c.label });
-        break;
-      case "concentration":
-        result.push({ action: "Распределить часть крупнейшей позиции в другие активы", gain: 5, source: c.label });
-        result.push({ action: "Не усредняться в актив с долей > 35%", gain: 3, source: c.label });
-        break;
-      case "futures":
-        result.push({ action: "Снизить плечо: ≤2x альты, ≤3x BTC", gain: 5, source: c.label });
-        result.push({ action: "Сократить число позиций до 3 максимум", gain: 4, source: c.label });
-        break;
-    }
-  }
-  return result.slice(0, 6);
 }
 
 // ── Цвет по score ──────────────────────────────────────────────
@@ -268,8 +208,11 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
   const { weak, strong } = isEmpty
     ? { weak: [] as DiagItem[], strong: [] as DiagItem[] }
     : richDiagnosis(health.components, portfolio);
-  const recommendations = isEmpty ? [] : buildRecommendations(health.components, portfolio);
   const sortedComponents = [...health.components].sort((a, b) => a.score - b.score);
+  const weakForRecommendations = sortedComponents.filter((c) => c.score < 60);
+  const recommendations = isEmpty
+    ? []
+    : buildCoreRecs(weakForRecommendations, portfolio, health.components);
 
   // ── Симулятор: 6 рычагов поверх реальных входов health ──
   const baseReserve = healthInput.reserveShare ?? healthInput.cashShare;

@@ -245,6 +245,7 @@ export function buildCoreRecs(
       action: "Сократить лишний альткоин или освободить место",
       gain: 5,
       source: "В крипто-блоке только 3 места под альткоины по 5% → здоровье +5",
+      critical: true,
     });
   }
   if (concentrationBlockers.includes("Превышен лимит мест акций")) {
@@ -252,6 +253,7 @@ export function buildCoreRecs(
       action: "Сократить лишнюю акцию или освободить место",
       gain: 5,
       source: "В портфеле только 2 места под акции по 5% → здоровье +5",
+      critical: true,
     });
   }
   if (concentrationBlockers.includes("Превышен лимит мест металлов")) {
@@ -259,6 +261,7 @@ export function buildCoreRecs(
       action: "Сократить лишний металл или освободить место",
       gain: 5,
       source: "В портфеле только 2 места под металлы по 5% → здоровье +5",
+      critical: true,
     });
   }
   if ((cm?.concentrationWarnings ?? []).includes("Все 3 альткоин-места заняты")) {
@@ -295,6 +298,29 @@ export function buildCoreRecs(
         over > 1
           ? `${cm.worstConcentrationAsset} и ещё ${over - 1} актив(а) сверх лимита → здоровье +5`
           : `Приведёт ${cm.worstConcentrationAsset} к своему лимиту → здоровье +5`,
+      critical: concentrationBlockers.length > 0,
+    });
+  }
+
+  const survival = all.find((c) => c.key === "crypto");
+  const survivalBlockers = survival?.meta?.survivalBlockers ?? [];
+  if (survivalBlockers.length) {
+    result.push({
+      action: `Не добавлять риск: ${survivalBlockers[0].toLowerCase()}`,
+      gain: 6,
+      source: "Сначала пройти стресс-сценарий → здоровье +6",
+      critical: true,
+    });
+  }
+
+  const discipline = all.find((c) => c.key === "flexibility");
+  const disciplineBlockers = discipline?.meta?.disciplineBlockers ?? [];
+  if (disciplineBlockers.length) {
+    result.push({
+      action: `Пауза на новые сделки: ${disciplineBlockers[0].toLowerCase()}`,
+      gain: 6,
+      source: "Сначала восстановить дисциплину решений → здоровье +6",
+      critical: true,
     });
   }
 
@@ -329,12 +355,14 @@ export function buildCoreRecs(
         break;
       case "flexibility":
         if ((c.meta?.disciplineBlockers ?? []).length) {
-          result.push({
-            action: `Пауза на новые сделки: ${c.meta?.disciplineBlockers?.[0]?.toLowerCase()}`,
-            gain: 6,
-            source: "Сначала восстановить дисциплину решений → здоровье +6",
-            critical: true,
-          });
+          if (!result.some((r) => r.action.startsWith("Пауза на новые сделки"))) {
+            result.push({
+              action: `Пауза на новые сделки: ${c.meta?.disciplineBlockers?.[0]?.toLowerCase()}`,
+              gain: 6,
+              source: "Сначала восстановить дисциплину решений → здоровье +6",
+              critical: true,
+            });
+          }
         }
         result.push({
           action: "Заполнить журнал решений и убрать сделки вне плана",
@@ -374,12 +402,14 @@ export function buildCoreRecs(
       }
       case "crypto":
         if ((c.meta?.survivalBlockers ?? []).length) {
-          result.push({
-            action: `Не добавлять риск: ${c.meta?.survivalBlockers?.[0]?.toLowerCase()}`,
-            gain: 6,
-            source: "Сначала пройти стресс-сценарий → здоровье +6",
-            critical: true,
-          });
+          if (!result.some((r) => r.action.startsWith("Не добавлять риск"))) {
+            result.push({
+              action: `Не добавлять риск: ${c.meta?.survivalBlockers?.[0]?.toLowerCase()}`,
+              gain: 6,
+              source: "Сначала пройти стресс-сценарий → здоровье +6",
+              critical: true,
+            });
+          }
         }
         result.push({
           action: "Снизить уязвимость к рыночному шоку",
@@ -397,5 +427,8 @@ export function buildCoreRecs(
         break;
     }
   }
-  return result.slice(0, 5);
+  return [
+    ...result.filter((rec) => rec.critical),
+    ...result.filter((rec) => !rec.critical),
+  ].slice(0, 6);
 }
