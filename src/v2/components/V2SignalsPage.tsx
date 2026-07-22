@@ -208,6 +208,10 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
                 <span className="v2-psy-row-k">Опасно сейчас</span>
                 <span className="v2-psy-row-v">{psychology.dangerous}</span>
               </div>
+              <div className={psychology.gate.severity === "block" ? "v2-psy-row is-danger" : "v2-psy-row"}>
+                <span className="v2-psy-row-k">Проверка сделки</span>
+                <span className="v2-psy-row-v">{psychology.gate.text}</span>
+              </div>
             </div>
           </div>
 

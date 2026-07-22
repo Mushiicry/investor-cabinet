@@ -34,6 +34,7 @@ import {
   type DecisionJournalEntry,
 } from "../lib/decisionJournal";
 import { evaluateBehavior } from "../lib/behaviorEngine";
+import { getMarketPsychology } from "../lib/marketPsychology";
 
 type Props = {
   data: V2LabData;
@@ -154,7 +155,14 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     setDecisionJournal((current) => removeDecisionJournalEntry(current, id, profileKeySuffix));
   }
 
-  const behavior = useMemo(() => evaluateBehavior(decisionJournal), [decisionJournal]);
+  const marketPsychology = useMemo(
+    () => getMarketPsychology(data.fearGreedStrategy.currentIndex, data.fearGreedStrategy.history),
+    [data.fearGreedStrategy.currentIndex, data.fearGreedStrategy.history],
+  );
+  const behavior = useMemo(
+    () => evaluateBehavior(decisionJournal, new Date(), marketPsychology),
+    [decisionJournal, marketPsychology],
+  );
   const behaviorHealthInput = useMemo(
     () => ({
       ...data.healthInput,

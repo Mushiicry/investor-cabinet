@@ -20,6 +20,16 @@ export type PsychZoneKey =
   | "euphoria";
 
 export type PsychTrend = "rising" | "falling" | "flat";
+export type MarketRiskMode =
+  | "покупать_по_плану"
+  | "держать_план"
+  | "снижать_риск"
+  | "защита_капитала";
+
+export type MarketPsychologyGate = {
+  severity: "info" | "warning" | "block";
+  text: string;
+};
 
 export type MarketPsychology = {
   index: number;            // текущий F&G 0..100
@@ -31,6 +41,8 @@ export type MarketPsychology = {
   dangerous: string;        // какое действие сейчас опаснее всего
   stance: "aggressive-buy" | "accumulate" | "hold" | "trim" | "de-risk";
   stanceLabel: string;      // короткий ярлык действия
+  riskMode: MarketRiskMode; // как рынок влияет на допуск к новой сделке
+  gate: MarketPsychologyGate;
   color: string;
 };
 
@@ -62,6 +74,11 @@ function zoneByIndex(index: number): ZoneDef {
       dangerous: "Паническая продажа на дне и фиксация убытка в самой невыгодной точке.",
       stance: "aggressive-buy",
       stanceLabel: "Зона агрессивной покупки",
+      riskMode: "покупать_по_плану",
+      gate: {
+        severity: "info",
+        text: "Рынок в капитуляции — добор допустим только по плану, малой суммой и без нарушения резерва.",
+      },
       color: "#f2704a",
     };
   }
@@ -74,6 +91,11 @@ function zoneByIndex(index: number): ZoneDef {
       dangerous: "Замереть и ничего не делать «до ясности» — ясность приходит уже дороже.",
       stance: "accumulate",
       stanceLabel: "Усиленный набор",
+      riskMode: "покупать_по_плану",
+      gate: {
+        severity: "info",
+        text: "Рынок в страхе — можно использовать плановый добор, если резерв и лимиты проходят проверку.",
+      },
       color: "#56c4f0",
     };
   }
@@ -86,6 +108,11 @@ function zoneByIndex(index: number): ZoneDef {
       dangerous: "Отказаться от плана и ждать «идеальной» точки входа.",
       stance: "accumulate",
       stanceLabel: "Плановый набор",
+      riskMode: "покупать_по_плану",
+      gate: {
+        severity: "info",
+        text: "Рынок выходит из страха — добор только по плану и без увеличения концентрации сверх лимитов.",
+      },
       color: "#5fe0cf",
     };
   }
@@ -98,6 +125,11 @@ function zoneByIndex(index: number): ZoneDef {
       dangerous: "Искать сильные движения там, где их нет, и переторговывать.",
       stance: "hold",
       stanceLabel: "Удержание",
+      riskMode: "держать_план",
+      gate: {
+        severity: "info",
+        text: "Рынок нейтрален — решение должно опираться на лимиты, резерв и качество актива.",
+      },
       color: "#9fb3c8",
     };
   }
@@ -110,6 +142,11 @@ function zoneByIndex(index: number): ZoneDef {
       dangerous: "Покупать по факту роста и заходить на всю котлету из страха «упустить».",
       stance: "trim",
       stanceLabel: "Фиксация по плану",
+      riskMode: "снижать_риск",
+      gate: {
+        severity: "warning",
+        text: "Рынок в зоне жадности — новая покупка риска разрешена только после ручной проверки.",
+      },
       color: "#e6b35a",
     };
   }
@@ -122,6 +159,11 @@ function zoneByIndex(index: number): ZoneDef {
       dangerous: "Наращивать плечо и концентрацию на пике оптимизма.",
       stance: "de-risk",
       stanceLabel: "Снижение риска",
+      riskMode: "снижать_риск",
+      gate: {
+        severity: "warning",
+        text: "Рынок в жадности — не увеличивать риск без причины из плана и проверки выживаемости.",
+      },
       color: "#f0a35a",
     };
   }
@@ -133,6 +175,11 @@ function zoneByIndex(index: number): ZoneDef {
     dangerous: "Плечо, вера в «новую нормальность» и вход крупной суммой на самом верху.",
     stance: "de-risk",
     stanceLabel: "Защита капитала",
+    riskMode: "защита_капитала",
+    gate: {
+      severity: "block",
+      text: "Рынок в эйфории — увеличение риска заблокировано до выхода из зоны перегрева.",
+    },
     color: "#f2704a",
   };
 }
@@ -161,6 +208,11 @@ export function getMarketPsychology(
       dangerous: "Ждать «подтверждённого» тренда — подтверждение приходит уже заметно дороже.",
       stance: "accumulate",
       stanceLabel: "Набор на неверии",
+      riskMode: "покупать_по_плану",
+      gate: {
+        severity: "info",
+        text: "Рынок в неверии — плановый добор допустим, если резерв, лимиты и качество актива в норме.",
+      },
       color: "#56c4f0",
     };
   }

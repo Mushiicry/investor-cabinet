@@ -6,6 +6,7 @@ import {
 } from "../../src/v2/lib/decisionEngine";
 import { BINANCE_MONITORING_ASSET_QUALITY } from "../../src/v2/lib/assetQualitySource";
 import type { HealthInput } from "../../src/lib/portfolioHealth";
+import { getMarketPsychology } from "../../src/v2/lib/marketPsychology";
 
 const baseHealthInput: HealthInput = {
   cashShare: 0.6,
@@ -164,6 +165,23 @@ describe("движок решений", () => {
         expect.objectContaining({
           kind: "дисциплина",
           text: "Активен дисциплинарный блокер",
+        }),
+      ]),
+    );
+  });
+
+  it("блокирует добор риск-актива в зоне рыночной эйфории", () => {
+    const decision = evaluateDecision(
+      { asset: "ETH", amountUsd: 20, category: "Крипта" },
+      { ...baseCtx, marketPsychology: getMarketPsychology(92) },
+    );
+
+    expect(decision.status).toBe("БЛОКИРОВКА");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "рыночная_психология",
+          text: "Рынок в эйфории — увеличение риска заблокировано до выхода из зоны перегрева.",
         }),
       ]),
     );

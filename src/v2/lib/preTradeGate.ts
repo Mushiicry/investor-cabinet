@@ -12,8 +12,8 @@
 //   🟢 ok      — в пределах spotDeployable (спот-резерв ≥ 30%);
 //   🟡 caution — заходим в подушку (резерв 10–30%), разрешено, но с пометкой;
 //   🔴 block   — пробили абсолютный пол 10% ИЛИ лимит позиции/класса.
-// Лимиты позиции и класса — жёсткие (block). Fear & Greed — мягкая сверка
-// со ступенью откупа, не блокирует.
+// Лимиты позиции и класса — жёсткие (block). Fear & Greed — сверка со ступенью
+// откупа. Рыночная психология может усилить её до блока в зоне эйфории.
 
 import {
   MAX_CRYPTO_EXPOSURE_SHARE,
@@ -26,6 +26,7 @@ import {
   SPOT_RESERVE_FLOOR_SHARE,
 } from "../../config/riskRules";
 import type { CapitalBuckets } from "./capitalBuckets";
+import type { MarketPsychology } from "./marketPsychology";
 
 /** Категория актива — совпадает с именами в allocation/positions. */
 export const CRYPTO_CATEGORY = "Крипта";
@@ -307,6 +308,8 @@ export type GateContext = {
   cryptoMaxShare?: number;
   /** Расклад свободных денег по карманам риска. */
   capitalBuckets?: CapitalBuckets;
+  /** Поведенческий режим рынка от живого F&G. Не меняет Health, но влияет на допуск сделки. */
+  marketPsychology?: Pick<MarketPsychology, "riskMode" | "gate" | "stanceLabel">;
 };
 
 export type TradeInput = {
@@ -336,7 +339,9 @@ export type GateCheck = {
 
 export type FearGreedNote = {
   tone: "info" | "warning" | "muted";
+  kind?: "рыночная_лестница" | "рыночная_психология" | "смешанная";
   text: string;
+  blocks?: boolean;
 };
 
 export type GateStatus = "idle" | "ok" | "caution" | "block";
@@ -381,8 +386,8 @@ function resolveCategory(input: TradeInput, ctx: GateContext): string {
   return input.category ?? CASH_CATEGORY;
 }
 
-/** Мягкая сверка суммы со ступенью откупа Fear & Greed. Не блокирует. */
-function buildFearGreedNote(
+/** Мягкая сверка суммы со ступенью откупа Fear & Greed. */
+function buildLadderNote(
   input: TradeInput,
   ctx: GateContext,
 ): FearGreedNote | null {
@@ -392,6 +397,7 @@ function buildFearGreedNote(
   if (current.mode === "observation") {
     return {
       tone: "muted",
+      kind: "рыночная_лестница",
       text: "Рынок в наблюдении — плановой ступени откупа сейчас нет.",
     };
   }
@@ -399,6 +405,7 @@ function buildFearGreedNote(
     const hours = Math.ceil(current.cooldownRemainingHours);
     return {
       tone: "warning",
+      kind: "рыночная_лестница",
       text: `Ступень «${current.label}» на кулдауне ещё ~${hours} ч — добор вне графика лестницы.`,
     };
   }
@@ -406,12 +413,50 @@ function buildFearGreedNote(
   if (recommended > 0 && input.amountUsd > recommended * 1.5) {
     return {
       tone: "warning",
+      kind: "рыночная_лестница",
       text: `Выше рекомендации ступени «${current.label}» (${Math.round(recommended)}$). Лестница просит меньше.`,
     };
   }
   return {
     tone: "info",
+    kind: "рыночная_лестница",
     text: `Ступень «${current.label}»: рекомендация ~${Math.round(recommended)}$.`,
+  };
+}
+
+function buildFearGreedNote(
+  input: TradeInput,
+  ctx: GateContext,
+): FearGreedNote | null {
+  const ladder = buildLadderNote(input, ctx);
+  const psychology = ctx.marketPsychology;
+  const category = resolveCategory(input, ctx);
+  const isRiskIncreasingBuy = category !== CASH_CATEGORY;
+
+  if (!psychology || !isRiskIncreasingBuy) return ladder;
+
+  if (psychology.gate.severity === "block") {
+    return {
+      tone: "warning",
+      kind: "рыночная_психология",
+      text: psychology.gate.text,
+      blocks: true,
+    };
+  }
+
+  if (psychology.gate.severity === "warning") {
+    const ladderWarning = ladder?.tone === "warning" ? ` ${ladder.text}` : "";
+    return {
+      tone: "warning",
+      kind: ladderWarning ? "смешанная" : "рыночная_психология",
+      text: `${psychology.gate.text}${ladderWarning}`,
+    };
+  }
+
+  return ladder ?? {
+    tone: "info",
+    kind: "рыночная_психология",
+    text: psychology.gate.text,
   };
 }
 

@@ -1,10 +1,12 @@
 import type { DecisionJournalEntry } from "./decisionJournal";
+import type { MarketPsychology } from "./marketPsychology";
 
 export type BehaviorSignalKind =
   | "страх_упустить"
   | "после_убытка"
   | "переторговка"
   | "повторная_блокировка"
+  | "рыночная_жадность"
   | "журнал";
 
 export type BehaviorSignal = {
@@ -41,6 +43,8 @@ export type BehaviorEngineResult = {
     journalCoverage: number;
   };
 };
+
+export type BehaviorMarketContext = Pick<MarketPsychology, "riskMode" | "emotion">;
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -86,6 +90,7 @@ function latestTime(entries: DecisionJournalEntry[]) {
 export function evaluateBehavior(
   journal: DecisionJournalEntry[],
   now: Date = new Date(),
+  market?: BehaviorMarketContext,
 ): BehaviorEngineResult {
   const nowMs = now.getTime();
   const recent24h = journal.filter((entry) => isWithin(entry, nowMs, DAY_MS));
@@ -113,13 +118,18 @@ export function evaluateBehavior(
   }
 
   if (fomo24h > 0) {
+    const marketIsGreedy = market?.riskMode === "снижать_риск" || market?.riskMode === "защита_капитала";
+    const marketBlocksFomo = market?.riskMode === "защита_капитала";
     signals.push({
-      kind: "страх_упустить",
-      severity: fomo24h >= 2 ? "block" : "warn",
-      text:
-        fomo24h >= 2
-          ? "Пауза: повторяется страх упустить рост."
-          : "Есть решение из страха упустить рост — нужна ручная проверка.",
+      kind: marketIsGreedy ? "рыночная_жадность" : "страх_упустить",
+      severity: marketBlocksFomo || fomo24h >= 2 ? "block" : "warn",
+      text: marketBlocksFomo
+        ? "Пауза: страх упустить рост в зоне эйфории рынка."
+        : marketIsGreedy
+          ? "Рынок в жадности: страх упустить рост требует ручной паузы."
+          : fomo24h >= 2
+            ? "Пауза: повторяется страх упустить рост."
+            : "Есть решение из страха упустить рост — нужна ручная проверка.",
     });
   }
 

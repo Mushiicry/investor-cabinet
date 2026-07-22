@@ -64,6 +64,29 @@ describe("поведенческий движок", () => {
     expect(behavior.healthInputs.disciplineCooldownActive).toBe(true);
   });
 
+  it("один страх упустить рост в эйфории рынка сразу включает паузу", () => {
+    const behavior = evaluateBehavior(
+      [entry({ emotion: "Страх упустить рост" })],
+      now,
+      { riskMode: "защита_капитала", emotion: "Эйфория" },
+    );
+
+    expect(behavior.status).toBe("ПАУЗА");
+    expect(behavior.blockers).toContain("Пауза: страх упустить рост в зоне эйфории рынка.");
+    expect(behavior.healthInputs.disciplineCooldownActive).toBe(true);
+  });
+
+  it("жадность рынка без FOMO не наказывает дисциплину", () => {
+    const behavior = evaluateBehavior(
+      [entry({ emotion: "Спокойно" })],
+      now,
+      { riskMode: "снижать_риск", emotion: "Жадность" },
+    );
+
+    expect(behavior.status).toBe("НОРМА");
+    expect(behavior.blockers).toEqual([]);
+  });
+
   it("три решения за сутки считаются переторговкой", () => {
     const behavior = evaluateBehavior([
       entry({ id: "one" }),

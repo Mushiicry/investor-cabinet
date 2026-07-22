@@ -42,6 +42,7 @@ export type DecisionReasonKind =
   | "качество_актива"
   | "дисциплина"
   | "рыночная_лестница"
+  | "рыночная_психология"
   | "ввод";
 
 export type DecisionReason = {
@@ -359,8 +360,14 @@ export function evaluateDecision(input: DecisionTradeInput, ctx: DecisionContext
   for (const warning of ctx.disciplineWarnings ?? []) {
     warnings.push({ kind: "дисциплина", severity: "warn", text: warning });
   }
-  if (gate.fearGreed?.tone === "warning") {
-    warnings.push({ kind: "рыночная_лестница", severity: "warn", text: gate.fearGreed.text });
+  if (gate.fearGreed?.blocks) {
+    hardReasons.push({ kind: "рыночная_психология", severity: "block", text: gate.fearGreed.text });
+  } else if (gate.fearGreed?.tone === "warning") {
+    warnings.push({
+      kind: gate.fearGreed.kind === "рыночная_психология" ? "рыночная_психология" : "рыночная_лестница",
+      severity: "warn",
+      text: gate.fearGreed.text,
+    });
   }
 
   const status = statusFrom(gate, hardReasons, warnings, gate.maxSafeAmount, input.amountUsd);

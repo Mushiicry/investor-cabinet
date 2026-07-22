@@ -16,6 +16,7 @@ import { evaluateDecision, type DecisionContext } from "../lib/decisionEngine";
 import { buildCapitalBuckets, type CapitalBuckets } from "../lib/capitalBuckets";
 import { BINANCE_MONITORING_ASSET_QUALITY } from "../lib/assetQualitySource";
 import type { DecisionJournalDraft } from "../lib/decisionJournal";
+import { getMarketPsychology } from "../lib/marketPsychology";
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -123,6 +124,10 @@ export function V2GatePage({
       portfolio.totalPortfolioValue || 0,
       fearGreedStrategy.rules ?? [],
     );
+    const marketPsychology = getMarketPsychology(
+      fearGreedStrategy.currentIndex,
+      fearGreedStrategy.history,
+    );
     return {
       totalPortfolioValue: portfolio.totalPortfolioValue,
       stableReserve: portfolio.stableReserve,
@@ -131,6 +136,7 @@ export function V2GatePage({
       cryptoMaxShare: phase.cryptoMaxShare,
       futuresShare,
       capitalBuckets,
+      marketPsychology,
       assetQuality: activeAssetQuality,
       healthInput,
       disciplineBlockers,
@@ -223,6 +229,7 @@ export function V2GatePage({
   const badgeText = decision.status;
   const hasAssetQualityBlock = decision.reasons.some((reason) => reason.kind === "качество_актива");
   const hasDisciplineBlock = decision.reasons.some((reason) => reason.kind === "дисциплина");
+  const hasMarketPsychologyBlock = decision.reasons.some((reason) => reason.kind === "рыночная_психология");
   const canSaveDecision = Boolean(onSaveDecision) && decision.status !== "ЖДАТЬ" && Boolean(resolvedAsset);
   const saveDecision = () => {
     if (!onSaveDecision || !canSaveDecision) return;
@@ -491,7 +498,12 @@ export function V2GatePage({
                 Заблокировано — активна дисциплинарная пауза
               </button>
             )}
-            {decision.status === "БЛОКИРОВКА" && !hasAssetQualityBlock && !hasDisciplineBlock && decision.maxAllowedAmount > 0 && (
+            {decision.status === "БЛОКИРОВКА" && hasMarketPsychologyBlock && !hasAssetQualityBlock && !hasDisciplineBlock && (
+              <button type="button" className="v2-gate-fix is-blocked" disabled>
+                Заблокировано — рынок в зоне перегрева
+              </button>
+            )}
+            {decision.status === "БЛОКИРОВКА" && !hasAssetQualityBlock && !hasDisciplineBlock && !hasMarketPsychologyBlock && decision.maxAllowedAmount > 0 && (
               <button
                 type="button"
                 className="v2-gate-fix"
@@ -502,7 +514,7 @@ export function V2GatePage({
                   : `Максимум допустимо ${usd(decision.maxAllowedAmount)}`}
               </button>
             )}
-            {decision.status === "БЛОКИРОВКА" && !hasAssetQualityBlock && !hasDisciplineBlock && decision.maxAllowedAmount <= 0 && (
+            {decision.status === "БЛОКИРОВКА" && !hasAssetQualityBlock && !hasDisciplineBlock && !hasMarketPsychologyBlock && decision.maxAllowedAmount <= 0 && (
               <div className="v2-gate-nofix">
                 Безопасного объёма для добора этого актива сейчас нет — лимит уже на пределе.
               </div>
