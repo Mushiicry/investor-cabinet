@@ -1,15 +1,6 @@
-export type AssetQualityRecord = {
-  asset: string;
-  cmcRank: number | null;
-  binanceMonitoring: boolean;
-  updatedAt?: string;
-  source?: string;
-};
+import type { AssetQualityRecord, AssetQualitySource } from "../../types/portfolio";
 
-export type AssetQualitySource = {
-  records: AssetQualityRecord[];
-  connected: boolean;
-};
+export type { AssetQualityRecord, AssetQualitySource };
 
 export type AssetQualityVerdict = {
   status: "ok" | "warn" | "block";
@@ -45,6 +36,15 @@ export function evaluateAssetQuality(
 
   const record = source.records.find((item) => normalizeAsset(item.asset) === key) ?? null;
   if (!record) {
+    if (source.cmcTop100Connected) {
+      return {
+        status: "block",
+        blockers: [`${key}: токен не найден в топ-100 CoinMarketCap`],
+        warnings: [],
+        record: null,
+      };
+    }
+
     return {
       status: "warn",
       blockers: [],
@@ -57,7 +57,11 @@ export function evaluateAssetQuality(
   const warnings: string[] = [];
 
   if (record.cmcRank === null) {
-    warnings.push(`${key}: статус CoinMarketCap Top-100 не подключён`);
+    if (source.cmcTop100Connected) {
+      blockers.push(`${key}: токен вне топ-100 CoinMarketCap`);
+    } else {
+      warnings.push(`${key}: статус CoinMarketCap Top-100 не подключён`);
+    }
   } else if (record.cmcRank <= 0 || record.cmcRank > TOP_LIMIT) {
     blockers.push(`${key}: токен вне топ-100 CoinMarketCap`);
   }

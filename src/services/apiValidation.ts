@@ -63,6 +63,17 @@ export function validateInvestorApiPayload(value: unknown): ApiValidationResult<
     return validationError("scenarios must be an array");
   }
 
+  if (!hasOptionalRecord(value, "assetQuality")) {
+    return validationError("assetQuality must be an object");
+  }
+
+  if (
+    isRecord(value.assetQuality) &&
+    !hasOptionalArray(value.assetQuality, "records")
+  ) {
+    return validationError("assetQuality.records must be an array");
+  }
+
   return { ok: true, data: value as InvestorApiResponse };
 }
 

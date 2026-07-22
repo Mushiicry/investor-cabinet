@@ -174,6 +174,12 @@ export function buildPortfolioState(positionsInput: PositionInput[], decisions: 
       interestList: [],
     },
     fearGreedStrategy: buildFearGreedStrategy(50, invested),
+    assetQuality: {
+      connected: false,
+      records: [],
+      cmcTop100Connected: false,
+      binanceMonitoringConnected: false,
+    },
     updatedAt: new Date().toISOString(),
   };
 }

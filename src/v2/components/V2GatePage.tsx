@@ -22,6 +22,7 @@ type Props = {
   positions: V2LabData["positions"];
   allocation: V2LabData["allocation"];
   fearGreedStrategy: V2LabData["fearGreedStrategy"];
+  assetQuality: V2LabData["assetQuality"];
   futuresShare?: number;
 };
 
@@ -54,7 +55,7 @@ function bucketRows(buckets: CapitalBuckets) {
   ];
 }
 
-export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy, futuresShare = 0 }: Props) {
+export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy, assetQuality, futuresShare = 0 }: Props) {
   const empty = isEmptyAccount(portfolio);
 
   const [asset, setAsset] = useState<string>(() => positions[0]?.asset ?? NEW_ASSET);
@@ -92,6 +93,8 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
     [portfolio.totalPortfolioValue, portfolio.stableReserve, portfolio.futuresDeployable, allocation, fearGreedStrategy.rules],
   );
 
+  const activeAssetQuality = assetQuality.connected ? assetQuality : BINANCE_MONITORING_ASSET_QUALITY;
+
   const ctx: GateContext = useMemo(() => {
     const strategy = buildFearGreedStrategy(
       fearGreedStrategy.currentIndex,
@@ -106,7 +109,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
       cryptoMaxShare: phase.cryptoMaxShare,
       futuresShare,
       capitalBuckets,
-      assetQuality: BINANCE_MONITORING_ASSET_QUALITY,
+      assetQuality: activeAssetQuality,
       positions: positions.map((p) => ({
         asset: p.asset,
         category: p.category,
@@ -125,7 +128,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
         cooldownRemainingHours: r.cooldownRemainingHours,
       })),
     };
-  }, [portfolio, positions, allocation, fearGreedStrategy, phase, futuresShare, capitalBuckets]);
+  }, [portfolio, positions, allocation, fearGreedStrategy, phase, futuresShare, capitalBuckets, activeAssetQuality]);
 
   const amountNum = Number(amount);
   const buyPriceNum = Number(buyPrice);

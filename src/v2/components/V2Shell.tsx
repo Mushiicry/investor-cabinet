@@ -300,6 +300,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             positions={data.positions}
             allocation={data.allocation}
             fearGreedStrategy={data.fearGreedStrategy}
+            assetQuality={data.assetQuality}
             futuresShare={data.risk.futuresShare}
           />
         ) : page === "reports" ? (

@@ -40,6 +40,17 @@ describe("проверка качества токена", () => {
     expect(verdict.blockers).toEqual([]);
   });
 
+  it("блокирует неизвестный тикер при подключённом источнике Top-100", () => {
+    const verdict = evaluateAssetQuality("NOM", {
+      connected: true,
+      cmcTop100Connected: true,
+      records: [{ asset: "ETH", cmcRank: 2, binanceMonitoring: false }],
+    });
+
+    expect(verdict.status).toBe("block");
+    expect(verdict.blockers).toContain("NOM: токен не найден в топ-100 CoinMarketCap");
+  });
+
   it("не считает неизвестный CMC-ранг автоматическим нарушением топ-100", () => {
     const verdict = evaluateAssetQuality("JASMY", {
       connected: true,

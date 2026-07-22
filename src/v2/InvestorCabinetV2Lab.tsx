@@ -104,6 +104,7 @@ export type V2LabData = {
   history: PortfolioState["history"];
   transactions: PortfolioState["transactions"];
   signals: PortfolioState["signals"];
+  assetQuality: PortfolioState["assetQuality"];
   allocation: Array<{ name: string; share: number; value: number }>;
   health: PortfolioHealth;
   healthInput: HealthInput; // входы расчёта — нужны симулятору Health для честного пересчёта

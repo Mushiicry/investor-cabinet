@@ -4,8 +4,8 @@ import { normalizeDecisions, normalizeScenarios } from "../lib/playbookNormalize
 import { normalizePortfolio, toNumber } from "../lib/portfolioNormalizers";
 import { normalizeTransactions } from "../lib/transactionNormalizers";
 import { getOpenRiskPositions } from "../lib/portfolioSelectors";
-import type { InvestorApiResponse } from "../types/api";
-import type { InterestSignal, PortfolioState } from "../types/portfolio";
+import type { AssetQualityApiItem, InvestorApiResponse } from "../types/api";
+import type { AssetQualityRecord, AssetQualitySource, InterestSignal, PortfolioState } from "../types/portfolio";
 import {
   buildOverviewStateFromApi,
   buildRiskStateFromApi,
@@ -13,6 +13,14 @@ import {
 
 const toText = (value: unknown, fallback = "") =>
   typeof value === "string" ? value : fallback;
+
+const toBoolean = (value: unknown, fallback = false) => {
+  if (typeof value === "boolean") return value;
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (["true", "yes", "1", "да", "истина"].includes(normalized)) return true;
+  if (["false", "no", "0", "нет", "ложь"].includes(normalized)) return false;
+  return fallback;
+};
 
 const normalizeInterestSignal = (
   value: unknown,
@@ -53,12 +61,58 @@ const normalizeInterestSignals = (
     .filter((item): item is InterestSignal => item !== null);
 };
 
+const normalizeAssetQualityRecord = (value: unknown): AssetQualityRecord | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const source = value as AssetQualityApiItem;
+  const asset = toText(source.asset).trim().toUpperCase();
+  if (!asset) return null;
+
+  const rawRank = source.cmcRank;
+  const cmcRank = rawRank === null || rawRank === undefined || rawRank === ""
+    ? null
+    : toNumber(rawRank, 0);
+
+  return {
+    asset,
+    cmcRank: cmcRank && cmcRank > 0 ? cmcRank : null,
+    binanceMonitoring: toBoolean(source.binanceMonitoring),
+    updatedAt: toText(source.updatedAt),
+    source: toText(source.source),
+  };
+};
+
+const normalizeAssetQuality = (
+  value: InvestorApiResponse["assetQuality"],
+  fallback: AssetQualitySource,
+): AssetQualitySource => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return fallback;
+
+  const records = Array.isArray(value.records)
+    ? value.records
+        .map((item) => normalizeAssetQualityRecord(item))
+        .filter((item): item is AssetQualityRecord => item !== null)
+    : fallback.records;
+  const hasTop100 = records.some((item) => item.cmcRank !== null && item.cmcRank <= 100);
+  const hasMonitoring = records.some((item) => item.binanceMonitoring);
+
+  return {
+    records,
+    connected: toBoolean(value.connected, records.length > 0),
+    cmcTop100Connected: toBoolean(value.cmcTop100Connected, hasTop100),
+    binanceMonitoringConnected: toBoolean(value.binanceMonitoringConnected, hasMonitoring),
+    updatedAt: toText(value.updatedAt, fallback.updatedAt),
+    source: toText(value.source, fallback.source),
+  };
+};
+
 export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: PortfolioState): PortfolioState {
   const portfolio = normalizePortfolio(json?.portfolio, prev.portfolio);
   const history = normalizeHistory(json?.history, prev.history);
   const transactions = normalizeTransactions(json?.transactions, prev.transactions);
   const decisions = normalizeDecisions(json?.decisions, prev.decisions);
   const scenarios = normalizeScenarios(json?.scenarios, prev.scenarios);
+  const assetQuality = normalizeAssetQuality(json?.assetQuality, prev.assetQuality);
   const openRiskPositions = getOpenRiskPositions(portfolio);
 
   // Google Sheets overview is the accounting source of truth. Position rows are
@@ -79,6 +133,7 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
     transactions,
     decisions,
     scenarios,
+    assetQuality,
     fearGreedStrategy,
     signals: {
       interest: normalizeInterestSignal(json.signals?.interest, prev.signals?.interest ?? null),

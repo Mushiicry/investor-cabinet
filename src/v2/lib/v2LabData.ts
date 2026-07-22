@@ -109,6 +109,12 @@ const mockData: V2LabData = {
     interest: null,
     interestList: [],
   },
+  assetQuality: {
+    connected: false,
+    records: [],
+    cmcTop100Connected: false,
+    binanceMonitoringConnected: false,
+  },
   allocation: [
     { name: "Крипта", share: 0.627, value: 334 },
     { name: "Металлы", share: 0.026, value: 14 },
@@ -164,6 +170,12 @@ export function buildZeroedV2Data(): V2LabData {
     signals: {
       interest: null,
       interestList: [],
+    },
+    assetQuality: {
+      connected: false,
+      records: [],
+      cmcTop100Connected: false,
+      binanceMonitoringConnected: false,
     },
     fearGreedStrategy: buildFearGreedStrategy(50, 0),
     allocation: mockData.allocation.map((category) => ({ ...category, share: 0, value: 0 })),
@@ -307,6 +319,7 @@ export const buildLiveV2Data = (
     history: mergeWithLocalSnapshots(state.history, slot),
     transactions: state.transactions,
     signals: state.signals,
+    assetQuality: state.assetQuality,
     health,
     healthInput: liveHealthInput,
     playbook: buildPlaybookCards(

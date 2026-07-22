@@ -52,6 +52,10 @@ function doGet(e) {
   const signals = ss.getSheetByName("Сигналы");
   const history = ss.getSheetByName("История");
   const transactions = ss.getSheetByName("Транзакции_IMPORT");
+  const assetQuality =
+    ss.getSheetByName("Качество активов") ||
+    ss.getSheetByName("Качество_активов") ||
+    ss.getSheetByName("AssetQuality");
   const overviewData = getOverview(overview);
   attachRealizedProfit(overviewData, calculations);
   const portfolioSource = calculations || portfolio;
@@ -69,6 +73,7 @@ function doGet(e) {
     signals: getSignals(signals),
     history: getHistory(history),
     transactions: getTransactions(transactions),
+    assetQuality: getAssetQuality(assetQuality),
     fearGreedStrategy: getFearGreedStrategyReadOnly(ss, overviewData.invested),
     // Достигнутый уровень лестницы (лист «Прогресс», монотонный) — общий
     // для всех устройств; localStorage на сайте остаётся офлайн-кэшем.
@@ -241,6 +246,85 @@ function normalizePortfolioHeader(value) {
 function getPortfolioCell(row, index) {
   if (index < 0 || index >= row.length) return "";
   return row[index];
+}
+
+function getAssetQuality(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) {
+    return {
+      connected: false,
+      cmcTop100Connected: false,
+      binanceMonitoringConnected: false,
+      updatedAt: "",
+      source: "",
+      records: []
+    };
+  }
+
+  const lastColumn = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0];
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, lastColumn).getDisplayValues();
+  const columns = getAssetQualityColumns_(headers);
+  const records = rows
+    .filter(row => getAssetQualityCell_(row, columns.asset))
+    .map(row => ({
+      asset: String(getAssetQualityCell_(row, columns.asset)).trim().toUpperCase(),
+      cmcRank: parseAssetQualityRank_(getAssetQualityCell_(row, columns.cmcRank)),
+      binanceMonitoring: parseAssetQualityBoolean_(getAssetQualityCell_(row, columns.binanceMonitoring)),
+      source: getAssetQualityCell_(row, columns.source),
+      updatedAt: getAssetQualityCell_(row, columns.updatedAt)
+    }));
+  const updatedAt = records
+    .map(item => item.updatedAt)
+    .filter(Boolean)
+    .sort()
+    .pop() || "";
+
+  return {
+    connected: records.length > 0,
+    cmcTop100Connected: records.some(item => item.cmcRank && item.cmcRank <= 100),
+    binanceMonitoringConnected: records.some(item => item.binanceMonitoring),
+    updatedAt: updatedAt,
+    source: "Google Sheets: Качество активов",
+    records: records
+  };
+}
+
+function getAssetQualityColumns_(headers) {
+  return {
+    asset: findAssetQualityColumn_(headers, ["asset", "актив", "тикер"], 0),
+    cmcRank: findAssetQualityColumn_(headers, ["cmcrank", "cmc rank", "рейтинг cmc", "рейтинг"], 2),
+    binanceMonitoring: findAssetQualityColumn_(headers, ["binancemonitoring", "binance monitoring", "мониторинг binance", "мониторинг"], 4),
+    source: findAssetQualityColumn_(headers, ["source", "источник"], 5),
+    updatedAt: findAssetQualityColumn_(headers, ["updatedat", "updated at", "обновлено"], 6)
+  };
+}
+
+function findAssetQualityColumn_(headers, aliases, fallbackIndex) {
+  for (let index = 0; index < headers.length; index += 1) {
+    const header = normalizeAssetQualityHeader_(headers[index]);
+    if (aliases.indexOf(header) >= 0) return index;
+  }
+
+  return fallbackIndex;
+}
+
+function normalizeAssetQualityHeader_(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getAssetQualityCell_(row, index) {
+  if (index < 0 || index >= row.length) return "";
+  return row[index];
+}
+
+function parseAssetQualityRank_(value) {
+  const rank = parseNumber(value);
+  return rank > 0 ? rank : null;
+}
+
+function parseAssetQualityBoolean_(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized === "true" || normalized === "yes" || normalized === "1" || normalized === "да" || normalized === "истина";
 }
 
 function getTickerByAsset(asset) {
@@ -1109,4 +1193,182 @@ function formatFearGreedDate(date) {
 function roundFearGreed(value, digits) {
   const factor = Math.pow(10, digits || 0);
   return Math.round(Number(value || 0) * factor) / factor;
+}
+
+function IC_ASSET_QUALITY_refresh() {
+  const ss = SpreadsheetApp.openById("1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8");
+  const updatedAt = new Date().toISOString();
+  const cmc = IC_ASSET_QUALITY_fetchCoinMarketCapTop100_();
+  const binance = IC_ASSET_QUALITY_fetchBinanceMonitoring_();
+  const byAsset = {};
+
+  cmc.records.forEach(item => {
+    byAsset[item.asset] = {
+      asset: item.asset,
+      name: item.name,
+      cmcRank: item.cmcRank,
+      cmcTop100: true,
+      binanceMonitoring: false,
+      marketCap: item.marketCap,
+      source: "CoinMarketCap",
+      updatedAt: updatedAt,
+      status: cmc.ok ? "OK" : "CMC_ERROR",
+      note: ""
+    };
+  });
+
+  binance.records.forEach(item => {
+    const current = byAsset[item.asset] || {
+      asset: item.asset,
+      name: item.name,
+      cmcRank: null,
+      cmcTop100: false,
+      binanceMonitoring: false,
+      marketCap: item.marketCap,
+      source: "",
+      updatedAt: updatedAt,
+      status: "",
+      note: ""
+    };
+
+    current.name = current.name || item.name;
+    current.binanceMonitoring = true;
+    current.marketCap = current.marketCap || item.marketCap;
+    current.source = [current.source, "Binance Monitoring"].filter(Boolean).join(" + ");
+    current.status = binance.ok ? current.status || "OK" : "BINANCE_ERROR";
+    current.note = item.tags.join(", ");
+    byAsset[item.asset] = current;
+  });
+
+  const records = Object.keys(byAsset)
+    .sort((a, b) => {
+      const rankA = byAsset[a].cmcRank || 999999;
+      const rankB = byAsset[b].cmcRank || 999999;
+      if (rankA !== rankB) return rankA - rankB;
+      return a.localeCompare(b);
+    })
+    .map(asset => byAsset[asset]);
+
+  IC_ASSET_QUALITY_writeSheet_(ss, records);
+
+  return {
+    updatedAt: updatedAt,
+    cmcTop100: cmc.records.length,
+    binanceMonitoring: binance.records.length,
+    total: records.length,
+    cmcOk: cmc.ok,
+    binanceOk: binance.ok,
+    cmcError: cmc.error || "",
+    binanceError: binance.error || ""
+  };
+}
+
+function IC_ASSET_QUALITY_fetchCoinMarketCapTop100_() {
+  const url = "https://pro-api.coinmarketcap.com/public-api/v3/cryptocurrency/listings/latest?start=1&limit=100&convert=USD";
+
+  try {
+    const response = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      headers: {
+        "Accept": "application/json",
+        "User-Agent": "InvestorCabinet/asset-quality"
+      }
+    });
+    const code = response.getResponseCode();
+    if (code < 200 || code >= 300) return { ok: false, error: "CMC_HTTP_" + code, records: [] };
+
+    const json = JSON.parse(response.getContentText());
+    const records = (json.data || [])
+      .filter(item => item && item.symbol)
+      .map(item => ({
+        asset: String(item.symbol || "").trim().toUpperCase(),
+        name: String(item.name || ""),
+        cmcRank: Number(item.cmc_rank || 0),
+        marketCap: item.quote && item.quote[0] ? Number(item.quote[0].market_cap || 0) : 0
+      }))
+      .filter(item => item.asset && item.cmcRank > 0 && item.cmcRank <= 100);
+
+    return { ok: records.length > 0, error: records.length > 0 ? "" : "CMC_EMPTY", records: records };
+  } catch (error) {
+    return { ok: false, error: String(error), records: [] };
+  }
+}
+
+function IC_ASSET_QUALITY_fetchBinanceMonitoring_() {
+  const url = "https://www.binance.com/bapi/composite/v1/public/marketing/symbol/list";
+
+  try {
+    const response = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      headers: {
+        "Accept": "application/json",
+        "clienttype": "web",
+        "User-Agent": "Mozilla/5.0"
+      }
+    });
+    const code = response.getResponseCode();
+    if (code < 200 || code >= 300) return { ok: false, error: "BINANCE_HTTP_" + code, records: [] };
+
+    const json = JSON.parse(response.getContentText());
+    const records = (json.data || [])
+      .filter(item => item && item.baseAsset && item.tags && item.tags.indexOf("Monitoring") >= 0)
+      .map(item => ({
+        asset: String(item.baseAsset || "").trim().toUpperCase(),
+        name: String(item.fullName || item.name || ""),
+        marketCap: Number(item.marketCap || 0),
+        tags: item.tags || []
+      }));
+
+    return { ok: records.length > 0, error: records.length > 0 ? "" : "BINANCE_EMPTY", records: records };
+  } catch (error) {
+    return { ok: false, error: String(error), records: [] };
+  }
+}
+
+function IC_ASSET_QUALITY_writeSheet_(ss, records) {
+  const sheetName = "Качество активов";
+  const sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
+  const headers = [
+    "asset",
+    "name",
+    "cmcRank",
+    "cmcTop100",
+    "binanceMonitoring",
+    "source",
+    "updatedAt",
+    "marketCap",
+    "status",
+    "note"
+  ];
+  const values = records.map(item => [
+    item.asset,
+    item.name,
+    item.cmcRank || "",
+    item.cmcTop100,
+    item.binanceMonitoring,
+    item.source,
+    item.updatedAt,
+    item.marketCap || "",
+    item.status,
+    item.note
+  ]);
+
+  sheet.clearContents();
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  if (values.length) sheet.getRange(2, 1, values.length, headers.length).setValues(values);
+  sheet.setFrozenRows(1);
+}
+
+function IC_ASSET_QUALITY_installDailyTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(trigger => trigger.getHandlerFunction() === "IC_ASSET_QUALITY_refresh")
+    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+
+  ScriptApp.newTrigger("IC_ASSET_QUALITY_refresh")
+    .timeBased()
+    .everyDays(1)
+    .atHour(6)
+    .create();
+
+  return "IC_ASSET_QUALITY_refresh daily trigger installed";
 }

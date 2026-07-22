@@ -43,6 +43,14 @@ export type InterestSignalApiItem = {
   comment?: unknown;
 };
 
+export type AssetQualityApiItem = {
+  asset?: unknown;
+  cmcRank?: unknown;
+  binanceMonitoring?: unknown;
+  updatedAt?: unknown;
+  source?: unknown;
+};
+
 export type InvestorApiResponse = {
   success?: boolean;
   /** Лист «Прогресс»: достигнутый уровень лестницы (источник истины). */
@@ -104,5 +112,13 @@ export type InvestorApiResponse = {
   };
   decisions?: unknown;
   scenarios?: unknown;
+  assetQuality?: {
+    connected?: unknown;
+    cmcTop100Connected?: unknown;
+    binanceMonitoringConnected?: unknown;
+    updatedAt?: unknown;
+    source?: unknown;
+    records?: AssetQualityApiItem[];
+  };
   updatedAt?: string;
 };

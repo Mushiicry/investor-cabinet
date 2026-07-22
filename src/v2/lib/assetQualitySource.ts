@@ -39,6 +39,10 @@ const BINANCE_MONITORING_SYMBOLS = [
 
 export const BINANCE_MONITORING_ASSET_QUALITY: AssetQualitySource = {
   connected: true,
+  cmcTop100Connected: false,
+  binanceMonitoringConnected: true,
+  source: BINANCE_MONITORING_SOURCE_URL,
+  updatedAt: "2026-07-22",
   records: BINANCE_MONITORING_SYMBOLS.map((asset) => ({
     asset,
     cmcRank: null,

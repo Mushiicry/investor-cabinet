@@ -234,6 +234,23 @@ export type InterestSignal = {
   comment: string;
 };
 
+export type AssetQualityRecord = {
+  asset: string;
+  cmcRank: number | null;
+  binanceMonitoring: boolean;
+  updatedAt?: string;
+  source?: string;
+};
+
+export type AssetQualitySource = {
+  records: AssetQualityRecord[];
+  connected: boolean;
+  cmcTop100Connected?: boolean;
+  binanceMonitoringConnected?: boolean;
+  updatedAt?: string;
+  source?: string;
+};
+
 export type PortfolioState = {
   overview: OverviewData;
   portfolio: PositionCalculated[];
@@ -247,6 +264,7 @@ export type PortfolioState = {
     interestList: InterestSignal[];
   };
   fearGreedStrategy: FearGreedStrategy;
+  assetQuality: AssetQualitySource;
   updatedAt: string;
 };
 
