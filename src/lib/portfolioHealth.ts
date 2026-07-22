@@ -13,7 +13,6 @@ const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
 const score = (value: number) => Math.round(clamp01(value) * 100);
 
 // Пороги мягкой деградации
-const COMFORT_CASH = 0.5; // «Гибкость»: комфортная зона кэша
 const CONCENTRATION_SAFE = 0.2; // «Концентрация» (legacy, largestShare): 100 при ≤20%
 const CONCENTRATION_HARD = 0.5; // 0 при ≥50% (лимит на позицию 35%)
 // Per-asset балл считается снаружи (assetConcentration): системный риск по доле
@@ -29,6 +28,7 @@ const SURVIVAL_COMFORT_LOSS_SHARE = 0.25;
 const SURVIVAL_WARNING_LOSS_SHARE = 0.4;
 const SURVIVAL_BLOCK_LOSS_SHARE = 0.6;
 const SURVIVAL_BUY_POWER_TARGET_SHARE = 0.15;
+const DISCIPLINE_JOURNAL_TARGET_COVERAGE = 0.8;
 
 // Лимиты плеча по фьючерсам (правило инвестора):
 // мажоры (BTC / золото) — до 3x, всё остальное (альты) — до 2x.
@@ -166,6 +166,19 @@ export type HealthComponentMeta = {
   survivalBlockers?: string[];
   survivalWarnings?: string[];
   survivalFormula?: string[];
+  /** Дисциплина: процесс решений, журнал и поведенческие нарушения. */
+  disciplineJournalCoverage?: number;
+  disciplineJournalScore?: number;
+  disciplineBehaviorScore?: number;
+  disciplineBlockerScore?: number;
+  disciplineViolations30d?: number;
+  fomoEvents30d?: number;
+  revengeTrades30d?: number;
+  overtradingDays30d?: number;
+  disciplineCooldownActive?: boolean;
+  disciplineBlockers?: string[];
+  disciplineWarnings?: string[];
+  disciplineFormula?: string[];
 };
 
 export type HealthComponent = {
@@ -293,6 +306,13 @@ export type HealthInput = {
   futuresDeployableUsd?: number;
   /** Сумма заранее подготовленных лимитных ордеров. Нет поля = источник ещё не подключён. */
   plannedLimitOrdersUsd?: number;
+  /** Доля решений/сделок с заполненным журналом за период 0..1. */
+  disciplineJournalCoverage?: number;
+  disciplineViolations30d?: number;
+  fomoEvents30d?: number;
+  revengeTrades30d?: number;
+  overtradingDays30d?: number;
+  disciplineCooldownActive?: boolean;
 };
 
 export type PortfolioHealth = {
@@ -709,6 +729,80 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     `Балл выживаемости: ${survivalScore}/100`,
   ];
 
+  // ── Дисциплина: соблюдается ли процесс принятия решений. ──
+  // Это не оценка доходности и не оценка личности. Прибыльная сделка против
+  // правил ухудшает дисциплину, убыточная сделка по правилам — нет.
+  const disciplineJournalCoverage = input.disciplineJournalCoverage;
+  const disciplineJournalScore =
+    disciplineJournalCoverage === undefined
+      ? 60
+      : score(disciplineJournalCoverage / DISCIPLINE_JOURNAL_TARGET_COVERAGE);
+  const fomoEvents30d = input.fomoEvents30d;
+  const revengeTrades30d = input.revengeTrades30d;
+  const overtradingDays30d = input.overtradingDays30d;
+  const explicitDisciplineViolations = input.disciplineViolations30d;
+  const hasBehaviorData =
+    explicitDisciplineViolations !== undefined ||
+    fomoEvents30d !== undefined ||
+    revengeTrades30d !== undefined ||
+    overtradingDays30d !== undefined;
+  const disciplineViolations30d =
+    explicitDisciplineViolations ??
+    (hasBehaviorData
+      ? (fomoEvents30d ?? 0) + (revengeTrades30d ?? 0) + (overtradingDays30d ?? 0)
+      : undefined);
+  const disciplineBehaviorScore =
+    disciplineViolations30d === undefined
+      ? 60
+      : Math.max(
+          0,
+          100 -
+            (disciplineViolations30d * 15 +
+              (fomoEvents30d ?? 0) * 10 +
+              (revengeTrades30d ?? 0) * 25 +
+              (overtradingDays30d ?? 0) * 15)
+        );
+  const disciplineCooldownActive = input.disciplineCooldownActive ?? false;
+  const disciplineBlockerScore = disciplineCooldownActive ? 0 : 100;
+  const disciplineScore = Math.round(
+    disciplineJournalScore * 0.4 + disciplineBehaviorScore * 0.35 + disciplineBlockerScore * 0.25
+  );
+  const disciplineBlockers: string[] = [];
+  const disciplineWarnings: string[] = [];
+  if (disciplineCooldownActive) {
+    disciplineBlockers.push("Активен дисциплинарный блокер");
+  }
+  if ((revengeTrades30d ?? 0) > 0) {
+    disciplineBlockers.push("Обнаружена сделка-месть");
+  }
+  if ((overtradingDays30d ?? 0) >= 3) {
+    disciplineBlockers.push("Обнаружена переторговка");
+  } else if ((overtradingDays30d ?? 0) > 0) {
+    disciplineWarnings.push("Есть дни с переторговкой");
+  }
+  if ((fomoEvents30d ?? 0) >= 2) {
+    disciplineBlockers.push("Повторяется покупка из страха упустить рост");
+  } else if ((fomoEvents30d ?? 0) > 0) {
+    disciplineWarnings.push("Есть покупка из страха упустить рост");
+  }
+  if (disciplineJournalCoverage === undefined) {
+    disciplineWarnings.push("Журнал решений не подключён");
+  } else if (disciplineJournalCoverage < DISCIPLINE_JOURNAL_TARGET_COVERAGE) {
+    disciplineWarnings.push("Журнал заполнен меньше чем на 80%");
+  }
+  if (!hasBehaviorData) {
+    disciplineWarnings.push("Поведенческие маркеры не подключены");
+  } else if ((disciplineViolations30d ?? 0) > 0 && disciplineBlockers.length === 0) {
+    disciplineWarnings.push("Есть дисциплинарные нарушения");
+  }
+  const disciplineFormula = [
+    `Журнал решений: ${disciplineJournalScore}/100`,
+    `Поведение: ${disciplineBehaviorScore}/100`,
+    `Блокеры: ${disciplineBlockerScore}/100`,
+    `Нарушений за 30 дней: ${disciplineViolations30d ?? "нет данных"}`,
+    `Балл дисциплины: ${disciplineScore}/100`,
+  ];
+
   const components: HealthComponent[] = [
     {
       key: "reserve",
@@ -832,11 +926,25 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     },
     {
       key: "flexibility",
-      label: "Гибкость",
+      label: "Дисциплина",
       color: "#5af08d",
-      desc: "Запас манёвра — свободный кэш.",
+      desc: "Целостность процесса: журнал решений, отсутствие покупок из страха упустить рост, сделок-мести, переторговки и дисциплинарных блокеров.",
       weight: 0.15,
-      score: score(input.cashShare / COMFORT_CASH),
+      score: disciplineScore,
+      meta: {
+        disciplineJournalCoverage,
+        disciplineJournalScore,
+        disciplineBehaviorScore,
+        disciplineBlockerScore,
+        disciplineViolations30d,
+        fomoEvents30d,
+        revengeTrades30d,
+        overtradingDays30d,
+        disciplineCooldownActive,
+        disciplineBlockers,
+        disciplineWarnings,
+        disciplineFormula,
+      },
     },
   ];
 

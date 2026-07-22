@@ -20,7 +20,7 @@ const WHAT: Record<HealthComponentKey, string> = {
   diversification:
     "Диверсификация — распределение рискового капитала по спотовым классам: крипта, металлы и акции. Кэш и фьючерсы не входят в этот луч. Чем меньше зависимость от одного класса, тем устойчивее портфель к шокам в отдельных секторах рынка.",
   flexibility:
-    "Запас манёвра — ликвидный кэш для быстрых и выгодных решений. Гибкость — это не просто безопасность, это конкурентное преимущество: покупать лучшие активы в лучший момент, когда другие вынуждены продавать.",
+    "Дисциплина — целостность процесса принятия решений. Луч не оценивает прибыль и не наказывает убыточную сделку по правилам. Он показывает, есть ли журнал решений, покупки из страха упустить рост, сделки-месть, переторговка или активные дисциплинарные блокеры.",
 };
 
 const HOW: Record<HealthComponentKey, string[]> = {
@@ -51,9 +51,9 @@ const HOW: Record<HealthComponentKey, string[]> = {
     "Балансируйте распределение раз в квартал или при значимом изменении портфеля",
   ],
   flexibility: [
-    "Выведите часть позиций с невысоким потенциалом в кэш",
-    "Держите свободный резерв для входа на просадках — это ваше оружие",
-    "Гибкость: иметь возможность купить лучшее в лучший момент",
+    "Заполняйте журнал решений до сделки, а не после результата",
+    "Поставьте паузу на новые сделки при страхе упустить рост, сделке-мести или переторговке",
+    "Оценивайте качество решения отдельно от прибыли или убытка",
   ],
 };
 
@@ -186,9 +186,14 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     return "Диверсификация на хорошем уровне — средства распределены по нескольким классам активов.";
   }
   if (key === "flexibility") {
-    if (score < 40) return "Свободного кэша почти нет. Вы лишены возможности быстро реагировать на рыночные возможности.";
-    if (score < 70) return "Гибкость ниже комфортного уровня. Чуть больше свободного кэша увеличит ваш манёвр.";
-    return "Гибкость на хорошем уровне — достаточно свободного кэша для оперативных решений.";
+    const m = c.meta;
+    const blocker = m?.disciplineBlockers?.[0];
+    const warning = m?.disciplineWarnings?.[0];
+    if (blocker) return `${blocker}. Новые сделки нужно поставить на паузу, пока нарушение не разобрано в журнале.`;
+    if (warning) return `${warning}. Луч не ставит 100, пока дисциплинарный контур не подтверждён данными.`;
+    if (score < 40) return "Дисциплина в зоне риска: процесс решений не защищает капитал от повторения ошибок.";
+    if (score < 70) return "Дисциплина умеренная: есть пробелы в журнале или поведенческих маркерах.";
+    return "Дисциплина в норме: решения проходят через процесс, а поведенческих блокеров нет.";
   }
   return "";
 }
@@ -245,12 +250,19 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
     component.key === "crypto" ? component.meta?.survivalWarnings ?? [] : [];
   const survivalFormula =
     component.key === "crypto" ? component.meta?.survivalFormula ?? [] : [];
+  const disciplineBlockers =
+    component.key === "flexibility" ? component.meta?.disciplineBlockers ?? [] : [];
+  const disciplineWarnings =
+    component.key === "flexibility" ? component.meta?.disciplineWarnings ?? [] : [];
+  const disciplineFormula =
+    component.key === "flexibility" ? component.meta?.disciplineFormula ?? [] : [];
   const factorBlockers = [
     ...riskControlBlockers,
     ...reserveBlockers,
     ...diversificationBlockers,
     ...concentrationBlockers,
     ...survivalBlockers,
+    ...disciplineBlockers,
   ];
   const factorWarnings = [
     ...riskControlWarnings,
@@ -258,6 +270,7 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
     ...diversificationWarnings,
     ...concentrationWarnings,
     ...survivalWarnings,
+    ...disciplineWarnings,
   ];
   const factorFormula = [
     ...riskControlFormula,
@@ -265,6 +278,7 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
     ...diversificationFormula,
     ...concentrationFormula,
     ...survivalFormula,
+    ...disciplineFormula,
   ];
 
   const circumference = 2 * Math.PI * 44;

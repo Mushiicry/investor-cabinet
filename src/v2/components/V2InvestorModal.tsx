@@ -33,11 +33,11 @@ const STAT_ICONS: Record<string, string> = {
 
 const STAT_LABELS: Record<string, string> = {
   reserve: "Резерв",
-  crypto: "Крипта",
+  crypto: "Выживаемость",
   futures: "Фьючерсы",
   concentration: "Концентрация",
   diversification: "Диверсификация",
-  flexibility: "Гибкость",
+  flexibility: "Дисциплина",
 };
 
 function StatBar({ component }: { component: HealthComponent }) {

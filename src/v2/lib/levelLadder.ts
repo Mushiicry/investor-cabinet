@@ -58,14 +58,14 @@ export function getAchievements(ctx: AchievementContext): LadderAchievement[] {
     num("pos3", "Портфель собран", "3+ позиции в работе", posCount, 3),
     num("reserve50", "Подушка заложена", "Резерв не ниже 50", score("reserve"), 50),
     num("value300", "Первые $300", "Портфель дороже $300", value, 300),
-    num("flex40", "Запас манёвра", "Гибкость не ниже 40", score("flexibility"), 40),
+    num("discipline40", "Процесс запущен", "Дисциплина не ниже 40", score("flexibility"), 40),
     num("hf40", "Система запущена", "Здоровье портфеля выше 40", hf, 40),
 
     // ── LVL 2: дисциплина ──
     num("pos5", "Диверсифицирован", "5+ позиций в работе", posCount, 5),
     num("reserve70", "Хранитель резерва", "Резерв не ниже 70", score("reserve"), 70),
     num("value500", "Рубеж $500", "Портфель дороже $500", value, 500),
-    num("flex60", "Гибкий капитал", "Гибкость не ниже 60", score("flexibility"), 60),
+    num("discipline60", "Журнал решений", "Дисциплина не ниже 60", score("flexibility"), 60),
     num("trade1", "Первая фиксация", "Закрыта хотя бы одна сделка", closedTrades, 1),
 
     // ── LVL 3: контроль риска ──
@@ -111,7 +111,7 @@ export const LEVEL_LADDER: LadderStep[] = [
     title: "Ученик",
     hfFrom: 0,
     rewardUsd: 0,
-    achievementIds: ["pos3", "reserve50", "value300", "flex40", "hf40"],
+    achievementIds: ["pos3", "reserve50", "value300", "discipline40", "hf40"],
     focus: "Собрать основу — резерв важнее доходности",
   },
   {
@@ -119,8 +119,8 @@ export const LEVEL_LADDER: LadderStep[] = [
     title: "Оператор",
     hfFrom: 40,
     rewardUsd: 10,
-    achievementIds: ["pos5", "reserve70", "value500", "flex60", "trade1"],
-    focus: "Дисциплина: запас манёвра и первая фиксация",
+    achievementIds: ["pos5", "reserve70", "value500", "discipline60", "trade1"],
+    focus: "Дисциплина: журнал решений и первая фиксация",
   },
   {
     level: 3,

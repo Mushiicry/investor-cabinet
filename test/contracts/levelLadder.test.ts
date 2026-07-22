@@ -9,7 +9,7 @@ const health = (hf: number): PortfolioHealth => ({
   riskLevel: "-",
   components: [
     { key: "reserve", label: "Резерв", score: 100, color: "", desc: "", weight: 0.2 },
-    { key: "flexibility", label: "Гибкость", score: 100, color: "", desc: "", weight: 0.15 },
+    { key: "flexibility", label: "Дисциплина", score: 100, color: "", desc: "", weight: 0.15 },
     { key: "futures", label: "Контроль риска", score: 80, color: "", desc: "", weight: 0.15 },
     { key: "concentration", label: "Концентрация", score: 71, color: "", desc: "", weight: 0.18 },
     { key: "diversification", label: "Диверсификация", score: 44, color: "", desc: "", weight: 0.15 },

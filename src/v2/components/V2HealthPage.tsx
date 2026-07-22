@@ -38,9 +38,9 @@ function whyLine(c: HealthComponent, portfolio: V2Portfolio): string {
       return `Резерв ${reservePct}% от портфеля — чуть ниже цели 30%.`;
 
     case "flexibility":
-      if (c.score <= 0) return `Свободных денег нет — манёвра нет. Хорошие активы купить не на что.`;
-      if (c.score < 40) return `Свободный кэш ~${fmt$(portfolio.deployableCapital)} — критически мало для откупов.`;
-      return `Свободный кэш ${fmt$(portfolio.deployableCapital)} — ниже комфортного уровня.`;
+      if ((c.meta?.disciplineBlockers ?? []).length) return c.meta?.disciplineBlockers?.[0] ?? "";
+      if ((c.meta?.disciplineWarnings ?? []).length) return c.meta?.disciplineWarnings?.[0] ?? "";
+      return `Процесс решений соблюдается.`;
 
     case "diversification":
       if (c.score < 40) return `Портфель почти в одном классе активов. Добавьте металлы, акции или стейблы.`;
@@ -78,7 +78,7 @@ function richDiagnosis(components: HealthComponent[], portfolio: V2Portfolio) {
     label: c.label, score: c.score,
     why: c.key === "futures"     ? "Занятая часть лимита, плечо и число позиций в пределах правил."
        : c.key === "reserve"     ? `Резерв ${Math.round(portfolio.reserveShare * 100)}% — подушка сформирована.`
-       : c.key === "flexibility" ? `Есть ${fmt$(portfolio.deployableCapital)} для маневра.`
+       : c.key === "flexibility" ? "Журнал и поведенческие правила в норме."
        : "В пределах нормы.",
   }));
   return { weak, strong };
@@ -101,8 +101,8 @@ function buildRecommendations(components: HealthComponent[], portfolio: V2Portfo
         result.push({ action: "Не открывать новые позиции пока резерв не достигнут", gain: 3, source: c.label });
         break;
       case "flexibility":
-        result.push({ action: "Зафиксировать слабые позиции — вывести в кэш", gain: 4, source: c.label });
-        result.push({ action: "Держать свободные деньги для откупов на просадках", gain: 3, source: c.label });
+        result.push({ action: "Заполнить журнал решений по открытым сделкам", gain: 4, source: c.label });
+        result.push({ action: "Поставить паузу на сделки вне плана", gain: 3, source: c.label });
         break;
       case "diversification": {
         // Умный расчёт из модели: кто перегружен, сколько $ и куда добавить
@@ -202,7 +202,7 @@ const EMPTY_TONE = "#55C7FF";
 // симуляция точна и не разъедется с движком. Реальные сделки НЕ выполняются.
 //
 // Шесть рычагов покрывают все шесть граней здоровья:
-//   резерв → Резерв + Гибкость | выравнивание классов → Диверсификация + Выживаемость
+//   резерв → Резерв + Выживаемость | выравнивание классов → Диверсификация + Выживаемость
 //   крупнейшая позиция → Концентрация | плечо / маржа / число позиций → Контроль риска
 type SimLevers = {
   reserve: number;       // целевая доля резерва (стейблы)
@@ -452,7 +452,7 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
             </div>
 
             <div className="v2-hp-sim-levers">
-              {/* Резерв → Резерв + Гибкость */}
+              {/* Резерв → Резерв + Выживаемость */}
               <div className="v2-hp-sim-lever">
                 <div className="v2-hp-sim-lever-top">
                   <span>Резерв (стейблы)</span>

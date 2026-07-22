@@ -24,6 +24,8 @@ const div = (h: ReturnType<typeof computePortfolioHealth>) =>
   h.components.find((c) => c.key === "diversification")!;
 const survival = (h: ReturnType<typeof computePortfolioHealth>) =>
   h.components.find((c) => c.key === "crypto")!;
+const discipline = (h: ReturnType<typeof computePortfolioHealth>) =>
+  h.components.find((c) => c.key === "flexibility")!;
 
 describe("health concentration — per-asset score passthrough", () => {
   it("резерв: ниже пола 10% включает жёсткую блокировку", () => {
@@ -332,6 +334,43 @@ describe("health concentration — per-asset score passthrough", () => {
       "После шока нет покупательской способности",
     ]);
     expect(s.score).toBeLessThan(40);
+  });
+
+  it("дисциплина: без подключённого журнала не ставит 100 и показывает предупреждения", () => {
+    const h = computePortfolioHealth(base);
+    const d = discipline(h);
+    expect(d.label).toBe("Дисциплина");
+    expect(d.score).toBe(70);
+    expect(d.meta?.disciplineWarnings).toEqual([
+      "Журнал решений не подключён",
+      "Поведенческие маркеры не подключены",
+    ]);
+    expect(d.meta?.disciplineFormula).toEqual([
+      "Журнал решений: 60/100",
+      "Поведение: 60/100",
+      "Блокеры: 100/100",
+      "Нарушений за 30 дней: нет данных",
+      "Балл дисциплины: 70/100",
+    ]);
+  });
+
+  it("дисциплина: сделка-месть, переторговка и страх упустить рост включают блокировки", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      disciplineJournalCoverage: 0.4,
+      fomoEvents30d: 2,
+      revengeTrades30d: 1,
+      overtradingDays30d: 3,
+      disciplineCooldownActive: true,
+    });
+    const d = discipline(h);
+    expect(d.meta?.disciplineBlockers).toEqual([
+      "Активен дисциплинарный блокер",
+      "Обнаружена сделка-месть",
+      "Обнаружена переторговка",
+      "Повторяется покупка из страха упустить рост",
+    ]);
+    expect(d.score).toBeLessThan(40);
   });
 
   it("без concentrationScore → legacy по largestShare (35% лимит)", () => {

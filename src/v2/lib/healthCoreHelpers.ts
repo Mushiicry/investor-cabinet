@@ -19,7 +19,7 @@ export const CHIP_LABEL: Record<string, string> = {
   futures:         "Контроль риска",
   concentration:   "Концентрация",
   diversification: "Диверсификация",
-  flexibility:     "Гибкость",
+  flexibility:     "Дисциплина",
 };
 
 export function scoreHint(s: number): string {
@@ -87,7 +87,7 @@ export const SCORE_LABEL: Record<string, string> = {
   futures:         "Контроль риска",
   concentration:   "Концентрация",
   diversification: "Диверсификация",
-  flexibility:     "Гибкость",
+  flexibility:     "Дисциплина",
 };
 
 
@@ -115,8 +115,9 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
         return `${reservePct}% от цели 30%. Дефицит ${fmt$(Math.max(0, targetUsd - reserveUsd))}`;
       return `${reservePct}% от цели 30%`;
     case "flexibility":
-      if (c.score <= 0) return "Свободных денег нет — манёвра нет";
-      return `Свободно ${fmt$(portfolio.deployableCapital)}`;
+      if ((c.meta?.disciplineBlockers ?? []).length) return c.meta?.disciplineBlockers?.[0] ?? "";
+      if ((c.meta?.disciplineWarnings ?? []).length) return c.meta?.disciplineWarnings?.[0] ?? "";
+      return "Процесс решений соблюдается";
     case "diversification":
       if ((c.meta?.diversificationBlockers ?? []).length) return c.meta?.diversificationBlockers?.[0] ?? "";
       if ((c.meta?.diversificationWarnings ?? []).length) return c.meta?.diversificationWarnings?.[0] ?? "";
@@ -327,7 +328,19 @@ export function buildCoreRecs(
         result.push({ action: "Не открывать новые позиции, пока резерв не достигнут", gain: 3, source: "Сохранит подушку и манёвр → здоровье +3" });
         break;
       case "flexibility":
-        result.push({ action: "Зафиксировать слабые позиции в кэш", gain: 4, source: "Повысит гибкость капитала → здоровье +4" });
+        if ((c.meta?.disciplineBlockers ?? []).length) {
+          result.push({
+            action: `Пауза на новые сделки: ${c.meta?.disciplineBlockers?.[0]?.toLowerCase()}`,
+            gain: 6,
+            source: "Сначала восстановить дисциплину решений → здоровье +6",
+            critical: true,
+          });
+        }
+        result.push({
+          action: "Заполнить журнал решений и убрать сделки вне плана",
+          gain: 4,
+          source: "Дисциплина влияет на здоровье капитала → здоровье +4",
+        });
         break;
       case "diversification": {
         // Конкретика из модели (portfolioHealth): кто перегружен и сколько добавить
