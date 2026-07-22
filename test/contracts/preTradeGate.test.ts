@@ -9,6 +9,7 @@ import {
   type GatePosition,
   type TradeInput,
 } from "../../src/v2/lib/preTradeGate";
+import { buildCapitalBuckets } from "../../src/v2/lib/capitalBuckets";
 
 // Портфель 1000$. Крипто-блок 400$ (ETH 100, SOL 40, TON 32 + прочее).
 // Свободные деньги 600$. spotDeployable 200$ (зелёный лимит капитала).
@@ -98,6 +99,111 @@ describe("pre-trade gate", () => {
       expect(positionCheck?.after).toBeCloseTo(0.205, 3);
       expect(positionCheck?.note).toContain("SOL уже выше лимита 10%");
       expect(v.maxAllowedAmount).toBe(0);
+    }
+  });
+
+  it("SOL можно добрать, если плановый крипто-блок уже даёт место под 10%", () => {
+    const allocation = [
+      { name: "Крипта", value: 175 },
+      { name: "Фьючерсы", value: 100 },
+      { name: "Металлы", value: 100 },
+      { name: "Акции", value: 100 },
+      { name: "Свободные деньги", value: 525 },
+    ];
+    const ctx: GateContext = {
+      ...baseCtx,
+      totalPortfolioValue: 1000,
+      stableReserve: 525,
+      spotDeployable: 225,
+      positions: [
+        { asset: "SOL", category: "Крипта", value: 20 },
+        { asset: "ETH", category: "Крипта", value: 80 },
+        { asset: "BTC", category: "Крипта", value: 75 },
+      ],
+      allocation,
+      capitalBuckets: buildCapitalBuckets({
+        totalPortfolioValue: 1000,
+        stableReserve: 525,
+        allocation,
+        strategyRules: [{ buyPct: 0.025, buyAmount: 25, status: "active" }],
+      }),
+    };
+
+    const v = evaluateTrade(buy({ asset: "SOL", amountUsd: 20, category: "Крипта" }), ctx);
+    expect(v.status).toBe("ok");
+    if (v.status === "ok") {
+      const positionCheck = v.checks.find((check) => check.key === "position");
+      expect(positionCheck?.label).toBe("Доля SOL в плановом крипто-блоке");
+      expect(positionCheck?.before).toBeCloseTo(0.05, 6);
+      expect(positionCheck?.after).toBeCloseTo(0.1, 6);
+      expect(v.maxAllowedAmount).toBeCloseTo(20, 6);
+    }
+  });
+
+  it("SOL всё равно блокируется, если плановый крипто-блок мал", () => {
+    const ctx: GateContext = {
+      ...baseCtx,
+      positions: [
+        { asset: "SOL", category: "Крипта", value: 20 },
+        { asset: "ETH", category: "Крипта", value: 80 },
+        { asset: "BTC", category: "Крипта", value: 75 },
+      ],
+      allocation: [
+        { name: "Крипта", value: 175 },
+        { name: "Свободные деньги", value: 402 },
+      ],
+      capitalBuckets: {
+        freeCashUsd: 402,
+        lockedReserveUsd: 173,
+        workCashUsd: 229,
+        futuresBudgetUsd: 0,
+        averagingBudgetUsd: 0,
+        metalsBudgetUsd: 0,
+        stocksBudgetUsd: 0,
+        cryptoSpotBudgetUsd: 126,
+        currentCryptoBlockUsd: 175,
+        plannedCryptoBlockUsd: 301,
+      },
+    };
+
+    const v = evaluateTrade(buy({ asset: "SOL", amountUsd: 20, category: "Крипта" }), ctx);
+    expect(v.status).toBe("block");
+    if (v.status === "block") {
+      const positionCheck = v.checks.find((check) => check.key === "position");
+      expect(positionCheck?.after).toBeCloseTo(40 / 301, 6);
+      expect(v.maxAllowedAmount).toBeCloseTo(10.1, 2);
+    }
+  });
+
+  it("ручная крипто-покупка не тратит карман усреднения", () => {
+    const ctx: GateContext = {
+      ...baseCtx,
+      positions: [{ asset: "ETH", category: "Крипта", value: 100 }],
+      allocation: [
+        { name: "Крипта", value: 100 },
+        { name: "Свободные деньги", value: 900 },
+      ],
+      capitalBuckets: {
+        freeCashUsd: 900,
+        lockedReserveUsd: 300,
+        workCashUsd: 600,
+        futuresBudgetUsd: 0,
+        averagingBudgetUsd: 200,
+        metalsBudgetUsd: 0,
+        stocksBudgetUsd: 0,
+        cryptoSpotBudgetUsd: 10,
+        currentCryptoBlockUsd: 100,
+        plannedCryptoBlockUsd: 310,
+      },
+    };
+
+    const v = evaluateTrade(buy({ asset: "ETH", amountUsd: 20, category: "Крипта" }), ctx);
+    expect(v.status).toBe("block");
+    if (v.status === "block") {
+      const bucketCheck = v.checks.find((check) => check.key === "capitalBucket");
+      expect(bucketCheck?.label).toBe("Карман ручной крипты");
+      expect(bucketCheck?.limit).toBe(10);
+      expect(v.reasons).toContain("Карман ручной крипты");
     }
   });
 

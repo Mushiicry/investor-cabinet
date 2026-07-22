@@ -14,6 +14,7 @@ import {
   type GateCheck,
 } from "../lib/preTradeGate";
 import { evaluateDecision } from "../lib/decisionEngine";
+import { buildCapitalBuckets, type CapitalBuckets } from "../lib/capitalBuckets";
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -39,6 +40,17 @@ function checkValues(c: GateCheck) {
     return { before: pct(c.before), after: pct(c.after), limit: pct(c.limit) };
   }
   return { before: usd(c.before), after: usd(c.after), limit: usd(c.limit) };
+}
+
+function bucketRows(buckets: CapitalBuckets) {
+  return [
+    { label: "Резерв", value: buckets.lockedReserveUsd },
+    { label: "Фьючерсы", value: buckets.futuresBudgetUsd },
+    { label: "Усреднение", value: buckets.averagingBudgetUsd },
+    { label: "Металлы", value: buckets.metalsBudgetUsd },
+    { label: "Акции", value: buckets.stocksBudgetUsd },
+    { label: "Крипто-спот", value: buckets.cryptoSpotBudgetUsd },
+  ];
 }
 
 export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy, futuresShare = 0 }: Props) {
@@ -67,6 +79,17 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
 
   const phase = useMemo(() => getMarketPhase(new Date()), []);
 
+  const capitalBuckets = useMemo(
+    () =>
+      buildCapitalBuckets({
+        totalPortfolioValue: portfolio.totalPortfolioValue,
+        stableReserve: portfolio.stableReserve,
+        allocation: allocation.map((a) => ({ name: a.name, value: a.value })),
+        strategyRules: fearGreedStrategy.rules,
+      }),
+    [portfolio.totalPortfolioValue, portfolio.stableReserve, allocation, fearGreedStrategy.rules],
+  );
+
   const ctx: GateContext = useMemo(() => {
     const strategy = buildFearGreedStrategy(
       fearGreedStrategy.currentIndex,
@@ -80,6 +103,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
       reserveFloorShare: phase.reserveFloorShare,
       cryptoMaxShare: phase.cryptoMaxShare,
       futuresShare,
+      capitalBuckets,
       positions: positions.map((p) => ({
         asset: p.asset,
         category: p.category,
@@ -98,7 +122,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
         cooldownRemainingHours: r.cooldownRemainingHours,
       })),
     };
-  }, [portfolio, positions, allocation, fearGreedStrategy, phase, futuresShare]);
+  }, [portfolio, positions, allocation, fearGreedStrategy, phase, futuresShare, capitalBuckets]);
 
   const amountNum = Number(amount);
   const buyPriceNum = Number(buyPrice);
@@ -168,6 +192,20 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
             + подушка ещё {usd(cushionRoom)} до пола фазы {pct(phase.reserveFloorShare)}
           </div>
         )}
+        <div className="v2-gate-buckets">
+          {bucketRows(capitalBuckets).map((row) => (
+            <div className="v2-gate-bucket" key={row.label}>
+              <span>{row.label}</span>
+              <strong>{usd(row.value)}</strong>
+            </div>
+          ))}
+        </div>
+        <div className="v2-gate-plan">
+          Плановый крипто-блок: {usd(capitalBuckets.currentCryptoBlockUsd)} куплено +{" "}
+          {usd(capitalBuckets.cryptoSpotBudgetUsd)} ручной спот +{" "}
+          {usd(capitalBuckets.averagingBudgetUsd)} усреднение ={" "}
+          <strong>{usd(capitalBuckets.plannedCryptoBlockUsd)}</strong>
+        </div>
       </div>
 
       {/* ── Форма ─────────────────────────────────────────── */}

@@ -25,6 +25,7 @@ import {
   RESERVE_TARGET_SHARE,
   SPOT_RESERVE_FLOOR_SHARE,
 } from "../../config/riskRules";
+import type { CapitalBuckets } from "./capitalBuckets";
 
 /** Категория актива — совпадает с именами в allocation/positions. */
 export const CRYPTO_CATEGORY = "Крипта";
@@ -304,6 +305,8 @@ export type GateContext = {
   reserveFloorShare?: number;
   /** Максимальная доля крипты текущей фазы, доля 0..1 (по умолчанию 60%). */
   cryptoMaxShare?: number;
+  /** Расклад свободных денег по карманам риска. */
+  capitalBuckets?: CapitalBuckets;
 };
 
 export type TradeInput = {
@@ -313,7 +316,7 @@ export type TradeInput = {
   category?: string;
 };
 
-export type GateCheckKey = "capital" | "position" | "class" | "assetSlots";
+export type GateCheckKey = "capital" | "capitalBucket" | "position" | "class" | "assetSlots";
 export type GateCheckSeverity = "block" | "warn";
 
 export type GateCheck = {
@@ -356,6 +359,21 @@ export type GateVerdict =
 
 const clampMin0 = (n: number) => (n > 0 ? n : 0);
 const EPS = 1e-6;
+
+function categoryBudget(category: string, buckets?: CapitalBuckets): { label: string; value: number; note?: string } | null {
+  if (!buckets) return null;
+  if (category === CRYPTO_CATEGORY) {
+    return {
+      label: "Карман ручной крипты",
+      value: buckets.cryptoSpotBudgetUsd,
+      note: `Карман усреднения ${Math.round(buckets.averagingBudgetUsd)}$ не тратится ручной покупкой, но входит в плановый крипто-блок.`,
+    };
+  }
+  if (category === METALS_CATEGORY) return { label: "Карман металлов", value: buckets.metalsBudgetUsd };
+  if (category === STOCKS_CATEGORY) return { label: "Карман акций", value: buckets.stocksBudgetUsd };
+  if (category === FUTURES_CATEGORY) return { label: "Карман фьючерсов", value: buckets.futuresBudgetUsd };
+  return null;
+}
 
 function resolveCategory(input: TradeInput, ctx: GateContext): string {
   const existing = ctx.positions.find((p) => p.asset === input.asset);
@@ -445,18 +463,44 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
         : `Пробивает пол резерва фазы ${Math.round(phaseFloor * 100)}% — так нельзя.`,
   });
 
+  const budget = categoryBudget(category, ctx.capitalBuckets);
+  if (budget) {
+    const budgetOk = amount <= budget.value + EPS;
+    checks.push({
+      key: "capitalBucket",
+      label: budget.label,
+      ok: budgetOk,
+      severity: "block",
+      before: budget.value,
+      after: budget.value - amount,
+      limit: budget.value,
+      isShare: false,
+      note: budgetOk
+        ? undefined
+        : `${budget.label} сейчас ${Math.round(budget.value)}$. Остальные свободные деньги закреплены за резервом или другими карманами риска.`,
+    });
+  }
+
   // ── Лимит доли одной позиции (жёсткий) ────────────────────────
-  // Крипто-активы: лимит per-asset ВНУТРИ крипто-блока (ETH 35%, BTC 20%,
-  // SOL/TON 10%, прочие альты 5%). При доборе крипто-блок растёт на сумму
-  // (деньги переходят из кэша в крипту). Акции/металлы: один актив ≤5% портфеля.
+  // Крипто-активы: лимит per-asset ВНУТРИ планового крипто-блока (купленная
+  // крипта + ручной крипто-спот + карман усреднения). Если карманы не переданы,
+  // сохраняем старую модель: крипто-блок растёт на сумму добора.
   const posValue = ctx.positions.find((p) => p.asset === input.asset)?.value ?? 0;
   const isCryptoAsset = category === CRYPTO_CATEGORY;
   const isStockAsset = category === STOCKS_CATEGORY;
   const isMetalAsset = category === METALS_CATEGORY;
   const cryptoBlockValue = ctx.allocation.find((a) => a.name === CRYPTO_CATEGORY)?.value ?? 0;
   const positionLimit = assetLimit(category, input.asset);
-  const posBaseBefore = isCryptoAsset ? cryptoBlockValue : total;
-  const posBaseAfter = isCryptoAsset ? cryptoBlockValue + amount : total;
+  const plannedCryptoBlock = isCryptoAsset && ctx.capitalBuckets
+    ? Math.max(cryptoBlockValue, ctx.capitalBuckets.plannedCryptoBlockUsd)
+    : cryptoBlockValue;
+  const cryptoBudgetOverflow = isCryptoAsset && ctx.capitalBuckets
+    ? clampMin0(amount - ctx.capitalBuckets.cryptoSpotBudgetUsd)
+    : amount;
+  const posBaseBefore = isCryptoAsset ? plannedCryptoBlock : total;
+  const posBaseAfter = isCryptoAsset
+    ? Math.max(plannedCryptoBlock + cryptoBudgetOverflow, cryptoBlockValue + amount)
+    : total;
   const positionBeforeShare = posBaseBefore > 0 ? posValue / posBaseBefore : 0;
   const positionAfterShare = posBaseAfter > 0 ? (posValue + amount) / posBaseAfter : 0;
   const positionOk = positionAfterShare <= positionLimit + 1e-9;
@@ -480,9 +524,11 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
     isMetalAsset && !metalSlots?.assets.some((asset) => asset.toUpperCase() === input.asset.trim().toUpperCase()) && !existingAsset;
   checks.push({
     key: "position",
-    label: isCryptoAsset
-      ? `Доля ${input.asset} в крипто-блоке`
-      : `Доля ${input.asset} в портфеле`,
+    label: isCryptoAsset && ctx.capitalBuckets
+      ? `Доля ${input.asset} в плановом крипто-блоке`
+      : isCryptoAsset
+        ? `Доля ${input.asset} в крипто-блоке`
+        : `Доля ${input.asset} в портфеле`,
     ok: positionOk,
     severity: "block",
     before: positionBeforeShare,
@@ -562,12 +608,15 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   }
 
   // ── Границы «уменьшить до» ─────────────────────────────────────
-  // Крипто-лимит считается от растущего крипто-блока, поэтому room нелинейный:
+  // Крипто-лимит без карманов считается от растущего блока:
   // (posValue + x)/(cryptoBlock + x) = L  →  x = (L·cryptoBlock − posValue)/(1 − L).
+  // С карманами база уже плановая, поэтому максимум = L·plannedBase − posValue.
   const positionRoom = isCryptoAsset
-    ? positionLimit < 1
-      ? (positionLimit * cryptoBlockValue - posValue) / (1 - positionLimit)
-      : Infinity
+    ? ctx.capitalBuckets
+      ? positionLimit * plannedCryptoBlock - posValue
+      : positionLimit < 1
+        ? (positionLimit * cryptoBlockValue - posValue) / (1 - positionLimit)
+        : Infinity
     : positionLimit * total - posValue;
   const classRoom =
     cap === null
@@ -579,8 +628,9 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
     (isNewMetal && metalSlots && metalSlots.used >= metalSlots.total)
       ? 0
       : Infinity;
-  const maxSafeAmount = clampMin0(Math.min(greenMax, positionRoom, classRoom, slotRoom));
-  const maxAllowedAmount = clampMin0(Math.min(hardMax, positionRoom, classRoom, slotRoom));
+  const budgetRoom = budget ? budget.value : Infinity;
+  const maxSafeAmount = clampMin0(Math.min(greenMax, budgetRoom, positionRoom, classRoom, slotRoom));
+  const maxAllowedAmount = clampMin0(Math.min(hardMax, budgetRoom, positionRoom, classRoom, slotRoom));
 
   const hardFailed = checks.filter((c) => !c.ok && c.severity === "block");
   const softFailed = checks.filter((c) => !c.ok && c.severity === "warn");

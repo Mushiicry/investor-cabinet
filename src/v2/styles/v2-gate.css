@@ -67,6 +67,48 @@
   font-size: 12px;
   color: rgba(224, 178, 110, 0.85);
 }
+.v2-gate-buckets {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.v2-gate-bucket {
+  min-width: 0;
+  padding: 8px 9px;
+  border-radius: 9px;
+  background: rgba(10, 24, 42, 0.5);
+  border: 1px solid rgba(90, 150, 200, 0.18);
+}
+.v2-gate-bucket span,
+.v2-gate-bucket strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v2-gate-bucket span {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(140, 180, 214, 0.68);
+}
+.v2-gate-bucket strong {
+  margin-top: 4px;
+  font-size: 13px;
+  color: rgba(224, 240, 252, 0.95);
+  font-variant-numeric: tabular-nums;
+}
+.v2-gate-plan {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(150, 185, 214, 0.76);
+}
+.v2-gate-plan strong {
+  color: rgba(120, 220, 255, 0.98);
+  font-variant-numeric: tabular-nums;
+}
 
 /* ── Форма ──────────────────────────────────────────────── */
 .v2-gate-form {
@@ -390,5 +432,8 @@
   .v2-gate-survival,
   .v2-gate-average-grid {
     grid-template-columns: 1fr;
+  }
+  .v2-gate-buckets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
