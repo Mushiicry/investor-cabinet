@@ -5,7 +5,12 @@ import { useMemo, useState } from "react";
 import { V2HealthDetailModal } from "./V2HealthDetailModal";
 import { isEmptyAccount } from "../lib/accountState";
 import { useEscapeClose } from "../../hooks/useEscapeClose";
-import { buildCoreRecs } from "../lib/healthCoreHelpers";
+import { buildCoreRecs, isActionableHealthComponent } from "../lib/healthCoreHelpers";
+import {
+  buildDefaultHealthSimulatorLevers,
+  buildHealthSimulatorInput,
+  type HealthSimulatorLevers,
+} from "../lib/healthSimulator";
 
 type Props = {
   portfolio: V2Portfolio;
@@ -136,63 +141,6 @@ function BreakdownRow({ c, onClick, empty }: { c: HealthComponent; onClick: () =
 // Нейтральный тон для пустого аккаунта — спокойный info-голубой, не тревожный красный.
 const EMPTY_TONE = "#55C7FF";
 
-// ── Health Simulator ──────────────────────────────────────────────
-// «Что если»: строим изменённый HealthInput и гоняем через РЕАЛЬНЫЙ
-// computePortfolioHealth(). Никаких обратных восстановлений из баллов —
-// симуляция точна и не разъедется с движком. Реальные сделки НЕ выполняются.
-//
-// Шесть рычагов покрывают все шесть граней здоровья:
-//   резерв → Резерв + Выживаемость | выравнивание классов → Диверсификация + Выживаемость
-//   крупнейшая позиция → Концентрация | плечо / маржа / число позиций → Контроль риска
-type SimLevers = {
-  reserve: number;       // целевая доля резерва (стейблы)
-  rebalance: number;     // 0..1 — выровнять спотовые классы к равным долям
-  largest: number;       // целевая доля крупнейшей позиции
-  leverageCut: number;   // 0..1 — срезать плечо фьючерсов
-  futuresMargin: number; // целевая доля маржи фьючерсов
-  futuresCount: number;  // целевое число фьючерс-позиций
-};
-
-const sumOf = (xs: number[]) => xs.reduce((sum, v) => sum + v, 0);
-
-function buildSimInput(base: HealthInput, levers: SimLevers): HealthInput {
-  const baseReserve = base.reserveShare ?? base.cashShare;
-  const spot = base.riskCategoryShares;
-  const spotTotal = sumOf(spot);
-
-  // 1) Резерв: капитал перетекает между рисковыми активами и стейблами.
-  const delta = levers.reserve - baseReserve;
-  const newSpotTotal = Math.max(0, spotTotal - delta);
-  const scale = spotTotal > 0 ? newSpotTotal / spotTotal : 0;
-  let newSpot = spot.map((s) => s * scale);
-
-  // 2) Выравнивание: тянем доли классов к равным (при 100% — идеально ровно).
-  const equal = newSpot.length > 0 ? newSpotTotal / newSpot.length : 0;
-  newSpot = newSpot.map((s) => s + levers.rebalance * (equal - s));
-
-  // 3) Контроль риска: число позиций, плечо на каждой, занятая часть лимита.
-  const legs = (base.futuresLegs ?? [])
-    .slice(0, Math.max(0, Math.round(levers.futuresCount)))
-    .map((leg) => ({
-      ...leg,
-      leverage: leg.leverage == null ? null : leg.leverage * (1 - levers.leverageCut),
-    }));
-
-  return {
-    ...base,
-    cashShare: Math.max(0, base.cashShare + delta),
-    reserveShare: Math.max(0, levers.reserve),
-    spotDeployableUsd: base.portfolioValue
-      ? Math.max(0, levers.reserve * base.portfolioValue - 0.1 * base.portfolioValue)
-      : base.spotDeployableUsd,
-    cryptoShare: newSpot[0] ?? 0, // крипта — первый спотовый класс (DIVERSIFIABLE_CLASSES)
-    riskCategoryShares: newSpot,
-    largestShare: Math.max(0, levers.largest),
-    futuresShare: Math.max(0, levers.futuresMargin),
-    futuresLegs: legs,
-  };
-}
-
 export function V2HealthPage({ portfolio, health, healthInput }: Props) {
   const [modal, setModal]   = useState<HealthComponent | null>(null);
   const [simOpen, setSimOpen] = useState(false);
@@ -209,29 +157,21 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
     ? { weak: [] as DiagItem[], strong: [] as DiagItem[] }
     : richDiagnosis(health.components, portfolio);
   const sortedComponents = [...health.components].sort((a, b) => a.score - b.score);
-  const weakForRecommendations = sortedComponents.filter((c) => c.score < 60);
+  const weakForRecommendations = sortedComponents.filter(isActionableHealthComponent);
   const recommendations = isEmpty
     ? []
-    : buildCoreRecs(weakForRecommendations, portfolio, health.components);
+    : buildCoreRecs(weakForRecommendations, portfolio, health.components, healthInput);
 
   // ── Симулятор: 6 рычагов поверх реальных входов health ──
   const baseReserve = healthInput.reserveShare ?? healthInput.cashShare;
-  const baseLegs = healthInput.futuresLegs ?? [];
-  const hasFutures = baseLegs.length > 0 || healthInput.futuresShare > 0;
-  const defaultLevers: SimLevers = {
-    reserve: baseReserve,
-    rebalance: 0,
-    largest: healthInput.largestShare,
-    leverageCut: 0,
-    futuresMargin: healthInput.futuresShare,
-    futuresCount: baseLegs.length,
-  };
-  const [levers, setLevers] = useState<SimLevers>(defaultLevers);
+  const hasFutures = (healthInput.futuresLegs ?? []).length > 0 || healthInput.futuresShare > 0;
+  const defaultLevers = buildDefaultHealthSimulatorLevers(healthInput);
+  const [levers, setLevers] = useState<HealthSimulatorLevers>(defaultLevers);
   const resetLevers = () => setLevers(defaultLevers);
-  const setLever = (patch: Partial<SimLevers>) => setLevers((l) => ({ ...l, ...patch }));
+  const setLever = (patch: Partial<HealthSimulatorLevers>) => setLevers((l) => ({ ...l, ...patch }));
 
   const sim = useMemo(
-    () => computePortfolioHealth(buildSimInput(healthInput, levers)),
+    () => computePortfolioHealth(buildHealthSimulatorInput(healthInput, levers)),
     [healthInput, levers]
   );
   const simScores = useMemo(
@@ -395,85 +335,77 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
             </div>
 
             <div className="v2-hp-sim-levers">
-              {/* Резерв → Резерв + Выживаемость */}
               <div className="v2-hp-sim-lever">
                 <div className="v2-hp-sim-lever-top">
-                  <span>Резерв (стейблы)</span>
-                  <span className="v2-hp-sim-lever-val">{(levers.reserve * 100).toFixed(0)}%</span>
+                  <span>Резерв</span>
+                  <span className="v2-hp-sim-lever-val">{(levers.reserveShare * 100).toFixed(0)}%</span>
                 </div>
-                <input type="range" min="0" max="0.9" step="0.01" value={levers.reserve}
-                  onChange={e => setLever({ reserve: +e.target.value })} />
+                <input type="range" min="0" max="0.9" step="0.01" value={levers.reserveShare}
+                  onChange={e => setLever({ reserveShare: +e.target.value })} />
                 <div className="v2-hp-sim-lever-hint">
-                  {levers.reserve > 0.6
+                  {levers.reserveShare > 0.6
                     ? "Выше 60% капитал простаивает — резерв начинает падать"
-                    : levers.reserve < 0.1
+                    : levers.reserveShare < 0.1
                       ? "Ниже пола 10% — так низко резерв не опускаем"
-                      : levers.reserve > baseReserve
-                        ? `Перевести ~${fmt$((levers.reserve - baseReserve) * portfolio.totalPortfolioValue)} рисковых в стейблы · коридор 30–60%`
+                      : levers.reserveShare > baseReserve
+                        ? `Перевести ~${fmt$((levers.reserveShare - baseReserve) * portfolio.totalPortfolioValue)} рисковых в стейблы · коридор 30–60%`
                         : "Коридор 30–60% = 100 · при полном рынке допустим пол 10%"}
                 </div>
               </div>
 
-              {/* Выравнивание классов → Диверсификация + Выживаемость */}
               <div className="v2-hp-sim-lever">
                 <div className="v2-hp-sim-lever-top">
-                  <span>Выровнять классы (крипта / металлы / акции)</span>
-                  <span className="v2-hp-sim-lever-val">{(levers.rebalance * 100).toFixed(0)}%</span>
+                  <span>Диверсификация</span>
+                  <span className="v2-hp-sim-lever-val">{(levers.diversificationRepair * 100).toFixed(0)}%</span>
                 </div>
-                <input type="range" min="0" max="1" step="0.05" value={levers.rebalance}
-                  onChange={e => setLever({ rebalance: +e.target.value })} />
+                <input type="range" min="0" max="1" step="0.05" value={levers.diversificationRepair}
+                  onChange={e => setLever({ diversificationRepair: +e.target.value })} />
                 <div className="v2-hp-sim-lever-hint">Разложить рисковый капитал поровну — 100% даёт максимум диверсификации</div>
               </div>
 
-              {/* Крупнейшая позиция → Концентрация */}
               <div className="v2-hp-sim-lever">
                 <div className="v2-hp-sim-lever-top">
-                  <span>Крупнейшая позиция</span>
-                  <span className="v2-hp-sim-lever-val">{(levers.largest * 100).toFixed(0)}%</span>
+                  <span>Концентрация</span>
+                  <span className="v2-hp-sim-lever-val">{(levers.concentrationRepair * 100).toFixed(0)}%</span>
                 </div>
-                <input type="range" min="0" max={Math.max(healthInput.largestShare, 0.2)} step="0.01" value={levers.largest}
-                  onChange={e => setLever({ largest: +e.target.value })} />
-                <div className="v2-hp-sim-lever-hint">Распределить крупнейший актив — ≤20% даёт 100 баллов</div>
+                <input type="range" min="0" max="1" step="0.05" value={levers.concentrationRepair}
+                  onChange={e => setLever({ concentrationRepair: +e.target.value })} />
+                <div className="v2-hp-sim-lever-hint">Разгрузить активы выше лимита, освободить места и снизить крупнейшую позицию</div>
               </div>
 
-              {hasFutures && (
-                <>
-                  {/* Занятая часть лимита активной торговли */}
-                  <div className="v2-hp-sim-lever">
-                    <div className="v2-hp-sim-lever-top">
-                      <span>Контроль риска</span>
-                      <span className="v2-hp-sim-lever-val">{(levers.futuresMargin * 100).toFixed(1)}%</span>
-                    </div>
-                    <input type="range" min="0" max={Math.max(healthInput.futuresShare, 0.1)} step="0.005" value={levers.futuresMargin}
-                      onChange={e => setLever({ futuresMargin: +e.target.value })} />
-                    <div className="v2-hp-sim-lever-hint">Лимит политики — 10% от вложенного капитала</div>
-                  </div>
+              <div className="v2-hp-sim-lever">
+                <div className="v2-hp-sim-lever-top">
+                  <span>Контроль риска</span>
+                  <span className="v2-hp-sim-lever-val">{(levers.riskControlRepair * 100).toFixed(0)}%</span>
+                </div>
+                <input type="range" min="0" max="1" step="0.05" value={levers.riskControlRepair}
+                  onChange={e => setLever({ riskControlRepair: +e.target.value })} />
+                <div className="v2-hp-sim-lever-hint">
+                  {hasFutures
+                    ? "Снизить маржу, плечо, число позиций и риск ликвидации"
+                    : "Активной торговли нет — луч уже должен быть близок к норме"}
+                </div>
+              </div>
 
-                  {/* Плечо активной торговли */}
-                  <div className="v2-hp-sim-lever">
-                    <div className="v2-hp-sim-lever-top">
-                      <span>Снизить плечо</span>
-                      <span className="v2-hp-sim-lever-val">−{(levers.leverageCut * 100).toFixed(0)}%</span>
-                    </div>
-                    <input type="range" min="0" max="1" step="0.05" value={levers.leverageCut}
-                      onChange={e => setLever({ leverageCut: +e.target.value })} />
-                    <div className="v2-hp-sim-lever-hint">Меньше плечо — ниже риск ликвидации (≤2x альты, ≤3x BTC/золото)</div>
-                  </div>
+              <div className="v2-hp-sim-lever">
+                <div className="v2-hp-sim-lever-top">
+                  <span>Выживаемость</span>
+                  <span className="v2-hp-sim-lever-val">{(levers.survivalPlan * 100).toFixed(0)}%</span>
+                </div>
+                <input type="range" min="0" max="1" step="0.05" value={levers.survivalPlan}
+                  onChange={e => setLever({ survivalPlan: +e.target.value })} />
+                <div className="v2-hp-sim-lever-hint">Подключить план лимитных ордеров на падение без съедания покупательской способности</div>
+              </div>
 
-                  {/* Число позиций активной торговли */}
-                  {baseLegs.length > 0 && (
-                    <div className="v2-hp-sim-lever">
-                      <div className="v2-hp-sim-lever-top">
-                        <span>Фьючерс-позиций</span>
-                        <span className="v2-hp-sim-lever-val">{Math.round(levers.futuresCount)}</span>
-                      </div>
-                      <input type="range" min="0" max={baseLegs.length} step="1" value={levers.futuresCount}
-                        onChange={e => setLever({ futuresCount: +e.target.value })} />
-                      <div className="v2-hp-sim-lever-hint">Каждая позиция несёт риск — лимит 3</div>
-                    </div>
-                  )}
-                </>
-              )}
+              <div className="v2-hp-sim-lever">
+                <div className="v2-hp-sim-lever-top">
+                  <span>Дисциплина</span>
+                  <span className="v2-hp-sim-lever-val">{(levers.disciplineRepair * 100).toFixed(0)}%</span>
+                </div>
+                <input type="range" min="0" max="1" step="0.05" value={levers.disciplineRepair}
+                  onChange={e => setLever({ disciplineRepair: +e.target.value })} />
+                <div className="v2-hp-sim-lever-hint">Заполнить журнал, убрать страх упустить рост, переторговку и дисциплинарную паузу</div>
+              </div>
             </div>
 
             <div className="v2-hp-sim-effects">

@@ -1,21 +1,22 @@
 import type { V2Portfolio, V2Page } from "../InvestorCabinetV2Lab";
-import type { HealthComponent, PortfolioHealth } from "../../lib/portfolioHealth";
+import type { HealthComponent, HealthInput, PortfolioHealth } from "../../lib/portfolioHealth";
 import { isEmptyAccount } from "../lib/accountState";
 import {
   CX, CY, RADAR_R, OUTER_R, VB_OFF, VB_SIZE, CHIP_W, CHIP_H, CHIP_R,
   CHIP_LABEL, SCORE_LABEL, scoreHint, scoreAlpha, chipColor,
   hexPts, hexPtsAt, chipLayout, scaleValuePts,
-  healthInterpretation, diagWhy, buildCoreRecs, buildCoreAchievements,
+  healthInterpretation, diagWhy, buildCoreRecs, isActionableHealthComponent,
 } from "../lib/healthCoreHelpers";
 
 type Props = {
   portfolio: V2Portfolio;
   health: PortfolioHealth;
+  healthInput: HealthInput;
   onChipSelect?: (c: HealthComponent) => void;
   onNavigate?: (page: V2Page) => void;
 };
 
-export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Props) {
+export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onNavigate }: Props) {
   const components = health.components;
 
   // Пустой аккаунт (кошельки ещё не подключены): диагноз/рекомендации не про
@@ -36,10 +37,10 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
   const sorted = [...components].sort((a, b) => a.score - b.score);
   const weak = sorted.filter(c => c.score < 65).slice(0, 5);
   const strong = sorted.filter(c => c.score >= 75).slice(-2);
+  const actionable = sorted.filter(isActionableHealthComponent);
   // Рекомендации считаем один раз на всех компонентах (перевес актива даёт
   // рекомендацию даже при «умеренном» балле, не попав в weak).
-  const recs = isEmpty ? [] : buildCoreRecs(weak, portfolio, components);
-  const achievements = isEmpty ? [] : buildCoreAchievements(components);
+  const recs = isEmpty ? [] : buildCoreRecs(actionable, portfolio, components, healthInput);
   const interp = isEmpty
     ? { text: "Подключите кошельки, чтобы увидеть анализ портфеля", color: "#55C7FF" }
     : healthInterpretation(health.healthFactor);
@@ -623,15 +624,6 @@ export function V2HealthCore({ portfolio, health, onChipSelect, onNavigate }: Pr
       <aside className="v2-hc-side v2-hc-side--recommend">
         <div className="v2-hc-side-title">Рекомендации</div>
         <div className="v2-hc-side-list">
-          {achievements.map((a, i) => (
-            <div key={`ach-${i}`} className="v2-hc-rec-row v2-hc-achievement">
-              <span className="v2-hc-rec-gain v2-hc-ach-badge">✓</span>
-              <div className="v2-hc-rec-body">
-                <span className="v2-hc-rec-action">{a.title}</span>
-                <span className="v2-hc-rec-source">{a.detail}</span>
-              </div>
-            </div>
-          ))}
           {isEmpty ? (
             <div className="v2-hc-rec-row v2-hc-rec-row--critical">
               <span className="v2-hc-rec-gain">1</span>

@@ -407,7 +407,13 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
 
           {/* Блок здоровья — на всю ширину */}
           <div className="v2-hero-reactor">
-            <V2HealthCore portfolio={behaviorPortfolio} health={behaviorHealth} onChipSelect={setSelectedChip} onNavigate={onNavigate} />
+            <V2HealthCore
+              portfolio={behaviorPortfolio}
+              health={behaviorHealth}
+              healthInput={behaviorHealthInput}
+              onChipSelect={setSelectedChip}
+              onNavigate={onNavigate}
+            />
           </div>
 
           {/* Под радаром: распределение + DCA рядом */}

@@ -2,7 +2,12 @@
 // гексагон-радар, раскладка чипов, интерпретация здоровья, диагноз и рекомендации.
 // Вынесено из V2HealthCore.tsx, чтобы компонент отвечал только за render.
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
-import type { HealthComponent } from "../../lib/portfolioHealth";
+import { computePortfolioHealth } from "../../lib/portfolioHealth";
+import type { HealthComponent, HealthInput } from "../../lib/portfolioHealth";
+import {
+  buildDefaultHealthSimulatorLevers,
+  buildHealthSimulatorInput,
+} from "./healthSimulator";
 
 export const CX = 140, CY = 140;
 export const RADAR_R = 118;
@@ -156,9 +161,45 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
   }
 }
 
-export type CoreRec = { action: string; gain: number; source: string; critical?: boolean };
+type CoreRecKind =
+  | "reserve"
+  | "diversification"
+  | "concentration"
+  | "risk"
+  | "survival"
+  | "discipline";
+
+export type CoreRec = {
+  action: string;
+  gain: number;
+  source: string;
+  critical?: boolean;
+  kind?: CoreRecKind;
+};
 
 export type CoreAchievement = { title: string; detail: string };
+
+export function isActionableHealthComponent(c: HealthComponent): boolean {
+  switch (c.key) {
+    case "reserve": {
+      const blockers = c.meta?.reserveBlockers ?? [];
+      const warnings = (c.meta?.reserveWarnings ?? []).filter(
+        (warning) => warning !== "Резерв выше 60% — капитал простаивает",
+      );
+      return c.score < 75 || blockers.length > 0 || warnings.length > 0;
+    }
+    case "crypto":
+      return c.score < 100 || (c.meta?.survivalBlockers ?? []).length > 0 || (c.meta?.survivalWarnings ?? []).length > 0;
+    case "futures":
+      return c.score < 100 || (c.meta?.riskControlBlockers ?? []).length > 0 || (c.meta?.riskControlWarnings ?? []).length > 0;
+    case "concentration":
+      return c.score < 100 || (c.meta?.concentrationBlockers ?? []).length > 0 || (c.meta?.concentrationWarnings ?? []).length > 0;
+    case "diversification":
+      return c.score < 100 || (c.meta?.diversificationBlockers ?? []).length > 0 || (c.meta?.diversificationWarnings ?? []).length > 0;
+    case "flexibility":
+      return c.score < 100 || (c.meta?.disciplineBlockers ?? []).length > 0 || (c.meta?.disciplineWarnings ?? []).length > 0;
+  }
+}
 
 export function buildCoreAchievements(all: HealthComponent[]): CoreAchievement[] {
   const out: CoreAchievement[] = [];
@@ -176,10 +217,82 @@ export function buildCoreAchievements(all: HealthComponent[]): CoreAchievement[]
   return out;
 }
 
+function healthAfterRecommendation(input: HealthInput, kind: CoreRecKind): number {
+  const baseLevers = buildDefaultHealthSimulatorLevers(input);
+  const reserveShare = input.reserveShare ?? input.cashShare;
+  const nextInput = (() => {
+    switch (kind) {
+      case "reserve":
+        return buildHealthSimulatorInput(input, {
+          ...baseLevers,
+          reserveShare: reserveShare < 0.3 ? 0.3 : Math.min(reserveShare, 0.6),
+        });
+      case "diversification":
+        return buildHealthSimulatorInput(input, { ...baseLevers, diversificationRepair: 1 });
+      case "concentration":
+        return buildHealthSimulatorInput(input, { ...baseLevers, concentrationRepair: 1 });
+      case "risk":
+        return buildHealthSimulatorInput(input, { ...baseLevers, riskControlRepair: 1 });
+      case "survival":
+        return buildHealthSimulatorInput(input, { ...baseLevers, survivalPlan: 1 });
+      case "discipline":
+        return buildHealthSimulatorInput(input, { ...baseLevers, disciplineRepair: 1 });
+    }
+  })();
+
+  return computePortfolioHealth(nextInput).healthFactor;
+}
+
+function componentGain(kind: CoreRecKind | undefined, all: HealthComponent[]): number {
+  if (!kind) return 0;
+  const keyByKind: Record<CoreRecKind, HealthComponent["key"]> = {
+    reserve: "reserve",
+    diversification: "diversification",
+    concentration: "concentration",
+    risk: "futures",
+    survival: "crypto",
+    discipline: "flexibility",
+  };
+  const component = all.find((item) => item.key === keyByKind[kind]);
+  if (!component) return 0;
+  return Math.max(0, Math.round((100 - component.score) * component.weight));
+}
+
+function finalizeCoreRecs(recs: CoreRec[], healthInput: HealthInput | undefined, all: HealthComponent[]): CoreRec[] {
+  const currentHealth = healthInput ? computePortfolioHealth(healthInput).healthFactor : undefined;
+  const seen = new Set<string>();
+
+  return recs
+    .map((rec) => {
+      const simulatedGain =
+        healthInput && currentHealth !== undefined && rec.kind
+          ? Math.max(0, Math.round(healthAfterRecommendation(healthInput, rec.kind) - currentHealth))
+          : rec.gain;
+      const realRayGain = componentGain(rec.kind, all);
+      const gain = Math.max(simulatedGain, realRayGain);
+
+      return {
+        ...rec,
+        gain,
+        source: `${rec.source} → здоровье +${gain}`,
+      };
+    })
+    .filter((rec) => rec.gain > 0)
+    .filter((rec) => {
+      const key = rec.kind ?? rec.action;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => Number(Boolean(b.critical)) - Number(Boolean(a.critical)) || b.gain - a.gain)
+    .slice(0, 5);
+}
+
 export function buildCoreRecs(
   weak: HealthComponent[],
   portfolio: V2Portfolio,
   all: HealthComponent[] = [],
+  healthInput?: HealthInput,
 ): CoreRec[] {
   const deficit = Math.max(0, portfolio.totalPortfolioValue * 0.30 - portfolio.stableReserve);
   const result: CoreRec[] = [];
@@ -191,8 +304,9 @@ export function buildCoreRecs(
     result.push({
       action: `Не открывать новые позиции: ${reserveBlockers[0].toLowerCase()}`,
       gain: 7,
-      source: "Сначала восстановить резерв → здоровье +7",
+      source: "Сначала восстановить резерв",
       critical: true,
+      kind: "reserve",
     });
   }
 
@@ -207,16 +321,18 @@ export function buildCoreRecs(
     result.push({
       action: `Не добавлять новый риск: ${riskControlBlockers[0].toLowerCase()}`,
       gain: 6,
-      source: "Сначала устранить блокировку контроля риска → здоровье +6",
+      source: "Сначала устранить блокировку контроля риска",
       critical: true,
+      kind: "risk",
     });
   }
   if (futuresBreachUsd >= 1) {
     result.push({
       action: `Сократить фьючерсный риск на ${fmt$(futuresBreachUsd)}`,
       gain: 6,
-      source: `Занято ${fmt$(futuresUsedUsd)} при лимите ${fmt$(futuresCapUsd)} → здоровье +6`,
+      source: `Занято ${fmt$(futuresUsedUsd)} при лимите ${fmt$(futuresCapUsd)}`,
       critical: true,
+      kind: "risk",
     });
   }
 
@@ -229,8 +345,9 @@ export function buildCoreRecs(
           ? `Срочно: ${fm.worstLiqAsset} в ${pct}% от ликвидации`
           : `Увеличить запас по ${fm.worstLiqAsset} — ${pct}% до ликвидации`,
       gain: 5,
-      source: "Долить маржу или сократить позицию → здоровье +5",
+      source: "Долить маржу или сократить позицию",
       critical: fm.worstLiqDistance <= 0.1,
+      kind: "risk",
     });
   }
 
@@ -244,24 +361,27 @@ export function buildCoreRecs(
     result.push({
       action: "Сократить лишний альткоин или освободить место",
       gain: 5,
-      source: "В крипто-блоке только 3 места под альткоины по 5% → здоровье +5",
+      source: "В крипто-блоке только 3 места под альткоины по 5%",
       critical: true,
+      kind: "concentration",
     });
   }
   if (concentrationBlockers.includes("Превышен лимит мест акций")) {
     result.push({
       action: "Сократить лишнюю акцию или освободить место",
       gain: 5,
-      source: "В портфеле только 2 места под акции по 5% → здоровье +5",
+      source: "В портфеле только 2 места под акции по 5%",
       critical: true,
+      kind: "concentration",
     });
   }
   if (concentrationBlockers.includes("Превышен лимит мест металлов")) {
     result.push({
       action: "Сократить лишний металл или освободить место",
       gain: 5,
-      source: "В портфеле только 2 места под металлы по 5% → здоровье +5",
+      source: "В портфеле только 2 места под металлы по 5%",
       critical: true,
+      kind: "concentration",
     });
   }
   if ((cm?.concentrationWarnings ?? []).includes("Все 3 альткоин-места заняты")) {
@@ -269,6 +389,7 @@ export function buildCoreRecs(
       action: "Не добавлять новые альткоины",
       gain: 3,
       source: "Все 3 места под альткоины уже заняты",
+      kind: "concentration",
     });
   }
   if ((cm?.concentrationWarnings ?? []).includes("Все 2 места акций заняты")) {
@@ -276,6 +397,7 @@ export function buildCoreRecs(
       action: "Не добавлять новые акции",
       gain: 3,
       source: "Все 2 места под акции уже заняты",
+      kind: "concentration",
     });
   }
   if ((cm?.concentrationWarnings ?? []).includes("Все 2 места металлов заняты")) {
@@ -283,6 +405,7 @@ export function buildCoreRecs(
       action: "Не добавлять новые металлы",
       gain: 3,
       source: "Все 2 места под металлы уже заняты",
+      kind: "concentration",
     });
   }
   if (cm?.worstConcentrationAsset && cm.worstConcentrationAsset !== "-" && (cm.maxAssetLimitUtilization ?? 0) > 1) {
@@ -296,9 +419,10 @@ export function buildCoreRecs(
       gain: 5,
       source:
         over > 1
-          ? `${cm.worstConcentrationAsset} и ещё ${over - 1} актив(а) сверх лимита → здоровье +5`
-          : `Приведёт ${cm.worstConcentrationAsset} к своему лимиту → здоровье +5`,
+          ? `${cm.worstConcentrationAsset} и ещё ${over - 1} актив(а) сверх лимита`
+          : `Приведёт ${cm.worstConcentrationAsset} к своему лимиту`,
       critical: concentrationBlockers.length > 0,
+      kind: "concentration",
     });
   }
 
@@ -308,8 +432,9 @@ export function buildCoreRecs(
     result.push({
       action: `Не добавлять риск: ${survivalBlockers[0].toLowerCase()}`,
       gain: 6,
-      source: "Сначала пройти стресс-сценарий → здоровье +6",
+      source: "Сначала пройти стресс-сценарий",
       critical: true,
+      kind: "survival",
     });
   }
 
@@ -319,8 +444,9 @@ export function buildCoreRecs(
     result.push({
       action: `Пауза на новые сделки: ${disciplineBlockers[0].toLowerCase()}`,
       gain: 6,
-      source: "Сначала восстановить дисциплину решений → здоровье +6",
+      source: "Сначала восстановить дисциплину решений",
       critical: true,
+      kind: "discipline",
     });
   }
 
@@ -329,8 +455,9 @@ export function buildCoreRecs(
     result.push({
       action: "Пополнить торговый баланс — покупательская сила на нуле",
       gain: 7,
-      source: "Разблокирует откупы на просадках → здоровье +7",
+      source: "Разблокирует откупы на просадках",
       critical: true,
+      kind: "reserve",
     });
   }
   // ── Критический сигнал: резерв сильно ниже цели ──
@@ -338,8 +465,9 @@ export function buildCoreRecs(
     result.push({
       action: reserveTargetShortfallUsd > 0 ? `Пополнить резерв на ${fmt$(reserveTargetShortfallUsd)} до целевых 30%` : "Поддерживать резерв выше 30%",
       gain: 6,
-      source: "Резерв вернётся к норме → здоровье +6",
+      source: "Резерв вернётся к норме",
       critical: true,
+      kind: "reserve",
     });
   }
 
@@ -349,9 +477,9 @@ export function buildCoreRecs(
         if (!result.some(r => r.source.startsWith("Резерв")))
           result.push({
             action: reserveTargetShortfallUsd > 0 ? `Пополнить резерв на ${fmt$(reserveTargetShortfallUsd)}` : "Поддерживать резерв выше 30%",
-            gain: 6, source: "Резерв вернётся к норме → здоровье +6"
+            gain: 6, source: "Резерв вернётся к норме", kind: "reserve"
           });
-        result.push({ action: "Не открывать новые позиции, пока резерв не достигнут", gain: 3, source: "Сохранит подушку и манёвр → здоровье +3" });
+        result.push({ action: "Не открывать новые позиции, пока резерв не достигнут", gain: 3, source: "Сохранит подушку и манёвр", kind: "reserve" });
         break;
       case "flexibility":
         if ((c.meta?.disciplineBlockers ?? []).length) {
@@ -359,15 +487,17 @@ export function buildCoreRecs(
             result.push({
               action: `Пауза на новые сделки: ${c.meta?.disciplineBlockers?.[0]?.toLowerCase()}`,
               gain: 6,
-              source: "Сначала восстановить дисциплину решений → здоровье +6",
+              source: "Сначала восстановить дисциплину решений",
               critical: true,
+              kind: "discipline",
             });
           }
         }
         result.push({
           action: "Заполнить журнал решений и убрать сделки вне плана",
           gain: 4,
-          source: "Дисциплина влияет на здоровье капитала → здоровье +4",
+          source: "Дисциплина влияет на здоровье капитала",
+          kind: "discipline",
         });
         break;
       case "diversification": {
@@ -377,7 +507,8 @@ export function buildCoreRecs(
           result.push({
             action: "Добавить второй спотовый класс",
             gain: 5,
-            source: "Снизит зависимость от одного класса → здоровье +5",
+            source: "Снизит зависимость от одного класса",
+            kind: "diversification",
           });
         }
         if (m?.largestClassShareOfRisk && m.largestClassShareOfRisk > 0.8 && m.rebalanceAddUsd) {
@@ -387,16 +518,18 @@ export function buildCoreRecs(
           result.push({
             action: `Добавить ≈${fmt$(m.rebalanceAddUsd)} в ${others}`,
             gain: 4,
-            source: `${m.largestClassName} — ${portfolioPct}% портфеля, но ${pct}% рисковой части (без кэша), лимит 80% → +4`,
+            source: `${m.largestClassName} — ${portfolioPct}% портфеля, но ${pct}% рисковой части (без кэша), лимит 80%`,
+            kind: "diversification",
           });
         } else if (m?.missingClassNames?.length) {
           result.push({
             action: `Добавить отсутствующий класс: ${m.missingClassNames.join(" / ").toLowerCase()}`,
             gain: 4,
-            source: "Снизит корреляцию портфеля → здоровье +4",
+            source: "Снизит корреляцию портфеля",
+            kind: "diversification",
           });
         } else {
-          result.push({ action: "Выравнивать классы к лимитам 60/10/10", gain: 4, source: "Снизит корреляцию портфеля → здоровье +4" });
+          result.push({ action: "Выравнивать классы к лимитам 60/10/10", gain: 4, source: "Снизит корреляцию портфеля", kind: "diversification" });
         }
         break;
       }
@@ -406,29 +539,31 @@ export function buildCoreRecs(
             result.push({
               action: `Не добавлять риск: ${c.meta?.survivalBlockers?.[0]?.toLowerCase()}`,
               gain: 6,
-              source: "Сначала пройти стресс-сценарий → здоровье +6",
+              source: "Сначала пройти стресс-сценарий",
               critical: true,
+              kind: "survival",
             });
           }
         }
         result.push({
           action: "Снизить уязвимость к рыночному шоку",
           gain: 5,
-          source: "План ордеров и покупательская способность после падения → здоровье +5",
+          source: "План ордеров и покупательская способность после падения",
+          kind: "survival",
         });
         break;
       case "concentration":
         // Если уже добавили точечную «Сократить <актив>» — не дублируем.
         if (!result.some((r) => r.action.startsWith("Сократить")))
-          result.push({ action: "Распределить часть крупнейшей позиции", gain: 5, source: "Снизит концентрацию риска → здоровье +5" });
+          result.push({ action: "Распределить часть крупнейшей позиции", gain: 5, source: "Снизит концентрацию риска", kind: "concentration" });
         break;
       case "futures":
-        result.push({ action: "Снизить маржу, плечо или число позиций", gain: 5, source: "Уменьшит фьючерсный риск → здоровье +5" });
+        result.push({ action: "Снизить маржу, плечо или число позиций", gain: 5, source: "Уменьшит фьючерсный риск", kind: "risk" });
         break;
     }
   }
-  return [
+  return finalizeCoreRecs([
     ...result.filter((rec) => rec.critical),
     ...result.filter((rec) => !rec.critical),
-  ].slice(0, 6);
+  ], healthInput, all);
 }

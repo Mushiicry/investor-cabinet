@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { HealthComponent, HealthComponentMeta } from "../../src/lib/portfolioHealth";
+import type { HealthComponent, HealthComponentMeta, HealthInput } from "../../src/lib/portfolioHealth";
 import { buildCoreRecs } from "../../src/v2/lib/healthCoreHelpers";
 import type { V2Portfolio } from "../../src/v2/InvestorCabinetV2Lab";
 
@@ -25,11 +25,12 @@ function component(
   key: HealthComponent["key"],
   label: string,
   meta: HealthComponentMeta,
+  score = 80,
 ): HealthComponent {
   return {
     key,
     label,
-    score: 80,
+    score,
     color: "#5AEF8D",
     desc: "",
     weight: 0.15,
@@ -88,5 +89,153 @@ describe("рекомендации здоровья портфеля", () => {
         critical: true,
       }),
     );
+  });
+
+  it("показывает не больше пяти рекомендаций с реальным приростом здоровья", () => {
+    const healthInput: HealthInput = {
+      cashShare: 0.08,
+      reserveShare: 0.08,
+      cryptoShare: 0.7,
+      futuresShare: 0.16,
+      largestShare: 0.45,
+      riskCategoryShares: [0.7, 0, 0],
+      portfolioValue: 1000,
+      investedCapital: 600,
+      concentrationScore: 52,
+      maxAssetLimitUtilization: 1.4,
+      worstConcentrationAsset: "TON",
+      worstConcentrationLimit: 0.1,
+      worstConcentrationShare: 0.14,
+      worstConcentrationPortfolioShare: 0.1,
+      overLimitAssets: ["TON"],
+      altcoinSlotsUsed: 4,
+      altcoinSlotsTotal: 3,
+      spotDeployableUsd: 20,
+      futuresLegs: [
+        { asset: "TON LONG", leverage: 3, liqDistance: 0.08 },
+        { asset: "BTC SHORT", leverage: 4, liqDistance: 0.12 },
+        { asset: "SOL LONG", leverage: 3, liqDistance: 0.2 },
+        { asset: "ETH LONG", leverage: 3, liqDistance: 0.2 },
+      ],
+      disciplineJournalCoverage: 0.3,
+      fomoEvents30d: 2,
+      revengeTrades30d: 1,
+      overtradingDays30d: 3,
+      disciplineCooldownActive: true,
+    };
+
+    const recs = buildCoreRecs(
+      [
+        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже пола 10%"] }, 20),
+        component("diversification", "Диверсификация", {
+          diversificationBlockers: ["Рисковый капитал в одном спотовом классе"],
+        }, 0),
+        component("crypto", "Выживаемость", {
+          survivalBlockers: ["После шока нет покупательской способности"],
+        }, 25),
+        component("futures", "Контроль риска", {
+          riskControlBlockers: ["Превышен лимит 10% активной торговли"],
+          futuresBreachUsd: 36,
+          futuresUsedUsd: 96,
+          futuresCapUsd: 60,
+          worstLiqAsset: "TON LONG",
+          worstLiqDistance: 0.08,
+        }, 30),
+        component("concentration", "Концентрация", {
+          concentrationBlockers: ["Актив выше своего лимита"],
+          worstConcentrationAsset: "TON",
+          worstConcentrationLimit: 0.1,
+          worstConcentrationShare: 0.14,
+          maxAssetLimitUtilization: 1.4,
+          overLimitAssets: ["TON"],
+        }, 52),
+        component("flexibility", "Дисциплина", {
+          disciplineBlockers: ["Активен дисциплинарный блокер"],
+        }, 25),
+      ],
+      portfolio,
+      [
+        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже пола 10%"] }, 20),
+        component("diversification", "Диверсификация", {
+          diversificationBlockers: ["Рисковый капитал в одном спотовом классе"],
+        }, 0),
+        component("crypto", "Выживаемость", {
+          survivalBlockers: ["После шока нет покупательской способности"],
+        }, 25),
+        component("futures", "Контроль риска", {
+          riskControlBlockers: ["Превышен лимит 10% активной торговли"],
+          futuresBreachUsd: 36,
+          futuresUsedUsd: 96,
+          futuresCapUsd: 60,
+          worstLiqAsset: "TON LONG",
+          worstLiqDistance: 0.08,
+        }, 30),
+        component("concentration", "Концентрация", {
+          concentrationBlockers: ["Актив выше своего лимита"],
+          worstConcentrationAsset: "TON",
+          worstConcentrationLimit: 0.1,
+          worstConcentrationShare: 0.14,
+          maxAssetLimitUtilization: 1.4,
+          overLimitAssets: ["TON"],
+        }, 52),
+        component("flexibility", "Дисциплина", {
+          disciplineBlockers: ["Активен дисциплинарный блокер"],
+        }, 25),
+      ],
+      healthInput,
+    );
+
+    expect(recs).toHaveLength(5);
+    expect(recs.every((rec) => rec.gain > 0)).toBe(true);
+    expect(recs.every((rec) => /здоровье \+\d+$/.test(rec.source))).toBe(true);
+  });
+
+  it("убирает выполненные рекомендации с нулевым приростом", () => {
+    const perfectInput: HealthInput = {
+      cashShare: 0.4,
+      reserveShare: 0.4,
+      cryptoShare: 0.2,
+      futuresShare: 0,
+      largestShare: 0.05,
+      riskCategoryShares: [0.2, 0.1, 0.1],
+      portfolioValue: 1000,
+      investedCapital: 600,
+      concentrationScore: 100,
+      maxAssetLimitUtilization: 0.5,
+      overLimitAssets: [],
+      spotDeployableUsd: 250,
+      plannedLimitOrdersUsd: 150,
+      disciplineJournalCoverage: 1,
+      disciplineViolations30d: 0,
+      fomoEvents30d: 0,
+      revengeTrades30d: 0,
+      overtradingDays30d: 0,
+      disciplineCooldownActive: false,
+      futuresLegs: [],
+    };
+
+    const recs = buildCoreRecs(
+      [
+        component("futures", "Контроль риска", {}, 100),
+      ],
+      {
+        ...portfolio,
+        deployableCapital: 300,
+        reserveShare: 0.4,
+        stableReserve: 400,
+      },
+      [
+        component("futures", "Контроль риска", {
+          futuresUsedUsd: 60,
+          futuresCapUsd: 60,
+          futuresRemainingUsd: 0,
+          futuresBreachUsd: 0,
+          riskControlBlockers: [],
+        }, 100),
+      ],
+      perfectInput,
+    );
+
+    expect(recs).toEqual([]);
   });
 });
