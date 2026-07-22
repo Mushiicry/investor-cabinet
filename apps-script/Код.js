@@ -1295,6 +1295,9 @@ function IC_ASSET_QUALITY_fetchCoinMarketCapTop100_() {
 }
 
 function IC_ASSET_QUALITY_fetchBinanceMonitoring_() {
+  const proxy = IC_ASSET_QUALITY_fetchBinanceMonitoringFromProxy_();
+  if (proxy.ok && proxy.records.length) return proxy;
+
   const url = "https://www.binance.com/bapi/composite/v1/public/marketing/symbol/list";
 
   try {
@@ -1320,6 +1323,33 @@ function IC_ASSET_QUALITY_fetchBinanceMonitoring_() {
       }));
 
     return { ok: records.length > 0, error: records.length > 0 ? "" : "BINANCE_EMPTY", records: records };
+  } catch (error) {
+    return { ok: false, error: String(error), records: [] };
+  }
+}
+
+function IC_ASSET_QUALITY_fetchBinanceMonitoringFromProxy_() {
+  const url = "https://investor-cabinet.vercel.app/api/asset-quality";
+
+  try {
+    const response = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      headers: { "Accept": "application/json" }
+    });
+    const code = response.getResponseCode();
+    if (code < 200 || code >= 300) return { ok: false, error: "PROXY_HTTP_" + code, records: [] };
+
+    const json = JSON.parse(response.getContentText());
+    const records = (json.binanceMonitoring || [])
+      .filter(item => item && item.asset)
+      .map(item => ({
+        asset: String(item.asset || "").trim().toUpperCase(),
+        name: String(item.name || ""),
+        marketCap: Number(item.marketCap || 0),
+        tags: item.tags || ["Monitoring"]
+      }));
+
+    return { ok: records.length > 0, error: records.length > 0 ? "" : "PROXY_EMPTY", records: records };
   } catch (error) {
     return { ok: false, error: String(error), records: [] };
   }
