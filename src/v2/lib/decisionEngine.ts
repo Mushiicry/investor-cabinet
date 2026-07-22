@@ -1,13 +1,22 @@
+import {
+  computePortfolioHealth,
+  DIVERSIFIABLE_CLASSES,
+  type HealthInput,
+  type PortfolioHealth,
+} from "../../lib/portfolioHealth";
 import { calculateSurvival, type SurvivalResult } from "../../lib/survivalEngine";
 import { evaluateAssetQuality, type AssetQualitySource } from "./assetQualityGate";
 import {
+  assetConcentration,
   CASH_CATEGORY,
   CRYPTO_CATEGORY,
   evaluateTrade,
+  FUTURES_CATEGORY,
   METALS_CATEGORY,
   STOCKS_CATEGORY,
   type GateCheckSeverity,
   type GateContext,
+  type GatePosition,
   type GateVerdict,
   type TradeInput,
 } from "./preTradeGate";
@@ -45,6 +54,7 @@ export type DecisionContext = GateContext & {
   futuresShare?: number;
   plannedLimitOrdersUsd?: number;
   assetQuality?: AssetQualitySource;
+  healthInput?: HealthInput;
   disciplineBlockers?: string[];
   disciplineWarnings?: string[];
 };
@@ -58,6 +68,7 @@ export type DecisionResult = {
   recommendedAction: string;
   gate: GateVerdict;
   tradePreview: TradePreview | null;
+  healthPreview: DecisionHealthPreview | null;
   survivalBefore?: SurvivalResult;
   survivalAfter?: SurvivalResult;
 };
@@ -71,6 +82,23 @@ export type TradePreview = {
   addedQuantity: number;
   averageEntryBefore: number | null;
   averageEntryAfter: number;
+};
+
+export type DecisionHealthComponentChange = {
+  key: string;
+  label: string;
+  before: number;
+  after: number;
+  delta: number;
+};
+
+export type DecisionHealthPreview = {
+  before: PortfolioHealth;
+  after: PortfolioHealth;
+  delta: number;
+  changedComponents: DecisionHealthComponentChange[];
+  applicable: boolean;
+  note?: string;
 };
 
 function reasonKind(label: string): DecisionReasonKind {
@@ -113,6 +141,116 @@ function survivalInput(ctx: DecisionContext, input: TradeInput, postBuy: boolean
     portfolioValue: ctx.totalPortfolioValue,
     spotDeployableUsd: Math.max(0, ctx.spotDeployable - amount),
     plannedLimitOrdersUsd: ctx.plannedLimitOrdersUsd,
+  };
+}
+
+function projectPositionsAfterTrade(input: TradeInput, ctx: DecisionContext): GatePosition[] {
+  const category = resolveCategory(input, ctx);
+  if (category === CASH_CATEGORY || input.amountUsd <= 0) return ctx.positions;
+
+  const asset = input.asset.trim().toUpperCase();
+  let found = false;
+  const projected = ctx.positions.map((position) => {
+    if (position.asset.trim().toUpperCase() !== asset) return position;
+    found = true;
+    return { ...position, value: Math.max(0, position.value) + input.amountUsd };
+  });
+
+  if (!found) {
+    projected.push({ asset, category, value: input.amountUsd });
+  }
+
+  return projected;
+}
+
+function postTradeHealthInput(input: TradeInput, ctx: DecisionContext): HealthInput | null {
+  if (!ctx.healthInput || ctx.totalPortfolioValue <= 0 || input.amountUsd <= 0) return null;
+
+  const category = resolveCategory(input, ctx);
+  const amount = category === CASH_CATEGORY ? 0 : input.amountUsd;
+  const total = ctx.totalPortfolioValue;
+  const projectedPositions = projectPositionsAfterTrade(input, ctx);
+  const projectedCryptoBlock = projectedPositions
+    .filter((position) => position.category === CRYPTO_CATEGORY)
+    .reduce((sum, position) => sum + Math.max(0, position.value), 0);
+  const concentration = assetConcentration(projectedPositions, projectedCryptoBlock, total);
+  const reserveAfterUsd = Math.max(0, ctx.stableReserve - amount);
+  const amountShare = amount / total;
+  const categoryShare = (name: string) => {
+    const current = ctx.allocation.find((item) => item.name === name)?.value ?? 0;
+    return (current + (category === name ? amount : 0)) / total;
+  };
+  const largestShare = projectedPositions.reduce(
+    (max, position) => Math.max(max, Math.max(0, position.value) / total),
+    0,
+  );
+
+  return {
+    ...ctx.healthInput,
+    cashShare: Math.max(0, ctx.healthInput.cashShare - amountShare),
+    cryptoShare: categoryShare(CRYPTO_CATEGORY),
+    futuresShare:
+      category === FUTURES_CATEGORY
+        ? ((ctx.futuresShare ?? ctx.healthInput.futuresShare) * total + amount) / total
+        : ctx.healthInput.futuresShare,
+    largestShare,
+    riskCategoryShares: DIVERSIFIABLE_CLASSES.map((name) => categoryShare(name)),
+    reserveShare: reserveAfterUsd / total,
+    spotDeployableUsd: Math.max(0, (ctx.healthInput.spotDeployableUsd ?? ctx.spotDeployable) - amount),
+    concentrationScore: concentration.score,
+    maxAssetLimitUtilization: concentration.maxUtilization,
+    worstConcentrationAsset: concentration.worstAsset,
+    worstConcentrationShare: concentration.worstShare,
+    worstConcentrationPortfolioShare: concentration.worstPortfolioShare,
+    worstConcentrationLimit: concentration.worstLimit,
+    overLimitAssets: concentration.overLimitAssets,
+    altcoinSlotsUsed: concentration.altcoinSlotsUsed,
+    altcoinSlotsTotal: concentration.altcoinSlotsTotal,
+    altcoinSlotsFree: concentration.altcoinSlotsFree,
+    altcoins: concentration.altcoins,
+    stockSlotsUsed: concentration.stockSlotsUsed,
+    stockSlotsTotal: concentration.stockSlotsTotal,
+    stockSlotsFree: concentration.stockSlotsFree,
+    stocks: concentration.stocks,
+    metalSlotsUsed: concentration.metalSlotsUsed,
+    metalSlotsTotal: concentration.metalSlotsTotal,
+    metalSlotsFree: concentration.metalSlotsFree,
+    metals: concentration.metals,
+  };
+}
+
+function calculateHealthPreview(
+  input: TradeInput,
+  ctx: DecisionContext,
+  applicable: boolean,
+): DecisionHealthPreview | null {
+  const afterInput = postTradeHealthInput(input, ctx);
+  if (!ctx.healthInput || !afterInput) return null;
+
+  const before = computePortfolioHealth(ctx.healthInput);
+  const after = computePortfolioHealth(afterInput);
+  const changedComponents = after.components
+    .map((component) => {
+      const beforeComponent = before.components.find((item) => item.key === component.key);
+      const beforeScore = beforeComponent?.score ?? component.score;
+      return {
+        key: component.key,
+        label: component.label,
+        before: beforeScore,
+        after: component.score,
+        delta: component.score - beforeScore,
+      };
+    })
+    .filter((component) => component.delta !== 0)
+    .sort((a, b) => a.delta - b.delta);
+
+  return {
+    before,
+    after,
+    delta: Math.round(after.healthFactor - before.healthFactor),
+    changedComponents,
+    applicable,
+    note: applicable ? undefined : "Здоровье после сделки не применяется: актив запрещён политикой риска.",
   };
 }
 
@@ -181,6 +319,7 @@ export function evaluateDecision(input: DecisionTradeInput, ctx: DecisionContext
       recommendedAction: recommendedAction("ЖДАТЬ", [reason], 0),
       gate,
       tradePreview: calculateAveragingPreview(input, ctx),
+      healthPreview: null,
     };
   }
 
@@ -225,6 +364,7 @@ export function evaluateDecision(input: DecisionTradeInput, ctx: DecisionContext
   }
 
   const status = statusFrom(gate, hardReasons, warnings, gate.maxSafeAmount, input.amountUsd);
+  const hasAssetQualityBlock = hardReasons.some((reason) => reason.kind === "качество_актива");
   return {
     status,
     reasons: hardReasons,
@@ -234,6 +374,7 @@ export function evaluateDecision(input: DecisionTradeInput, ctx: DecisionContext
     recommendedAction: recommendedAction(status, hardReasons, gate.maxSafeAmount),
     gate,
     tradePreview: calculateAveragingPreview(input, ctx),
+    healthPreview: calculateHealthPreview(input, ctx, !hasAssetQualityBlock),
     survivalBefore,
     survivalAfter,
   };

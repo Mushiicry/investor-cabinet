@@ -23,6 +23,7 @@ type Props = {
   allocation: V2LabData["allocation"];
   fearGreedStrategy: V2LabData["fearGreedStrategy"];
   assetQuality: V2LabData["assetQuality"];
+  healthInput: V2LabData["healthInput"];
   futuresShare?: number;
 };
 
@@ -31,6 +32,7 @@ const CATEGORIES = [CRYPTO_CATEGORY, METALS_CATEGORY, STOCKS_CATEGORY, FUTURES_C
 
 const pct = (share: number) => `${(share * 100).toFixed(1)}%`;
 const usd = (v: number) => `${Math.round(v).toLocaleString("ru-RU")}$`;
+const signedScore = (v: number) => (v > 0 ? `+${v}` : String(v));
 const price = (v: number | null | undefined) =>
   v && Number.isFinite(v)
     ? `$${v.toLocaleString("en-US", { maximumFractionDigits: v >= 100 ? 2 : 6 })}`
@@ -55,7 +57,15 @@ function bucketRows(buckets: CapitalBuckets) {
   ];
 }
 
-export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy, assetQuality, futuresShare = 0 }: Props) {
+export function V2GatePage({
+  portfolio,
+  positions,
+  allocation,
+  fearGreedStrategy,
+  assetQuality,
+  healthInput,
+  futuresShare = 0,
+}: Props) {
   const empty = isEmptyAccount(portfolio);
 
   const [asset, setAsset] = useState<string>(() => positions[0]?.asset ?? NEW_ASSET);
@@ -110,6 +120,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
       futuresShare,
       capitalBuckets,
       assetQuality: activeAssetQuality,
+      healthInput,
       positions: positions.map((p) => ({
         asset: p.asset,
         category: p.category,
@@ -128,7 +139,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
         cooldownRemainingHours: r.cooldownRemainingHours,
       })),
     };
-  }, [portfolio, positions, allocation, fearGreedStrategy, phase, futuresShare, capitalBuckets, activeAssetQuality]);
+  }, [portfolio, positions, allocation, fearGreedStrategy, phase, futuresShare, capitalBuckets, activeAssetQuality, healthInput]);
 
   const amountNum = Number(amount);
   const buyPriceNum = Number(buyPrice);
@@ -365,6 +376,44 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
                   худший сценарий: {decision.survivalAfter.survivalWorstScenario}, просадка{" "}
                   {pct(decision.survivalAfter.survivalShockLossPct)}
                 </span>
+              </div>
+            )}
+
+            {decision.healthPreview && (
+              <div className={`v2-gate-health ${decision.healthPreview.applicable ? "" : "is-blocked"}`}>
+                <div className="v2-gate-health-head">
+                  <span>Здоровье портфеля</span>
+                  {decision.healthPreview.applicable ? (
+                    <strong>
+                      {Math.round(decision.healthPreview.before.healthFactor)} →{" "}
+                      {Math.round(decision.healthPreview.after.healthFactor)}
+                      <span className={decision.healthPreview.delta < 0 ? "is-down" : "is-up"}>
+                        {decision.healthPreview.delta !== 0 ? ` ${signedScore(decision.healthPreview.delta)}` : " 0"}
+                      </span>
+                    </strong>
+                  ) : (
+                    <strong>не применяется</strong>
+                  )}
+                </div>
+                {decision.healthPreview.note ? (
+                  <div className="v2-gate-health-note">{decision.healthPreview.note}</div>
+                ) : decision.healthPreview.changedComponents.length > 0 ? (
+                  <div className="v2-gate-health-grid">
+                    {decision.healthPreview.changedComponents.slice(0, 3).map((component) => (
+                      <div key={component.key} className="v2-gate-health-row">
+                        <span>{component.label}</span>
+                        <strong>
+                          {component.before} → {component.after}
+                          <em className={component.delta < 0 ? "is-down" : "is-up"}>
+                            {component.delta !== 0 ? signedScore(component.delta) : "0"}
+                          </em>
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="v2-gate-health-note">Сделка не меняет лучи здоровья.</div>
+                )}
               </div>
             )}
 

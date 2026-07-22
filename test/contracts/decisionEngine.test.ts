@@ -5,6 +5,38 @@ import {
   type DecisionContext,
 } from "../../src/v2/lib/decisionEngine";
 import { BINANCE_MONITORING_ASSET_QUALITY } from "../../src/v2/lib/assetQualitySource";
+import type { HealthInput } from "../../src/lib/portfolioHealth";
+
+const baseHealthInput: HealthInput = {
+  cashShare: 0.6,
+  cryptoShare: 0.4,
+  futuresShare: 0,
+  largestShare: 0.1,
+  riskCategoryShares: [0.4, 0.03, 0],
+  reserveShare: 0.6,
+  portfolioValue: 1000,
+  investedCapital: 1000,
+  spotDeployableUsd: 200,
+  concentrationScore: 100,
+  maxAssetLimitUtilization: 0.75,
+  worstConcentrationAsset: "ETH",
+  worstConcentrationShare: 0.25,
+  worstConcentrationPortfolioShare: 0.1,
+  worstConcentrationLimit: 0.35,
+  overLimitAssets: [],
+  altcoinSlotsUsed: 1,
+  altcoinSlotsTotal: 3,
+  altcoinSlotsFree: 2,
+  altcoins: ["SOL"],
+  stockSlotsUsed: 0,
+  stockSlotsTotal: 2,
+  stockSlotsFree: 2,
+  stocks: [],
+  metalSlotsUsed: 1,
+  metalSlotsTotal: 2,
+  metalSlotsFree: 1,
+  metals: ["GOLD"],
+};
 
 const baseCtx: DecisionContext = {
   totalPortfolioValue: 1000,
@@ -34,6 +66,7 @@ const baseCtx: DecisionContext = {
   cryptoMaxShare: 0.6,
   futuresShare: 0,
   plannedLimitOrdersUsd: 100,
+  healthInput: baseHealthInput,
 };
 
 describe("движок решений", () => {
@@ -213,6 +246,32 @@ describe("движок решений", () => {
           text: "NOM: токен находится в списке мониторинга Binance",
         }),
       ]),
+    );
+  });
+
+  it("показывает здоровье до и после для обычной проверки сделки", () => {
+    const decision = evaluateDecision(
+      { asset: "ETH", amountUsd: 20, category: "Крипта", buyPrice: 1500 },
+      baseCtx,
+    );
+
+    expect(decision.healthPreview).not.toBeNull();
+    expect(decision.healthPreview?.applicable).toBe(true);
+    expect(decision.healthPreview?.before.healthFactor).toBeGreaterThan(0);
+    expect(decision.healthPreview?.after.healthFactor).toBeGreaterThan(0);
+    expect(decision.healthPreview?.changedComponents.length).toBeGreaterThan(0);
+  });
+
+  it("не применяет здоровье после сделки к запрещённому активу", () => {
+    const decision = evaluateDecision(
+      { asset: "jasmy", amountUsd: 1, category: "Крипта", buyPrice: 1 },
+      { ...baseCtx, assetQuality: BINANCE_MONITORING_ASSET_QUALITY },
+    );
+
+    expect(decision.status).toBe("БЛОКИРОВКА");
+    expect(decision.healthPreview?.applicable).toBe(false);
+    expect(decision.healthPreview?.note).toBe(
+      "Здоровье после сделки не применяется: актив запрещён политикой риска.",
     );
   });
 

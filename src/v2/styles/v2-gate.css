@@ -416,6 +416,70 @@
   color: rgba(150, 185, 214, 0.75);
 }
 
+.v2-gate-health {
+  margin-top: 12px;
+  border: 1px solid rgba(55, 150, 210, 0.34);
+  background: rgba(8, 25, 45, 0.48);
+  border-radius: 10px;
+  padding: 12px;
+}
+.v2-gate-health.is-blocked {
+  border-color: rgba(255, 95, 120, 0.34);
+  background: rgba(70, 18, 28, 0.28);
+}
+.v2-gate-health-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: baseline;
+  color: rgba(155, 195, 225, 0.86);
+  font-size: 13px;
+}
+.v2-gate-health-head > span {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+}
+.v2-gate-health-head strong {
+  color: rgba(236, 244, 252, 0.98);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.v2-gate-health-grid {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+.v2-gate-health-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 13px;
+  color: rgba(170, 204, 230, 0.84);
+}
+.v2-gate-health-row strong {
+  color: rgba(232, 242, 252, 0.95);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.v2-gate-health-row em,
+.v2-gate-health-head strong span {
+  margin-left: 6px;
+  font-style: normal;
+}
+.v2-gate-health .is-down {
+  color: rgba(255, 118, 140, 0.96);
+}
+.v2-gate-health .is-up {
+  color: rgba(105, 240, 165, 0.96);
+}
+.v2-gate-health-note {
+  margin-top: 9px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(242, 180, 188, 0.9);
+}
+
 .v2-gate-foot {
   font-size: 12px;
   line-height: 1.5;
