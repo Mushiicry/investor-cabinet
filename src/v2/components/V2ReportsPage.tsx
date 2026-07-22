@@ -8,6 +8,7 @@ import type { InvestorTransaction, PortfolioHistoryPoint } from "../../types/por
 import type { V2Position } from "../InvestorCabinetV2Lab";
 import { stakingApy } from "../../config/stakingRules";
 import type { DecisionJournalEntry } from "../lib/decisionJournal";
+import type { BehaviorEngineResult } from "../lib/behaviorEngine";
 
 type Props = {
   history: PortfolioHistoryPoint[];
@@ -16,6 +17,7 @@ type Props = {
   /** Единственный источник зафиксированной прибыли — блок закрытых позиций. */
   realizedPnlUsd?: number;
   decisionJournal?: DecisionJournalEntry[];
+  behavior?: BehaviorEngineResult;
   onDeleteDecision?: (id: string) => void;
 };
 
@@ -184,6 +186,7 @@ export function V2ReportsPage({
   positions,
   realizedPnlUsd,
   decisionJournal = [],
+  behavior,
   onDeleteDecision,
 }: Props) {
   const sortedHistory = useMemo(() => getSortedPortfolioHistory(history), [history]);
@@ -456,6 +459,43 @@ export function V2ReportsPage({
         </div>
 
         <div className="v2-rep-right">
+          {behavior && (
+            <div className={`v2-panel v2-rep-behavior-panel ${behavior.status === "ПАУЗА" ? "is-block" : behavior.status === "НАБЛЮДЕНИЕ" ? "is-warn" : ""}`}>
+              <div className="v2-panel-header">
+                <span>Поведение</span>
+                <span className="v2-rep-behavior-status">{behavior.status}</span>
+              </div>
+              <div className="v2-rep-behavior-score">
+                <strong>{behavior.score}</strong>
+                <span>/100</span>
+              </div>
+              <div className="v2-rep-behavior-grid">
+                <span>Решений 24ч</span>
+                <strong>{behavior.stats.decisions24h}</strong>
+                <span>Блокировок 24ч</span>
+                <strong>{behavior.stats.blocked24h}</strong>
+                <span>Страх роста 30д</span>
+                <strong>{behavior.stats.fomo30d}</strong>
+                <span>После убытка 30д</span>
+                <strong>{behavior.stats.afterLoss30d}</strong>
+              </div>
+              <div className="v2-rep-behavior-lines">
+                {behavior.signals.length === 0 ? (
+                  <span>Поведенческих нарушений нет.</span>
+                ) : behavior.signals.slice(0, 4).map((signal) => (
+                  <span key={`${signal.kind}-${signal.text}`} className={signal.severity === "block" ? "is-block" : ""}>
+                    {signal.text}
+                  </span>
+                ))}
+              </div>
+              {behavior.cooldownUntil && (
+                <div className="v2-rep-behavior-cooldown">
+                  Пауза до {fmtDate(behavior.cooldownUntil)}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="v2-panel v2-rep-equity-panel">
             <div className="v2-panel-header">
               <span>Стоимость портфеля</span>

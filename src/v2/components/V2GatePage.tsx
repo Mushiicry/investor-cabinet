@@ -10,10 +10,9 @@ import {
   STOCKS_CATEGORY,
   FUTURES_CATEGORY,
   SPOT_RESERVE_FLOOR_SHARE,
-  type GateContext,
   type GateCheck,
 } from "../lib/preTradeGate";
-import { evaluateDecision } from "../lib/decisionEngine";
+import { evaluateDecision, type DecisionContext } from "../lib/decisionEngine";
 import { buildCapitalBuckets, type CapitalBuckets } from "../lib/capitalBuckets";
 import { BINANCE_MONITORING_ASSET_QUALITY } from "../lib/assetQualitySource";
 import type { DecisionJournalDraft } from "../lib/decisionJournal";
@@ -27,6 +26,8 @@ type Props = {
   healthInput: V2LabData["healthInput"];
   futuresShare?: number;
   onSaveDecision?: (draft: DecisionJournalDraft) => void;
+  disciplineBlockers?: string[];
+  disciplineWarnings?: string[];
 };
 
 const NEW_ASSET = "__new__";
@@ -70,6 +71,8 @@ export function V2GatePage({
   healthInput,
   futuresShare = 0,
   onSaveDecision,
+  disciplineBlockers = [],
+  disciplineWarnings = [],
 }: Props) {
   const empty = isEmptyAccount(portfolio);
 
@@ -114,7 +117,7 @@ export function V2GatePage({
 
   const activeAssetQuality = assetQuality?.connected ? assetQuality : BINANCE_MONITORING_ASSET_QUALITY;
 
-  const ctx: GateContext = useMemo(() => {
+  const ctx: DecisionContext = useMemo(() => {
     const strategy = buildFearGreedStrategy(
       fearGreedStrategy.currentIndex,
       portfolio.totalPortfolioValue || 0,
@@ -130,6 +133,8 @@ export function V2GatePage({
       capitalBuckets,
       assetQuality: activeAssetQuality,
       healthInput,
+      disciplineBlockers,
+      disciplineWarnings,
       positions: positions.map((p) => ({
         asset: p.asset,
         category: p.category,
@@ -148,7 +153,19 @@ export function V2GatePage({
         cooldownRemainingHours: r.cooldownRemainingHours,
       })),
     };
-  }, [portfolio, positions, allocation, fearGreedStrategy, phase, futuresShare, capitalBuckets, activeAssetQuality, healthInput]);
+  }, [
+    portfolio,
+    positions,
+    allocation,
+    fearGreedStrategy,
+    phase,
+    futuresShare,
+    capitalBuckets,
+    activeAssetQuality,
+    healthInput,
+    disciplineBlockers,
+    disciplineWarnings,
+  ]);
 
   const amountNum = Number(amount);
   const buyPriceNum = Number(buyPrice);
@@ -205,6 +222,7 @@ export function V2GatePage({
 
   const badgeText = decision.status;
   const hasAssetQualityBlock = decision.reasons.some((reason) => reason.kind === "качество_актива");
+  const hasDisciplineBlock = decision.reasons.some((reason) => reason.kind === "дисциплина");
   const canSaveDecision = Boolean(onSaveDecision) && decision.status !== "ЖДАТЬ" && Boolean(resolvedAsset);
   const saveDecision = () => {
     if (!onSaveDecision || !canSaveDecision) return;
@@ -380,6 +398,18 @@ export function V2GatePage({
               </div>
             )}
 
+            {(disciplineBlockers.length > 0 || disciplineWarnings.length > 0) && (
+              <div className={`v2-gate-discipline ${disciplineBlockers.length > 0 ? "is-block" : "is-warn"}`}>
+                <div className="v2-gate-discipline-head">
+                  <span>Дисциплина</span>
+                  <strong>{disciplineBlockers.length > 0 ? "ПАУЗА" : "НАБЛЮДЕНИЕ"}</strong>
+                </div>
+                {[...disciplineBlockers, ...disciplineWarnings].slice(0, 3).map((item) => (
+                  <div key={item} className="v2-gate-discipline-line">{item}</div>
+                ))}
+              </div>
+            )}
+
             {decision.tradePreview && (
               <div className="v2-gate-average">
                 <div className="v2-gate-average-title">Калькулятор усреднения</div>
@@ -456,7 +486,12 @@ export function V2GatePage({
                 Заблокировано — актив запрещён политикой риска
               </button>
             )}
-            {decision.status === "БЛОКИРОВКА" && !hasAssetQualityBlock && decision.maxAllowedAmount > 0 && (
+            {decision.status === "БЛОКИРОВКА" && hasDisciplineBlock && !hasAssetQualityBlock && (
+              <button type="button" className="v2-gate-fix is-blocked" disabled>
+                Заблокировано — активна дисциплинарная пауза
+              </button>
+            )}
+            {decision.status === "БЛОКИРОВКА" && !hasAssetQualityBlock && !hasDisciplineBlock && decision.maxAllowedAmount > 0 && (
               <button
                 type="button"
                 className="v2-gate-fix"
@@ -467,7 +502,7 @@ export function V2GatePage({
                   : `Максимум допустимо ${usd(decision.maxAllowedAmount)}`}
               </button>
             )}
-            {decision.status === "БЛОКИРОВКА" && !hasAssetQualityBlock && decision.maxAllowedAmount <= 0 && (
+            {decision.status === "БЛОКИРОВКА" && !hasAssetQualityBlock && !hasDisciplineBlock && decision.maxAllowedAmount <= 0 && (
               <div className="v2-gate-nofix">
                 Безопасного объёма для добора этого актива сейчас нет — лимит уже на пределе.
               </div>

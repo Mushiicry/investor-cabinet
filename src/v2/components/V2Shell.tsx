@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
-import type { HealthComponent } from "../../lib/portfolioHealth";
+import { computePortfolioHealth, type HealthComponent, type PortfolioHealth } from "../../lib/portfolioHealth";
 import { V2HealthDetailModal } from "./V2HealthDetailModal";
 import { V2ReportsPage } from "./V2ReportsPage";
 import { V2SignalsPage } from "./V2SignalsPage";
@@ -33,6 +33,7 @@ import {
   type DecisionJournalDraft,
   type DecisionJournalEntry,
 } from "../lib/decisionJournal";
+import { evaluateBehavior } from "../lib/behaviorEngine";
 
 type Props = {
   data: V2LabData;
@@ -153,6 +154,31 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     setDecisionJournal((current) => removeDecisionJournalEntry(current, id, profileKeySuffix));
   }
 
+  const behavior = useMemo(() => evaluateBehavior(decisionJournal), [decisionJournal]);
+  const behaviorHealthInput = useMemo(
+    () => ({
+      ...data.healthInput,
+      ...behavior.healthInputs,
+    }),
+    [data.healthInput, behavior.healthInputs],
+  );
+  const behaviorHealth = useMemo<PortfolioHealth>(() => {
+    const computed = computePortfolioHealth(behaviorHealthInput);
+    return {
+      ...computed,
+      healthFactor: Math.round(computed.healthFactor),
+    };
+  }, [behaviorHealthInput]);
+  const behaviorPortfolio = useMemo(
+    () => ({
+      ...data.portfolio,
+      healthFactor: Math.round(behaviorHealth.healthFactor),
+      healthStatus: behaviorHealth.status,
+      riskLevel: behaviorHealth.riskLevel,
+    }),
+    [data.portfolio, behaviorHealth],
+  );
+
   // Мобильное меню-шторка: на ≤768px сайдбар (все 8 страниц + Выход) скрыт,
   // а гамбургер его выдвигает. Навигация закрывает шторку.
   const [menuOpen, setMenuOpen] = useState(false);
@@ -187,11 +213,11 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
   });
 
   useEffect(() => {
-    const hf = data.health?.healthFactor;
+    const hf = behaviorHealth.healthFactor;
     if (typeof hf === "number" && Number.isFinite(hf)) {
       localStorage.setItem(healthKey, String(hf));
     }
-  }, [healthKey, data.health?.healthFactor]);
+  }, [healthKey, behaviorHealth.healthFactor]);
 
   // Тревоги считаются тем же движком, что и на странице «Сигналы»,
   // иначе счётчик на колокольчике расходился бы со списком.
@@ -199,16 +225,16 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     () =>
       sortAlerts(
         buildPortfolioAlerts({
-          portfolio: data.portfolio,
+          portfolio: behaviorPortfolio,
           positions: data.positions,
           allocation: data.allocation,
           currentFG: data.fearGreedStrategy.currentIndex,
-          health: data.health,
+          health: behaviorHealth,
           interestSignals: data.signals?.interestList ?? [],
           previousHealthFactor,
         })
       ),
-    [data.portfolio, data.positions, data.allocation, data.fearGreedStrategy.currentIndex, data.health, data.signals, previousHealthFactor]
+    [behaviorPortfolio, data.positions, data.allocation, data.fearGreedStrategy.currentIndex, behaviorHealth, data.signals, previousHealthFactor]
   );
 
   const criticalCount = alerts.filter((alert) => alert.level === "critical").length;
@@ -269,10 +295,10 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         onCloseMobile={() => setMenuOpen(false)}
         activePage={page}
         onNavigate={handleNavigate}
-        healthFactor={data.portfolio.healthFactor}
-        healthStatus={data.portfolio.healthStatus}
-        portfolio={data.portfolio}
-        health={data.health}
+        healthFactor={behaviorPortfolio.healthFactor}
+        healthStatus={behaviorPortfolio.healthStatus}
+        portfolio={behaviorPortfolio}
+        health={behaviorHealth}
         positions={data.positions}
         transactions={data.transactions}
         /* Имя из настроек профиля, а если его не задавали — имя аккаунта
@@ -301,10 +327,10 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           />
         ) : page === "signals" ? (
           <V2SignalsPage
-            portfolio={data.portfolio}
+            portfolio={behaviorPortfolio}
             positions={data.positions}
             risk={data.risk}
-            health={data.health}
+            health={behaviorHealth}
             fearGreedStrategy={data.fearGreedStrategy}
             allocation={data.allocation}
             interestSignals={data.signals?.interestList?.length
@@ -315,14 +341,16 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           />
         ) : page === "gate" ? (
           <V2GatePage
-            portfolio={data.portfolio}
+            portfolio={behaviorPortfolio}
             positions={data.positions}
             allocation={data.allocation}
             fearGreedStrategy={data.fearGreedStrategy}
             assetQuality={data.assetQuality}
-            healthInput={data.healthInput}
+            healthInput={behaviorHealthInput}
             futuresShare={data.risk.futuresShare}
             onSaveDecision={handleSaveDecision}
+            disciplineBlockers={behavior.blockers}
+            disciplineWarnings={behavior.warnings}
           />
         ) : page === "reports" ? (
           <V2ReportsPage
@@ -331,6 +359,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             positions={data.positions}
             realizedPnlUsd={data.portfolio.realizedPnlUsd}
             decisionJournal={decisionJournal}
+            behavior={behavior}
             onDeleteDecision={handleDeleteDecision}
           />
         ) : page === "portfolio" ? (
@@ -346,21 +375,21 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           <V2ScenariosPage playbook={data.playbook} positions={data.positions} />
         ) : page === "health" ? (
           <V2HealthPage
-            portfolio={data.portfolio}
-            health={data.health}
-            healthInput={data.healthInput}
+            portfolio={behaviorPortfolio}
+            health={behaviorHealth}
+            healthInput={behaviorHealthInput}
           />
         ) : page === "risk" ? (
           <V2RiskEnginePage
-            portfolio={data.portfolio}
-            health={data.health}
+            portfolio={behaviorPortfolio}
+            health={behaviorHealth}
             risk={data.risk}
             allocation={data.allocation}
           />
         ) : (
         <section className="v2-command-grid" aria-label="Investor Cabinet V2 overview">
           <V2TopMetrics
-            portfolio={data.portfolio}
+            portfolio={behaviorPortfolio}
             history={data.history}
             capitalOpen={capitalOpen}
             onToggleCapital={() => setCapitalOpen((v) => !v)}
@@ -368,7 +397,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           <div className={`v2-capital-dropdown ${capitalOpen ? "is-open" : ""}`}>
             <div className="v2-capital-dropdown-inner">
               <V2DeployableCapital
-                portfolio={data.portfolio}
+                portfolio={behaviorPortfolio}
                 allocation={data.allocation}
                 strategy={data.fearGreedStrategy}
                 futuresShare={data.risk.futuresShare}
@@ -378,7 +407,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
 
           {/* Блок здоровья — на всю ширину */}
           <div className="v2-hero-reactor">
-            <V2HealthCore portfolio={data.portfolio} health={data.health} onChipSelect={setSelectedChip} onNavigate={onNavigate} />
+            <V2HealthCore portfolio={behaviorPortfolio} health={behaviorHealth} onChipSelect={setSelectedChip} onNavigate={onNavigate} />
           </div>
 
           {/* Под радаром: распределение + DCA рядом */}
@@ -389,7 +418,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             </div>
             <div className="v2-alloc-dca-slot">
               <V2DCAStrategy
-                portfolio={data.portfolio}
+                portfolio={behaviorPortfolio}
                 strategy={data.fearGreedStrategy}
                 onNavigate={onNavigate}
               />
@@ -429,7 +458,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
       {selectedChip && (
         <V2HealthDetailModal
           component={selectedChip}
-          portfolio={data.portfolio}
+          portfolio={behaviorPortfolio}
           onClose={() => setSelectedChip(null)}
         />
       )}

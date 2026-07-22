@@ -276,6 +276,54 @@
   border-radius: 0 8px 8px 0;
   padding: 8px 12px;
 }
+
+.v2-gate-discipline {
+  margin-top: 12px;
+  border: 1px solid rgba(224, 165, 70, 0.34);
+  background: rgba(70, 48, 18, 0.24);
+  border-radius: 10px;
+  padding: 11px 12px;
+}
+
+.v2-gate-discipline.is-block {
+  border-color: rgba(255, 95, 120, 0.38);
+  background: rgba(75, 18, 30, 0.34);
+}
+
+.v2-gate-discipline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.v2-gate-discipline-head span {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(155, 195, 225, 0.82);
+}
+
+.v2-gate-discipline-head strong {
+  color: rgba(242, 210, 160, 0.96);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.v2-gate-discipline.is-block .v2-gate-discipline-head strong {
+  color: rgba(255, 185, 195, 0.96);
+}
+
+.v2-gate-discipline-line {
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(222, 202, 178, 0.88);
+}
+
+.v2-gate-discipline.is-block .v2-gate-discipline-line {
+  color: rgba(245, 190, 198, 0.9);
+}
 .v2-gate-check-label {
   color: rgba(200, 224, 242, 0.9);
 }
@@ -575,6 +623,7 @@
   }
   .v2-gate-survival,
   .v2-gate-average-grid,
+  .v2-gate-discipline-head,
   .v2-gate-journal-grid {
     grid-template-columns: 1fr;
   }
