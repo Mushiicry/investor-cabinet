@@ -457,7 +457,10 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   const positionLimit = assetLimit(category, input.asset);
   const posBaseBefore = isCryptoAsset ? cryptoBlockValue : total;
   const posBaseAfter = isCryptoAsset ? cryptoBlockValue + amount : total;
+  const positionBeforeShare = posBaseBefore > 0 ? posValue / posBaseBefore : 0;
   const positionAfterShare = posBaseAfter > 0 ? (posValue + amount) / posBaseAfter : 0;
+  const positionOk = positionAfterShare <= positionLimit + 1e-9;
+  const positionLimitPct = Math.round(positionLimit * 100);
   const existingAsset = ctx.positions.find((p) => p.asset === input.asset && p.value > 0);
   const altSlots = isCryptoAsset
     ? altcoinSlots(ctx.positions.filter((p) => p.category === CRYPTO_CATEGORY && p.value > 0).map((p) => p.asset))
@@ -480,12 +483,17 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
     label: isCryptoAsset
       ? `Доля ${input.asset} в крипто-блоке`
       : `Доля ${input.asset} в портфеле`,
-    ok: positionAfterShare <= positionLimit + 1e-9,
+    ok: positionOk,
     severity: "block",
-    before: posBaseBefore > 0 ? posValue / posBaseBefore : 0,
+    before: positionBeforeShare,
     after: positionAfterShare,
     limit: positionLimit,
     isShare: true,
+    note: positionOk
+      ? undefined
+      : positionBeforeShare > positionLimit
+        ? `${input.asset} уже выше лимита ${positionLimitPct}%. Добор этого же актива увеличит перегруз; свободные деньги можно использовать для других активов, которые проходят лимиты.`
+        : `После добора ${input.asset} станет выше лимита ${positionLimitPct}%.`,
   });
 
   if (isNewAltcoin && altSlots) {

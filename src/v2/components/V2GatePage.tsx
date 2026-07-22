@@ -274,6 +274,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
                       {v.before} <span className="v2-gate-arrow">→</span> {v.after}
                       <span className="v2-gate-check-limit"> · лимит {v.limit}</span>
                     </span>
+                    {!c.ok && c.note && <span className="v2-gate-check-note">{c.note}</span>}
                   </div>
                 );
               })}
@@ -335,7 +336,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
             )}
             {decision.status === "БЛОКИРОВКА" && decision.maxAllowedAmount <= 0 && (
               <div className="v2-gate-nofix">
-                Безопасного объёма для добора сейчас нет — лимиты уже на пределе.
+                Безопасного объёма для добора этого актива сейчас нет — лимит уже на пределе.
               </div>
             )}
             {(decision.status === "ОСТОРОЖНО" || decision.status === "РАЗРЕШЕНО_С_ЛИМИТОМ") && decision.maxSafeAmount > 0 && (

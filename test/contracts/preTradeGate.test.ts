@@ -76,6 +76,31 @@ describe("pre-trade gate", () => {
     expect(evaluateTrade(buy({ asset: "ETH", amountUsd: 30 }), baseCtx).status).toBe("ok");
   });
 
+  it("SOL уже выше 10% крипто-блока: докупка блокируется с объяснением", () => {
+    const ctx: GateContext = {
+      ...baseCtx,
+      positions: [
+        { asset: "SOL", category: "Крипта", value: 20 },
+        { asset: "ETH", category: "Крипта", value: 80 },
+        { asset: "BTC", category: "Крипта", value: 75 },
+        { asset: "USDC", category: "Свободные деньги", value: 402 },
+      ],
+      allocation: [
+        { name: "Крипта", value: 175 },
+        { name: "Свободные деньги", value: 402 },
+      ],
+    };
+    const v = evaluateTrade(buy({ asset: "SOL", amountUsd: 20, category: "Крипта" }), ctx);
+    expect(v.status).toBe("block");
+    if (v.status === "block") {
+      const positionCheck = v.checks.find((check) => check.key === "position");
+      expect(positionCheck?.before).toBeCloseTo(0.114, 3);
+      expect(positionCheck?.after).toBeCloseTo(0.205, 3);
+      expect(positionCheck?.note).toContain("SOL уже выше лимита 10%");
+      expect(v.maxAllowedAmount).toBe(0);
+    }
+  });
+
   it("новый альткоин: лимит 5% крипто-блока — block", () => {
     // PEPE 0→30 из 430 = 7% > 5%.
     const v = evaluateTrade(buy({ asset: "PEPE", amountUsd: 30 }), baseCtx);
