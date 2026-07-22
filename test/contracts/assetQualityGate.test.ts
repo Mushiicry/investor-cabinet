@@ -39,4 +39,15 @@ describe("проверка качества токена", () => {
     expect(verdict.warnings).toContain("Источник проверки токенов ещё не подключён");
     expect(verdict.blockers).toEqual([]);
   });
+
+  it("не считает неизвестный CMC-ранг автоматическим нарушением топ-100", () => {
+    const verdict = evaluateAssetQuality("JASMY", {
+      connected: true,
+      records: [{ asset: "JASMY", cmcRank: null, binanceMonitoring: true }],
+    });
+
+    expect(verdict.status).toBe("block");
+    expect(verdict.blockers).toEqual(["JASMY: токен находится в списке мониторинга Binance"]);
+    expect(verdict.warnings).toContain("JASMY: статус CoinMarketCap Top-100 не подключён");
+  });
 });

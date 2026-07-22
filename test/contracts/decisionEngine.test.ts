@@ -4,6 +4,7 @@ import {
   evaluateDecision,
   type DecisionContext,
 } from "../../src/v2/lib/decisionEngine";
+import { BINANCE_MONITORING_ASSET_QUALITY } from "../../src/v2/lib/assetQualitySource";
 
 const baseCtx: DecisionContext = {
   totalPortfolioValue: 1000,
@@ -176,6 +177,23 @@ describe("движок решений", () => {
         expect.objectContaining({
           kind: "качество_актива",
           text: "ATOM: токен находится в списке мониторинга Binance",
+        }),
+      ]),
+    );
+  });
+
+  it("блокирует JASMY из подключённого источника Binance Monitoring", () => {
+    const decision = evaluateDecision(
+      { asset: "jasmy", amountUsd: 1, category: "Крипта", buyPrice: 1 },
+      { ...baseCtx, assetQuality: BINANCE_MONITORING_ASSET_QUALITY },
+    );
+
+    expect(decision.status).toBe("БЛОКИРОВКА");
+    expect(decision.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "качество_актива",
+          text: "JASMY: токен находится в списке мониторинга Binance",
         }),
       ]),
     );

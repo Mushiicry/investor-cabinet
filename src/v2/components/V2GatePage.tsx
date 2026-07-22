@@ -15,6 +15,7 @@ import {
 } from "../lib/preTradeGate";
 import { evaluateDecision } from "../lib/decisionEngine";
 import { buildCapitalBuckets, type CapitalBuckets } from "../lib/capitalBuckets";
+import { BINANCE_MONITORING_ASSET_QUALITY } from "../lib/assetQualitySource";
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -105,6 +106,7 @@ export function V2GatePage({ portfolio, positions, allocation, fearGreedStrategy
       cryptoMaxShare: phase.cryptoMaxShare,
       futuresShare,
       capitalBuckets,
+      assetQuality: BINANCE_MONITORING_ASSET_QUALITY,
       positions: positions.map((p) => ({
         asset: p.asset,
         category: p.category,

@@ -56,7 +56,9 @@ export function evaluateAssetQuality(
   const blockers: string[] = [];
   const warnings: string[] = [];
 
-  if (record.cmcRank === null || record.cmcRank <= 0 || record.cmcRank > TOP_LIMIT) {
+  if (record.cmcRank === null) {
+    warnings.push(`${key}: статус CoinMarketCap Top-100 не подключён`);
+  } else if (record.cmcRank <= 0 || record.cmcRank > TOP_LIMIT) {
     blockers.push(`${key}: токен вне топ-100 CoinMarketCap`);
   }
   if (record.binanceMonitoring) {
