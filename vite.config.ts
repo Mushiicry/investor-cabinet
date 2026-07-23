@@ -4,6 +4,19 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('/node_modules/')) return undefined;
+          if (id.includes('/@supabase/')) return 'supabase';
+          if (id.includes('/@vitejs/') || id.includes('/vite/')) return 'build-tools';
+          if (id.includes('/react/') || id.includes('/react-dom/')) return 'react-vendor';
+          return 'vendor';
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       // Wife route FIRST - prevents /api/investor prefix from matching /api/investor-wife.
