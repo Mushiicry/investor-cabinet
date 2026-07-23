@@ -818,7 +818,10 @@ Read-only audit текущего Health/Risk/API contract
 
 ## 16. Что делать следующим коммитом
 
-Следующий технический scope должен быть маленьким:
+Статус на 2026-07-24: read-only audit выполнен в
+`docs/HEALTH_FACTOR_V2_SCHEMA_AUDIT_2026-07-24.md`.
+
+Выполнено:
 
 1. не менять Google Sheets;
 2. не менять Apps Script;
@@ -828,4 +831,12 @@ Read-only audit текущего Health/Risk/API contract
 6. подготовить `HealthFactorV2` schema proposal;
 7. указать точные поля, которые уже есть и которых не хватает.
 
-Только после этого можно переходить к первому code patch.
+Следующий code patch:
+
+1. не менять формулы;
+2. не менять UI;
+3. не менять API;
+4. добавить слой совместимости ключей:
+   `crypto → survival`, `futures → riskControl`, `flexibility → discipline`;
+5. обновить тесты канонических ключей v2;
+6. только после этого переводить UI и рекомендации на новые ключи.
