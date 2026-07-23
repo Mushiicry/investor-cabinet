@@ -9,6 +9,7 @@
 // выше порога. Дисциплина растит уровень, а не объём торговли (конституция).
 // Достигнутый уровень не сгорает — см. levelProgress.ts.
 
+import { findHealthComponentByKey } from "../../lib/portfolioHealth";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import type { InvestorTransaction } from "../../types/portfolio";
 import type { V2Portfolio, V2Position } from "../InvestorCabinetV2Lab";
@@ -39,7 +40,8 @@ const isSell = (action: string) => /продаж/i.test(action ?? "");
  */
 export function getAchievements(ctx: AchievementContext): LadderAchievement[] {
   const { health, portfolio, positions = [], transactions = [] } = ctx;
-  const score = (key: string) => health.components.find((c) => c.key === key)?.score ?? 0;
+  const score = (key: Parameters<typeof findHealthComponentByKey>[1]) =>
+    findHealthComponentByKey(health.components, key)?.score ?? 0;
 
   const hf = health.healthFactor;
   const posCount = portfolio.positionsCount ?? 0;
@@ -58,18 +60,18 @@ export function getAchievements(ctx: AchievementContext): LadderAchievement[] {
     num("pos3", "Портфель собран", "3+ позиции в работе", posCount, 3),
     num("reserve50", "Подушка заложена", "Резерв не ниже 50", score("reserve"), 50),
     num("value300", "Первые $300", "Портфель дороже $300", value, 300),
-    num("discipline40", "Процесс запущен", "Дисциплина не ниже 40", score("flexibility"), 40),
+    num("discipline40", "Процесс запущен", "Дисциплина не ниже 40", score("discipline"), 40),
     num("hf40", "Система запущена", "Здоровье портфеля выше 40", hf, 40),
 
     // ── LVL 2: дисциплина ──
     num("pos5", "Диверсифицирован", "5+ позиций в работе", posCount, 5),
     num("reserve70", "Хранитель резерва", "Резерв не ниже 70", score("reserve"), 70),
     num("value500", "Рубеж $500", "Портфель дороже $500", value, 500),
-    num("discipline60", "Журнал решений", "Дисциплина не ниже 60", score("flexibility"), 60),
+    num("discipline60", "Журнал решений", "Дисциплина не ниже 60", score("discipline"), 60),
     num("trade1", "Первая фиксация", "Закрыта хотя бы одна сделка", closedTrades, 1),
 
     // ── LVL 3: контроль риска ──
-    num("futures70", "Контроль риска в норме", "Лимит активной торговли и плечо в норме", score("futures"), 70),
+    num("futures70", "Контроль риска в норме", "Лимит активной торговли и плечо в норме", score("riskControl"), 70),
     num("conc60", "Лимиты соблюдаются", "Концентрация не ниже 60", score("concentration"), 60),
     num("hf60", "Портфель окреп", "Здоровье портфеля выше 60", hf, 60),
     num("move10", "Взял движение", "Позиция в плюсе на 10%+", Math.round(bestOpenPnlPct), 10),

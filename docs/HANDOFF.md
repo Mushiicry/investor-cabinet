@@ -135,8 +135,10 @@
       risk-first, но внутренние legacy-ключи `crypto/futures/flexibility` нужно
       привести к канону `survival/riskControl/discipline` отдельным безопасным
       patch без изменения формул.
-- [ ] **Патч 3 — Health keys compatibility** — добавить слой совместимости
-      канонических ключей v2 без изменения формул, API и UI.
+- [x] **Патч 3 — Health keys compatibility** — добавлен слой совместимости
+      канонических ключей v2: `crypto → survival`, `futures → riskControl`,
+      `flexibility → discipline`. Старые ключи сохранены, формулы, API и UI не
+      менялись.
 - [ ] *(опц.)* Авто-детект покупок SPCXB по дельте кошелька (усреднение входа, как Arbitrum).
 - [ ] *(P2)* Code-split бандла — сборка предупреждает про >500 kB (echarts уже удалён, не он).
 - [ ] *(ждём)* Первый живой прогон Cosmos tx — когда появится транзакция.

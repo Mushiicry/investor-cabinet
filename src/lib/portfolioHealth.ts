@@ -71,6 +71,51 @@ export type HealthComponentKey =
   | "diversification"
   | "flexibility";
 
+export type HealthComponentV2Key =
+  | "reserve"
+  | "survival"
+  | "riskControl"
+  | "concentration"
+  | "diversification"
+  | "discipline";
+
+export type HealthComponentLookupKey = HealthComponentKey | HealthComponentV2Key;
+
+export const HEALTH_COMPONENT_V2_KEY: Record<HealthComponentKey, HealthComponentV2Key> = {
+  reserve: "reserve",
+  crypto: "survival",
+  futures: "riskControl",
+  concentration: "concentration",
+  diversification: "diversification",
+  flexibility: "discipline",
+};
+
+export const HEALTH_COMPONENT_LEGACY_KEY: Record<HealthComponentV2Key, HealthComponentKey> = {
+  reserve: "reserve",
+  survival: "crypto",
+  riskControl: "futures",
+  concentration: "concentration",
+  diversification: "diversification",
+  discipline: "flexibility",
+};
+
+export function toLegacyHealthComponentKey(key: HealthComponentLookupKey): HealthComponentKey {
+  return HEALTH_COMPONENT_LEGACY_KEY[key as HealthComponentV2Key] ?? (key as HealthComponentKey);
+}
+
+export function toHealthComponentV2Key(key: HealthComponentLookupKey): HealthComponentV2Key {
+  return HEALTH_COMPONENT_V2_KEY[toLegacyHealthComponentKey(key)];
+}
+
+export function findHealthComponentByKey(
+  components: HealthComponent[],
+  key: HealthComponentLookupKey,
+): HealthComponent | undefined {
+  const legacyKey = toLegacyHealthComponentKey(key);
+  const v2Key = toHealthComponentV2Key(key);
+  return components.find((component) => component.key === legacyKey || component.v2Key === v2Key);
+}
+
 export type HealthComponentMeta = {
   reserveUsd?: number;
   reserveShare?: number;
@@ -178,6 +223,8 @@ export type HealthComponentMeta = {
 
 export type HealthComponent = {
   key: HealthComponentKey;
+  /** Канонический ключ v2. Старый key сохраняется до полной миграции UI/API. */
+  v2Key?: HealthComponentV2Key;
   label: string;
   score: number;
   color: string;
@@ -716,6 +763,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   const components: HealthComponent[] = [
     {
       key: "reserve",
+      v2Key: "reserve",
       label: "Резерв",
       color: "#56d8f5",
       desc: "Выделенный резерв. Пол 10%, цель 30%, коридор нормы 30–60%. Ниже пола новые рисковые действия запрещены; выше 60% начинается штраф за простой капитала.",
@@ -737,6 +785,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     },
     {
       key: "crypto",
+      v2Key: "survival",
       label: "Выживаемость",
       color: "#ad67ff",
       desc: "Стресс-проверка: выдержит ли портфель сильное падение рынка без разрушения резерва и структуры капитала.",
@@ -765,6 +814,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     },
     {
       key: "futures",
+      v2Key: "riskControl",
       label: "Контроль риска",
       color: "#e8b35a",
       desc: "Активная торговля — не более 10% капитала. Балл = 100 минус штраф за превышение лимита, плечо, лишние позиции и близкую ликвидацию. Свободная часть лимита не ухудшает здоровье.",
@@ -795,6 +845,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     },
     {
       key: "concentration",
+      v2Key: "concentration",
       label: "Концентрация",
       color: "#ff6b8a",
       desc: concentrationDesc,
@@ -828,6 +879,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     },
     {
       key: "diversification",
+      v2Key: "diversification",
       label: "Диверсификация",
       color: "#5fe0cf",
       desc: "Насколько устойчиво разложен рисковый капитал по спотовым классам: крипта, металлы и акции. Кэш и фьючерсы не учитываются.",
@@ -837,6 +889,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     },
     {
       key: "flexibility",
+      v2Key: "discipline",
       label: "Дисциплина",
       color: "#5af08d",
       desc: "Целостность процесса: журнал решений, отсутствие покупок из страха упустить рост, сделок-мести, переторговки и дисциплинарных блокеров.",

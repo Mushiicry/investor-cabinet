@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   computeDiversificationScore,
   computePortfolioHealth,
+  findHealthComponentByKey,
   liquidationPenalty,
+  toHealthComponentV2Key,
+  toLegacyHealthComponentKey,
   type HealthInput,
 } from "../../src/lib/portfolioHealth";
 
@@ -30,6 +33,28 @@ const scoreOf = (h: ReturnType<typeof computePortfolioHealth>, key: string) =>
   h.components.find((c) => c.key === key)!.score;
 
 describe("health concentration — per-asset score passthrough", () => {
+  it("возвращает канонические v2-ключи без ломки legacy-ключей", () => {
+    const h = computePortfolioHealth(base);
+
+    expect(h.components.map((component) => [component.key, component.v2Key])).toEqual([
+      ["reserve", "reserve"],
+      ["crypto", "survival"],
+      ["futures", "riskControl"],
+      ["concentration", "concentration"],
+      ["diversification", "diversification"],
+      ["flexibility", "discipline"],
+    ]);
+    expect(toHealthComponentV2Key("crypto")).toBe("survival");
+    expect(toHealthComponentV2Key("futures")).toBe("riskControl");
+    expect(toHealthComponentV2Key("flexibility")).toBe("discipline");
+    expect(toLegacyHealthComponentKey("survival")).toBe("crypto");
+    expect(toLegacyHealthComponentKey("riskControl")).toBe("futures");
+    expect(toLegacyHealthComponentKey("discipline")).toBe("flexibility");
+    expect(findHealthComponentByKey(h.components, "survival")).toBe(survival(h));
+    expect(findHealthComponentByKey(h.components, "riskControl")?.label).toBe("Контроль риска");
+    expect(findHealthComponentByKey(h.components, "discipline")).toBe(discipline(h));
+  });
+
   it("резерв: ниже пола 10% включает жёсткую блокировку", () => {
     const h = computePortfolioHealth({
       ...base,

@@ -831,7 +831,7 @@ Read-only audit текущего Health/Risk/API contract
 6. подготовить `HealthFactorV2` schema proposal;
 7. указать точные поля, которые уже есть и которых не хватает.
 
-Следующий code patch:
+Code patch выполнен:
 
 1. не менять формулы;
 2. не менять UI;
@@ -840,3 +840,6 @@ Read-only audit текущего Health/Risk/API contract
    `crypto → survival`, `futures → riskControl`, `flexibility → discipline`;
 5. обновить тесты канонических ключей v2;
 6. только после этого переводить UI и рекомендации на новые ключи.
+
+Статус: выполнено 2026-07-24. Старые ключи сохранены как совместимый слой,
+канонические v2-ключи добавлены через `v2Key` и helper-функции поиска.

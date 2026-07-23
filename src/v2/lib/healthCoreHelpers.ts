@@ -2,7 +2,7 @@
 // гексагон-радар, раскладка чипов, интерпретация здоровья, диагноз и рекомендации.
 // Вынесено из V2HealthCore.tsx, чтобы компонент отвечал только за render.
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
-import { computePortfolioHealth } from "../../lib/portfolioHealth";
+import { computePortfolioHealth, findHealthComponentByKey } from "../../lib/portfolioHealth";
 import type { HealthComponent, HealthInput } from "../../lib/portfolioHealth";
 import {
   buildDefaultHealthSimulatorLevers,
@@ -21,10 +21,13 @@ export const CHIP_W = 89, CHIP_H = 52, GAP = 12, CHIP_R = 40;
 export const CHIP_LABEL: Record<string, string> = {
   reserve:         "Резерв",
   crypto:          "Выживаемость",
+  survival:        "Выживаемость",
   futures:         "Контроль риска",
+  riskControl:     "Контроль риска",
   concentration:   "Концентрация",
   diversification: "Диверсификация",
   flexibility:     "Дисциплина",
+  discipline:      "Дисциплина",
 };
 
 export function scoreHint(s: number): string {
@@ -89,10 +92,13 @@ export function scaleValuePts(pts: string, factor: number): string {
 export const SCORE_LABEL: Record<string, string> = {
   reserve:         "Резерв",
   crypto:          "Выживаемость",
+  survival:        "Выживаемость",
   futures:         "Контроль риска",
+  riskControl:     "Контроль риска",
   concentration:   "Концентрация",
   diversification: "Диверсификация",
   flexibility:     "Дисциплина",
+  discipline:      "Дисциплина",
 };
 
 
@@ -245,15 +251,15 @@ function healthAfterRecommendation(input: HealthInput, kind: CoreRecKind): numbe
 
 function componentGain(kind: CoreRecKind | undefined, all: HealthComponent[]): number {
   if (!kind) return 0;
-  const keyByKind: Record<CoreRecKind, HealthComponent["key"]> = {
+  const keyByKind = {
     reserve: "reserve",
     diversification: "diversification",
     concentration: "concentration",
-    risk: "futures",
-    survival: "crypto",
-    discipline: "flexibility",
-  };
-  const component = all.find((item) => item.key === keyByKind[kind]);
+    risk: "riskControl",
+    survival: "survival",
+    discipline: "discipline",
+  } as const;
+  const component = findHealthComponentByKey(all, keyByKind[kind]);
   if (!component) return 0;
   return Math.max(0, Math.round((100 - component.score) * component.weight));
 }
