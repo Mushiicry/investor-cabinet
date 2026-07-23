@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import { isEmptyAccount } from "../lib/accountState";
@@ -13,7 +12,6 @@ import {
   type SignalDistance,
 } from "../lib/interestSignals";
 import { CryptoLogo } from "../../components/crypto/CryptoLogo";
-import { V2SourceTag } from "./V2SourceTag";
 import {
   buildPortfolioAlerts,
   topAlerts,
@@ -35,23 +33,6 @@ const LEVEL_LABEL: Record<AlertLevel, string> = {
   warning: "ВНИМАНИЕ",
   info: "СИГНАЛ",
 };
-
-const FG_ZONES = [
-  { label: "Максимум",  min: 0,   max: 14,  color: "rgba(220,70,70,0.9)" },
-  { label: "Усиление",  min: 15,  max: 19,  color: "rgba(220,130,55,0.9)" },
-  { label: "Добор",     min: 20,  max: 29,  color: "rgba(210,180,55,0.9)" },
-  { label: "Наблюд.",   min: 30,  max: 100, color: "rgba(90,180,255,0.7)" },
-];
-
-function getFGZone(v: number) {
-  return FG_ZONES.find((z) => v >= z.min && v <= z.max) ?? FG_ZONES[3];
-}
-
-function formatCooldownHours(hours: number) {
-  const days = Math.floor(hours / 24);
-  const hh = String(Math.floor(hours % 24)).padStart(2, "0");
-  return days > 0 ? `${days}д ${hh}:00` : `${hh}:00`;
-}
 
 // Точность триггера — часть решения: 0.3068 нельзя показывать как 0,31.
 // Разряды подбираем по величине цены, а не фиксируем на двух знаках.
@@ -90,14 +71,8 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
   const [openAsset, setOpenAsset] = useState<string | null>(null);
   const assetGroups = useMemo(() => groupByAsset(interestSignals), [interestSignals]);
   const openGroup = assetGroups.find((group) => group.asset === openAsset) ?? null;
-  const nearestSignal = useMemo(() => sortByProximity(interestSignals)[0] ?? null, [interestSignals]);
-  const nearestDistance = nearestSignal ? getSignalDistance(nearestSignal) : null;
+  const nearestSignals = useMemo(() => sortByProximity(interestSignals).slice(0, 3), [interestSignals]);
   const currentFG = fearGreedStrategy.currentIndex;
-  const liveStrategy = buildFearGreedStrategy(
-    currentFG,
-    portfolio.totalPortfolioValue || 0,
-    fearGreedStrategy.rules ?? []
-  );
 
   const alerts = topAlerts(
     buildPortfolioAlerts({ portfolio, positions, allocation, currentFG, health, interestSignals }),
@@ -105,10 +80,6 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
   // Поведенческий гид: живой F&G + тренд по истории → эмоция рынка и дисциплина.
   const psychology = getMarketPsychology(currentFG, fearGreedStrategy.history);
   const criticalCount = alerts.filter((a) => a.level === "critical").length;
-  const fgZone = getFGZone(currentFG);
-  const currentRule = liveStrategy.rules.find((r) => r.isCurrent);
-  const activeRules = liveStrategy.rules.filter((r) => r.status === "active" && r.buyPct > 0);
-  const cooldownRules = liveStrategy.rules.filter((r) => r.status === "cooldown");
 
   return (
     <div className="v2-signals-page">
@@ -125,7 +96,6 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
             <span className="v2-sig-badge badge-critical">{criticalCount} ТРЕВОГ</span>
           )}
         </div>
-        <span className="v2-sig-timestamp">данные API</span>
       </div>
 
       {/* ── Тревоги ───────────────────────────────────────── */}
@@ -157,145 +127,12 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
       {/* ── Основная сетка ────────────────────────────────── */}
       <div className="v2-sig-main-grid">
 
-        {/* Рынок */}
-        <div className="v2-panel v2-sig-market">
-          <div className="v2-sig-panel-label">
-            <span className="v2-sig-dot dot-info" />
-            Рынок
-            <V2SourceTag source="api" title="Индекс страха и жадности приходит из внешнего источника" />
-          </div>
-
-          <div className="v2-fg-signal-row">
-            <div className="v2-fg-signal-value" style={{ color: fgZone.color }}>{currentFG}</div>
-            <div className="v2-fg-signal-info">
-              <span className="v2-fg-signal-zone" style={{ color: fgZone.color }}>{fgZone.label}</span>
-              <span className="v2-fg-signal-label">Индекс страха / жадности</span>
-            </div>
-          </div>
-
-          <div className="v2-fg-bar-track">
-            <div className="v2-fg-bar-fill" style={{ width: `${currentFG}%`, background: `linear-gradient(90deg, ${fgZone.color}, ${fgZone.color}88)` }} />
-            <div className="v2-fg-bar-needle" style={{ left: `${currentFG}%` }} />
-          </div>
-          <div className="v2-fg-bar-labels">
-            <span>Страх</span><span>Нейтрально</span><span>Жадность</span>
-          </div>
-
-          {/* ── Психология рынка: не прогноз, а поведенческий гид ── */}
-          <div className="v2-psy-block">
-            <div className="v2-psy-head">
-              <span className="v2-psy-emotion" style={{ color: psychology.color }}>
-                {psychology.emotion}
-                {psychology.trend !== "flat" && (
-                  <span className="v2-psy-trend" aria-label={psychology.trend === "rising" ? "индекс растёт" : "индекс падает"}>
-                    {psychology.trend === "rising" ? "↗" : "↘"}
-                  </span>
-                )}
-              </span>
-              <span className="v2-psy-stance" style={{ borderColor: `${psychology.color}55`, color: psychology.color }}>
-                {psychology.stanceLabel}
-              </span>
-            </div>
-            <div className="v2-psy-rows">
-              <div className="v2-psy-row">
-                <span className="v2-psy-row-k">Рынок чувствует</span>
-                <span className="v2-psy-row-v">{psychology.feels}</span>
-              </div>
-              <div className="v2-psy-row">
-                <span className="v2-psy-row-k">Дисциплина делает</span>
-                <span className="v2-psy-row-v">{psychology.disciplined}</span>
-              </div>
-              <div className="v2-psy-row is-danger">
-                <span className="v2-psy-row-k">Опасно сейчас</span>
-                <span className="v2-psy-row-v">{psychology.dangerous}</span>
-              </div>
-              <div className={psychology.gate.severity === "block" ? "v2-psy-row is-danger" : "v2-psy-row"}>
-                <span className="v2-psy-row-k">Проверка сделки</span>
-                <span className="v2-psy-row-v">{psychology.gate.text}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="v2-sig-divider" />
-
-          <div className="v2-sig-market-rows">
-            {[
-              { label: "Здоровье портфеля", value: `${portfolio.healthFactor}/100`, tone: portfolio.healthFactor >= 60 ? "green" : portfolio.healthFactor >= 40 ? "amber" : "red" },
-              { label: "Статус", value: portfolio.healthStatus === "CONTROL" ? "Контроль" : portfolio.healthStatus === "BALANCED" ? "Баланс" : "Риск", tone: portfolio.healthStatus === "CONTROL" ? "green" : portfolio.healthStatus === "BALANCED" ? "amber" : "red" },
-              { label: "Концентрация крипто", value: risk.concentration === "HIGH" ? "Высокая" : risk.concentration === "MEDIUM" ? "Средняя" : "Низкая", tone: risk.concentration === "HIGH" ? "red" : risk.concentration === "MEDIUM" ? "amber" : "green" },
-              { label: "Давление фьючерсов", value: risk.futuresPressure === "HIGH" ? "Высокое" : risk.futuresPressure === "MEDIUM" ? "Среднее" : "Низкое", tone: risk.futuresPressure === "HIGH" ? "red" : risk.futuresPressure === "MEDIUM" ? "amber" : "green" },
-            ].map((row) => (
-              <div key={row.label} className="v2-sig-market-row">
-                <span className="v2-sig-row-label">{row.label}</span>
-                <span className={`v2-sig-row-val val-${row.tone}`}>{row.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Стратегия */}
-        <div className="v2-panel v2-sig-strategy">
-          <div className="v2-sig-panel-label">
-            <span className="v2-sig-dot dot-amber" />
-            Стратегия F&G
-          </div>
-
-          <div className="v2-sig-strategy-zone">
-            <div className="v2-sig-zone-label">Текущая зона</div>
-            <div className="v2-sig-zone-name">{currentRule ? currentRule.label : "Наблюдение"}</div>
-            <div className="v2-sig-zone-range">F&G {currentRule ? currentRule.range.replace("-", "–") : "30–100"}</div>
-          </div>
-
-          <div className="v2-sig-rules-list">
-            {liveStrategy.rules.filter((r) => r.buyPct > 0).map((rule) => {
-              const isCurrent = rule.isCurrent;
-              const isCooldown = rule.status === "cooldown";
-              const isActive = rule.status === "active";
-              return (
-                <div key={rule.mode} className={`v2-sig-rule-row${isCurrent ? " is-current" : ""}${isCooldown ? " is-cooldown" : ""}${isActive ? " is-active" : ""}`}>
-                  <div className="v2-sig-rule-left">
-                    <span className="v2-sig-rule-dot" />
-                    <span className="v2-sig-rule-name">{rule.label}</span>
-                    <span className="v2-sig-rule-range">{rule.range.replace("-", "–")}</span>
-                  </div>
-                  <div className="v2-sig-rule-right">
-                    <span className="v2-sig-rule-amount">{rule.buyAmount.toFixed(2)} $</span>
-                    {isCooldown && rule.cooldownRemainingHours != null && (
-                      <span className="v2-sig-rule-cooldown">{formatCooldownHours(rule.cooldownRemainingHours)}</span>
-                    )}
-                    {isActive && <span className="v2-sig-rule-status status-active">ДОСТУПНО</span>}
-                    {rule.status === "passive" && !isCurrent && (
-                      <span className="v2-sig-rule-status status-passive">ПАССИВ</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {activeRules.length > 0 ? (
-            <div className="v2-sig-action-hint">
-              <span className="v2-sig-dot dot-green" />
-              {activeRules.length === 1 ? `Доступна зона · ${activeRules[0].buyAmount.toFixed(2)}$` : `${activeRules.length} зоны доступны`}
-            </div>
-          ) : cooldownRules.length > 0 ? (
-            <div className="v2-sig-action-hint hint-cooldown">
-              <span className="v2-sig-dot dot-amber" />
-              Все активные зоны на кулдауне
-            </div>
-          ) : null}
-        </div>
-
         {/* Зона интереса */}
         <div className="v2-panel v2-sig-interest">
           <div className="v2-sig-panel-label">
             <span className="v2-sig-dot dot-info" />
             Зона интереса
-            {/* Раньше стояло «СИГНАЛЫ API», хотя сами уровни вписаны вручную
-                в лист «Сигналы» — из API приходят только текущие цены. */}
-            {interestSignals.length
-              ? <V2SourceTag source="mixed" />
-              : <span className="v2-sig-int-bot-badge">НЕТ ДАННЫХ</span>}
+            {!interestSignals.length && <span className="v2-sig-int-bot-badge">НЕТ ДАННЫХ</span>}
           </div>
           {assetGroups.length ? (
             <>
@@ -368,22 +205,31 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
                   // Пока монета не выбрана, панель всё равно отвечает на главный
                   // вопрос: за чем следить сегодня.
                   <div className="v2-sig-int-hint">
-                    {nearestSignal ? (
+                    {nearestSignals.length ? (
                       <>
-                        <span className="v2-sig-int-hint-label">Ближайшая точка</span>
-                        <span className="v2-sig-int-hint-main">
-                          {nearestSignal.asset} · {nearestSignal.action}{" "}
-                          {formatSignalMoney(nearestSignal.amountUsd)} при{" "}
-                          {formatSignalMoney(nearestSignal.triggerPrice)}
-                        </span>
-                        {nearestDistance ? (
-                          <span className="v2-sig-int-dist is-near">
-                            {formatSignalDistance(nearestDistance)}
-                            <span className="v2-sig-int-dist-abs">
-                              {formatSignalMoney(Math.abs(nearestDistance.abs))}
-                            </span>
-                          </span>
-                        ) : null}
+                        <span className="v2-sig-int-hint-label">Ближайшие точки</span>
+                        <div className="v2-sig-nearest-list">
+                          {nearestSignals.map((signal) => {
+                            const distance = getSignalDistance(signal);
+                            return (
+                              <div className="v2-sig-nearest-row" key={signal.id}>
+                                <span className="v2-sig-int-hint-main">
+                                  {signal.asset} · {signal.action}{" "}
+                                  {formatSignalMoney(signal.amountUsd)} при{" "}
+                                  {formatSignalMoney(signal.triggerPrice)}
+                                </span>
+                                {distance ? (
+                                  <span className="v2-sig-int-dist is-near">
+                                    {formatSignalDistance(distance)}
+                                    <span className="v2-sig-int-dist-abs">
+                                      {formatSignalMoney(Math.abs(distance.abs))}
+                                    </span>
+                                  </span>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </>
                     ) : (
                       <span className="v2-sig-int-hint-label">Нет активных точек</span>
@@ -401,6 +247,83 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
               </div>
             </div>
           )}
+        </div>
+
+        {/* Рынок */}
+        <div className="v2-panel v2-sig-market">
+          <div className="v2-sig-panel-label">
+            <span className="v2-sig-dot dot-info" />
+            Рынок
+          </div>
+
+          <div className="v2-fg-signal-row">
+            <div className="v2-fg-signal-value" style={{ color: psychology.color }}>
+              {currentFG}<span className="v2-fg-signal-total">/100</span>
+            </div>
+            <div className="v2-fg-signal-info">
+              <span className="v2-fg-signal-zone" style={{ color: psychology.color }}>{psychology.emotion}</span>
+              <span className="v2-fg-signal-label">Индекс страха / жадности</span>
+            </div>
+          </div>
+
+          <div className="v2-fg-bar-track">
+            <div className="v2-fg-bar-fill" style={{ width: `${currentFG}%`, background: `linear-gradient(90deg, ${psychology.color}, ${psychology.color}88)` }} />
+            <div className="v2-fg-bar-needle" style={{ left: `${currentFG}%` }} />
+          </div>
+          <div className="v2-fg-bar-labels">
+            <span>Страх</span><span>Нейтрально</span><span>Жадность</span>
+          </div>
+
+          {/* ── Психология рынка: не прогноз, а поведенческий гид ── */}
+          <div className="v2-psy-block">
+            <div className="v2-psy-head">
+              <span className="v2-psy-emotion" style={{ color: psychology.color }}>
+                {psychology.emotion}
+                {psychology.trend !== "flat" && (
+                  <span className="v2-psy-trend" aria-label={psychology.trend === "rising" ? "индекс растёт" : "индекс падает"}>
+                    {psychology.trend === "rising" ? "↗" : "↘"}
+                  </span>
+                )}
+              </span>
+              <span className="v2-psy-stance" style={{ borderColor: `${psychology.color}55`, color: psychology.color }}>
+                {psychology.stanceLabel}
+              </span>
+            </div>
+            <div className="v2-psy-rows">
+              <div className="v2-psy-row">
+                <span className="v2-psy-row-k">Рынок чувствует</span>
+                <span className="v2-psy-row-v">{psychology.feels}</span>
+              </div>
+              <div className="v2-psy-row">
+                <span className="v2-psy-row-k">Дисциплина делает</span>
+                <span className="v2-psy-row-v">{psychology.disciplined}</span>
+              </div>
+              <div className="v2-psy-row is-danger">
+                <span className="v2-psy-row-k">Опасно сейчас</span>
+                <span className="v2-psy-row-v">{psychology.dangerous}</span>
+              </div>
+              <div className={psychology.gate.severity === "block" ? "v2-psy-row is-danger" : "v2-psy-row"}>
+                <span className="v2-psy-row-k">Проверка сделки</span>
+                <span className="v2-psy-row-v">{psychology.gate.text}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="v2-sig-divider" />
+
+          <div className="v2-sig-market-rows">
+            {[
+              { label: "Здоровье портфеля", value: `${portfolio.healthFactor}/100`, tone: portfolio.healthFactor >= 60 ? "green" : portfolio.healthFactor >= 40 ? "amber" : "red" },
+              { label: "Статус", value: portfolio.healthStatus === "CONTROL" ? "Контроль" : portfolio.healthStatus === "BALANCED" ? "Баланс" : "Риск", tone: portfolio.healthStatus === "CONTROL" ? "green" : portfolio.healthStatus === "BALANCED" ? "amber" : "red" },
+              { label: "Концентрация крипто", value: risk.concentration === "HIGH" ? "Высокая" : risk.concentration === "MEDIUM" ? "Средняя" : "Низкая", tone: risk.concentration === "HIGH" ? "red" : risk.concentration === "MEDIUM" ? "amber" : "green" },
+              { label: "Давление фьючерсов", value: risk.futuresPressure === "HIGH" ? "Высокое" : risk.futuresPressure === "MEDIUM" ? "Среднее" : "Низкое", tone: risk.futuresPressure === "HIGH" ? "red" : risk.futuresPressure === "MEDIUM" ? "amber" : "green" },
+            ].map((row) => (
+              <div key={row.label} className="v2-sig-market-row">
+                <span className="v2-sig-row-label">{row.label}</span>
+                <span className={`v2-sig-row-val val-${row.tone}`}>{row.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
