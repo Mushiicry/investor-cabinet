@@ -9,6 +9,7 @@ import { buildPlaybookCards } from "../../lib/playbookSelectors";
 import { decisionsData, scenariosData } from "../../mocks/portfolioData";
 import { mergeWithLocalSnapshots } from "../../services/dailySnapshotService";
 import { assetConcentration } from "./preTradeGate";
+import { plannedLimitOrdersSummary } from "./interestSignals";
 import type { PortfolioState } from "../../types/portfolio";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 
@@ -264,6 +265,9 @@ export const buildLiveV2Data = (
     cryptoBlockValue,
     state.overview.portfolioValue,
   );
+  const plannedLimitOrders = plannedLimitOrdersSummary(state.signals.interestList);
+  const plannedLimitOrdersUsd =
+    state.signals.interestList.length > 0 ? plannedLimitOrders.totalUsd : undefined;
 
   const liveHealthInput: HealthInput = {
     cashShare: categoryShare(state, "Свободные деньги"),
@@ -277,6 +281,7 @@ export const buildLiveV2Data = (
     investedCapital: state.overview.invested,
     spotDeployableUsd: state.risk.spotDeployableCash,
     futuresDeployableUsd: state.risk.futuresDeployableCash,
+    plannedLimitOrdersUsd,
     concentrationScore: concentration.score,
     maxAssetLimitUtilization: concentration.maxUtilization,
     worstConcentrationAsset: concentration.worstAsset,

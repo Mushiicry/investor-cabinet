@@ -351,9 +351,35 @@ describe("health concentration — per-asset score passthrough", () => {
       "Журнал решений: 60/100",
       "Поведение: 60/100",
       "Блокеры: 100/100",
+      "План лимитных ордеров: 60/100",
       "Нарушений за 30 дней: нет данных",
       "Балл дисциплины: 70/100",
     ]);
+  });
+
+  it("дисциплина: подготовленные лимитные ордера дают плюс к процессу", () => {
+    const withoutOrders = discipline(computePortfolioHealth({
+      ...base,
+      disciplineJournalCoverage: 0.8,
+      disciplineViolations30d: 0,
+      fomoEvents30d: 0,
+      revengeTrades30d: 0,
+      overtradingDays30d: 0,
+      plannedLimitOrdersUsd: 0,
+    }));
+    const withOrders = discipline(computePortfolioHealth({
+      ...base,
+      disciplineJournalCoverage: 0.8,
+      disciplineViolations30d: 0,
+      fomoEvents30d: 0,
+      revengeTrades30d: 0,
+      overtradingDays30d: 0,
+      plannedLimitOrdersUsd: 120,
+    }));
+
+    expect(withoutOrders.meta?.disciplinePlanScore).toBe(50);
+    expect(withOrders.meta?.disciplinePlanScore).toBe(100);
+    expect(withOrders.score).toBeGreaterThan(withoutOrders.score);
   });
 
   it("дисциплина: сделка-месть, переторговка и страх упустить рост включают блокировки", () => {

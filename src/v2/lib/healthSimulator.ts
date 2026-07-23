@@ -98,6 +98,11 @@ export function buildHealthSimulatorInput(
   const maxUtilTarget = Math.min(base.maxAssetLimitUtilization ?? 0, 0.75);
   const largestTarget = Math.min(base.largestShare, 0.2);
   const repairedViolations = Math.max(0, Math.round(lerp(currentViolations(base), 0, disciplineRepair)));
+  const limitOrderRepair = Math.max(survivalPlan, disciplineRepair);
+  const repairedLimitOrdersUsd =
+    limitOrderRepair > 0
+      ? lerp(base.plannedLimitOrdersUsd ?? 0, safeLimitOrderPlan(base), limitOrderRepair)
+      : base.plannedLimitOrdersUsd;
 
   return {
     ...base,
@@ -136,10 +141,7 @@ export function buildHealthSimulatorInput(
     metalSlotsUsed: repairSlotCount(base.metalSlotsUsed, base.metalSlotsTotal, concentrationRepair),
     futuresShare: lerp(base.futuresShare, 0, riskControlRepair),
     futuresLegs: repairLegs(base, riskControlRepair),
-    plannedLimitOrdersUsd:
-      survivalPlan > 0
-        ? lerp(base.plannedLimitOrdersUsd ?? 0, safeLimitOrderPlan(base), survivalPlan)
-        : base.plannedLimitOrdersUsd,
+    plannedLimitOrdersUsd: repairedLimitOrdersUsd,
     disciplineJournalCoverage:
       disciplineRepair > 0
         ? lerp(base.disciplineJournalCoverage ?? 0, 1, disciplineRepair)

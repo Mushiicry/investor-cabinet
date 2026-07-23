@@ -164,6 +164,8 @@ export type HealthComponentMeta = {
   disciplineJournalScore?: number;
   disciplineBehaviorScore?: number;
   disciplineBlockerScore?: number;
+  disciplinePlanScore?: number;
+  disciplinePlannedOrdersUsd?: number;
   disciplineViolations30d?: number;
   fomoEvents30d?: number;
   revengeTrades30d?: number;
@@ -658,8 +660,18 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
         );
   const disciplineCooldownActive = input.disciplineCooldownActive ?? false;
   const disciplineBlockerScore = disciplineCooldownActive ? 0 : 100;
+  const disciplinePlannedOrdersUsd = input.plannedLimitOrdersUsd;
+  const disciplinePlanScore =
+    disciplinePlannedOrdersUsd === undefined
+      ? 60
+      : disciplinePlannedOrdersUsd > 0
+        ? 100
+        : 50;
   const disciplineScore = Math.round(
-    disciplineJournalScore * 0.4 + disciplineBehaviorScore * 0.35 + disciplineBlockerScore * 0.25
+    disciplineJournalScore * 0.35 +
+      disciplineBehaviorScore * 0.3 +
+      disciplineBlockerScore * 0.25 +
+      disciplinePlanScore * 0.1
   );
   const disciplineBlockers: string[] = [];
   const disciplineWarnings: string[] = [];
@@ -684,6 +696,9 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   } else if (disciplineJournalCoverage < DISCIPLINE_JOURNAL_TARGET_COVERAGE) {
     disciplineWarnings.push("Журнал заполнен меньше чем на 80%");
   }
+  if (disciplinePlannedOrdersUsd !== undefined && disciplinePlannedOrdersUsd <= 0) {
+    disciplineWarnings.push("Лимитные ордера не подготовлены");
+  }
   if (!hasBehaviorData) {
     disciplineWarnings.push("Поведенческие маркеры не подключены");
   } else if ((disciplineViolations30d ?? 0) > 0 && disciplineBlockers.length === 0) {
@@ -693,6 +708,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     `Журнал решений: ${disciplineJournalScore}/100`,
     `Поведение: ${disciplineBehaviorScore}/100`,
     `Блокеры: ${disciplineBlockerScore}/100`,
+    `План лимитных ордеров: ${disciplinePlanScore}/100`,
     `Нарушений за 30 дней: ${disciplineViolations30d ?? "нет данных"}`,
     `Балл дисциплины: ${disciplineScore}/100`,
   ];
@@ -831,6 +847,8 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
         disciplineJournalScore,
         disciplineBehaviorScore,
         disciplineBlockerScore,
+        disciplinePlanScore,
+        disciplinePlannedOrdersUsd,
         disciplineViolations30d,
         fomoEvents30d,
         revengeTrades30d,

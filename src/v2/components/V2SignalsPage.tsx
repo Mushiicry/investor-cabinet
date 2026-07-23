@@ -8,6 +8,7 @@ import {
   getSignalDistance,
   groupByAsset,
   assessSignal,
+  plannedLimitOrdersSummary,
   sortByProximity,
   type SignalDistance,
 } from "../lib/interestSignals";
@@ -41,6 +42,11 @@ const formatSignalMoney = (value: number) => {
   if (!Number.isFinite(value) || value <= 0) return "—";
   const digits = value >= 1000 ? 0 : value >= 1 ? 4 : 6;
   return `$${value.toLocaleString("ru-RU", { maximumFractionDigits: digits })}`;
+};
+
+const formatSignalTotalMoney = (value: number) => {
+  if (!Number.isFinite(value) || value <= 0) return "$0";
+  return `$${Math.round(value).toLocaleString("ru-RU")}`;
 };
 
 const SIGNAL_STATUS_LABEL: Record<string, string> = {
@@ -82,6 +88,7 @@ export function V2SignalsPage({
   const assetGroups = useMemo(() => groupByAsset(interestSignals), [interestSignals]);
   const openGroup = assetGroups.find((group) => group.asset === openAsset) ?? null;
   const nearestSignals = useMemo(() => sortByProximity(interestSignals).slice(0, 3), [interestSignals]);
+  const limitOrders = useMemo(() => plannedLimitOrdersSummary(interestSignals), [interestSignals]);
   const currentFG = fearGreedStrategy.currentIndex;
 
   const alerts = topAlerts(
@@ -145,12 +152,18 @@ export function V2SignalsPage({
       {/* ── Основная сетка ────────────────────────────────── */}
       <div className="v2-sig-main-grid">
 
-        {/* Зона интереса */}
+        {/* Лимитные ордера */}
         <div className="v2-panel v2-sig-interest">
           <div className="v2-sig-panel-label">
             <span className="v2-sig-dot dot-info" />
-            Зона интереса
-            {!interestSignals.length && <span className="v2-sig-int-bot-badge">НЕТ ДАННЫХ</span>}
+            Лимитные ордера
+            {interestSignals.length ? (
+              <span className="v2-sig-int-bot-badge">
+                {formatSignalTotalMoney(limitOrders.totalUsd)} · {limitOrders.count} орд.
+              </span>
+            ) : (
+              <span className="v2-sig-int-bot-badge">НЕТ ДАННЫХ</span>
+            )}
           </div>
           {assetGroups.length ? (
             <>
@@ -180,7 +193,7 @@ export function V2SignalsPage({
                           ? "проверить"
                           : group.nearest
                             ? formatSignalDistance(group.nearest)
-                            : `${group.waitingCount} точки`}
+                            : `${group.waitingCount} орд.`}
                       </span>
                     </button>
                   );
@@ -225,7 +238,7 @@ export function V2SignalsPage({
                   <div className="v2-sig-int-hint">
                     {nearestSignals.length ? (
                       <>
-                        <span className="v2-sig-int-hint-label">Ближайшие точки</span>
+                        <span className="v2-sig-int-hint-label">Ближайшие ордера</span>
                         <div className="v2-sig-nearest-list">
                           {nearestSignals.map((signal) => {
                             const distance = getSignalDistance(signal);
@@ -250,9 +263,9 @@ export function V2SignalsPage({
                         </div>
                       </>
                     ) : (
-                      <span className="v2-sig-int-hint-label">Нет активных точек</span>
+                      <span className="v2-sig-int-hint-label">Нет активных ордеров</span>
                     )}
-                    <span className="v2-sig-int-hint-note">Нажмите монету — покажу её точки</span>
+                    <span className="v2-sig-int-hint-note">Нажмите актив — покажу его лимитные ордера</span>
                   </div>
                 )}
               </div>
@@ -260,7 +273,7 @@ export function V2SignalsPage({
           ) : (
             <div className="v2-sig-int-list">
               <div className="v2-sig-int-row">
-                <span className="v2-sig-int-range">Диапазоны отключены</span>
+                <span className="v2-sig-int-range">Лимитные ордера отключены</span>
                 <span className="v2-sig-int-label">Нет данных</span>
               </div>
             </div>

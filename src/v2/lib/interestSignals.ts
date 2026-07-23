@@ -58,6 +58,9 @@ export type SignalNotificationPlan = {
 /** Статусы, при которых сигнал снят с дежурства и требует внимания инвестора. */
 const ATTENTION_STATUSES = new Set(["CHECK", "ERROR"]);
 const DONE_STATUSES = new Set(["TRIGGERED"]);
+const INACTIVE_LIMIT_ORDER_STATUSES = new Set([...ATTENTION_STATUSES, ...DONE_STATUSES]);
+const BUY_ACTION_MARKERS = ["куп", "докуп", "добор", "добав", "набор", "вход", "откуп", "buy", "dca"];
+const SELL_ACTION_MARKERS = ["прод", "сократ", "фиксац", "закры", "sell", "reduce", "close"];
 
 const normalizeStatus = (status: string) => status.trim().toUpperCase();
 const NEAR_TRIGGER_PCT = 3;
@@ -75,6 +78,30 @@ const PRIORITY_RANK: Record<SignalPriority, number> = {
   "наблюдать": 4,
   "далеко": 5,
 };
+
+const actionHasMarker = (action: string, markers: string[]) => {
+  const normalized = action.trim().toLowerCase();
+  return markers.some((marker) => normalized.includes(marker));
+};
+
+export function isPlannedLimitOrder(signal: InterestSignal): boolean {
+  const status = normalizeStatus(signal.status);
+  if (INACTIVE_LIMIT_ORDER_STATUSES.has(status)) return false;
+  if (!Number.isFinite(signal.amountUsd) || signal.amountUsd <= 0) return false;
+  if (actionHasMarker(signal.action, SELL_ACTION_MARKERS)) return false;
+  return actionHasMarker(signal.action, BUY_ACTION_MARKERS);
+}
+
+export function plannedLimitOrdersSummary(signals: InterestSignal[]) {
+  const activeOrders = signals.filter(isPlannedLimitOrder);
+  const assets = [...new Set(activeOrders.map((signal) => signal.asset.trim()).filter(Boolean))];
+
+  return {
+    count: activeOrders.length,
+    totalUsd: activeOrders.reduce((sum, signal) => sum + signal.amountUsd, 0),
+    assets,
+  };
+}
 
 function parseSignalTime(value: string): number {
   const raw = String(value || "").trim();
@@ -328,21 +355,21 @@ export function buildSignalNotificationPlan(
   };
 }
 
-/** Актив со своими точками входа/выхода — одна кнопка в сетке монет. */
+/** Актив со своими лимитными ордерами — одна кнопка в сетке монет. */
 export type AssetSignalGroup = {
   asset: string;
   signals: InterestSignal[];
-  /** Ближайшая к срабатыванию точка актива — по ней сортируются монеты. */
+  /** Ближайший к срабатыванию ордер актива — по нему сортируются монеты. */
   nearest: SignalDistance | null;
   /** Есть строки, снятые с дежурства (CHECK/ERROR) — актив требует внимания. */
   needsAttention: boolean;
-  /** Сколько точек ещё ждут срабатывания. */
+  /** Сколько ордеров ещё ждут срабатывания. */
   waitingCount: number;
 };
 
 /**
  * Группировка по активу: 23 строки списком читаются тяжело, а по монетам
- * это 10 кнопок. Порядок монет — по близости их ближайшей точки, чтобы
+ * это 10 кнопок. Порядок монет — по близости их ближайшего ордера, чтобы
  * первым в сетке стоял актив, за которым надо следить сегодня.
  */
 export function groupByAsset(signals: InterestSignal[]): AssetSignalGroup[] {

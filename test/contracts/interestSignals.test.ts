@@ -6,6 +6,8 @@ import {
   countSignalNotificationsToday,
   getSignalDistance,
   groupByAsset,
+  isPlannedLimitOrder,
+  plannedLimitOrdersSummary,
   sortByProximity,
   sortBySignalPriority,
 } from "../../src/v2/lib/interestSignals";
@@ -131,6 +133,28 @@ describe("группировка по монетам", () => {
 
     expect(groups[0].waitingCount).toBe(1);
     expect(groups[0].nearest!.pct).toBeCloseTo(-20, 6);
+  });
+});
+
+describe("лимитные ордера", () => {
+  it("считает депозит только по активным покупательным ордерам", () => {
+    const summary = plannedLimitOrdersSummary([
+      signal({ id: "eth-buy", asset: "ETH", action: "Купить", amountUsd: 25 }),
+      signal({ id: "sol-add", asset: "SOL", action: "Добор", amountUsd: 15 }),
+      signal({ id: "btc-done", asset: "BTC", action: "Купить", amountUsd: 100, status: "TRIGGERED" }),
+      signal({ id: "ton-check", asset: "TON", action: "Купить", amountUsd: 40, status: "CHECK" }),
+      signal({ id: "gram-sell", asset: "GRAM", action: "Продать", amountUsd: 30 }),
+    ]);
+
+    expect(summary.count).toBe(2);
+    expect(summary.totalUsd).toBe(40);
+    expect(summary.assets).toEqual(["ETH", "SOL"]);
+  });
+
+  it("не принимает продажу или нулевую сумму за план покупки", () => {
+    expect(isPlannedLimitOrder(signal({ action: "Сократить позицию", amountUsd: 20 }))).toBe(false);
+    expect(isPlannedLimitOrder(signal({ action: "Купить", amountUsd: 0 }))).toBe(false);
+    expect(isPlannedLimitOrder(signal({ action: "Купить", amountUsd: 20 }))).toBe(true);
   });
 });
 
