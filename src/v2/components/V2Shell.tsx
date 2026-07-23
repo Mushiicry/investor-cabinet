@@ -239,10 +239,13 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           currentFG: data.fearGreedStrategy.currentIndex,
           health: behaviorHealth,
           interestSignals: data.signals?.interestList ?? [],
+          signalNotification: {
+            disciplineCooldownActive: behavior.healthInputs.disciplineCooldownActive,
+          },
           previousHealthFactor,
         })
       ),
-    [behaviorPortfolio, data.positions, data.allocation, data.fearGreedStrategy.currentIndex, behaviorHealth, data.signals, previousHealthFactor]
+    [behaviorPortfolio, data.positions, data.allocation, data.fearGreedStrategy.currentIndex, behaviorHealth, data.signals, behavior.healthInputs.disciplineCooldownActive, previousHealthFactor]
   );
 
   const criticalCount = alerts.filter((alert) => alert.level === "critical").length;
@@ -346,6 +349,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
               : data.signals?.interest
                 ? [data.signals.interest]
                 : []}
+            disciplineCooldownActive={behavior.healthInputs.disciplineCooldownActive}
           />
         ) : page === "gate" ? (
           <V2GatePage

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   assessSignal,
+  assessSignalNotification,
+  buildSignalNotificationPlan,
+  countSignalNotificationsToday,
   getSignalDistance,
   groupByAsset,
   sortByProximity,
@@ -164,5 +167,85 @@ describe("качество и приоритет сигналов", () => {
     ], now);
 
     expect(ordered.map((item) => item.id)).toEqual(["broken", "done", "near"]);
+  });
+});
+
+describe("правила напоминаний по сигналам", () => {
+  const now = new Date("2026-07-24T09:00:00.000Z"); // 12:00 MSK
+  const touched = signal({
+    id: "touched",
+    status: "TRIGGERED",
+    currentPrice: 100,
+    triggerPrice: 100,
+    lastCheck: "2026-07-24 11:59:00 MSK",
+    telegram: "PENDING",
+  });
+
+  it("читает время MSK из таблицы и считает отправки за текущий день", () => {
+    const count = countSignalNotificationsToday([
+      signal({ id: "today", telegram: "SENT", triggeredAt: "2026-07-24 10:15:00 MSK" }),
+      signal({ id: "yesterday", telegram: "SENT", triggeredAt: "2026-07-23 23:59:00 MSK" }),
+      signal({ id: "pending", telegram: "PENDING", triggeredAt: "2026-07-24 10:30:00 MSK" }),
+    ], now);
+
+    expect(count).toBe(1);
+  });
+
+  it("разрешает первое напоминание, но не разрешает сделку без проверки риска", () => {
+    const decision = assessSignalNotification(touched, now, { sentTodayCount: 0 });
+
+    expect(decision.status).toBe("разрешено");
+    expect(decision.canNotify).toBe(true);
+    expect(decision.text).toContain("проверку риска");
+  });
+
+  it("блокирует напоминание, когда дневной лимит исчерпан", () => {
+    const decision = assessSignalNotification(touched, now, { sentTodayCount: 3 });
+
+    expect(decision.status).toBe("лимит");
+    expect(decision.canNotify).toBe(false);
+  });
+
+  it("блокирует повтор раньше шести часов", () => {
+    const decision = assessSignalNotification(
+      signal({ ...touched, telegram: "SENT", triggeredAt: "2026-07-24 10:30:00 MSK" }),
+      now,
+      { sentTodayCount: 1 },
+    );
+
+    expect(decision.status).toBe("повтор_рано");
+    expect(decision.canNotify).toBe(false);
+  });
+
+  it("разрешает повтор после шести часов", () => {
+    const decision = assessSignalNotification(
+      signal({ ...touched, telegram: "SENT", triggeredAt: "2026-07-24 05:30:00 MSK" }),
+      now,
+      { sentTodayCount: 1 },
+    );
+
+    expect(decision.status).toBe("разрешено");
+    expect(decision.canNotify).toBe(true);
+  });
+
+  it("дисциплинарная пауза сильнее ценового сигнала", () => {
+    const decision = assessSignalNotification(touched, now, {
+      sentTodayCount: 0,
+      disciplineCooldownActive: true,
+    });
+
+    expect(decision.status).toBe("пауза");
+    expect(decision.canNotify).toBe(false);
+  });
+
+  it("план напоминаний не пропускает больше дневного лимита", () => {
+    const plan = buildSignalNotificationPlan([
+      touched,
+      signal({ ...touched, id: "second" }),
+      signal({ ...touched, id: "third" }),
+    ], now, { dailyLimit: 2 });
+
+    expect(plan.items.filter((item) => item.notification.canNotify)).toHaveLength(2);
+    expect(plan.remainingToday).toBe(0);
   });
 });

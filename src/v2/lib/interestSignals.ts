@@ -2,6 +2,7 @@ import type { InterestSignal } from "../../types/portfolio";
 
 export type SignalFreshness = "свежий" | "устарел" | "нет_проверки";
 export type SignalPriority = "сломано" | "сработал" | "близко" | "устарел" | "наблюдать" | "далеко";
+export type SignalNotificationStatus = "разрешено" | "лимит" | "повтор_рано" | "пауза" | "не_требуется";
 
 /**
  * Расстояние от текущей цены до срабатывания сигнала.
@@ -24,6 +25,36 @@ export type SignalAssessment = {
   text: string;
 };
 
+export type SignalNotificationDecision = {
+  status: SignalNotificationStatus;
+  canNotify: boolean;
+  dailyLimit: number;
+  remainingToday: number;
+  repeatAfterHours: number;
+  nextAt: string | null;
+  text: string;
+};
+
+export type SignalNotificationPolicyOptions = {
+  dailyLimit?: number;
+  repeatAfterHours?: number;
+  sentTodayCount?: number;
+  disciplineCooldownActive?: boolean;
+};
+
+export type SignalNotificationPlanItem = {
+  signal: InterestSignal;
+  assessment: SignalAssessment;
+  notification: SignalNotificationDecision;
+};
+
+export type SignalNotificationPlan = {
+  dailyLimit: number;
+  sentTodayCount: number;
+  remainingToday: number;
+  items: SignalNotificationPlanItem[];
+};
+
 /** Статусы, при которых сигнал снят с дежурства и требует внимания инвестора. */
 const ATTENTION_STATUSES = new Set(["CHECK", "ERROR"]);
 const DONE_STATUSES = new Set(["TRIGGERED"]);
@@ -32,6 +63,10 @@ const normalizeStatus = (status: string) => status.trim().toUpperCase();
 const NEAR_TRIGGER_PCT = 3;
 const WATCH_TRIGGER_PCT = 10;
 const STALE_MINUTES = 15;
+export const SIGNAL_DAILY_NOTIFICATION_LIMIT = 3;
+export const SIGNAL_REPEAT_AFTER_HOURS = 6;
+const HOUR_MS = 60 * 60 * 1000;
+const MSK_OFFSET_MS = 3 * HOUR_MS;
 const PRIORITY_RANK: Record<SignalPriority, number> = {
   "сломано": 0,
   "сработал": 1,
@@ -40,6 +75,31 @@ const PRIORITY_RANK: Record<SignalPriority, number> = {
   "наблюдать": 4,
   "далеко": 5,
 };
+
+function parseSignalTime(value: string): number {
+  const raw = String(value || "").trim();
+  if (!raw) return 0;
+
+  const msk = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?\s*MSK$/i);
+  if (msk) {
+    const [, year, month, day, hour, minute, second = "0"] = msk;
+    return Date.UTC(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour) - 3,
+      Number(minute),
+      Number(second),
+    );
+  }
+
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function mskDayKey(time: number) {
+  return new Date(time + MSK_OFFSET_MS).toISOString().slice(0, 10);
+}
 
 export function getSignalDistance(signal: InterestSignal): SignalDistance | null {
   const { currentPrice, triggerPrice } = signal;
@@ -53,7 +113,7 @@ export function getSignalDistance(signal: InterestSignal): SignalDistance | null
 }
 
 function signalAgeMinutes(signal: InterestSignal, now: Date): number | null {
-  const time = Date.parse(signal.lastCheck);
+  const time = parseSignalTime(signal.lastCheck);
   if (!Number.isFinite(time) || time <= 0) return null;
   const age = (now.getTime() - time) / 60000;
   return age >= 0 ? age : 0;
@@ -141,6 +201,131 @@ export function sortBySignalPriority(signals: InterestSignal[], now: Date = new 
     if (!aa.distance || !bb.distance) return 0;
     return Math.abs(aa.distance.pct) - Math.abs(bb.distance.pct);
   });
+}
+
+export function countSignalNotificationsToday(signals: InterestSignal[], now: Date = new Date()): number {
+  const today = mskDayKey(now.getTime());
+
+  return signals.filter((signal) => {
+    if (normalizeStatus(signal.telegram) !== "SENT") return false;
+    const time = parseSignalTime(signal.triggeredAt);
+    return time > 0 && mskDayKey(time) === today;
+  }).length;
+}
+
+export function assessSignalNotification(
+  signal: InterestSignal,
+  now: Date = new Date(),
+  options: SignalNotificationPolicyOptions = {},
+): SignalNotificationDecision {
+  const assessment = assessSignal(signal, now);
+  const dailyLimit = options.dailyLimit ?? SIGNAL_DAILY_NOTIFICATION_LIMIT;
+  const repeatAfterHours = options.repeatAfterHours ?? SIGNAL_REPEAT_AFTER_HOURS;
+  const sentTodayCount = options.sentTodayCount ?? 0;
+  const remainingToday = Math.max(0, dailyLimit - sentTodayCount);
+  const telegramSent = normalizeStatus(signal.telegram) === "SENT";
+  const notifiedAt = parseSignalTime(signal.triggeredAt);
+
+  if (!assessment.needsGate) {
+    return {
+      status: "не_требуется",
+      canNotify: false,
+      dailyLimit,
+      remainingToday,
+      repeatAfterHours,
+      nextAt: null,
+      text: "Напоминание не требуется: сигнал не должен вести к действию.",
+    };
+  }
+
+  if (options.disciplineCooldownActive) {
+    return {
+      status: "пауза",
+      canNotify: false,
+      dailyLimit,
+      remainingToday,
+      repeatAfterHours,
+      nextAt: null,
+      text: "Дисциплинарная пауза активна — сигнал нельзя превращать в действие.",
+    };
+  }
+
+  if (remainingToday <= 0) {
+    return {
+      status: "лимит",
+      canNotify: false,
+      dailyLimit,
+      remainingToday,
+      repeatAfterHours,
+      nextAt: null,
+      text: `Дневной лимит напоминаний исчерпан: ${dailyLimit} из ${dailyLimit}.`,
+    };
+  }
+
+  if (telegramSent && notifiedAt <= 0) {
+    return {
+      status: "повтор_рано",
+      canNotify: false,
+      dailyLimit,
+      remainingToday,
+      repeatAfterHours,
+      nextAt: null,
+      text: "Сигнал уже отправлен, но время отправки не читается — повтор заблокирован.",
+    };
+  }
+
+  if (telegramSent && notifiedAt > 0) {
+    const nextTime = notifiedAt + repeatAfterHours * HOUR_MS;
+    if (now.getTime() < nextTime) {
+      return {
+        status: "повтор_рано",
+        canNotify: false,
+        dailyLimit,
+        remainingToday,
+        repeatAfterHours,
+        nextAt: new Date(nextTime).toISOString(),
+        text: `Повтор не раньше чем через ${repeatAfterHours} ч после прошлого напоминания.`,
+      };
+    }
+  }
+
+  return {
+    status: "разрешено",
+    canNotify: true,
+    dailyLimit,
+    remainingToday,
+    repeatAfterHours,
+    nextAt: null,
+    text: "Напоминание разрешено, но сделка всё равно проходит проверку риска.",
+  };
+}
+
+export function buildSignalNotificationPlan(
+  signals: InterestSignal[],
+  now: Date = new Date(),
+  options: SignalNotificationPolicyOptions = {},
+): SignalNotificationPlan {
+  const dailyLimit = options.dailyLimit ?? SIGNAL_DAILY_NOTIFICATION_LIMIT;
+  const sentTodayCount = options.sentTodayCount ?? countSignalNotificationsToday(signals, now);
+  let usedToday = sentTodayCount;
+
+  const items = sortBySignalPriority(signals, now).map((signal) => {
+    const assessment = assessSignal(signal, now);
+    const notification = assessSignalNotification(signal, now, {
+      ...options,
+      dailyLimit,
+      sentTodayCount: usedToday,
+    });
+    if (notification.canNotify) usedToday += 1;
+    return { signal, assessment, notification };
+  });
+
+  return {
+    dailyLimit,
+    sentTodayCount,
+    remainingToday: Math.max(0, dailyLimit - usedToday),
+    items,
+  };
 }
 
 /** Актив со своими точками входа/выхода — одна кнопка в сетке монет. */

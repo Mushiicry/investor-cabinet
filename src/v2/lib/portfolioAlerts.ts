@@ -8,7 +8,13 @@ import type { InterestSignal } from "../../types/portfolio";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 import { isEmptyAccount } from "./accountState";
 import { altcoinSlots, CRYPTO_ALT_LIMIT } from "./preTradeGate";
-import { assessSignal, getSignalDistance, sortBySignalPriority } from "./interestSignals";
+import {
+  assessSignal,
+  buildSignalNotificationPlan,
+  getSignalDistance,
+  sortBySignalPriority,
+  type SignalNotificationPolicyOptions,
+} from "./interestSignals";
 
 export const CRYPTO_CATEGORIES = new Set(["Крипта", "Crypto"]);
 
@@ -35,6 +41,8 @@ export type AlertContext = {
   health?: PortfolioHealth;
   /** Ценовые точки из листа «Сигналы» — близкие и сработавшие. */
   interestSignals?: InterestSignal[];
+  /** Правила напоминаний: дневной лимит, повтор и дисциплинарная пауза. */
+  signalNotification?: SignalNotificationPolicyOptions;
   /** Предыдущий Health Factor (с прошлого визита) — для тревоги о снижении. */
   previousHealthFactor?: number | null;
 };
@@ -192,20 +200,28 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
 
   // 6. Ценовые точки из листа «Сигналы».
   if (ctx.interestSignals?.length) {
-    const ordered = sortBySignalPriority(ctx.interestSignals);
+    const now = new Date();
+    const ordered = sortBySignalPriority(ctx.interestSignals, now);
+    const notificationPlan = buildSignalNotificationPlan(ctx.interestSignals, now, ctx.signalNotification);
+    const notifications = new Map(
+      notificationPlan.items.map((item) => [item.signal.id, item.notification])
+    );
 
     ordered.slice(0, 5).forEach((signal) => {
-      const assessment = assessSignal(signal);
+      const assessment = assessSignal(signal, now);
+      const notification = notifications.get(signal.id);
       const distance = getSignalDistance(signal);
       const pct = distance ? ` · осталось ${Math.abs(distance.pct).toFixed(1)}%` : "";
+      const notificationText = notification ? ` ${notification.text}` : "";
+      const action = notification?.status === "пауза" ? undefined : "Открыть проверку риска";
 
       if (assessment.priority === "сработал") {
         alerts.push({
           id: `signal-triggered-${signal.id}`,
           level: "critical",
           title: `${signal.asset}: точка сработала`,
-          detail: `${signal.action} на ${signal.amountUsd}$ при ${signal.triggerPrice}. ${assessment.text}`,
-          action: "Открыть проверку риска",
+          detail: `${signal.action} на ${signal.amountUsd}$ при ${signal.triggerPrice}. ${assessment.text}${notificationText}`,
+          action,
           priority: assessment.priorityRank,
         });
       }
@@ -215,8 +231,8 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
           id: `signal-near-${signal.id}`,
           level: "warning",
           title: `${signal.asset} рядом с уровнем`,
-          detail: `${signal.action} при ${signal.triggerPrice}${pct}. ${assessment.text}`,
-          action: "Открыть проверку риска",
+          detail: `${signal.action} при ${signal.triggerPrice}${pct}. ${assessment.text}${notificationText}`,
+          action,
           priority: assessment.priorityRank,
         });
       }

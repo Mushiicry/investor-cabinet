@@ -2,6 +2,10 @@ var IC_SIGNAL_ALERT_SPREADSHEET_ID = '1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mp
 var IC_SIGNAL_ALERT_SHEET = 'Сигналы';
 var IC_SIGNAL_ALERT_INFO_URL = 'https://api.hyperliquid.xyz/info';
 var IC_SIGNAL_ALERT_HANDLER = 'syncSignalPriceAlerts';
+var IC_SIGNAL_ALERT_DAILY_LIMIT = 3;
+var IC_SIGNAL_ALERT_REPEAT_AFTER_HOURS = 6;
+var IC_SIGNAL_ALERT_DAILY_STATE_KEY = 'SIGNAL_ALERT_DAILY_STATE';
+var IC_SIGNAL_ALERT_DISCIPLINE_PAUSE_KEY = 'SIGNAL_ALERT_DISCIPLINE_PAUSE';
 
 function setupSignalPriceAlertTelegram(token, chatId) {
   if (!token) throw new Error('Missing Telegram bot token');
@@ -30,6 +34,15 @@ function installSignalPriceAlertTrigger() {
   return auditSignalPriceAlertConfig();
 }
 
+function setSignalPriceAlertDisciplinePause(active) {
+  PropertiesService.getScriptProperties().setProperty(
+    IC_SIGNAL_ALERT_DISCIPLINE_PAUSE_KEY,
+    active ? 'TRUE' : 'FALSE'
+  );
+
+  return auditSignalPriceAlertConfig();
+}
+
 function removeSignalPriceAlertTrigger() {
   ScriptApp.getProjectTriggers().forEach(function(trigger) {
     if (trigger.getHandlerFunction() === IC_SIGNAL_ALERT_HANDLER) {
@@ -54,6 +67,9 @@ function auditSignalPriceAlertConfig() {
     signalRows: sheet ? Math.max(0, sheet.getLastRow() - 1) : 0,
     telegramTokenConfigured: !!props.getProperty('TELEGRAM_BOT_TOKEN'),
     telegramChatIdConfigured: !!props.getProperty('TELEGRAM_CHAT_ID'),
+    dailyLimit: IC_SIGNAL_ALERT_DAILY_LIMIT,
+    repeatAfterHours: IC_SIGNAL_ALERT_REPEAT_AFTER_HOURS,
+    disciplinePauseActive: props.getProperty(IC_SIGNAL_ALERT_DISCIPLINE_PAUSE_KEY) === 'TRUE',
     triggerCount: triggerCount
   };
 }
@@ -119,9 +135,18 @@ function IC_SIGNAL_ALERT_run_() {
   var displayValues = range.getDisplayValues();
   var primaryMids = IC_SIGNAL_ALERT_fetchInfo_({ type: 'allMids' });
   var xyzMids = IC_SIGNAL_ALERT_fetchInfo_({ type: 'allMids', dex: 'xyz' });
+  var now = new Date();
   var timestamp = IC_SIGNAL_ALERT_timestamp_();
+  var dailyState = IC_SIGNAL_ALERT_readDailyState_(props, now);
+  dailyState.count = Math.max(
+    dailyState.count,
+    IC_SIGNAL_ALERT_countSentToday_(values, displayValues, now)
+  );
+  var dailyStateDirty = false;
+  var disciplinePauseActive = props.getProperty(IC_SIGNAL_ALERT_DISCIPLINE_PAUSE_KEY) === 'TRUE';
   var sent = [];
   var failed = [];
+  var skipped = [];
 
   // Копим правки в памяти и пишем их одним setValues на весь диапазон:
   // 23 отдельные записи в минуту съедали дневную квоту времени триггеров.
@@ -146,6 +171,7 @@ function IC_SIGNAL_ALERT_run_() {
     var manualStatus = String(row[7] || displayRow[7] || '').trim().toUpperCase();
     var lastCheck = String(row[8] || displayRow[8] || '').trim();
     var telegramStatus = String(row[10] || displayRow[10] || '').trim();
+    var telegramStatusUpper = telegramStatus.toUpperCase();
     var comment = String(row[11] || displayRow[11] || '').trim();
 
     var scriptOwnsStatus = IC_SIGNAL_ALERT_OWNED_STATUSES.indexOf(manualStatus) >= 0;
@@ -156,13 +182,16 @@ function IC_SIGNAL_ALERT_run_() {
     priceStatusCheck[index][0] = currentPrice;
     priceStatusCheck[index][2] = timestamp;
     if (scriptOwnsStatus) {
-      priceStatusCheck[index][1] = telegramStatus === 'SENT' ? 'TRIGGERED' : 'ARMED';
+      priceStatusCheck[index][1] = telegramStatusUpper === 'SENT' ? 'TRIGGERED' : 'ARMED';
     }
     dirty = true;
 
     // Ручная пометка статуса = сигнал снят с дежурства инвестором.
     if (!scriptOwnsStatus) return;
-    if (telegramStatus !== 'PENDING') return;
+    if (disciplinePauseActive) {
+      skipped.push({ id: id, reason: 'discipline_pause' });
+      return;
+    }
 
     var direction = IC_SIGNAL_ALERT_direction_(id, action);
 
@@ -194,6 +223,17 @@ function IC_SIGNAL_ALERT_run_() {
       return;
     }
 
+    var repeatEligible = IC_SIGNAL_ALERT_canRepeat_(
+      telegramStatusUpper,
+      String(row[9] || displayRow[9] || '').trim(),
+      now
+    );
+    if (telegramStatusUpper !== 'PENDING' && !repeatEligible) return;
+    if (dailyState.count >= IC_SIGNAL_ALERT_DAILY_LIMIT) {
+      skipped.push({ id: id, reason: 'daily_limit' });
+      return;
+    }
+
     var text = IC_SIGNAL_ALERT_buildMessage_(
       id,
       asset,
@@ -210,6 +250,8 @@ function IC_SIGNAL_ALERT_run_() {
       IC_SIGNAL_ALERT_sendTelegram_(token, chatId, text);
       priceStatusCheck[index][1] = 'TRIGGERED';
       triggeredTelegram[index] = [timestamp, 'SENT'];
+      dailyState.count += 1;
+      dailyStateDirty = true;
       sent.push(id);
     } catch (error) {
       priceStatusCheck[index][1] = 'ERROR';
@@ -222,10 +264,17 @@ function IC_SIGNAL_ALERT_run_() {
     sheet.getRange(2, 10, values.length, 2).setValues(triggeredTelegram);
   }
 
+  if (dailyStateDirty) {
+    IC_SIGNAL_ALERT_writeDailyState_(props, dailyState);
+  }
+
   return {
     ok: failed.length === 0,
     rows: values.length,
     sent: sent,
+    skipped: skipped,
+    dailyLimit: IC_SIGNAL_ALERT_DAILY_LIMIT,
+    dailySent: dailyState.count,
     failed: failed,
     timestamp: timestamp
   };
@@ -381,6 +430,81 @@ function IC_SIGNAL_ALERT_toNumber_(value, displayValue) {
     .replace(/[^\d.+-]/g, '');
   var parsed = Number(normalized);
   return isFinite(parsed) ? parsed : 0;
+}
+
+function IC_SIGNAL_ALERT_canRepeat_(telegramStatus, triggeredAt, now) {
+  if (telegramStatus !== 'SENT') return false;
+
+  var previous = IC_SIGNAL_ALERT_parseTimestamp_(triggeredAt);
+  if (!previous) return false;
+
+  var repeatAfterMs = IC_SIGNAL_ALERT_REPEAT_AFTER_HOURS * 60 * 60 * 1000;
+  return now.getTime() - previous >= repeatAfterMs;
+}
+
+function IC_SIGNAL_ALERT_readDailyState_(props, now) {
+  var today = IC_SIGNAL_ALERT_mskDayKey_(now);
+  var state = { day: today, count: 0 };
+  var raw = props.getProperty(IC_SIGNAL_ALERT_DAILY_STATE_KEY);
+
+  if (raw) {
+    try {
+      var parsed = JSON.parse(raw);
+      if (parsed && parsed.day === today && isFinite(Number(parsed.count))) {
+        state.count = Math.max(0, Number(parsed.count));
+      }
+    } catch (error) {
+      state = { day: today, count: 0 };
+    }
+  }
+
+  return state;
+}
+
+function IC_SIGNAL_ALERT_countSentToday_(values, displayValues, now) {
+  var today = IC_SIGNAL_ALERT_mskDayKey_(now);
+  return values.reduce(function(count, row, index) {
+    var displayRow = displayValues[index];
+    var telegramStatus = String(row[10] || displayRow[10] || '').trim().toUpperCase();
+    if (telegramStatus !== 'SENT') return count;
+
+    var triggeredAt = IC_SIGNAL_ALERT_parseTimestamp_(String(row[9] || displayRow[9] || '').trim());
+    if (!triggeredAt) return count;
+
+    var triggeredDay = IC_SIGNAL_ALERT_mskDayKey_(new Date(triggeredAt));
+    return triggeredDay === today ? count + 1 : count;
+  }, 0);
+}
+
+function IC_SIGNAL_ALERT_writeDailyState_(props, state) {
+  props.setProperty(IC_SIGNAL_ALERT_DAILY_STATE_KEY, JSON.stringify({
+    day: state.day,
+    count: state.count
+  }));
+}
+
+function IC_SIGNAL_ALERT_parseTimestamp_(value) {
+  var raw = String(value || '').trim();
+  if (!raw) return 0;
+
+  var msk = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?\s*MSK$/i);
+  if (msk) {
+    return Date.UTC(
+      Number(msk[1]),
+      Number(msk[2]) - 1,
+      Number(msk[3]),
+      Number(msk[4]) - 3,
+      Number(msk[5]),
+      Number(msk[6] || 0)
+    );
+  }
+
+  var parsed = Date.parse(raw);
+  return isFinite(parsed) ? parsed : 0;
+}
+
+function IC_SIGNAL_ALERT_mskDayKey_(date) {
+  return Utilities.formatDate(date, 'Europe/Moscow', 'yyyy-MM-dd');
 }
 
 function IC_SIGNAL_ALERT_timestamp_() {

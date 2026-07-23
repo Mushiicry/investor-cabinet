@@ -26,6 +26,7 @@ type Props = {
   fearGreedStrategy: V2LabData["fearGreedStrategy"];
   allocation: V2LabData["allocation"];
   interestSignals: InterestSignal[];
+  disciplineCooldownActive?: boolean;
 };
 
 const LEVEL_LABEL: Record<AlertLevel, string> = {
@@ -67,7 +68,16 @@ const NEAR_TRIGGER_PCT = 3;
 const LOGO_ASSET_ALIAS: Record<string, string> = { GOLD: "GOLD LONG" };
 const logoAssetFor = (asset: string) => LOGO_ASSET_ALIAS[asset] ?? asset;
 
-export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStrategy, allocation, interestSignals }: Props) {
+export function V2SignalsPage({
+  portfolio,
+  positions,
+  risk,
+  health,
+  fearGreedStrategy,
+  allocation,
+  interestSignals,
+  disciplineCooldownActive = false,
+}: Props) {
   const [openAsset, setOpenAsset] = useState<string | null>(null);
   const assetGroups = useMemo(() => groupByAsset(interestSignals), [interestSignals]);
   const openGroup = assetGroups.find((group) => group.asset === openAsset) ?? null;
@@ -75,7 +85,15 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
   const currentFG = fearGreedStrategy.currentIndex;
 
   const alerts = topAlerts(
-    buildPortfolioAlerts({ portfolio, positions, allocation, currentFG, health, interestSignals }),
+    buildPortfolioAlerts({
+      portfolio,
+      positions,
+      allocation,
+      currentFG,
+      health,
+      interestSignals,
+      signalNotification: { disciplineCooldownActive },
+    }),
   );
   // Поведенческий гид: живой F&G + тренд по истории → эмоция рынка и дисциплина.
   const psychology = getMarketPsychology(currentFG, fearGreedStrategy.history);
