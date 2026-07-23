@@ -1,5 +1,8 @@
 import type { InterestSignal } from "../../types/portfolio";
 
+export type SignalFreshness = "свежий" | "устарел" | "нет_проверки";
+export type SignalPriority = "сломано" | "сработал" | "близко" | "устарел" | "наблюдать" | "далеко";
+
 /**
  * Расстояние от текущей цены до срабатывания сигнала.
  * pct/abs знаковые: минус — нужно падение цены, плюс — нужен рост.
@@ -10,11 +13,33 @@ export type SignalDistance = {
   abs: number;
 };
 
+export type SignalAssessment = {
+  status: string;
+  distance: SignalDistance | null;
+  freshness: SignalFreshness;
+  ageMinutes: number | null;
+  priority: SignalPriority;
+  priorityRank: number;
+  needsGate: boolean;
+  text: string;
+};
+
 /** Статусы, при которых сигнал снят с дежурства и требует внимания инвестора. */
 const ATTENTION_STATUSES = new Set(["CHECK", "ERROR"]);
 const DONE_STATUSES = new Set(["TRIGGERED"]);
 
 const normalizeStatus = (status: string) => status.trim().toUpperCase();
+const NEAR_TRIGGER_PCT = 3;
+const WATCH_TRIGGER_PCT = 10;
+const STALE_MINUTES = 15;
+const PRIORITY_RANK: Record<SignalPriority, number> = {
+  "сломано": 0,
+  "сработал": 1,
+  "близко": 2,
+  "устарел": 3,
+  "наблюдать": 4,
+  "далеко": 5,
+};
 
 export function getSignalDistance(signal: InterestSignal): SignalDistance | null {
   const { currentPrice, triggerPrice } = signal;
@@ -24,6 +49,58 @@ export function getSignalDistance(signal: InterestSignal): SignalDistance | null
   return {
     abs: triggerPrice - currentPrice,
     pct: ((triggerPrice - currentPrice) / currentPrice) * 100,
+  };
+}
+
+function signalAgeMinutes(signal: InterestSignal, now: Date): number | null {
+  const time = Date.parse(signal.lastCheck);
+  if (!Number.isFinite(time) || time <= 0) return null;
+  const age = (now.getTime() - time) / 60000;
+  return age >= 0 ? age : 0;
+}
+
+function signalFreshness(signal: InterestSignal, now: Date): { freshness: SignalFreshness; ageMinutes: number | null } {
+  const ageMinutes = signalAgeMinutes(signal, now);
+  if (ageMinutes === null) return { freshness: "нет_проверки", ageMinutes };
+  return { freshness: ageMinutes > STALE_MINUTES ? "устарел" : "свежий", ageMinutes };
+}
+
+export function assessSignal(signal: InterestSignal, now: Date = new Date()): SignalAssessment {
+  const status = normalizeStatus(signal.status);
+  const distance = getSignalDistance(signal);
+  const { freshness, ageMinutes } = signalFreshness(signal, now);
+  let priority: SignalPriority = "далеко";
+  let text = "Точка далеко — только наблюдение.";
+  let needsGate = false;
+
+  if (ATTENTION_STATUSES.has(status)) {
+    priority = "сломано";
+    text = "Сигнал снят с дежурства — проверьте строку в таблице.";
+  } else if (DONE_STATUSES.has(status)) {
+    priority = "сработал";
+    text = "Цена коснулась уровня — это повод открыть проверку риска, а не разрешение на сделку.";
+    needsGate = true;
+  } else if (freshness !== "свежий") {
+    priority = "устарел";
+    text = "Цена давно не обновлялась — решение по этому уровню нельзя принимать вслепую.";
+  } else if (distance && Math.abs(distance.pct) <= NEAR_TRIGGER_PCT) {
+    priority = "близко";
+    text = "Цена рядом с уровнем — перед действием открыть проверку риска.";
+    needsGate = true;
+  } else if (distance && Math.abs(distance.pct) <= WATCH_TRIGGER_PCT) {
+    priority = "наблюдать";
+    text = "Уровень приближается — готовить сценарий, сделку не исполнять автоматически.";
+  }
+
+  return {
+    status,
+    distance,
+    freshness,
+    ageMinutes,
+    priority,
+    priorityRank: PRIORITY_RANK[priority],
+    needsGate,
+    text,
   };
 }
 
@@ -54,6 +131,16 @@ export function sortByProximity(signals: InterestSignal[]): InterestSignal[] {
       return Math.abs(a.distance.pct) - Math.abs(b.distance.pct);
     })
     .map((item) => item.signal);
+}
+
+export function sortBySignalPriority(signals: InterestSignal[], now: Date = new Date()): InterestSignal[] {
+  return [...signals].sort((a, b) => {
+    const aa = assessSignal(a, now);
+    const bb = assessSignal(b, now);
+    if (aa.priorityRank !== bb.priorityRank) return aa.priorityRank - bb.priorityRank;
+    if (!aa.distance || !bb.distance) return 0;
+    return Math.abs(aa.distance.pct) - Math.abs(bb.distance.pct);
+  });
 }
 
 /** Актив со своими точками входа/выхода — одна кнопка в сетке монет. */

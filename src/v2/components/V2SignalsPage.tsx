@@ -8,6 +8,7 @@ import type { InterestSignal } from "../../types/portfolio";
 import {
   getSignalDistance,
   groupByAsset,
+  assessSignal,
   sortByProximity,
   type SignalDistance,
 } from "../lib/interestSignals";
@@ -15,7 +16,7 @@ import { CryptoLogo } from "../../components/crypto/CryptoLogo";
 import { V2SourceTag } from "./V2SourceTag";
 import {
   buildPortfolioAlerts,
-  sortAlerts,
+  topAlerts,
   type AlertLevel,
 } from "../lib/portfolioAlerts";
 
@@ -98,8 +99,8 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
     fearGreedStrategy.rules ?? []
   );
 
-  const alerts = sortAlerts(
-    buildPortfolioAlerts({ portfolio, positions, allocation, currentFG, health, interestSignals })
+  const alerts = topAlerts(
+    buildPortfolioAlerts({ portfolio, positions, allocation, currentFG, health, interestSignals }),
   );
   // Поведенческий гид: живой F&G + тренд по истории → эмоция рынка и дисциплина.
   const psychology = getMarketPsychology(currentFG, fearGreedStrategy.history);
@@ -335,6 +336,7 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
                 {openGroup ? (
                   openGroup.signals.map((signal) => {
                     const distance = getSignalDistance(signal);
+                    const assessment = assessSignal(signal);
                     const isDone = signal.status.trim().toUpperCase() === "TRIGGERED";
                     const isNear = !isDone && !!distance && Math.abs(distance.pct) <= NEAR_TRIGGER_PCT;
 
@@ -354,6 +356,9 @@ export function V2SignalsPage({ portfolio, positions, risk, health, fearGreedStr
                           ) : null}
                           <span className="v2-sig-int-sub">
                             {formatSignalStatus(signal.status)} · {formatSignalMoney(signal.currentPrice)}
+                          </span>
+                          <span className="v2-sig-int-sub">
+                            {assessment.text}
                           </span>
                         </span>
                       </div>

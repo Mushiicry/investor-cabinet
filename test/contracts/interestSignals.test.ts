@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getSignalDistance, groupByAsset, sortByProximity } from "../../src/v2/lib/interestSignals";
+import {
+  assessSignal,
+  getSignalDistance,
+  groupByAsset,
+  sortByProximity,
+  sortBySignalPriority,
+} from "../../src/v2/lib/interestSignals";
 import type { InterestSignal } from "../../src/types/portfolio";
 
 const signal = (patch: Partial<InterestSignal>): InterestSignal => ({
@@ -122,5 +128,41 @@ describe("группировка по монетам", () => {
 
     expect(groups[0].waitingCount).toBe(1);
     expect(groups[0].nearest!.pct).toBeCloseTo(-20, 6);
+  });
+});
+
+describe("качество и приоритет сигналов", () => {
+  const now = new Date("2026-07-24T12:00:00.000Z");
+
+  it("сработавшая точка отправляет в проверку риска, а не разрешает сделку", () => {
+    const assessment = assessSignal(
+      signal({ status: "TRIGGERED", currentPrice: 100, triggerPrice: 100, lastCheck: "2026-07-24T11:59:00.000Z" }),
+      now,
+    );
+
+    expect(assessment.priority).toBe("сработал");
+    expect(assessment.needsGate).toBe(true);
+    expect(assessment.text).toContain("проверку риска");
+  });
+
+  it("устаревшая проверка не считается рабочим свежим сигналом", () => {
+    const assessment = assessSignal(
+      signal({ currentPrice: 100, triggerPrice: 99, lastCheck: "2026-07-24T11:30:00.000Z" }),
+      now,
+    );
+
+    expect(assessment.freshness).toBe("устарел");
+    expect(assessment.priority).toBe("устарел");
+    expect(assessment.needsGate).toBe(false);
+  });
+
+  it("приоритет ставит сломанные и сработавшие точки выше близких", () => {
+    const ordered = sortBySignalPriority([
+      signal({ id: "near", currentPrice: 100, triggerPrice: 99, lastCheck: "2026-07-24T11:59:00.000Z" }),
+      signal({ id: "done", status: "TRIGGERED", currentPrice: 100, triggerPrice: 100, lastCheck: "2026-07-24T11:59:00.000Z" }),
+      signal({ id: "broken", status: "ERROR", currentPrice: 100, triggerPrice: 10, lastCheck: "2026-07-24T11:59:00.000Z" }),
+    ], now);
+
+    expect(ordered.map((item) => item.id)).toEqual(["broken", "done", "near"]);
   });
 });

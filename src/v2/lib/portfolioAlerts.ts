@@ -8,7 +8,7 @@ import type { InterestSignal } from "../../types/portfolio";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 import { isEmptyAccount } from "./accountState";
 import { altcoinSlots, CRYPTO_ALT_LIMIT } from "./preTradeGate";
-import { getSignalDistance, sortByProximity } from "./interestSignals";
+import { assessSignal, getSignalDistance, sortBySignalPriority } from "./interestSignals";
 
 export const CRYPTO_CATEGORIES = new Set(["Крипта", "Crypto"]);
 
@@ -23,6 +23,7 @@ export type Alert = {
   title: string;
   detail: string;
   action?: string;
+  priority?: number;
 };
 
 export type AlertContext = {
@@ -39,9 +40,6 @@ export type AlertContext = {
 };
 
 const toPercent = (share: number) => share * 100;
-
-/** Порог «точка вот-вот сработает» — тот же, что подсвечивает монету в списке. */
-const NEAR_TRIGGER_PCT = 3;
 
 /**
  * Единый источник тревог портфеля: и страница «Сигналы», и панель уведомлений
@@ -194,52 +192,45 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
 
   // 6. Ценовые точки из листа «Сигналы».
   if (ctx.interestSignals?.length) {
-    const ordered = sortByProximity(ctx.interestSignals);
+    const ordered = sortBySignalPriority(ctx.interestSignals);
 
-    ordered
-      .filter((signal) => signal.status.trim().toUpperCase() === "TRIGGERED")
-      .slice(0, 3)
-      .forEach((signal) => {
+    ordered.slice(0, 5).forEach((signal) => {
+      const assessment = assessSignal(signal);
+      const distance = getSignalDistance(signal);
+      const pct = distance ? ` · осталось ${Math.abs(distance.pct).toFixed(1)}%` : "";
+
+      if (assessment.priority === "сработал") {
         alerts.push({
           id: `signal-triggered-${signal.id}`,
           level: "critical",
           title: `${signal.asset}: точка сработала`,
-          detail: `${signal.action} на ${signal.amountUsd}$ при ${signal.triggerPrice}`,
-          action: "Проверить график",
+          detail: `${signal.action} на ${signal.amountUsd}$ при ${signal.triggerPrice}. ${assessment.text}`,
+          action: "Открыть проверку риска",
+          priority: assessment.priorityRank,
         });
-      });
+      }
 
-    ordered
-      .filter((signal) => {
-        const status = signal.status.trim().toUpperCase();
-        if (status === "TRIGGERED") return false;
-        const distance = getSignalDistance(signal);
-        return !!distance && Math.abs(distance.pct) <= NEAR_TRIGGER_PCT;
-      })
-      .slice(0, 3)
-      .forEach((signal) => {
-        const distance = getSignalDistance(signal);
-        const pct = distance ? Math.abs(distance.pct).toFixed(1) : "";
+      if (assessment.priority === "близко") {
         alerts.push({
           id: `signal-near-${signal.id}`,
           level: "warning",
-          title: `${signal.asset} у точки интереса`,
-          detail: `${signal.action} при ${signal.triggerPrice} · осталось ${pct}%`,
+          title: `${signal.asset} рядом с уровнем`,
+          detail: `${signal.action} при ${signal.triggerPrice}${pct}. ${assessment.text}`,
+          action: "Открыть проверку риска",
+          priority: assessment.priorityRank,
         });
-      });
+      }
 
-    // Сигнал снят с дежурства скриптом — алерт по нему не придёт.
-    ordered
-      .filter((signal) => ["CHECK", "ERROR"].includes(signal.status.trim().toUpperCase()))
-      .slice(0, 3)
-      .forEach((signal) => {
+      if (assessment.priority === "сломано" || assessment.priority === "устарел") {
         alerts.push({
-          id: `signal-broken-${signal.id}`,
+          id: `signal-${assessment.priority}-${signal.id}`,
           level: "warning",
-          title: `${signal.asset}: точка не на дежурстве`,
-          detail: "Проверьте направление и уровень в таблице",
+          title: `${signal.asset}: сигнал требует проверки`,
+          detail: assessment.text,
+          priority: assessment.priorityRank,
         });
-      });
+      }
+    });
   }
 
   // 7. Зона страха — окно покупки
@@ -293,5 +284,13 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
 const LEVEL_ORDER: Record<AlertLevel, number> = { critical: 0, warning: 1, info: 2 };
 
 export function sortAlerts(alerts: Alert[]): Alert[] {
-  return [...alerts].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]);
+  return [...alerts].sort((a, b) => {
+    const levelDiff = LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level];
+    if (levelDiff !== 0) return levelDiff;
+    return (a.priority ?? 100) - (b.priority ?? 100);
+  });
+}
+
+export function topAlerts(alerts: Alert[], limit = 5): Alert[] {
+  return sortAlerts(alerts).slice(0, limit);
 }
