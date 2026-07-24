@@ -3,6 +3,7 @@ import type { InterestSignal } from "../../types/portfolio";
 export type SignalFreshness = "свежий" | "устарел" | "нет_проверки";
 export type SignalPriority = "сломано" | "сработал" | "близко" | "устарел" | "наблюдать" | "далеко";
 export type SignalNotificationStatus = "разрешено" | "лимит" | "повтор_рано" | "пауза" | "не_требуется";
+export type SignalTradeAction = "buy" | "sell" | "unknown";
 
 /**
  * Расстояние от текущей цены до срабатывания сигнала.
@@ -84,12 +85,17 @@ const actionHasMarker = (action: string, markers: string[]) => {
   return markers.some((marker) => normalized.includes(marker));
 };
 
+export function classifySignalAction(action: string): SignalTradeAction {
+  if (actionHasMarker(action, SELL_ACTION_MARKERS)) return "sell";
+  if (actionHasMarker(action, BUY_ACTION_MARKERS)) return "buy";
+  return "unknown";
+}
+
 export function isPlannedLimitOrder(signal: InterestSignal): boolean {
   const status = normalizeStatus(signal.status);
   if (INACTIVE_LIMIT_ORDER_STATUSES.has(status)) return false;
   if (!Number.isFinite(signal.amountUsd) || signal.amountUsd <= 0) return false;
-  if (actionHasMarker(signal.action, SELL_ACTION_MARKERS)) return false;
-  return actionHasMarker(signal.action, BUY_ACTION_MARKERS);
+  return classifySignalAction(signal.action) === "buy";
 }
 
 export function plannedLimitOrdersSummary(signals: InterestSignal[]) {

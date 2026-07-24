@@ -35,6 +35,7 @@ import {
 } from "../lib/decisionJournal";
 import { evaluateBehavior } from "../lib/behaviorEngine";
 import { getMarketPsychology } from "../lib/marketPsychology";
+import type { TradeCandidate } from "../lib/tradeCandidate";
 
 type Props = {
   data: V2LabData;
@@ -122,6 +123,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
   const [selectedChip, setSelectedChip] = useState<HealthComponent | null>(null);
   const [capitalOpen, setCapitalOpen] = useState(false);
   const [desktopViewport, setDesktopViewport] = useState(getDesktopViewport);
+  const [tradeCandidate, setTradeCandidate] = useState<TradeCandidate | null>(null);
 
   useEffect(() => {
     const updateViewport = () => {
@@ -149,6 +151,11 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
 
   function handleSaveDecision(draft: DecisionJournalDraft) {
     setDecisionJournal((current) => appendDecisionJournalEntry(current, draft, profileKeySuffix));
+  }
+
+  function handleOpenTradeCandidate(candidate: TradeCandidate) {
+    setTradeCandidate(candidate);
+    onNavigate("gate");
   }
 
   function handleDeleteDecision(id: string) {
@@ -351,9 +358,11 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
                 ? [data.signals.interest]
                 : []}
             disciplineCooldownActive={behavior.healthInputs.disciplineCooldownActive}
+            onOpenTradeCandidate={handleOpenTradeCandidate}
           />
         ) : page === "gate" ? (
           <V2GatePage
+            key={tradeCandidate?.id ?? "manual-gate"}
             portfolio={behaviorPortfolio}
             positions={data.positions}
             allocation={data.allocation}
@@ -362,6 +371,8 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             healthInput={behaviorHealthInput}
             futuresShare={data.risk.futuresShare}
             onSaveDecision={handleSaveDecision}
+            candidate={tradeCandidate}
+            onClearCandidate={() => setTradeCandidate(null)}
             disciplineBlockers={behavior.blockers}
             disciplineWarnings={behavior.warnings}
           />

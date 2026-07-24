@@ -5,6 +5,7 @@ export type DecisionJournalEntry = {
   createdAt: string;
   asset: string;
   category: string;
+  action: "buy" | "sell";
   amountUsd: number;
   buyPrice: number | null;
   status: DecisionStatus;
@@ -28,6 +29,7 @@ export type DecisionJournalEntry = {
 export type DecisionJournalDraft = {
   asset: string;
   category: string;
+  action?: "buy" | "sell";
   amountUsd: number;
   buyPrice: number;
   decision: DecisionResult;
@@ -72,6 +74,7 @@ export function normalizeDecisionJournalEntry(value: unknown): DecisionJournalEn
     createdAt,
     asset,
     category,
+    action: value.action === "sell" ? "sell" : "buy",
     status,
     amountUsd: toNumberOrNull(value.amountUsd) ?? 0,
     buyPrice: toNumberOrNull(value.buyPrice),
@@ -125,6 +128,7 @@ export function buildDecisionJournalEntry(draft: DecisionJournalDraft): Decision
     createdAt: new Date().toISOString(),
     asset: draft.asset,
     category: draft.category,
+    action: draft.action ?? "buy",
     amountUsd: draft.amountUsd,
     buyPrice: Number.isFinite(draft.buyPrice) && draft.buyPrice > 0 ? draft.buyPrice : null,
     status: decision.status,

@@ -17,6 +17,7 @@ import { buildCapitalBuckets, type CapitalBuckets } from "../lib/capitalBuckets"
 import { BINANCE_MONITORING_ASSET_QUALITY } from "../lib/assetQualitySource";
 import type { DecisionJournalDraft } from "../lib/decisionJournal";
 import { getMarketPsychology } from "../lib/marketPsychology";
+import type { TradeCandidate } from "../lib/tradeCandidate";
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -27,13 +28,15 @@ type Props = {
   healthInput: V2LabData["healthInput"];
   futuresShare?: number;
   onSaveDecision?: (draft: DecisionJournalDraft) => void;
+  candidate?: TradeCandidate | null;
+  onClearCandidate?: () => void;
   disciplineBlockers?: string[];
   disciplineWarnings?: string[];
 };
 
 const NEW_ASSET = "__new__";
 const CATEGORIES = [CRYPTO_CATEGORY, METALS_CATEGORY, STOCKS_CATEGORY, FUTURES_CATEGORY];
-const SETUPS = ["Плановый добор", "Усреднение", "Ребаланс", "Защитное действие", "Учебная сделка"];
+const SETUPS = ["Плановый добор", "Лимитный ордер", "Усреднение", "Ребаланс", "Защитное действие", "Учебная сделка"];
 const EMOTIONS = ["Спокойно", "Сомнение", "Страх упустить рост", "Спешка", "После убытка"];
 
 const pct = (share: number) => `${(share * 100).toFixed(1)}%`;
@@ -43,6 +46,15 @@ const price = (v: number | null | undefined) =>
   v && Number.isFinite(v)
     ? `$${v.toLocaleString("en-US", { maximumFractionDigits: v >= 100 ? 2 : 6 })}`
     : "—";
+
+function candidateStatusLabel(status: string) {
+  const normalized = status.trim().toUpperCase();
+  if (normalized === "ARMED") return "ожидает цены";
+  if (normalized === "CHECK") return "требует проверки";
+  if (normalized === "TRIGGERED") return "сработал";
+  if (normalized === "DISABLED") return "выключен";
+  return "по плану";
+}
 
 /** Строка проверки в человекочитаемом виде «до → после · лимит». */
 function checkValues(c: GateCheck) {
@@ -72,22 +84,35 @@ export function V2GatePage({
   healthInput,
   futuresShare = 0,
   onSaveDecision,
+  candidate,
+  onClearCandidate,
   disciplineBlockers = [],
   disciplineWarnings = [],
 }: Props) {
   const empty = isEmptyAccount(portfolio);
+  const candidatePosition = candidate
+    ? positions.find((p) => p.asset.trim().toUpperCase() === candidate.asset)
+    : null;
 
-  const [asset, setAsset] = useState<string>(() => positions[0]?.asset ?? NEW_ASSET);
-  const [newAsset, setNewAsset] = useState("");
-  const [category, setCategory] = useState<string>(CRYPTO_CATEGORY);
-  const [amount, setAmount] = useState<string>("");
-  const [buyPrice, setBuyPrice] = useState<string>(() =>
-    positions[0]?.currentPrice && positions[0].currentPrice > 0 ? String(positions[0].currentPrice) : "",
+  const [asset, setAsset] = useState<string>(() =>
+    candidate ? (candidatePosition?.asset ?? NEW_ASSET) : positions[0]?.asset ?? NEW_ASSET,
   );
-  const [setup, setSetup] = useState(SETUPS[0]);
+  const [newAsset, setNewAsset] = useState(() => (candidate && !candidatePosition ? candidate.asset : ""));
+  const [category, setCategory] = useState<string>(() => candidate?.category ?? CRYPTO_CATEGORY);
+  const [tradeAction, setTradeAction] = useState<"buy" | "sell">(() => candidate?.action === "sell" ? "sell" : "buy");
+  const [amount, setAmount] = useState<string>(() => candidate ? String(candidate.amountUsd) : "");
+  const [buyPrice, setBuyPrice] = useState<string>(() =>
+    candidate?.price && candidate.price > 0
+      ? String(candidate.price)
+      : positions[0]?.currentPrice && positions[0].currentPrice > 0
+        ? String(positions[0].currentPrice)
+        : "",
+  );
+  const [setup, setSetup] = useState(candidate ? "Лимитный ордер" : SETUPS[0]);
   const [emotion, setEmotion] = useState(EMOTIONS[0]);
-  const [journalNote, setJournalNote] = useState("");
+  const [journalNote, setJournalNote] = useState(candidate ? `${candidate.label}. Источник: лимитный ордер.` : "");
   const [savedMarker, setSavedMarker] = useState<{ signature: string; savedAt: string } | null>(null);
+  const [executionMarker, setExecutionMarker] = useState<{ signature: string; openedAt: string } | null>(null);
 
   const isNew = asset === NEW_ASSET;
   const resolvedAsset = isNew ? newAsset.trim().toUpperCase() : asset;
@@ -179,22 +204,28 @@ export function V2GatePage({
   const decision = useMemo(
     () =>
       evaluateDecision(
-        { asset: resolvedAsset || "—", amountUsd: amountNum, category, buyPrice: buyPriceNum },
+        { asset: resolvedAsset || "—", amountUsd: amountNum, category, buyPrice: buyPriceNum, action: tradeAction },
         ctx,
       ),
-    [resolvedAsset, amountNum, category, buyPriceNum, ctx],
+    [resolvedAsset, amountNum, category, buyPriceNum, tradeAction, ctx],
   );
   const verdict = decision.gate;
   const decisionSignature = [
     resolvedAsset,
     category,
+    tradeAction,
     amount,
     buyPrice,
     setup,
     emotion,
     journalNote,
     decision.status,
+    candidate?.id ?? "",
   ].join("|");
+  const journalSaved = savedMarker?.signature === decisionSignature;
+  const executionOpened = executionMarker?.signature === decisionSignature;
+  const isBlocked = decision.status === "БЛОКИРОВКА" || decision.status === "ЖДАТЬ";
+  const finalActionText = tradeAction === "sell" ? "Перейти к продаже" : "Перейти к покупке";
 
   // Капитал под спот: зелёный лимит (сверх 30%) и потолок до пола ФАЗЫ.
   const greenMax = Math.max(portfolio.spotDeployable || 0, 0);
@@ -208,7 +239,7 @@ export function V2GatePage({
     return (
       <div className="v2-gate-page">
         <div className="v2-gate-header">
-          <span className="v2-gate-title">Проверка добора</span>
+          <span className="v2-gate-title">Проверка сделки</span>
         </div>
         <div className="v2-gate-empty">
           Подключите кошельки — шлюз проверяет добор на реальных данных портфеля.
@@ -236,6 +267,7 @@ export function V2GatePage({
     onSaveDecision({
       asset: resolvedAsset,
       category,
+      action: tradeAction,
       amountUsd: amountNum,
       buyPrice: buyPriceNum,
       decision,
@@ -249,12 +281,32 @@ export function V2GatePage({
   return (
     <div className="v2-gate-page">
       <div className="v2-gate-header">
-        <span className="v2-gate-title">Проверка добора</span>
+        <span className="v2-gate-title">{tradeAction === "sell" ? "Проверка продажи" : "Проверка покупки"}</span>
         <span className="v2-gate-sub">
           Фаза: {phase.label} · резерв ≥ {pct(phase.reserveFloorShare)} · крипта ≤{" "}
           {pct(phase.cryptoMaxShare)}
         </span>
       </div>
+
+      {candidate && (
+        <div className="v2-gate-route v2-panel">
+          <div className="v2-gate-route-head">
+            <span>Маршрут сделки</span>
+            <button type="button" onClick={onClearCandidate}>Ручной ввод</button>
+          </div>
+          <div className="v2-gate-route-steps">
+            <span className="is-done">Лимитный ордер</span>
+            <span className="is-active">Проверка риска</span>
+            <span className={journalSaved ? "is-done" : ""}>Журнал решения</span>
+            <span className={journalSaved && !isBlocked ? "is-active" : ""}>
+              {tradeAction === "sell" ? "Продажа" : "Покупка"}
+            </span>
+          </div>
+          <div className="v2-gate-route-source">
+            {candidate.label} · цена {price(candidate.price)} · статус {candidateStatusLabel(candidate.status)}
+          </div>
+        </div>
+      )}
 
       {/* ── Капитал под спот ──────────────────────────────── */}
       <div className="v2-gate-capital v2-panel">
@@ -287,6 +339,22 @@ export function V2GatePage({
 
       {/* ── Форма ─────────────────────────────────────────── */}
       <div className="v2-gate-form v2-panel">
+        <label className="v2-gate-field">
+          <span className="v2-gate-label">Действие</span>
+          <select
+            className="v2-gate-input"
+            value={tradeAction}
+            onChange={(e) => {
+              setTradeAction(e.target.value === "sell" ? "sell" : "buy");
+              setSavedMarker(null);
+              setExecutionMarker(null);
+            }}
+          >
+            <option value="buy">Покупка</option>
+            <option value="sell">Продажа</option>
+          </select>
+        </label>
+
         <label className="v2-gate-field">
           <span className="v2-gate-label">Актив</span>
           <select
@@ -334,7 +402,7 @@ export function V2GatePage({
         )}
 
         <label className="v2-gate-field">
-          <span className="v2-gate-label">Сумма добора, $</span>
+          <span className="v2-gate-label">{tradeAction === "sell" ? "Сумма продажи, $" : "Сумма покупки, $"}</span>
           <input
             className="v2-gate-input"
             type="number"
@@ -346,7 +414,7 @@ export function V2GatePage({
           />
         </label>
         <label className="v2-gate-field">
-          <span className="v2-gate-label">Цена покупки</span>
+          <span className="v2-gate-label">{tradeAction === "sell" ? "Цена продажи" : "Цена покупки"}</span>
           <input
             className="v2-gate-input"
             type="number"
@@ -435,7 +503,9 @@ export function V2GatePage({
 
             {!decision.tradePreview && amountNum > 0 && (
               <div className="v2-gate-average is-muted">
-                Введите цену покупки — система рассчитает новую среднюю входа.
+                {tradeAction === "sell"
+                  ? "Продажа не пересчитывает среднюю входа. После сделки учёт должен уменьшить cost basis по старой средней."
+                  : "Введите цену покупки — система рассчитает новую среднюю входа."}
               </div>
             )}
 
@@ -576,6 +646,31 @@ export function V2GatePage({
                   Снимок сохранён: {new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(savedMarker.savedAt))}
                 </div>
               )}
+              <div className={`v2-gate-execution ${isBlocked ? "is-blocked" : journalSaved ? "is-ready" : ""}`}>
+                <button
+                  type="button"
+                  disabled={isBlocked || !journalSaved}
+                  onClick={() => setExecutionMarker({ signature: decisionSignature, openedAt: new Date().toISOString() })}
+                >
+                  {isBlocked
+                    ? "Сделка заблокирована"
+                    : journalSaved
+                      ? finalActionText
+                      : "Сначала сохранить решение"}
+                </button>
+                <span>
+                  {isBlocked
+                    ? "Жёсткий запрет не даёт перейти к действию."
+                    : journalSaved
+                      ? "Допуск открыт. Система не исполняет сделку — действие выполняется вручную на бирже."
+                      : "Финальная кнопка включится только после записи в журнал."}
+                </span>
+                {executionMarker && executionOpened && (
+                  <em>
+                    Допуск открыт: {new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(executionMarker.openedAt))}
+                  </em>
+                )}
+              </div>
             </div>
           </>
         )}

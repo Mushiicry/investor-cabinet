@@ -18,6 +18,7 @@ import {
   topAlerts,
   type AlertLevel,
 } from "../lib/portfolioAlerts";
+import { buildTradeCandidateFromSignal, type TradeCandidate } from "../lib/tradeCandidate";
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -28,6 +29,7 @@ type Props = {
   allocation: V2LabData["allocation"];
   interestSignals: InterestSignal[];
   disciplineCooldownActive?: boolean;
+  onOpenTradeCandidate?: (candidate: TradeCandidate) => void;
 };
 
 const LEVEL_LABEL: Record<AlertLevel, string> = {
@@ -83,6 +85,7 @@ export function V2SignalsPage({
   allocation,
   interestSignals,
   disciplineCooldownActive = false,
+  onOpenTradeCandidate,
 }: Props) {
   const [openAsset, setOpenAsset] = useState<string | null>(null);
   const assetGroups = useMemo(() => groupByAsset(interestSignals), [interestSignals]);
@@ -92,6 +95,15 @@ export function V2SignalsPage({
   const currentFG = fearGreedStrategy.currentIndex;
   // Поведенческий гид: живой F&G + тренд по истории → эмоция рынка и дисциплина.
   const psychology = getMarketPsychology(currentFG, fearGreedStrategy.history);
+  const openCandidate = (signal: InterestSignal) => {
+    const candidate = buildTradeCandidateFromSignal(signal, positions);
+    if (candidate) onOpenTradeCandidate?.(candidate);
+  };
+  const candidateButtonLabel = (signal: InterestSignal) => {
+    const candidate = buildTradeCandidateFromSignal(signal, positions);
+    if (!candidate) return "Проверить";
+    return candidate.action === "sell" ? "Проверить продажу" : "Проверить покупку";
+  };
 
   const alerts = topAlerts(
     buildPortfolioAlerts({
@@ -230,6 +242,14 @@ export function V2SignalsPage({
                             {assessment.text}
                           </span>
                         </span>
+                        <button
+                          type="button"
+                          className="v2-sig-int-action"
+                          disabled={!buildTradeCandidateFromSignal(signal, positions)}
+                          onClick={() => openCandidate(signal)}
+                        >
+                          {candidateButtonLabel(signal)}
+                        </button>
                       </div>
                     );
                   })
@@ -258,6 +278,14 @@ export function V2SignalsPage({
                                     </span>
                                   </span>
                                 ) : null}
+                                <button
+                                  type="button"
+                                  className="v2-sig-int-action"
+                                  disabled={!buildTradeCandidateFromSignal(signal, positions)}
+                                  onClick={() => openCandidate(signal)}
+                                >
+                                  {candidateButtonLabel(signal)}
+                                </button>
                               </div>
                             );
                           })}

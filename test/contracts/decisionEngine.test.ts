@@ -84,6 +84,32 @@ describe("движок решений", () => {
     expect(decision.recommendedAction).toBe("Сделка проходит проверку риска");
   });
 
+  it("проводит продажу через базовую проверку позиции", () => {
+    const decision = evaluateDecision(
+      { asset: "ETH", amountUsd: 20, category: "Крипта", action: "sell" },
+      baseCtx,
+    );
+
+    expect(decision.status).toBe("РАЗРЕШЕНО");
+    expect(decision.recommendedAction).toBe("Продажа проходит базовую проверку риска");
+    expect(decision.gate.status).toBe("ok");
+  });
+
+  it("блокирует продажу выше текущей стоимости позиции", () => {
+    const decision = evaluateDecision(
+      { asset: "ETH", amountUsd: 200, category: "Крипта", action: "sell" },
+      baseCtx,
+    );
+
+    expect(decision.status).toBe("БЛОКИРОВКА");
+    expect(decision.reasons).toContainEqual(
+      expect.objectContaining({
+        kind: "позиция",
+        text: "Сумма продажи выше текущей стоимости позиции",
+      }),
+    );
+  });
+
   it("даёт осторожность, если после покупки выживаемость уходит в предупреждение", () => {
     const decision = evaluateDecision(
       { asset: "ETH", amountUsd: 20, category: "Крипта" },

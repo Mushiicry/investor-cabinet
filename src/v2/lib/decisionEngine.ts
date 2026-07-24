@@ -14,6 +14,7 @@ import {
   FUTURES_CATEGORY,
   METALS_CATEGORY,
   STOCKS_CATEGORY,
+  type GateCheck,
   type GateCheckSeverity,
   type GateContext,
   type GatePosition,
@@ -23,6 +24,7 @@ import {
 
 export type DecisionTradeInput = TradeInput & {
   buyPrice?: number;
+  action?: "buy" | "sell";
 };
 
 export type DecisionStatus =
@@ -298,9 +300,18 @@ function statusFrom(
   return "РАЗРЕШЕНО";
 }
 
-function recommendedAction(status: DecisionStatus, reasons: DecisionReason[], maxSafeAmount: number): string {
+function recommendedAction(
+  status: DecisionStatus,
+  reasons: DecisionReason[],
+  maxSafeAmount: number,
+  action: "buy" | "sell" = "buy",
+): string {
   if (status === "ЖДАТЬ") return "Ввести актив и сумму сделки";
   if (status === "БЛОКИРОВКА") return reasons[0]?.text ?? "Сделку не открывать";
+  if (action === "sell") {
+    if (status === "ОСТОРОЖНО") return "Продажа только после ручной проверки причины";
+    return "Продажа проходит базовую проверку риска";
+  }
   if (status === "ОСТОРОЖНО") return "Разрешено только после ручной проверки риска";
   if (status === "РАЗРЕШЕНО_С_ЛИМИТОМ") return `Уменьшить сумму до ${Math.floor(maxSafeAmount)}$`;
   if (status === "СНИЗИТЬ_РИСК") return "Сначала снизить риск портфеля";
@@ -308,6 +319,83 @@ function recommendedAction(status: DecisionStatus, reasons: DecisionReason[], ma
 }
 
 export function evaluateDecision(input: DecisionTradeInput, ctx: DecisionContext): DecisionResult {
+  if (input.action === "sell") {
+    const amountUsd = Number(input.amountUsd);
+    const position = ctx.positions.find((p) => p.asset.trim().toUpperCase() === input.asset.trim().toUpperCase());
+    if (!input.asset || !Number.isFinite(amountUsd) || amountUsd <= 0) {
+      const reason: DecisionReason = { kind: "ввод", severity: "info", text: "Ввести актив и сумму продажи" };
+      return {
+        status: "ЖДАТЬ",
+        reasons: [reason],
+        warnings: [],
+        maxSafeAmount: 0,
+        maxAllowedAmount: 0,
+        recommendedAction: recommendedAction("ЖДАТЬ", [reason], 0, "sell"),
+        gate: { status: "idle", message: reason.text },
+        tradePreview: null,
+        healthPreview: null,
+      };
+    }
+
+    const hardReasons: DecisionReason[] = [];
+    const warnings: DecisionReason[] = [];
+    if (!position) {
+      hardReasons.push({ kind: "позиция", severity: "block", text: "Нельзя продать актив, которого нет в портфеле" });
+    } else if (amountUsd > position.value) {
+      hardReasons.push({ kind: "позиция", severity: "block", text: "Сумма продажи выше текущей стоимости позиции" });
+    }
+    if (ctx.marketPsychology?.riskMode === "покупать_по_плану") {
+      warnings.push({
+        kind: "рыночная_психология",
+        severity: "warn",
+        text: "Рынок в зоне страха — продажа может быть эмоциональной, нужна ручная причина",
+      });
+    }
+    for (const blocker of ctx.disciplineBlockers ?? []) {
+      hardReasons.push({ kind: "дисциплина", severity: "block", text: blocker });
+    }
+    for (const warning of ctx.disciplineWarnings ?? []) {
+      warnings.push({ kind: "дисциплина", severity: "warn", text: warning });
+    }
+
+    const checks: GateCheck[] = [{
+      key: "position",
+      label: "Позиция к продаже",
+      ok: Boolean(position) && amountUsd <= (position?.value ?? 0),
+      severity: "block",
+      before: position?.value ?? 0,
+      after: Math.max(0, (position?.value ?? 0) - amountUsd),
+      limit: position?.value ?? 0,
+      isShare: false,
+      note: !position
+        ? "Актив не найден в портфеле."
+        : amountUsd > position.value
+          ? "Нельзя продать больше текущей позиции."
+          : undefined,
+    }];
+    const status = hardReasons.length ? "БЛОКИРОВКА" : warnings.length ? "ОСТОРОЖНО" : "РАЗРЕШЕНО";
+
+    return {
+      status,
+      reasons: hardReasons,
+      warnings,
+      maxSafeAmount: position?.value ?? 0,
+      maxAllowedAmount: position?.value ?? 0,
+      recommendedAction: recommendedAction(status, hardReasons, position?.value ?? 0, "sell"),
+      gate: {
+        status: hardReasons.length ? "block" : warnings.length ? "caution" : "ok",
+        checks,
+        reasons: hardReasons.map((reason) => reason.text),
+        warnings: warnings.map((warning) => warning.text),
+        maxSafeAmount: position?.value ?? 0,
+        maxAllowedAmount: position?.value ?? 0,
+        fearGreed: null,
+      },
+      tradePreview: null,
+      healthPreview: null,
+    };
+  }
+
   const gate = evaluateTrade(input, ctx);
   if (gate.status === "idle") {
     const reason: DecisionReason = { kind: "ввод", severity: "info", text: gate.message };

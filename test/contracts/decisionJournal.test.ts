@@ -94,6 +94,7 @@ describe("журнал решений", () => {
       expect.objectContaining({
         asset: "ETH",
         category: "Крипта",
+        action: "buy",
         amountUsd: 25,
         buyPrice: 1516,
         status: "РАЗРЕШЕНО",
@@ -107,6 +108,13 @@ describe("журнал решений", () => {
       }),
     );
     expect(readDecisionJournal(":test")).toHaveLength(1);
+  });
+
+  it("сохраняет направление сделки в журнале решений", () => {
+    const entries = appendDecisionJournalEntry([], { ...draft, action: "sell" }, ":test");
+
+    expect(entries[0].action).toBe("sell");
+    expect(readDecisionJournal(":test")[0].action).toBe("sell");
   });
 
   it("не ломается на испорченном хранилище", () => {
