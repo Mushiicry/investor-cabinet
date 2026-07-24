@@ -90,6 +90,8 @@ export function V2SignalsPage({
   const nearestSignals = useMemo(() => sortByProximity(interestSignals).slice(0, 3), [interestSignals]);
   const limitOrders = useMemo(() => plannedLimitOrdersSummary(interestSignals), [interestSignals]);
   const currentFG = fearGreedStrategy.currentIndex;
+  // Поведенческий гид: живой F&G + тренд по истории → эмоция рынка и дисциплина.
+  const psychology = getMarketPsychology(currentFG, fearGreedStrategy.history);
 
   const alerts = topAlerts(
     buildPortfolioAlerts({
@@ -99,11 +101,10 @@ export function V2SignalsPage({
       currentFG,
       health,
       interestSignals,
+      marketPsychology: psychology,
       signalNotification: { disciplineCooldownActive },
     }),
   );
-  // Поведенческий гид: живой F&G + тренд по истории → эмоция рынка и дисциплина.
-  const psychology = getMarketPsychology(currentFG, fearGreedStrategy.history);
   const criticalCount = alerts.filter((a) => a.level === "critical").length;
 
   return (

@@ -7,6 +7,7 @@ import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import type { InterestSignal } from "../../types/portfolio";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 import { isEmptyAccount } from "./accountState";
+import type { MarketPsychology } from "./marketPsychology";
 import { altcoinSlots, CRYPTO_ALT_LIMIT } from "./preTradeGate";
 import {
   assessSignal,
@@ -41,6 +42,8 @@ export type AlertContext = {
   health?: PortfolioHealth;
   /** Ценовые точки из листа «Сигналы» — близкие и сработавшие. */
   interestSignals?: InterestSignal[];
+  /** Рыночная психология — общий макро-фильтр перед новой сделкой. */
+  marketPsychology?: Pick<MarketPsychology, "emotion" | "gate" | "stanceLabel">;
   /** Правила напоминаний: дневной лимит, повтор и дисциплинарная пауза. */
   signalNotification?: SignalNotificationPolicyOptions;
   /** Предыдущий Health Factor (с прошлого визита) — для тревоги о снижении. */
@@ -57,6 +60,7 @@ const toPercent = (share: number) => share * 100;
 export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
   const { portfolio, positions, allocation, currentFG } = ctx;
   const alerts: Alert[] = [];
+  const marketPsychology = ctx.marketPsychology;
 
   // Пустой аккаунт (кошельки ещё не подключены): нули — это не «критичный риск»,
   // а отсутствие данных. Не генерим тревожные сигналы для пустого портфеля.
@@ -249,7 +253,27 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
     });
   }
 
-  // 7. Зона страха — окно покупки
+  // 7. Макро-фильтр рынка: Market Psychology Engine не даёт сигнал к сделке,
+  // а усиливает режим осторожности/блока перед проверкой риска.
+  if (marketPsychology?.gate.severity === "block") {
+    alerts.push({
+      id: "market-psychology-block",
+      level: "critical",
+      title: `Рынок: ${marketPsychology.emotion}`,
+      detail: marketPsychology.gate.text,
+      action: marketPsychology.stanceLabel,
+    });
+  } else if (marketPsychology?.gate.severity === "warning") {
+    alerts.push({
+      id: "market-psychology-warning",
+      level: "warning",
+      title: `Рынок: ${marketPsychology.emotion}`,
+      detail: marketPsychology.gate.text,
+      action: "Открыть проверку риска",
+    });
+  }
+
+  // 8. Зона страха — окно покупки
   if (currentFG <= 14) {
     alerts.push({
       id: "fg-max",
@@ -268,7 +292,7 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
     });
   }
 
-  // 8. Альткоин-места. Мажоры (BTC/ETH/SOL/TON/BNB) занимают 85% крипто-блока,
+  // 9. Альткоин-места. Мажоры (BTC/ETH/SOL/TON/BNB) занимают 85% крипто-блока,
   // на альткоины по 5% остаётся 3 места. Напоминаем, сколько свободно.
   const cryptoAssets = positions
     .filter((p) => CRYPTO_CATEGORIES.has(p.category))

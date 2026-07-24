@@ -239,13 +239,14 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           currentFG: data.fearGreedStrategy.currentIndex,
           health: behaviorHealth,
           interestSignals: data.signals?.interestList ?? [],
+          marketPsychology,
           signalNotification: {
             disciplineCooldownActive: behavior.healthInputs.disciplineCooldownActive,
           },
           previousHealthFactor,
         })
       ),
-    [behaviorPortfolio, data.positions, data.allocation, data.fearGreedStrategy.currentIndex, behaviorHealth, data.signals, behavior.healthInputs.disciplineCooldownActive, previousHealthFactor]
+    [behaviorPortfolio, data.positions, data.allocation, data.fearGreedStrategy.currentIndex, marketPsychology, behaviorHealth, data.signals, behavior.healthInputs.disciplineCooldownActive, previousHealthFactor]
   );
 
   const criticalCount = alerts.filter((alert) => alert.level === "critical").length;
