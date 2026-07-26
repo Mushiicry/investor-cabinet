@@ -18,6 +18,9 @@ import {
   isAssetAllowedByStrategy,
   strategyForSlot,
 } from "../../src/v2/lib/investorStrategy";
+import { buildPortfolioState } from "../../src/lib/portfolioCalculations";
+import { decisionsData, rawPositions, scenariosData } from "../../src/mocks/portfolioData";
+import { buildLiveV2Data, buildZeroedV2Data } from "../../src/v2/lib/v2LabData";
 
 describe("investor strategy policies", () => {
   it("keeps the main strategy equal to the current global policy", () => {
@@ -65,5 +68,13 @@ describe("investor strategy policies", () => {
     expect(isAssetAllowedByStrategy("GOLD", STRATEGY_METALS_CATEGORY, WIFE_INVESTOR_STRATEGY).allowed).toBe(true);
     expect(isAssetAllowedByStrategy("SILVER", STRATEGY_METALS_CATEGORY, WIFE_INVESTOR_STRATEGY).allowed).toBe(false);
     expect(isAssetAllowedByStrategy("BTC SHORT", STRATEGY_FUTURES_CATEGORY, WIFE_INVESTOR_STRATEGY).allowed).toBe(false);
+  });
+
+  it("attaches the selected strategy to V2 account data", () => {
+    const state = buildPortfolioState(rawPositions, decisionsData, scenariosData);
+
+    expect(buildLiveV2Data(state, {}, {}, "main").strategy).toBe(MAIN_INVESTOR_STRATEGY);
+    expect(buildLiveV2Data(state, {}, {}, "wife").strategy).toBe(WIFE_INVESTOR_STRATEGY);
+    expect(buildZeroedV2Data().strategy).toBe(MAIN_INVESTOR_STRATEGY);
   });
 });

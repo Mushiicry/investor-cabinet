@@ -18,6 +18,7 @@ import { rawPositions, decisionsData, scenariosData } from "../mocks/portfolioDa
 import { maybeRecordSnapshot } from "../services/dailySnapshotService";
 import type { PortfolioState } from "../types/portfolio";
 import { buildLiveV2Data, buildZeroedV2Data } from "./lib/v2LabData";
+import type { InvestorStrategy } from "./lib/investorStrategy";
 import "./v2.css";
 
 export type V2Portfolio = {
@@ -92,6 +93,7 @@ export type V2Scenario = {
 };
 
 export type V2LabData = {
+  strategy: InvestorStrategy;
   portfolio: V2Portfolio;
   positions: V2Position[];
   risk: V2Risk;

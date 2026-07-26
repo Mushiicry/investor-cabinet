@@ -10,6 +10,7 @@ import { decisionsData, scenariosData } from "../../mocks/portfolioData";
 import { mergeWithLocalSnapshots } from "../../services/dailySnapshotService";
 import { assetConcentration } from "./preTradeGate";
 import { plannedLimitOrdersSummary } from "./interestSignals";
+import { strategyForSlot } from "./investorStrategy";
 import type { PortfolioState } from "../../types/portfolio";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 
@@ -33,6 +34,7 @@ const mockHealthInput: HealthInput = {
 };
 
 const mockData: V2LabData = {
+  strategy: strategyForSlot("main"),
   portfolio: {
     totalPortfolioValue: 754691.21,
     totalInvested: 710570,
@@ -165,6 +167,7 @@ const zeroedHealth: PortfolioHealth = (() => {
 export function buildZeroedV2Data(): V2LabData {
   return {
     ...mockData,
+    strategy: strategyForSlot("main"),
     positions: [],
     decisions: [],
     scenarios: [],
@@ -227,6 +230,7 @@ export const buildLiveV2Data = (
   riskByCoin: Record<string, { liquidationPx: number | null }> = {},
   slot: import("../../services/dailySnapshotService").SnapshotSlot = "main"
 ): V2LabData => {
+  const strategy = strategyForSlot(slot);
   // Реальное выставленное плечо фьючерс-позиций берём с Hyperliquid (по монете).
   // Монету извлекаем из имени актива ("BTC LONG" → "BTC"). Нет данных → null (не штрафуем).
   // GOLD остаётся категорией «Металлы», но торгуется с плечом на HL — поэтому его плечо
@@ -334,6 +338,7 @@ export const buildLiveV2Data = (
 
   return {
     ...mockData,
+    strategy,
     fearGreedStrategy: state.fearGreedStrategy,
     history: mergeWithLocalSnapshots(state.history, slot),
     transactions: state.transactions,
