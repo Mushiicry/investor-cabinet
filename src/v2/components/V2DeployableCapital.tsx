@@ -52,7 +52,7 @@ export function V2DeployableCapital({ portfolio, allocation, strategy, futuresSh
     hint?: string;
     hintDanger?: boolean;
   }> = [
-    { label: "Усреднение", value: buckets.averagingBudgetUsd, glyph: "◇", color: "#5fe0cf" },
+    { label: "ДСА добор", value: buckets.averagingBudgetUsd, glyph: "◇", color: "#5fe0cf" },
     { label: "Спот", value: buckets.spotBudgetUsd, glyph: "○", color: "#56d8f5" },
     {
       label: "Фьючерсы",

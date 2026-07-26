@@ -294,6 +294,14 @@ function finalizeCoreRecs(recs: CoreRec[], healthInput: HealthInput | undefined,
     .slice(0, 5);
 }
 
+function isExpansionRecommendation(rec: CoreRec): boolean {
+  return (
+    rec.action.startsWith("Добавить") ||
+    rec.action.startsWith("Выравнивать") ||
+    rec.action.startsWith("Распределить")
+  );
+}
+
 export function buildCoreRecs(
   weak: HealthComponent[],
   portfolio: V2Portfolio,
@@ -306,6 +314,8 @@ export function buildCoreRecs(
   const rm = reserve?.meta;
   const reserveBlockers = rm?.reserveBlockers ?? [];
   const reserveTargetShortfallUsd = rm?.reserveTargetShortfallUsd ?? deficit;
+  const reserveShare = portfolio.reserveShare ?? 0;
+  const hasHardReserveGate = reserveBlockers.length > 0 || reserveShare < 0.10 || portfolio.deployableCapital < 50;
   if (reserveBlockers.length) {
     result.push({
       action: `Не открывать новые позиции: ${reserveBlockers[0].toLowerCase()}`,
@@ -571,5 +581,5 @@ export function buildCoreRecs(
   return finalizeCoreRecs([
     ...result.filter((rec) => rec.critical),
     ...result.filter((rec) => !rec.critical),
-  ], healthInput, all);
+  ].filter((rec) => !hasHardReserveGate || !isExpansionRecommendation(rec)), healthInput, all);
 }

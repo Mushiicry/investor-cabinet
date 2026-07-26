@@ -9,6 +9,7 @@ import { V2GatePage } from "./V2GatePage";
 import { V2RiskEnginePage } from "./V2RiskEnginePage";
 import { V2ScenariosPage } from "./V2ScenariosPage";
 import { V2DeployableCapital } from "./V2DeployableCapital";
+import { V2CapitalLadder } from "./V2CapitalLadder";
 import { V2DCAStrategy } from "./V2DCAStrategy";
 import { V2PortfolioAllocationCard } from "./V2PortfolioAllocationCard";
 import { V2HealthCore } from "./V2HealthCore";
@@ -21,7 +22,7 @@ import type { TonStaking } from "../../hooks/useTonStaking";
 import type { CosmosStaking } from "../../hooks/useCosmosStaking";
 import { V2HealthPage } from "./V2HealthPage";
 import { V2NotificationsPanel } from "./V2NotificationsPanel";
-import { buildPortfolioAlerts, sortAlerts } from "../lib/portfolioAlerts";
+import { buildPortfolioAlerts, sortAlerts, type Alert } from "../lib/portfolioAlerts";
 import { V2Sidebar } from "./V2Sidebar";
 import { V2TopMetrics } from "./V2TopMetrics";
 import { V2StarField } from "./V2StarField";
@@ -35,7 +36,7 @@ import {
 } from "../lib/decisionJournal";
 import { evaluateBehavior } from "../lib/behaviorEngine";
 import { getMarketPsychology } from "../lib/marketPsychology";
-import type { TradeCandidate } from "../lib/tradeCandidate";
+import { buildTradeCandidateFromSignal, type TradeCandidate } from "../lib/tradeCandidate";
 
 type Props = {
   data: V2LabData;
@@ -81,11 +82,11 @@ function getDesktopViewport() {
 function DataStatusBadge({ dataStatus }: { dataStatus: NonNullable<Props["dataStatus"]> }) {
   const { source, status, lastLoadedAt, error } = dataStatus;
   let tone = "is-live";
-  let label = "LIVE";
-  if (error && source === "fallback") { tone = "is-error"; label = "ERROR"; }
-  else if (status === "stale" || (error && source !== "fallback")) { tone = "is-stale"; label = "STALE"; }
-  else if (source === "cache") { tone = "is-cache"; label = "CACHE"; }
-  else if (source === "fallback") { tone = "is-cache"; label = "DEMO"; }
+  let label = "ЖИВЫЕ";
+  if (error && source === "fallback") { tone = "is-error"; label = "ОШИБКА"; }
+  else if (status === "stale" || (error && source !== "fallback")) { tone = "is-stale"; label = "УСТАРЕЛО"; }
+  else if (source === "cache") { tone = "is-cache"; label = "КЭШ"; }
+  else if (source === "fallback") { tone = "is-cache"; label = "ДЕМО"; }
 
   const time = lastLoadedAt
     ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(lastLoadedAt))
@@ -258,6 +259,58 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
 
   const criticalCount = alerts.filter((alert) => alert.level === "critical").length;
 
+  function signalFromAlert(alert: Alert) {
+    const signals = data.signals?.interestList ?? [];
+    const prefixes = ["signal-triggered-", "signal-near-"];
+    const prefix = prefixes.find((item) => alert.id.startsWith(item));
+    if (!prefix) return null;
+    const id = alert.id.slice(prefix.length);
+    return signals.find((signal) => signal.id === id) ?? null;
+  }
+
+  function handleAlertAction(alert: Alert) {
+    setNotifOpen(false);
+
+    if (alert.action === "Открыть проверку риска") {
+      const signal = signalFromAlert(alert);
+      const candidate = signal ? buildTradeCandidateFromSignal(signal, data.positions) : null;
+      if (candidate) {
+        handleOpenTradeCandidate(candidate);
+      } else {
+        handleNavigate("gate");
+      }
+      return;
+    }
+
+    if (alert.action === "Открыть разбор здоровья") {
+      handleNavigate("health");
+      return;
+    }
+
+    if (alert.action === "Открыть стратегию") {
+      handleNavigate("signals");
+      return;
+    }
+
+    if (alert.action === "Пополнить резерв" || alert.action === "Срочно пополнить") {
+      setCapitalOpen(true);
+      handleNavigate("overview");
+      return;
+    }
+
+    if (alert.action === "Новый альт — только вместо старого") {
+      handleNavigate("gate");
+    }
+  }
+
+  const canHandleAlertAction = (alert: Alert) =>
+    alert.action === "Открыть проверку риска" ||
+    alert.action === "Открыть разбор здоровья" ||
+    alert.action === "Открыть стратегию" ||
+    alert.action === "Пополнить резерв" ||
+    alert.action === "Срочно пополнить" ||
+    alert.action === "Новый альт — только вместо старого";
+
   // Центр зазора между сайдбаром и контентом в координатах ЭКРАНА.
   // Сцена шириной 1920 масштабируется и центрируется, поэтому к отступу
   // сцены добавляем масштабированную ширину колонки и половину зазора.
@@ -359,6 +412,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
                 : []}
             disciplineCooldownActive={behavior.healthInputs.disciplineCooldownActive}
             onOpenTradeCandidate={handleOpenTradeCandidate}
+            onNavigate={handleNavigate}
           />
         ) : page === "gate" ? (
           <V2GatePage
@@ -440,6 +494,10 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             />
           </div>
 
+          <div className="v2-cap-ladder-slot">
+            <V2CapitalLadder portfolio={behaviorPortfolio} />
+          </div>
+
           {/* Под радаром: распределение + DCA рядом */}
           <div className="v2-alloc-center-row">
             <div className="v2-alloc-center-inner">
@@ -482,7 +540,12 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
       )}
 
       {notifOpen && (
-        <V2NotificationsPanel alerts={alerts} onClose={() => setNotifOpen(false)} />
+        <V2NotificationsPanel
+          alerts={alerts}
+          onClose={() => setNotifOpen(false)}
+          onAction={handleAlertAction}
+          canRunAction={canHandleAlertAction}
+        />
       )}
 
       {selectedChip && (

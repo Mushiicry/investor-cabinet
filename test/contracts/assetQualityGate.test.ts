@@ -32,12 +32,12 @@ describe("проверка качества токена", () => {
     expect(verdict.blockers).toContain("ATOM: токен находится в списке мониторинга Binance");
   });
 
-  it("не выдумывает качество токена без подключённого источника", () => {
+  it("блокирует покупку без подключённого источника качества", () => {
     const verdict = evaluateAssetQuality("SOL");
 
-    expect(verdict.status).toBe("warn");
-    expect(verdict.warnings).toContain("Источник проверки токенов ещё не подключён");
-    expect(verdict.blockers).toEqual([]);
+    expect(verdict.status).toBe("block");
+    expect(verdict.blockers).toContain("Источник проверки токенов недоступен — покупка запрещена до восстановления проверки");
+    expect(verdict.warnings).toEqual([]);
   });
 
   it("блокирует неизвестный тикер при подключённом источнике Top-100", () => {
@@ -51,14 +51,17 @@ describe("проверка качества токена", () => {
     expect(verdict.blockers).toContain("NOM: токен не найден в топ-100 CoinMarketCap");
   });
 
-  it("не считает неизвестный CMC-ранг автоматическим нарушением топ-100", () => {
+  it("блокирует токен без подтвержденного Top-100 статуса", () => {
     const verdict = evaluateAssetQuality("JASMY", {
       connected: true,
       records: [{ asset: "JASMY", cmcRank: null, binanceMonitoring: true }],
     });
 
     expect(verdict.status).toBe("block");
-    expect(verdict.blockers).toEqual(["JASMY: токен находится в списке мониторинга Binance"]);
-    expect(verdict.warnings).toContain("JASMY: статус CoinMarketCap Top-100 не подключён");
+    expect(verdict.blockers).toEqual([
+      "JASMY: статус CoinMarketCap Top-100 не подтверждён",
+      "JASMY: токен находится в списке мониторинга Binance",
+    ]);
+    expect(verdict.warnings).toEqual([]);
   });
 });

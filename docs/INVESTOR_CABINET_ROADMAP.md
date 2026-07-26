@@ -64,6 +64,10 @@ Stage 1A — Speculative Risk cap-control patch
 **V2 экраны — что завершено:**
 
 - ✅ **Обзор** — top metrics, health core reactor, portfolio health bars, fear & greed, allocation 3D, deployable capital;
+- ✅ **Лестница капитала** — главная плашка прогресса к ступени депозита,
+  расчёт лимитов категорий и типовых лимитов активов на будущей ступени без
+  разрешения сделок на будущие деньги; ступени `$100 / $500 / $1000 / $2000 /
+  $5000 / $10000` листаются свайпом по одной карточке;
 - ✅ **Портфель** — live positions table, playbook cards (ATOM/GOLD), CryptoLogo clean;
 - ✅ **Сценарии** — объединён с Decisions; asset rail, thesis+whyHold, expect, branch SVG matrix (BASE/BULL/BEAR), решение, invalidation, action zone, scores; sidebar 7 пунктов RU;
 - ✅ **Риск** — health factor pulse, 5 health-компонентов cold-blue, reserve/exposure/allocation/futures карточки, scanline texture, electric animations.
@@ -71,6 +75,8 @@ Stage 1A — Speculative Risk cap-control patch
 **V2 экраны — следующие:**
 
 - 🔲 **Отчёты** — equity curve, PnL history, allocation over time (Stage 3);
+- 🟡 **Здоровье / Цель капитала** — MVP-блок добавлен; дальше нужна подробная
+  таблица ступеней `$100 / $500 / $1000 / $2000 / $5000 / $10000` и разрывов по категориям;
 - 🟡 **Сигналы** — базовый экран собран: психология рынка, стратегия F&G,
   health-факторы и **живые лимитные ордера** (лист «Сигналы» → API → сайт,
   минутный триггер Apps Script → Telegram-алерт при касании цены,

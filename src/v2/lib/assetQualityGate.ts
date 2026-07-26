@@ -27,28 +27,21 @@ export function evaluateAssetQuality(
 
   if (!source?.connected) {
     return {
-      status: "warn",
-      blockers: [],
-      warnings: ["Источник проверки токенов ещё не подключён"],
+      status: "block",
+      blockers: ["Источник проверки токенов недоступен — покупка запрещена до восстановления проверки"],
+      warnings: [],
       record: null,
     };
   }
 
   const record = source.records.find((item) => normalizeAsset(item.asset) === key) ?? null;
   if (!record) {
-    if (source.cmcTop100Connected) {
-      return {
-        status: "block",
-        blockers: [`${key}: токен не найден в топ-100 CoinMarketCap`],
-        warnings: [],
-        record: null,
-      };
-    }
-
     return {
-      status: "warn",
-      blockers: [],
-      warnings: [`Нет записи качества для ${key}`],
+      status: "block",
+      blockers: source.cmcTop100Connected
+        ? [`${key}: токен не найден в топ-100 CoinMarketCap`]
+        : [`${key}: нет подтверждённой записи качества актива`],
+      warnings: [],
       record: null,
     };
   }
@@ -60,7 +53,7 @@ export function evaluateAssetQuality(
     if (source.cmcTop100Connected) {
       blockers.push(`${key}: токен вне топ-100 CoinMarketCap`);
     } else {
-      warnings.push(`${key}: статус CoinMarketCap Top-100 не подключён`);
+      blockers.push(`${key}: статус CoinMarketCap Top-100 не подтверждён`);
     }
   } else if (record.cmcRank <= 0 || record.cmcRank > TOP_LIMIT) {
     blockers.push(`${key}: токен вне топ-100 CoinMarketCap`);

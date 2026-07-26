@@ -187,6 +187,382 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  --v2-overview-metric-card-width: 270px;
+  --v2-overview-metric-gap: 34px;
+  --v2-overview-metric-pair-width: calc((var(--v2-overview-metric-card-width) * 2) + var(--v2-overview-metric-gap));
+  --v2-overview-metric-shift-x: -22px;
+}
+
+/* ── Лестница капитала ─────────────────────────────────────── */
+.v2-cap-ladder-slot {
+  width: min(var(--v2-overview-metric-pair-width), 100%);
+  align-self: center;
+  position: relative;
+  z-index: 4;
+  margin-top: 14px;
+  transform: translateX(calc(var(--v2-overview-metric-shift-x) - 10px));
+}
+
+.v2-cap-ladder {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 18px 16px;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(18,40,78,0.34) 0%, rgba(6,16,38,0.42) 100%);
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+  border: 1px solid rgba(86,196,240,0.12);
+  border-radius: 14px;
+}
+
+.v2-cap-ladder.is-overview {
+  width: 100%;
+  align-self: center;
+}
+
+.v2-cap-ladder > *:not(.v2-phc-corner):not(.v2-phc-dots) {
+  position: relative;
+  z-index: 1;
+}
+
+.v2-cap-ladder-head,
+.v2-cap-ladder-main,
+.v2-cap-ladder-steps,
+.v2-cap-ladder-step,
+.v2-cap-ladder-limits,
+.v2-cap-ladder-step-foot,
+.v2-cap-ladder-detail {
+  min-width: 0;
+}
+
+.v2-cap-ladder-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.v2-cap-ladder-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.v2-cap-ladder-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(85, 215, 240, 0.82);
+}
+
+.v2-cap-ladder-head strong {
+  font-size: 22px;
+  color: rgba(232, 246, 255, 0.95);
+}
+
+.v2-cap-ladder-left {
+  padding: 6px 9px;
+  border-radius: 9px;
+  border: 1px solid rgba(226, 182, 107, 0.28);
+  background: rgba(226, 182, 107, 0.08);
+  color: rgba(240, 205, 140, 0.92);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.v2-cap-ladder-steps {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 2px;
+}
+
+.v2-cap-ladder-steps::-webkit-scrollbar {
+  height: 6px;
+}
+
+.v2-cap-ladder-steps::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(82, 198, 230, 0.22);
+}
+
+.v2-cap-ladder-step {
+  appearance: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  display: grid;
+  gap: 11px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(86, 196, 240, 0.14);
+  background: rgba(7, 20, 36, 0.42);
+  cursor: pointer;
+}
+
+.v2-cap-ladder-step.is-current {
+  border-color: rgba(88, 230, 208, 0.34);
+  background:
+    linear-gradient(135deg, rgba(38, 160, 146, 0.12), rgba(7, 20, 36, 0.46)),
+    rgba(7, 20, 36, 0.42);
+}
+
+.v2-cap-ladder-step.is-done {
+  border-color: rgba(118, 220, 170, 0.2);
+  opacity: 0.82;
+}
+
+.v2-cap-ladder-step.is-next {
+  border-color: rgba(226, 182, 107, 0.24);
+}
+
+.v2-cap-ladder-step.is-selected {
+  box-shadow:
+    inset 0 0 0 1px rgba(88, 230, 208, 0.14),
+    0 0 20px rgba(86, 220, 200, 0.08);
+}
+
+.v2-cap-ladder-step-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.v2-cap-ladder-step-head span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(135, 172, 198, 0.78);
+}
+
+.v2-cap-ladder-step-head strong {
+  color: rgba(235, 250, 255, 0.94);
+  font-size: 16px;
+}
+
+.v2-cap-ladder-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.v2-cap-ladder-score {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.v2-cap-ladder-score strong {
+  font-size: 28px;
+  font-family: "Libre Baskerville", Georgia, serif;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.v2-cap-ladder-score span,
+.v2-cap-ladder-pct {
+  color: rgba(150, 190, 218, 0.68);
+  font-weight: 800;
+}
+
+.v2-cap-ladder-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.v2-cap-ladder-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #55c7ff, #76dcaa);
+  box-shadow: 0 0 16px rgba(86, 220, 200, 0.32);
+}
+
+.v2-cap-ladder-limits {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.v2-cap-ladder-limit {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(86, 196, 240, 0.12);
+  background: rgba(7, 20, 36, 0.48);
+}
+
+.v2-cap-ladder-limit span,
+.v2-cap-ladder-detail span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(135, 172, 198, 0.72);
+}
+
+.v2-cap-ladder-limit strong {
+  color: rgba(230, 246, 255, 0.92);
+  font-size: 13px;
+}
+
+.v2-cap-ladder-step-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 1px;
+}
+
+.v2-cap-ladder-step-foot span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(135, 172, 198, 0.72);
+}
+
+.v2-cap-ladder-step-foot strong {
+  color: rgba(226, 182, 107, 0.94);
+  font-size: 13px;
+}
+
+.v2-cap-ladder-toggle {
+  justify-self: start;
+  padding: 6px 9px;
+  border-radius: 9px;
+  border: 1px solid rgba(86, 196, 240, 0.18);
+  background: rgba(86, 196, 240, 0.06);
+  color: rgba(128, 230, 225, 0.92);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.v2-cap-ladder-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(86, 196, 240, 0.18);
+  background:
+    linear-gradient(135deg, rgba(12, 44, 70, 0.38), rgba(7, 16, 30, 0.74)),
+    rgba(7, 20, 36, 0.64);
+}
+
+.v2-cap-ladder-panel-head,
+.v2-cap-ladder-asset-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v2-cap-ladder-panel-head span,
+.v2-cap-ladder-asset-head span {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(135, 172, 198, 0.78);
+}
+
+.v2-cap-ladder-panel-head strong,
+.v2-cap-ladder-asset-head strong {
+  color: rgba(118, 220, 170, 0.94);
+  font-size: 13px;
+}
+
+.v2-cap-ladder-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.v2-cap-ladder-panel-row {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(86, 196, 240, 0.12);
+  background: rgba(7, 20, 36, 0.42);
+}
+
+.v2-cap-ladder-panel-row span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(135, 172, 198, 0.72);
+}
+
+.v2-cap-ladder-panel-row strong {
+  color: rgba(230, 246, 255, 0.92);
+  font-size: 13px;
+}
+
+.v2-cap-ladder-asset {
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(118, 220, 170, 0.14);
+  background: rgba(30, 88, 70, 0.12);
+}
+
+.v2-cap-ladder-asset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.v2-cap-ladder-asset-buttons button {
+  padding: 7px 9px;
+  border-radius: 9px;
+  border: 1px solid rgba(86, 196, 240, 0.16);
+  background: rgba(7, 20, 36, 0.62);
+  color: rgba(183, 214, 232, 0.78);
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.v2-cap-ladder-asset-buttons button.is-active {
+  border-color: rgba(88, 230, 208, 0.42);
+  background: rgba(88, 230, 208, 0.1);
+  color: rgba(230, 255, 250, 0.96);
+}
+
+.v2-cap-ladder-asset p {
+  margin: 0;
+  color: rgba(180, 210, 226, 0.76);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.v2-cap-ladder-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.v2-cap-ladder-detail span {
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(86, 196, 240, 0.12);
+  background: rgba(86, 196, 240, 0.05);
 }
 
 .v2-top-grid {

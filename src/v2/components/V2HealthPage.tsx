@@ -11,6 +11,7 @@ import {
   buildHealthSimulatorInput,
   type HealthSimulatorLevers,
 } from "../lib/healthSimulator";
+import { V2CapitalLadder } from "./V2CapitalLadder";
 
 type Props = {
   portfolio: V2Portfolio;
@@ -290,6 +291,11 @@ export function V2HealthPage({ portfolio, health, healthInput }: Props) {
           </div>
         </div>
 
+      </div>
+
+      <div className="v2-hp-capital-goal">
+        <div className="v2-hp-card-title">Цель капитала</div>
+        <V2CapitalLadder portfolio={portfolio} mode="health" />
       </div>
 
       {/* ── Breakdown ── */}

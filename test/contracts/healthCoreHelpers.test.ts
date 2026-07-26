@@ -238,4 +238,30 @@ describe("рекомендации здоровья портфеля", () => {
 
     expect(recs).toEqual([]);
   });
+
+  it("не показывает рекомендации на докупку классов, если резерв ниже пола", () => {
+    const recs = buildCoreRecs(
+      [
+        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже пола 10%"] }, 20),
+        component("diversification", "Диверсификация", {
+          missingClassNames: ["Металлы", "Акции"],
+        }, 10),
+      ],
+      {
+        ...portfolio,
+        reserveShare: 0.04,
+        stableReserve: 40,
+        deployableCapital: 20,
+      },
+      [
+        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже пола 10%"] }, 20),
+        component("diversification", "Диверсификация", {
+          missingClassNames: ["Металлы", "Акции"],
+        }, 10),
+      ],
+    );
+
+    expect(recs.map((rec) => rec.action).some((action) => action.startsWith("Добавить"))).toBe(false);
+    expect(recs.map((rec) => rec.action).some((action) => action.startsWith("Не открывать новые позиции"))).toBe(true);
+  });
 });

@@ -5,6 +5,8 @@ import type { Alert, AlertLevel } from "../lib/portfolioAlerts";
 type Props = {
   alerts: Alert[];
   onClose: () => void;
+  onAction?: (alert: Alert) => void;
+  canRunAction?: (alert: Alert) => boolean;
 };
 
 const LEVEL_LABEL: Record<AlertLevel, string> = {
@@ -13,7 +15,7 @@ const LEVEL_LABEL: Record<AlertLevel, string> = {
   info: "СИГНАЛ",
 };
 
-export function V2NotificationsPanel({ alerts, onClose }: Props) {
+export function V2NotificationsPanel({ alerts, onClose, onAction, canRunAction }: Props) {
   useEscapeClose(true, onClose);
 
   const criticalCount = alerts.filter((alert) => alert.level === "critical").length;
@@ -52,7 +54,19 @@ export function V2NotificationsPanel({ alerts, onClose }: Props) {
                 <span className="v2-notif-level">{LEVEL_LABEL[alert.level]}</span>
                 <span className="v2-notif-item-title">{alert.title}</span>
                 <span className="v2-notif-item-detail">{alert.detail}</span>
-                {alert.action && <span className="v2-notif-item-action">→ {alert.action}</span>}
+                {alert.action && (
+                  onAction && canRunAction?.(alert) ? (
+                    <button
+                      type="button"
+                      className="v2-notif-item-action"
+                      onClick={() => onAction(alert)}
+                    >
+                      → {alert.action}
+                    </button>
+                  ) : (
+                    <span className="v2-notif-item-action is-static">{alert.action}</span>
+                  )
+                )}
               </div>
             ))
           )}

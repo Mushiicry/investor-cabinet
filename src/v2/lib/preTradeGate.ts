@@ -371,7 +371,7 @@ function categoryBudget(category: string, buckets?: CapitalBuckets): { label: st
     return {
       label: "Карман ручной крипты",
       value: buckets.cryptoSpotBudgetUsd,
-      note: `Карман усреднения ${Math.round(buckets.averagingBudgetUsd)}$ не тратится ручной покупкой, но входит в плановый крипто-блок.`,
+      note: `Карман ДСА добора ${Math.round(buckets.averagingBudgetUsd)}$ не тратится ручной покупкой, но входит в плановый крипто-блок.`,
     };
   }
   if (category === METALS_CATEGORY) return { label: "Карман металлов", value: buckets.metalsBudgetUsd };
@@ -494,7 +494,7 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
 
   checks.push({
     key: "capital",
-    label: "Капитал к доборку",
+    label: "Капитал для добора",
     ok: inGreen,
     severity: inCushion ? "warn" : "block",
     before: greenMax,

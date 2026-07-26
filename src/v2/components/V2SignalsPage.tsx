@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { V2LabData } from "../InvestorCabinetV2Lab";
+import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import { isEmptyAccount } from "../lib/accountState";
 import { getMarketPsychology } from "../lib/marketPsychology";
@@ -10,12 +10,14 @@ import {
   assessSignal,
   plannedLimitOrdersSummary,
   sortByProximity,
+  sortBySignalPriority,
   type SignalDistance,
 } from "../lib/interestSignals";
 import { CryptoLogo } from "../../components/crypto/CryptoLogo";
 import {
   buildPortfolioAlerts,
   topAlerts,
+  type Alert,
   type AlertLevel,
 } from "../lib/portfolioAlerts";
 import { buildTradeCandidateFromSignal, type TradeCandidate } from "../lib/tradeCandidate";
@@ -30,6 +32,7 @@ type Props = {
   interestSignals: InterestSignal[];
   disciplineCooldownActive?: boolean;
   onOpenTradeCandidate?: (candidate: TradeCandidate) => void;
+  onNavigate?: (page: V2Page) => void;
 };
 
 const LEVEL_LABEL: Record<AlertLevel, string> = {
@@ -86,11 +89,20 @@ export function V2SignalsPage({
   interestSignals,
   disciplineCooldownActive = false,
   onOpenTradeCandidate,
+  onNavigate,
 }: Props) {
   const [openAsset, setOpenAsset] = useState<string | null>(null);
   const assetGroups = useMemo(() => groupByAsset(interestSignals), [interestSignals]);
   const openGroup = assetGroups.find((group) => group.asset === openAsset) ?? null;
   const nearestSignals = useMemo(() => sortByProximity(interestSignals).slice(0, 3), [interestSignals]);
+  const triggeredSignals = useMemo(
+    () =>
+      sortBySignalPriority(interestSignals)
+        .filter((signal) => assessSignal(signal).priority === "сработал")
+        .slice(0, 3),
+    [interestSignals],
+  );
+  const primaryTriggered = triggeredSignals[0] ?? null;
   const limitOrders = useMemo(() => plannedLimitOrdersSummary(interestSignals), [interestSignals]);
   const currentFG = fearGreedStrategy.currentIndex;
   // Поведенческий гид: живой F&G + тренд по истории → эмоция рынка и дисциплина.
@@ -104,6 +116,50 @@ export function V2SignalsPage({
     if (!candidate) return "Проверить";
     return candidate.action === "sell" ? "Проверить продажу" : "Проверить покупку";
   };
+  const signalFromAlert = (alert: Alert) => {
+    const prefixes = ["signal-triggered-", "signal-near-"];
+    const prefix = prefixes.find((item) => alert.id.startsWith(item));
+    if (!prefix) return null;
+    const id = alert.id.slice(prefix.length);
+    return interestSignals.find((signal) => signal.id === id) ?? null;
+  };
+  const handleAlertAction = (alert: Alert) => {
+    if (alert.action === "Открыть проверку риска") {
+      const signal = signalFromAlert(alert) ?? primaryTriggered;
+      if (signal) {
+        openCandidate(signal);
+      } else {
+        onNavigate?.("gate");
+      }
+      return;
+    }
+
+    if (alert.action === "Открыть разбор здоровья") {
+      onNavigate?.("health");
+      return;
+    }
+
+    if (alert.action === "Открыть стратегию") {
+      onNavigate?.("signals");
+      return;
+    }
+
+    if (alert.action === "Пополнить резерв" || alert.action === "Срочно пополнить") {
+      onNavigate?.("overview");
+      return;
+    }
+
+    if (alert.action === "Новый альт — только вместо старого") {
+      onNavigate?.("gate");
+    }
+  };
+  const canRunAlertAction = (alert: Alert) =>
+    alert.action === "Открыть проверку риска" ||
+    alert.action === "Открыть разбор здоровья" ||
+    alert.action === "Открыть стратегию" ||
+    alert.action === "Пополнить резерв" ||
+    alert.action === "Срочно пополнить" ||
+    alert.action === "Новый альт — только вместо старого";
 
   const alerts = topAlerts(
     buildPortfolioAlerts({
@@ -156,11 +212,53 @@ export function V2SignalsPage({
               <div className="v2-alert-level">{LEVEL_LABEL[alert.level]}</div>
               <div className="v2-alert-title">{alert.title}</div>
               <div className="v2-alert-detail">{alert.detail}</div>
-              {alert.action && <div className="v2-alert-action">→ {alert.action}</div>}
+              {alert.action && (
+                canRunAlertAction(alert) ? (
+                  <button
+                    type="button"
+                    className="v2-alert-action"
+                    onClick={() => handleAlertAction(alert)}
+                  >
+                    → {alert.action}
+                  </button>
+                ) : (
+                  <span className="v2-alert-action is-static">{alert.action}</span>
+                )
+              )}
             </div>
           ))
         )}
       </div>
+
+      {primaryTriggered ? (
+        <div className="v2-sig-trigger-focus">
+          <div className="v2-sig-trigger-mark">Сработала точка</div>
+          <div className="v2-sig-trigger-main">
+            <strong>{primaryTriggered.asset}</strong>
+            <span>
+              {primaryTriggered.action} {formatSignalMoney(primaryTriggered.amountUsd)} при{" "}
+              {formatSignalMoney(primaryTriggered.triggerPrice)}
+            </span>
+          </div>
+          <div className="v2-sig-trigger-detail">
+            Цена коснулась уровня. Сначала изучить график, затем открыть проверку риска.
+          </div>
+          <div className="v2-sig-trigger-actions">
+            <button type="button" onClick={() => setOpenAsset(primaryTriggered.asset)}>
+              Показать уровни
+            </button>
+            <button
+              type="button"
+              disabled={!buildTradeCandidateFromSignal(primaryTriggered, positions)}
+              onClick={() => openCandidate(primaryTriggered)}
+            >
+              Открыть проверку риска
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="v2-sig-trigger-placeholder" aria-hidden="true" />
+      )}
 
       {/* ── Основная сетка ────────────────────────────────── */}
       <div className="v2-sig-main-grid">
@@ -193,6 +291,7 @@ export function V2SignalsPage({
                       className={[
                         "v2-sig-coin",
                         isOpen ? "is-open" : "",
+                        group.hasTriggered ? "is-triggered" : "",
                         group.needsAttention ? "is-alert" : "",
                         isNear ? "is-near" : "",
                       ].filter(Boolean).join(" ")}
@@ -202,7 +301,9 @@ export function V2SignalsPage({
                       <CryptoLogo asset={logoAssetFor(group.asset)} className="v2-sig-coin-logo" />
                       <span className="v2-sig-coin-ticker">{group.asset}</span>
                       <span className="v2-sig-coin-meta">
-                        {group.needsAttention
+                        {group.hasTriggered
+                          ? "сработал"
+                          : group.needsAttention
                           ? "проверить"
                           : group.nearest
                             ? formatSignalDistance(group.nearest)
@@ -222,7 +323,7 @@ export function V2SignalsPage({
                     const isNear = !isDone && !!distance && Math.abs(distance.pct) <= NEAR_TRIGGER_PCT;
 
                     return (
-                      <div className="v2-sig-int-row" key={signal.id}>
+                      <div className={`v2-sig-int-row${isDone ? " is-triggered" : ""}`} key={signal.id}>
                         <span className="v2-sig-int-range">
                           {signal.action} {formatSignalMoney(signal.amountUsd)} при {formatSignalMoney(signal.triggerPrice)}
                         </span>
@@ -244,7 +345,7 @@ export function V2SignalsPage({
                         </span>
                         <button
                           type="button"
-                          className="v2-sig-int-action"
+                          className={`v2-sig-int-action${isDone ? " is-triggered" : ""}`}
                           disabled={!buildTradeCandidateFromSignal(signal, positions)}
                           onClick={() => openCandidate(signal)}
                         >

@@ -69,7 +69,7 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
       {/* ── HERO STATUS ── */}
       <div className="v2-re-hero">
         <div className="v2-re-hero-left">
-          <h2 className="v2-re-title">Risk Engine</h2>
+          <h2 className="v2-re-title">Контроль риска</h2>
           <p className="v2-re-subtitle">Системный контроль рисков портфеля</p>
         </div>
         <div className="v2-re-hero-scores">
@@ -91,7 +91,7 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
           {/* Health Components */}
           <div className="v2-re-card">
             <div className="v2-re-card-head">
-              <span className="v2-re-card-title">Health Factor</span>
+              <span className="v2-re-card-title">Здоровье капитала</span>
               <span className="v2-re-card-note">6 компонентов · взвешенный индекс</span>
             </div>
             <div className="v2-re-components">

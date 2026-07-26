@@ -123,6 +123,14 @@
   .v2-metrics-left {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+    transform: none;
+  }
+  .v2-cap-ladder-slot {
+    transform: none;
+  }
+  .v2-capital-dropdown-inner,
+  .v2-capital-dropdown.is-open .v2-capital-dropdown-inner {
+    transform: none;
   }
 
   /* ── Блок здоровья: вертикальный стек (диагноз → РЕАКТОР → рекомендации) ──
@@ -202,6 +210,24 @@
   .v2-secondary-row {
     grid-template-columns: minmax(0, 1fr);
     margin-top: 24px;
+  }
+  .v2-cap-ladder-main {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .v2-cap-ladder-step {
+    flex-basis: 100%;
+  }
+  .v2-cap-ladder-score {
+    grid-column: 1 / -1;
+  }
+  .v2-cap-ladder-limits {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .v2-cap-ladder-panel-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .v2-cap-ladder-head {
+    flex-direction: column;
   }
 
   /* ── BTC-метрики: мини-карточки в 2 колонки с переносом ── */
@@ -320,6 +346,21 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .v2-sig-trigger-focus {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .v2-sig-trigger-actions {
+    width: 100%;
+  }
+
+  .v2-sig-trigger-actions button {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: normal;
+  }
+
   .v2-alerts-row,
   .v2-sig-main-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -398,8 +439,7 @@
     color: rgba(150, 185, 210, 0.55);
   }
   .v2-port-row .v2-row-block:nth-child(1) .v2-rb-val:nth-child(1)::before { content: "вход"; }
-  .v2-port-row .v2-row-block:nth-child(1) .v2-rb-val:nth-child(2)::before { content: "pnl %"; }
-  .v2-port-row .v2-row-block:nth-child(1) .v2-rb-val:nth-child(3)::before { content: "сейчас"; }
+  .v2-port-row .v2-row-block:nth-child(1) .v2-rb-val:nth-child(2)::before { content: "сейчас"; }
   .v2-port-row .v2-row-block:nth-child(2) .v2-rb-val:nth-child(1)::before { content: "вложено"; }
   .v2-port-row .v2-row-block:nth-child(2) .v2-rb-val:nth-child(2)::before { content: "pnl $"; }
   .v2-port-row .v2-row-block:nth-child(2) .v2-rb-val:nth-child(3)::before { content: "стоимость"; }
@@ -879,10 +919,26 @@
 }
 
 .v2-notif-item-action {
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
   margin-top: 2px;
   font-size: 11px;
+  font-family: inherit;
   font-weight: 600;
   color: rgba(108, 200, 232, 0.85);
+  cursor: pointer;
+  text-align: left;
+}
+
+.v2-notif-item-action:hover {
+  color: rgba(115, 230, 255, 0.95);
+}
+
+.v2-notif-item-action.is-static {
+  cursor: default;
+  color: rgba(150, 185, 205, 0.7);
 }
 
 .v2-notif-empty {

@@ -4,11 +4,9 @@ import { V2AuthModal } from "./components/V2AuthModal";
 import { useAuth } from "../hooks/useAuth";
 import { isFounderEmail, isWifeEmail } from "../lib/supabaseClient";
 import { useInvestorData } from "../hooks/useInvestorData";
-import { useBlockchainBalances } from "../hooks/useBlockchainBalances";
 import { useWifeTransactions } from "../hooks/useWifeTransactions";
 import { useTonStaking, MAIN_TON_ADDRESS } from "../hooks/useTonStaking";
 import { useCosmosStaking, MAIN_COSMOS_ADDRESS } from "../hooks/useCosmosStaking";
-import { applyBlockchainOverride } from "../lib/applyBlockchainOverride";
 import { useFearGreed } from "../hooks/useFearGreed";
 import { useHyperliquidLeverage } from "../hooks/useHyperliquidLeverage";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
@@ -130,19 +128,16 @@ export default function InvestorCabinetV2Lab() {
     wife ? WIFE_API_URL : INVESTOR_API_URL,
     wife ? "wife" : undefined
   );
-  const blockchain = useBlockchainBalances(wife);
   const blockchainTxs = useWifeTransactions(wife);
   const fearGreedLive = useFearGreed();
   const hlAddress = import.meta.env.VITE_HL_ADDRESS as string | undefined;
   const hlLeverage = useHyperliquidLeverage(hlAddress);
 
-  // For wife: overlay live blockchain balances on top of Apps Script sheet data
-  const portfolioData = useMemo(
-    () => wife && blockchain ? applyBlockchainOverride(investorData.data, blockchain) : investorData.data,
-    [wife, blockchain, investorData.data]
-  );
+  // Портфель приходит из Apps Script/API. Фронтенд не накладывает второй слой балансов,
+  // чтобы Google Sheets + Apps Script оставались единственным источником фактов.
+  const portfolioData = investorData.data;
 
-  // Wife snapshot: taken here so USDT from blockchain is included in reserve/portfolioValue
+  // Wife snapshot: taken here after Apps Script/API assembled live portfolio data.
   useEffect(() => {
     if (!wife || investorData.status !== "ready" || !portfolioData.overview.portfolioValue) return;
     const nonStable = portfolioData.portfolio.filter(

@@ -80,7 +80,7 @@ const draft: DecisionJournalDraft = {
   amountUsd: 25,
   buyPrice: 1516,
   decision,
-  setup: "Усреднение",
+  setup: "ДСА добор",
   emotion: "Спокойно",
   note: "Плановая проверка",
 };
@@ -98,7 +98,7 @@ describe("журнал решений", () => {
         amountUsd: 25,
         buyPrice: 1516,
         status: "РАЗРЕШЕНО",
-        setup: "Усреднение",
+        setup: "ДСА добор",
         emotion: "Спокойно",
         healthBefore: 80,
         healthAfter: 78,

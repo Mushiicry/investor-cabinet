@@ -3,7 +3,7 @@ import type { HealthComponent, HealthInput, PortfolioHealth } from "../../lib/po
 import { isEmptyAccount } from "../lib/accountState";
 import {
   CX, CY, RADAR_R, OUTER_R, VB_OFF, VB_SIZE, CHIP_W, CHIP_H, CHIP_R,
-  CHIP_LABEL, SCORE_LABEL, scoreHint, scoreAlpha, chipColor,
+  CHIP_LABEL, SCORE_LABEL, scoreAlpha, chipColor,
   hexPts, hexPtsAt, chipLayout, scaleValuePts,
   healthInterpretation, diagWhy, buildCoreRecs, isActionableHealthComponent,
 } from "../lib/healthCoreHelpers";
@@ -585,10 +585,10 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
 
                   {/* Label */}
                   <text x={cx} y={cy - 15}
-                    fontSize={c.key === "futures" ? "5.6" : "7"} fontWeight="800"
-                    fill="rgba(142,210,235,0.88)"
+                    fontSize={c.key === "futures" ? "6.2" : "7.8"} fontWeight="900"
+                    fill="rgba(178,231,247,0.95)"
                     fontFamily="var(--v2-sans,system-ui,sans-serif)"
-                    letterSpacing="0.4" textAnchor="middle">
+                    letterSpacing="0.2" textAnchor="middle">
                     {labelLines.map((line, lineIndex) => (
                       <tspan key={line} x={cx} dy={lineIndex === 0 ? 0 : 7}>
                         {line}
@@ -603,15 +603,6 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
                     fontFamily="var(--v2-mono,'Courier New',monospace)"
                     textAnchor="middle">
                     {c.score}
-                  </text>
-
-                  {/* Status */}
-                  <text x={cx} y={cy + 26}
-                    fontSize="6" fontWeight="700"
-                    fill={color}
-                    fontFamily="var(--v2-sans,system-ui,sans-serif)"
-                    letterSpacing="0.8" textAnchor="middle">
-                    {scoreHint(c.score)}
                   </text>
                 </g>
               );

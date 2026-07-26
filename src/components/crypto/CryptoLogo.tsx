@@ -7,6 +7,7 @@ import apexLogo from "../../assets/coins/apex.png";
 import mntLogo from "../../assets/coins/mnt.png";
 import tiaLogo from "../../assets/coins/tia.png";
 import usdtLogo from "../../assets/coins/usdt.png";
+import spacexLogo from "../../assets/coins/spacex.png";
 import { assetGlyph } from "../../lib/uiHelpers";
 
 const importedCoinLogos: Record<string, { src: string; mode: "cover" | "contain"; imgClass?: string }> = {
@@ -19,6 +20,8 @@ const importedCoinLogos: Record<string, { src: string; mode: "cover" | "contain"
   MNT: { src: mntLogo, mode: "contain", imgClass: "coin-image-mnt" },
   APEX: { src: apexLogo, mode: "contain", imgClass: "coin-image-apex" },
   USDT: { src: usdtLogo, mode: "contain", imgClass: "coin-image-usdt" },
+  SPCXB: { src: spacexLogo, mode: "cover", imgClass: "coin-image-spacex" },
+  SPACEX: { src: spacexLogo, mode: "cover", imgClass: "coin-image-spacex" },
 };
 
 function UsdcSvg() {
@@ -72,12 +75,12 @@ export function CryptoLogo({ asset, className = "" }: { asset: string; className
     return (
       <div className={`${wrap} crypto-logo-gold`.trim()} aria-label={asset}>
         <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
-          <circle cx="32" cy="32" r="32" fill="#5A4312" />
-          <path d="M19 36.5 26 23h12l7 13.5H19Z" fill="#F5C84C" />
-          <path d="M26 23h12l4.1 7.4H21.9L26 23Z" fill="#FFD96A" />
-          <path d="M24.1 30.4h15.8l2.7 5H21.4l2.7-5Z" fill="#E0A91F" />
-          <path d="M21.4 35.4h21.2" stroke="#9F6C00" strokeWidth="1.8" strokeLinecap="round" opacity="0.75" />
-          <path d="M26 23 23 30.4m15-7.4 3 7.4" stroke="#B9850A" strokeWidth="1.6" strokeLinecap="round" opacity="0.7" />
+          <circle cx="32" cy="32" r="32" fill="#02050A" />
+          <path d="M13.5 40.5 23.8 20.5h16.4l10.3 20H13.5Z" fill="#F5C84C" />
+          <path d="M23.8 20.5h16.4l6 10.8H17.8l6-10.8Z" fill="#FFD96A" />
+          <path d="M18.6 31.3h27.8l4.1 9.2h-37l5.1-9.2Z" fill="#E0A91F" />
+          <path d="M14.5 39.4h35" stroke="#9F6C00" strokeWidth="2" strokeLinecap="round" opacity="0.8" />
+          <path d="M23.8 20.5 18.6 31.3m21.6-10.8 6.2 10.8" stroke="#B9850A" strokeWidth="1.8" strokeLinecap="round" opacity="0.75" />
         </svg>
       </div>
     );

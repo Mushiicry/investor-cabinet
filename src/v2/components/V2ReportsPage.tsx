@@ -94,27 +94,6 @@ function isStaking(action: string) {
   return /стейк|stak/i.test(action || "");
 }
 
-function isSell(action: string) {
-  const a = (action || "").toLowerCase();
-  return a.includes("прод") || a.includes("sell");
-}
-
-// Реализованный PnL с продажи: (цена продажи − средняя цена входа) × количество.
-// avgEntry берём текущий из позиций (приближение — исторические лоты не трекаем;
-// на Arbitrum комиссии <$0.01, поэтому считаем до газа).
-function computeRealizedPnl(
-  t: InvestorTransaction,
-  avgByAsset: Map<string, number>,
-): number | null {
-  if (!isSell(t.action)) return null;
-  const asset = (t.asset || t.rawAsset || "").toUpperCase();
-  const avg = avgByAsset.get(asset);
-  const price = Number(t.price || 0);
-  const qty = Number(t.quantity || t.rawAmount || 0);
-  if (!avg || !price || !qty) return null;
-  return (price - avg) * qty;
-}
-
 // Одна покупка/продажа приходит из двух источников: запись BALANCE_DELT
 // (с кол-вом и ценой) и реальный on-chain своп (та же сумма, но кол-во 0,
 // цена пустая). Схлопываем дубли по активу+действию+сумме, оставляя строку
@@ -203,20 +182,6 @@ export function V2ReportsPage({
   const latest = summary.latestPoint;
   const changeTone = summary.portfolioValueChange >= 0 ? "is-pos" : "is-neg";
 
-  // Средняя цена входа по каждому активу — для реализованного PnL с продаж.
-  const avgEntryByAsset = useMemo(() => {
-    const m = new Map<string, number>();
-    positions.forEach((p) => {
-      if (p.avgEntry > 0) {
-        const key = p.asset.toUpperCase();
-        const base = p.asset.replace(/ (LONG|SHORT)$/i, "").toUpperCase();
-        m.set(key, p.avgEntry);
-        if (!m.has(base)) m.set(base, p.avgEntry);
-      }
-    });
-    return m;
-  }, [positions]);
-
   // Зафиксированная прибыль приходит из блока закрытых позиций «Расчетов» —
   // единственного источника. Прежняя оценка по журналу сделок давала второе,
   // другое число рядом и путала: какое из них правда.
@@ -239,7 +204,7 @@ export function V2ReportsPage({
         <div className="v2-rep-kpi">
           {/* Уточнение по решению владельца: это прибыль по ОТКРЫТЫМ позициям.
               Зафиксированная живёт отдельной строкой ниже. */}
-          <span className="v2-rep-kpi-label">Нереализованный PnL</span>
+          <span className="v2-rep-kpi-label">Нереализованный результат</span>
           <strong className={`v2-rep-kpi-value ${latest && latest.pnl >= 0 ? "v2-rep-accent" : ""}`}>
             {latest ? signedMoney(latest.pnl) : "—"}
           </strong>
@@ -252,7 +217,7 @@ export function V2ReportsPage({
         </div>
         <div className="v2-rep-kpi">
           <span className="v2-rep-kpi-label">
-            Реализованный PnL
+            Реализованный результат
             <V2SourceTag source="manual" title="Блок закрытых позиций в «Расчетах» — заполняется вручную" />
           </span>
           <strong className={`v2-rep-kpi-value v2-rep-cell-pnl ${(realizedPnlUsd ?? 0) >= 0 ? "is-pos" : "is-neg"}`}>
@@ -274,8 +239,8 @@ export function V2ReportsPage({
                 <span>Дата</span>
                 <span>Портфель</span>
                 <span>Вложено</span>
-                <span>PnL</span>
-                <span>PnL %</span>
+                <span>Результат</span>
+                <span>Результат %</span>
                 <span>Резерв</span>
                 <span>Позиции</span>
                 <span>Источник</span>
@@ -298,8 +263,8 @@ export function V2ReportsPage({
                         <span className="v2-rep-cell-date" data-label="Дата">{fmtDate(point.date)}</span>
                         <span className="v2-rep-cell-amount" data-label="Портфель">{fmtUSD(point.portfolioValue)}</span>
                         <span className="v2-rep-cell-price" data-label="Вложено">{fmtUSD(point.invested)}</span>
-                        <span className={`v2-rep-cell-pnl ${pnlTone}`} data-label="PnL">{signedMoney(point.pnl)}</span>
-                        <span className={`v2-rep-cell-pnl ${pnlTone}`} data-label="PnL %">{fmtPct(point.pnlPct)}</span>
+                        <span className={`v2-rep-cell-pnl ${pnlTone}`} data-label="Результат">{signedMoney(point.pnl)}</span>
+                        <span className={`v2-rep-cell-pnl ${pnlTone}`} data-label="Результат %">{fmtPct(point.pnlPct)}</span>
                         <span className="v2-rep-cell-price" data-label="Резерв">{fmtUSD(point.reserve)}</span>
                         <span className="v2-rep-cell-fg" data-label="Позиции">{Math.round(point.positionsCount)}</span>
                         <span className="v2-rep-tag is-manual" data-label="Источник">{source}</span>
@@ -383,7 +348,7 @@ export function V2ReportsPage({
                 <span>Количество</span>
                 <span>Цена</span>
                 <span>Сумма</span>
-                <span title="Реализованный PnL — оценка по текущей средней цене входа (без лотового учёта и комиссий)">PnL сделки ≈</span>
+                <span title="Точный результат сделки должен приходить из учетного слоя">Результат сделки</span>
                 <span>Сеть</span>
                 <span>Статус</span>
                 <span>Транзакция</span>
@@ -429,19 +394,13 @@ export function V2ReportsPage({
                         })()}
                       </span>
                       <span className="v2-rep-cell-amount" data-label="Сумма">{transaction.amount ? fmtUSD(transaction.amount) : "—"}</span>
-                      {(() => {
-                        const realized = computeRealizedPnl(transaction, avgEntryByAsset);
-                        if (realized == null) return <span className="v2-rep-cell-price" data-label="PnL сделки">—</span>;
-                        return (
-                          <span
-                            className={`v2-rep-cell-pnl ${realized >= 0 ? "is-pos" : "is-neg"}`}
-                            data-label="PnL сделки"
-                            title="Реализованный PnL: (цена продажи − средняя цена входа) × количество"
-                          >
-                            {signedMoney(realized)}
-                          </span>
-                        );
-                      })()}
+                      <span
+                        className="v2-rep-cell-price"
+                        data-label="Результат сделки"
+                        title="Точного результата по этой строке нет в учетном слое"
+                      >
+                        —
+                      </span>
                       <span className="v2-rep-cell-fg" data-label="Сеть">{transaction.chain || transaction.walletId || "—"}</span>
                       <span className={`v2-rep-tag ${transaction.status === "APPROVED" ? "is-strategy" : "is-manual"}`} data-label="Статус">
                         {transaction.status || "—"}
@@ -516,7 +475,7 @@ export function V2ReportsPage({
 
           <div className="v2-panel v2-rep-pnl-panel">
             <div className="v2-panel-header">
-              <span>Текущий PnL по позициям</span>
+              <span>Текущий результат по позициям</span>
             </div>
             <div className="v2-rep-pnl-list">
               {positionPnl.length === 0 ? (

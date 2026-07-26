@@ -1,65 +1,73 @@
 /**
- * Mushi Invest — Жена (Polina) Portfolio API v2.1
+ * Mushi Invest - Wife (Polina) Portfolio API v2.1
  * Blockchain-first: live balances fetched from verified public endpoints
  *
- * КАК ОБНОВИТЬ:
- * 1. script.google.com → открыть проект → вставить весь этот код
- * 2. Развернуть → Управление развёртываниями → ✏️ Edit
- *    → Версия: "Новая версия" → Сохранить (URL не меняется)
+ * Update:
+ * 1. Open this project in script.google.com and paste the whole file.
+ * 2. Deploy -> Manage deployments -> Edit.
+ * 3. Select new version and save. The URL remains the same.
  */
 
 var MAIN_SS_ID = '1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8';
 var WIFE_SS_ID = '1X8nywasqpGyULEUKu11OJbJqXZUwlFXcDLtQyH6_rqA';
+var PRICE_SS_ID = '1f35sUKkMBzGIF-xG1Fz0zNvrmcrVWo4Sx7I0XHCPhCY';
+var KOSHA_SHEET_NAME = String.fromCharCode(1082, 1086, 1096, 1072);
+var CAT_CRYPTO = String.fromCharCode(1050, 1088, 1080, 1087, 1090, 1072);
+var CAT_STABLE = String.fromCharCode(1050, 1101, 1096, 32, 47, 32, 1057, 1090, 1077, 1081, 1073, 1083, 1099);
+var CAT_STOCKS = String.fromCharCode(1040, 1082, 1094, 1080, 1080);
+var CAT_METALS = String.fromCharCode(1052, 1077, 1090, 1072, 1083, 1083, 1099);
+var CAT_FUTURES = String.fromCharCode(1060, 1100, 1102, 1095, 1077, 1088, 1089, 1099);
+var TEXT_LIVE_BLOCKCHAIN = String.fromCharCode(76, 105, 118, 101, 32, 1073, 1083, 1086, 1082, 1095, 1077, 1081, 1085, 32, 1076, 1072, 1085, 1085, 1099, 1077);
+var TEXT_FOLLOW_STRATEGY = String.fromCharCode(1057, 1083, 1077, 1076, 1091, 1081, 1090, 1077, 32, 1089, 1090, 1088, 1072, 1090, 1077, 1075, 1080, 1080);
+var TEXT_WIFE_LIVE = String.fromCharCode(1055, 1086, 1088, 1090, 1092, 1077, 1083, 1100, 32, 1078, 1077, 1085, 1099, 32, 45, 32, 108, 105, 118, 101, 32, 1073, 1083, 1086, 1082, 1095, 1077, 1081, 1085);
+var TEXT_LONG_TERM = String.fromCharCode(1044, 1086, 1083, 1075, 1086, 1089, 1088, 1086, 1095, 1085, 1072, 1103, 32, 1089, 1090, 1088, 1072, 1090, 1077, 1075, 1080, 1103);
+var TEXT_GOOD = String.fromCharCode(1061, 1086, 1088, 1086, 1096, 1086);
+var TEXT_MODERATE = String.fromCharCode(1059, 1084, 1077, 1088, 1077, 1085, 1085, 1086);
+var TEXT_WARNING = String.fromCharCode(1042, 1085, 1080, 1084, 1072, 1085, 1080, 1077);
+var TEXT_CRITICAL = String.fromCharCode(1050, 1088, 1080, 1090, 1080, 1095, 1085, 1086);
+var TEXT_BUY = String.fromCharCode(1055, 1086, 1082, 1091, 1087, 1082, 1072);
+var TEXT_SELL = String.fromCharCode(1055, 1088, 1086, 1076, 1072, 1078, 1072);
+var SHEET_HISTORY = U(1048, 1089, 1090, 1086, 1088, 1080, 1103);
+var SHEET_TRANSACTIONS = U(1058, 1088, 1072, 1085, 1079, 1072, 1082, 1094, 1080, 1080);
+var SHEET_PORTFOLIO = U(1055, 1086, 1088, 1090, 1092, 1077, 1083, 1100);
+var H_DATE = U(1044, 1072, 1090, 1072);
+var H_PORTFOLIO_VALUE = U(1057, 1090, 1086, 1080, 1084, 1086, 1089, 1090, 1100, 32, 1087, 1086, 1088, 1090, 1092, 1077, 1083, 1103);
+var H_INVESTED = U(1042, 1083, 1086, 1078, 1077, 1085, 1086);
+var H_RESERVE = U(1056, 1077, 1079, 1077, 1088, 1074);
+var H_POSITIONS_COUNT = U(1050, 1086, 1083, 45, 1074, 1086, 32, 1087, 1086, 1079, 1080, 1094, 1080, 1081);
+var H_POINT_TYPE = U(1058, 1080, 1087, 32, 1090, 1086, 1095, 1082, 1080);
+var H_NOTE = U(1047, 1072, 1084, 1077, 1090, 1082, 1072);
+var H_AUTO_SNAPSHOT = U(1040, 1074, 1090, 1086, 45, 1089, 1085, 1080, 1084, 1086, 1082);
+var H_TRIGGER = U(1058, 1088, 1080, 1075, 1075, 1077, 1088);
+var H_SOURCE = U(1048, 1089, 1090, 1086, 1095, 1085, 1080, 1082);
+var H_COMMENT = U(1050, 1086, 1084, 1084, 1077, 1085, 1090, 1072, 1088, 1080, 1081);
+var H_ASSET = U(1040, 1082, 1090, 1080, 1074);
+var TEXT_NEED = U(1053, 1091, 1078, 1085, 1086);
+var TEXT_TETHER_SIGN = String.fromCharCode(8366);
 
-// ─── Публичные адреса кошельков (read-only) ─────────────────────────────────
+function U() {
+  return String.fromCharCode.apply(null, arguments);
+}
+
+// Public wallet addresses (read-only)
 var EVM_ADDRESS = '0x06F03b067b34f3d6E569De9aB7839c988Bf6BAEE';
 var TON_ADDRESS = 'UQCMRrWTgMBqBMr6yUw04ZYz398fyIhDlaJyaqoQTchVNm74';
 var BTC_ADDRESS = 'bc1qmmpq6jm6rr02anv7ldnpq29cqrpqesswesv7at';
 var SOL_ADDRESS = '3XR4H5XiVKdWGFEb9r3KbFcJ7o2vhQsFvTsFt1MutuCs';
 
-// ─── Token contracts ─────────────────────────────────────────────────────────
+// Token contracts
 var USDT_ARB_CONTRACT = '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9'; // Tether USDT on Arbitrum One
 
-// ─── RPC endpoints (проверены на работу с Google Apps Script) ────────────────
-// ETH и USDT оба на Arbitrum — используем один RPC
-var ARB_RPC      = 'https://1rpc.io/arb';                  // основной Arbitrum RPC
-var ARB_RPC_BCK  = 'https://arbitrum-one.public.blastapi.io'; // резервный
+// RPC endpoints verified with Google Apps Script
+// ETH and USDT are on Arbitrum, so one RPC is enough.
+var ARB_RPC      = 'https://1rpc.io/arb';                  // primary Arbitrum RPC
+var ARB_RPC_BCK  = 'https://arbitrum-one.public.blastapi.io'; // fallback
 var SOL_RPC      = 'https://api.mainnet-beta.solana.com';
+var HL_INFO_URL  = 'https://api.hyperliquid.xyz/info';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ----------------------------------------------------------------------------
 
 function doGet(e) {
-  var action = e && e.parameter && e.parameter.action;
-
-  // ?action=fixUsdt — записывает USDT в лист (пробует blockchain fetch)
-  if (action === 'fixUsdt') {
-    try {
-      var res = fixUsdtInSheet(null, null);
-      return ContentService
-        .createTextOutput(JSON.stringify(res))
-        .setMimeType(ContentService.MimeType.JSON);
-    } catch (err) {
-      return ContentService
-        .createTextOutput(JSON.stringify({ success: false, error: err.message }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-  }
-
-  // ?action=fixUsdtNow — записывает USDT напрямую без UrlFetch (значения из blockchain на 08.07.2026)
-  // Запускается один раз для патча. После этого buildWifePortfolioJson сам подтянет live данные.
-  if (action === 'fixUsdtNow') {
-    try {
-      var res = fixUsdtInSheet(406.58, 250.40);
-      return ContentService
-        .createTextOutput(JSON.stringify(res))
-        .setMimeType(ContentService.MimeType.JSON);
-    } catch (err) {
-      return ContentService
-        .createTextOutput(JSON.stringify({ success: false, error: err.message }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-  }
-
   try {
     var result = buildWifePortfolioJson();
     return ContentService
@@ -113,16 +121,16 @@ function buildWifePortfolioJson() {
     if (!asset) continue;
 
     var ticker   = String(row[iTicker]   || asset).trim();
-    var category = String(row[iCat]      || 'Крипта').trim();
+    var category = String(row[iCat]      || CAT_CRYPTO).trim();
     var avgEntry = toFloat(row[iEntry]);
     var invested = toFloat(row[iInvested]);
     var status   = String(row[iStatus]   || 'Hold').trim();
 
-    var isStable = (category === 'Кэш / Стейблы') || ticker === 'USDT' || ticker === 'USDC';
+    var isStable = (category === CAT_STABLE) || ticker === 'USDT' || ticker === 'USDC';
 
     // Priority: blockchain live > sheet manual > derived from invested/entry
-    // ВАЖНО: используем > 0, а не >= 0 — ноль от упавшего fetch не должен
-    // перебивать данные листа. Реальный нулевой баланс обработается клиентом.
+    // Use > 0, not >= 0. A failed fetch returning zero must not
+    // override sheet data. A real zero balance is handled by the client.
     var chainQty = blockchain.hasOwnProperty(ticker) ? blockchain[ticker] : -1;
     var sheetQty = toFloat(row[iQty]);
     var quantity;
@@ -142,11 +150,15 @@ function buildWifePortfolioJson() {
       source   = 'zero';
     }
 
-    var currentPrice = isStable ? 1.0 : (priceMap[ticker] || avgEntry);
+    var normalizedTicker = ticker.toUpperCase();
+    var normalizedAsset  = asset.toUpperCase();
+    var currentPrice = isStable
+      ? 1.0
+      : (priceMap[normalizedTicker] || priceMap[normalizedAsset] || avgEntry);
     var currentValue = isStable ? r2(quantity) : r2(quantity * currentPrice);
 
-    // Для стейблов: invested = текущий баланс если есть (1 USDT = 1$),
-    // иначе берём из листа как fallback (после fixUsdtInSheet будет заполнено).
+    // Stablecoins: invested equals current balance when available (1 USDT = 1 USD),
+    // otherwise use the sheet value as fallback.
     var effectiveInvested = isStable
       ? (quantity > 0 ? r2(quantity) : r2(invested))
       : r2(invested);
@@ -165,7 +177,7 @@ function buildWifePortfolioJson() {
       quantity:     quantity,
       avgEntry:     avgEntry,
       invested:     effectiveInvested,
-      currentPrice: r2(currentPrice),
+      currentPrice: rPrice(currentPrice),
       currentValue: currentValue,
       pnl:          pnl,
       pnlPct:       pnlPct,
@@ -184,18 +196,19 @@ function buildWifePortfolioJson() {
   var totalPnl    = r2(totalCurrentVal - totalInvested);
   var totalPnlPct = totalInvested > 0 ? r6(totalPnl / totalInvested) : 0;
 
-  var crypto = positions.filter(function(p) { return p.category !== 'Кэш / Стейблы'; });
+  var crypto = positions.filter(function(p) { return p.category !== CAT_STABLE; });
   var best   = crypto.length ? crypto.reduce(function(a, b) { return b.pnl > a.pnl ? b : a; }) : null;
   var worst  = crypto.length ? crypto.reduce(function(a, b) { return b.pnl < a.pnl ? b : a; }) : null;
+  var largestRisk = crypto.length ? crypto.reduce(function(a, b) { return b.share > a.share ? b : a; }) : null;
 
   var reserveShare = portfolioValue > 0 ? reserve / portfolioValue : 0;
-  var cryptoValue  = positions.filter(function(p) { return p.category === 'Крипта'; })
+  var cryptoValue  = positions.filter(function(p) { return p.category === CAT_CRYPTO; })
                                .reduce(function(s, p) { return s + p.currentValue; }, 0);
   var cryptoShare  = portfolioValue > 0 ? r2(cryptoValue / portfolioValue * 100) : 0;
 
-  var health = computeHealth(reserveShare, cryptoShare / 100, best ? best.share / 100 : 0);
+  var health = computeHealth(reserveShare, cryptoShare / 100, largestRisk ? largestRisk.share / 100 : 0);
 
-  var categoryNames = ['Крипта', 'Акции', 'Металлы', 'Фьючерсы', 'Кэш / Стейблы'];
+  var categoryNames = [CAT_CRYPTO, CAT_STOCKS, CAT_METALS, CAT_FUTURES, CAT_STABLE];
   var catMap = {};
   positions.forEach(function(p) { catMap[p.category] = (catMap[p.category] || 0) + p.currentValue; });
   var categories = categoryNames.map(function(name) {
@@ -205,7 +218,7 @@ function buildWifePortfolioJson() {
 
   return {
     success:   true,
-    patch:     'WIFE API v2.1 — blockchain-first',
+    patch:     'WIFE API v2.1 - blockchain-first',
     updatedAt: new Date().toISOString(),
 
     // Debug: raw balances fetched from blockchain
@@ -223,8 +236,8 @@ function buildWifePortfolioJson() {
       positionsCount: crypto.length,
       health:         health,
       state:          healthLabel(health),
-      signal:         'Live блокчейн данные',
-      action:         'Следуйте стратегии',
+      signal:         TEXT_LIVE_BLOCKCHAIN,
+      action:         TEXT_FOLLOW_STRATEGY,
       categories:     categories,
       bestPosition:   best  ? { asset: best.asset,  pnl: best.pnl  } : null,
       worstPosition:  worst ? { asset: worst.asset, pnl: worst.pnl } : null
@@ -237,13 +250,13 @@ function buildWifePortfolioJson() {
       reserve:          r2(reserve),
       reserveShare:     r2(reserveShare * 100),
       deployableCash:   0,
-      largestRiskAsset: best ? best.asset : '',
-      largestRiskShare: best ? r2(best.share) : 0,
+      largestRiskAsset: largestRisk ? largestRisk.asset : '',
+      largestRiskShare: largestRisk ? r2(largestRisk.share) : 0,
       cryptoShare:      cryptoShare,
       health:           health,
       state:            healthLabel(health),
-      signal:           'Портфель жены — live блокчейн',
-      summary:          'Долгосрочная стратегия'
+      signal:           TEXT_WIFE_LIVE,
+      summary:          TEXT_LONG_TERM
     },
 
     fearGreedStrategy: {
@@ -260,9 +273,9 @@ function buildWifePortfolioJson() {
   };
 }
 
-// ─── История портфеля (вкладка «История») ────────────────────────────────────
+//  Portfolio history sheet 
 function readHistory(ss) {
-  var sheet = ss.getSheetByName('История') || ss.getSheetByName('History');
+  var sheet = ss.getSheetByName(SHEET_HISTORY) || ss.getSheetByName('History');
   if (!sheet) return [];
 
   var data = sheet.getDataRange().getValues();
@@ -279,15 +292,15 @@ function readHistory(ss) {
       return idx >= 0 ? row[idx] : '';
     };
 
-    var dateVal = get('date', 'Дата');
-    var pv      = Number(get('portfolioValue', 'Стоимость портфеля')) || 0;
+    var dateVal = get('date', H_DATE);
+    var pv      = Number(get('portfolioValue', H_PORTFOLIO_VALUE)) || 0;
     if (!dateVal || !pv) continue;
 
-    var invested = Number(get('invested', 'Вложено'))        || 0;
+    var invested = Number(get('invested', H_INVESTED))        || 0;
     var pnl      = Number(get('pnl', 'PnL $'))              || 0;
     var pnlPct   = Number(get('pnlPct', 'PnL %'))           || 0;
-    var reserve  = Number(get('reserve', 'Резерв'))         || 0;
-    var cnt      = Number(get('positionsCount', 'Кол-во позиций')) || 0;
+    var reserve  = Number(get('reserve', H_RESERVE))         || 0;
+    var cnt      = Number(get('positionsCount', H_POSITIONS_COUNT)) || 0;
 
     rows.push({
       date:           String(dateVal instanceof Date ? dateVal.toISOString() : dateVal),
@@ -297,20 +310,20 @@ function readHistory(ss) {
       pnlPct:         Math.abs(pnlPct) > 1 ? r6(pnlPct / 100) : r6(pnlPct),
       reserve:        r2(reserve),
       positionsCount: Math.round(cnt),
-      pointType:      String(get('pointType', 'Тип точки') || 'auto'),
-      note:           String(get('note', 'Заметка')         || 'Авто-снимок'),
-      trigger:        String(get('trigger', 'Триггер')      || 'daily'),
-      source:         String(get('source', 'Источник')      || 'sheet'),
-      comment:        String(get('comment', 'Комментарий')  || ''),
+      pointType:      String(get('pointType', H_POINT_TYPE) || 'auto'),
+      note:           String(get('note', H_NOTE)            || H_AUTO_SNAPSHOT),
+      trigger:        String(get('trigger', H_TRIGGER)      || 'daily'),
+      source:         String(get('source', H_SOURCE)        || 'sheet'),
+      comment:        String(get('comment', H_COMMENT)      || ''),
     });
   }
 
   return rows;
 }
 
-// ─── История транзакций (вкладка «Транзакции») ────────────────────────────────
+//  Transaction history sheet 
 function readTransactions(ss) {
-  var sheet = ss.getSheetByName('Транзакции') || ss.getSheetByName('Transactions');
+  var sheet = ss.getSheetByName(SHEET_TRANSACTIONS) || ss.getSheetByName('Transactions');
   if (!sheet) return [];
 
   var data = sheet.getDataRange().getValues();
@@ -326,18 +339,22 @@ function readTransactions(ss) {
       return idx >= 0 ? row[idx] : '';
     };
 
-    var id   = String(get('id')   || '');
-    var hash = String(get('hash') || '');
+    var id     = String(get('id')     || '').trim();
+    var hash   = String(get('hash')   || '').trim();
+    var asset  = String(get('asset')  || '').trim();
+    var action = String(get('action') || '').trim();
     if (!id && !hash) continue;
+    if (id === 'ID' || asset === H_ASSET) continue;
+    if (!asset || !action) continue;
 
     var dateVal = get('date');
     rows.push({
       id:           id,
       status:       String(get('status')      || 'CONFIRMED'),
       date:         String(dateVal instanceof Date ? dateVal.toISOString() : dateVal),
-      asset:        String(get('asset')       || ''),
+      asset:        asset,
       category:     String(get('category')    || ''),
-      action:       String(get('action')      || ''),
+      action:       action,
       quantity:     Number(get('quantity'))   || 0,
       price:        Number(get('price'))      || 0,
       amount:       Number(get('amount'))     || 0,
@@ -356,13 +373,13 @@ function readTransactions(ss) {
   return rows;
 }
 
-// ─── Blockchain balance fetcher ───────────────────────────────────────────────
+//  Blockchain balance fetcher 
 
 function fetchAllBlockchainBalances() {
   var b = {};
   var errors = {};
 
-  // ETH на Arbitrum (не mainnet — кошелёк использует Arbitrum)
+  // ETH on Arbitrum, not mainnet.
   try {
     var ethRes = arbRpc('eth_getBalance', [EVM_ADDRESS, 'latest']);
     if (ethRes && ethRes.result) {
@@ -372,7 +389,7 @@ function fetchAllBlockchainBalances() {
     }
   } catch(e) { errors.ETH = e.message; }
 
-  // USDT на Arbitrum (balanceOf через EVM RPC)
+  // USDT on Arbitrum via EVM balanceOf.
   // ABI: balanceOf(address) selector=0x70a08231, param=32-byte padded address
   try {
     var addrPadded = '000000000000000000000000' + EVM_ADDRESS.slice(2).toLowerCase();
@@ -385,7 +402,7 @@ function fetchAllBlockchainBalances() {
     }
   } catch(e) { errors.USDT_ARB = e.message; }
 
-  // TON нативный баланс
+  // Native TON balance.
   try {
     var tonRes = UrlFetchApp.fetch(
       'https://tonapi.io/v2/accounts/' + TON_ADDRESS,
@@ -393,13 +410,13 @@ function fetchAllBlockchainBalances() {
     );
     var tonData = JSON.parse(tonRes.getContentText());
     if (tonData && tonData.balance !== undefined) {
-      b.TON = r4(Number(tonData.balance) / 1e9); // nanotons → TON
+      b.TON = r4(Number(tonData.balance) / 1e9); // nanotons to TON
     } else {
       errors.TON = JSON.stringify(tonData).slice(0, 100);
     }
   } catch(e) { errors.TON = e.message; }
 
-  // USDT на TON — через список всех jetton балансов, ищем Tether USD
+  // USDT on TON from jetton balances.
   try {
     var jettonsRes = UrlFetchApp.fetch(
       'https://tonapi.io/v2/accounts/' + TON_ADDRESS + '/jettons',
@@ -411,8 +428,8 @@ function fetchAllBlockchainBalances() {
       var jt   = balances[j];
       var name = (jt.jetton || {}).name || '';
       var sym  = (jt.jetton || {}).symbol || '';
-      // Ищем Tether USD (не GRAM scam token)
-      if (name === 'Tether USD' || sym === 'USD₮') {
+      // Find Tether USD, not a GRAM-like token.
+      if (name === 'Tether USD' || sym.replace(TEXT_TETHER_SIGN, 'T') === 'USDT') {
         var dec = (jt.jetton || {}).decimals;
         dec = (dec !== undefined) ? Number(dec) : 6;
         b.USDT_TON = r2(Number(jt.balance) / Math.pow(10, dec));
@@ -422,10 +439,10 @@ function fetchAllBlockchainBalances() {
     if (b.USDT_TON === undefined) errors.USDT_TON = 'not found in jettons list';
   } catch(e) { errors.USDT_TON = e.message; }
 
-  // Суммарный USDT (Arbitrum + TON)
+  // Total USDT on Arbitrum and TON.
   b.USDT = r2((b.USDT_ARB || 0) + (b.USDT_TON || 0));
 
-  // BTC через Blockstream (open API, без авторизации)
+  // BTC via Blockstream open API.
   try {
     var btcRes  = UrlFetchApp.fetch(
       'https://blockstream.info/api/address/' + BTC_ADDRESS,
@@ -434,10 +451,10 @@ function fetchAllBlockchainBalances() {
     var btcData = JSON.parse(btcRes.getContentText());
     var funded  = (btcData.chain_stats || {}).funded_txo_sum || 0;
     var spent   = (btcData.chain_stats || {}).spent_txo_sum  || 0;
-    b.BTC = r8((funded - spent) / 1e8); // satoshis → BTC
+    b.BTC = r8((funded - spent) / 1e8); // satoshis to BTC
   } catch(e) { errors.BTC = e.message; }
 
-  // SOL через публичный mainnet RPC
+  // SOL via public mainnet RPC.
   try {
     var solRes = UrlFetchApp.fetch(SOL_RPC, {
       method:      'post',
@@ -447,7 +464,7 @@ function fetchAllBlockchainBalances() {
     });
     var solData = JSON.parse(solRes.getContentText());
     if (solData.result && solData.result.value !== undefined) {
-      b.SOL = r6(solData.result.value / 1e9); // lamports → SOL
+      b.SOL = r6(solData.result.value / 1e9); // lamports to SOL
     } else {
       errors.SOL = 'no result';
     }
@@ -457,13 +474,13 @@ function fetchAllBlockchainBalances() {
   return b;
 }
 
-// Arbitrum RPC с fallback на резервный
+// Arbitrum RPC with fallback.
 function arbRpc(method, params) {
   var payload = JSON.stringify({ jsonrpc: '2.0', id: 1, method: method, params: params });
   var opts     = { method: 'post', contentType: 'application/json', payload: payload, muteHttpExceptions: true };
   var resp     = UrlFetchApp.fetch(ARB_RPC, opts);
   var data     = JSON.parse(resp.getContentText());
-  // Если основной вернул ошибку — пробуем резервный
+  // Try fallback RPC when primary fails.
   if (data.error || !data.result) {
     var resp2 = UrlFetchApp.fetch(ARB_RPC_BCK, opts);
     data      = JSON.parse(resp2.getContentText());
@@ -471,30 +488,182 @@ function arbRpc(method, params) {
   return data;
 }
 
-// ─── Live prices from main spreadsheet ───────────────────────────────────────
+//  Live prices from Hyperliquid, sheet fallback 
 
 function getLivePrices() {
   var priceMap = {};
+
   try {
-    var ss      = SpreadsheetApp.openById(MAIN_SS_ID);
-    var sheet   = ss.getSheetByName('Портфель');
-    if (!sheet) return priceMap;
-    var data    = sheet.getDataRange().getValues();
-    if (data.length < 2) return priceMap;
-    var headers = data[0].map(function(h) { return String(h).trim(); });
-    var tCol    = headers.indexOf('ticker');
-    var pCol    = headers.indexOf('currentPrice');
-    if (tCol < 0 || pCol < 0) return priceMap;
-    for (var i = 1; i < data.length; i++) {
-      var ticker = String(data[i][tCol] || '').trim();
-      var price  = toFloat(data[i][pCol]);
-      if (ticker && price > 0) priceMap[ticker] = price;
-    }
-  } catch(e) {}
+    var primary = fetchHyperliquidMids({ type: 'allMids' });
+    var xyz     = fetchHyperliquidMids({ type: 'allMids', dex: 'xyz' });
+
+    ['BTC', 'ETH', 'SOL', 'ATOM', 'BNB', 'MNT'].forEach(function(ticker) {
+      addPrice_(priceMap, ticker, primary[ticker]);
+    });
+
+    addPrice_(priceMap, 'GRAM', primary.GRAM);
+    addPrice_(priceMap, 'TON', primary.GRAM);
+
+    var gold = xyz['xyz:GOLD'];
+    addPrice_(priceMap, 'GOLD', gold);
+    addPrice_(priceMap, 'GOLD LONG', gold);
+    addPrice_(priceMap, 'XAU', gold);
+    addPrice_(priceMap, 'XAUUSD', gold);
+
+    var spcx = xyz['xyz:SPCX'];
+    addPrice_(priceMap, 'SPACEX', spcx);
+    addPrice_(priceMap, 'SPCX', spcx);
+    addPrice_(priceMap, 'SPCXB', spcx);
+
+    addPrice_(priceMap, 'USDT', 1);
+    addPrice_(priceMap, 'USDC', 1);
+  } catch(e) {
+    Logger.log('getLivePrices Hyperliquid error: ' + e.message);
+  }
+
+  mergeSheetPrices_(priceMap);
   return priceMap;
 }
 
-// ─── Health scoring ───────────────────────────────────────────────────────────
+function fetchHyperliquidMids(payload) {
+  var response = UrlFetchApp.fetch(HL_INFO_URL, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+
+  var code = response.getResponseCode();
+  var body = response.getContentText();
+  if (code < 200 || code >= 300) {
+    throw new Error('Hyperliquid request failed: ' + code + ' ' + body);
+  }
+
+  return JSON.parse(body);
+}
+
+function addPrice_(priceMap, ticker, value) {
+  var key = String(ticker || '').trim().toUpperCase();
+  var price = toFloat(value);
+  if (key && price > 0) priceMap[key] = price;
+}
+
+function mergeSheetPrices_(priceMap) {
+  try {
+    var ss = SpreadsheetApp.openById(MAIN_SS_ID);
+    var sheet = ss.getSheetByName(SHEET_PORTFOLIO);
+    if (!sheet) return;
+
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) return;
+
+    var headers = data[0].map(function(h) { return String(h).trim(); });
+    var tCol = headers.indexOf('ticker');
+    var pCol = headers.indexOf('currentPrice');
+    if (tCol < 0 || pCol < 0) return;
+
+    for (var i = 1; i < data.length; i++) {
+      var ticker = String(data[i][tCol] || '').trim().toUpperCase();
+      var price = toFloat(data[i][pCol]);
+      if (ticker && price > 0 && !priceMap[ticker]) priceMap[ticker] = price;
+    }
+  } catch(e) {
+    Logger.log('mergeSheetPrices_ error: ' + e.message);
+  }
+}
+
+function syncKoshaPriceSheet() {
+  var wifeJson = buildWifePortfolioJson();
+  if (!wifeJson || !wifeJson.success) {
+    throw new Error('Wife portfolio JSON is not available');
+  }
+
+  var ss = SpreadsheetApp.openById(PRICE_SS_ID);
+  var sheet = ss.getSheetByName(KOSHA_SHEET_NAME);
+  if (!sheet) throw new Error('Sheet not found: ' + KOSHA_SHEET_NAME);
+
+  var order = ['ETH', 'TON', 'BTC', 'SOL', 'USDT', 'GOLD', 'SpaceX'];
+  var byAsset = {};
+  (wifeJson.portfolio || []).forEach(function(position) {
+    var key = String(position.asset || '').trim().toUpperCase();
+    if (key) byAsset[key] = position;
+  });
+
+  var data = sheet.getDataRange().getValues();
+  var existingRows = {};
+  var summaryRow = 0;
+
+  for (var r = 1; r < data.length; r++) {
+    var assetName = String(data[r][0] || '').trim().toUpperCase();
+    if (assetName) existingRows[assetName] = r + 1;
+    if (!summaryRow && String(data[r][2] || '').indexOf(TEXT_NEED) >= 0) {
+      summaryRow = r + 1;
+    }
+  }
+
+  if (!summaryRow) summaryRow = Math.max(sheet.getLastRow() + 1, 7);
+
+  var added = [];
+  var updated = [];
+
+  order.forEach(function(assetName) {
+    var key = assetName.toUpperCase();
+    var position = byAsset[key];
+    if (!position) return;
+
+    var targetRow = existingRows[key];
+    if (!targetRow) {
+      sheet.insertRowsBefore(summaryRow, 1);
+      targetRow = summaryRow;
+      summaryRow++;
+      if (targetRow > 2) {
+        sheet.getRange(targetRow - 1, 1, 1, 7).copyTo(sheet.getRange(targetRow, 1, 1, 7), { formatOnly: true });
+      }
+      existingRows[key] = targetRow;
+      added.push(assetName);
+    } else {
+      updated.push(assetName);
+    }
+
+    var currentPrice = toFloat(position.currentPrice);
+    var avgEntry = toFloat(position.avgEntry);
+    var invested = toFloat(position.invested);
+    var currentValue = toFloat(position.currentValue);
+    var pnl = toFloat(position.pnl);
+    var pnlPct = toFloat(position.pnlPct) / 100;
+
+    sheet.getRange(targetRow, 1, 1, 7).setValues([[
+      assetName,
+      rPrice(currentPrice),
+      avgEntry,
+      invested,
+      pnlPct,
+      r2(pnl),
+      r2(currentValue)
+    ]]);
+  });
+
+  sheet.getRange(2, 8, 1, 3).setValues([[
+    r2(wifeJson.overview.invested),
+    r2(wifeJson.overview.portfolioValue),
+    r2(wifeJson.overview.pnl)
+  ]]);
+
+  return {
+    success: true,
+    sheet: KOSHA_SHEET_NAME,
+    added: added,
+    updated: updated,
+    summary: {
+      invested: r2(wifeJson.overview.invested),
+      currentValue: r2(wifeJson.overview.portfolioValue),
+      pnl: r2(wifeJson.overview.pnl)
+    },
+    updatedAt: new Date().toISOString()
+  };
+}
+
+//  Health scoring 
 
 function computeHealth(reserveShare, cryptoShare, largestShare) {
   var reservePts = Math.min(100, reserveShare * 333);
@@ -504,13 +673,13 @@ function computeHealth(reserveShare, cryptoShare, largestShare) {
 }
 
 function healthLabel(h) {
-  if (h >= 80) return 'Хорошо';
-  if (h >= 60) return 'Умеренно';
-  if (h >= 40) return 'Внимание';
-  return 'Критично';
+  if (h >= 80) return TEXT_GOOD;
+  if (h >= 60) return TEXT_MODERATE;
+  if (h >= 40) return TEXT_WARNING;
+  return TEXT_CRITICAL;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+//  Helpers 
 
 function hexToInt(hex) {
   if (!hex || hex === '0x' || hex === '0x0') return 0;
@@ -526,20 +695,26 @@ function r2(n) { return Math.round(n * 100)        / 100;        }
 function r4(n) { return Math.round(n * 10000)       / 10000;      }
 function r6(n) { return Math.round(n * 1000000)     / 1000000;    }
 function r8(n) { return Math.round(n * 100000000)   / 100000000;  }
+function rPrice(n) {
+  var abs = Math.abs(n);
+  if (abs < 10) return r6(n);
+  if (abs < 1000) return r4(n);
+  return r2(n);
+}
 
-// ═════════════════════════════════════════════════════════════════════════════
-// ОДНОРАЗОВАЯ НАСТРОЙКА — запустить один раз, потом можно удалить
-// ═════════════════════════════════════════════════════════════════════════════
+// 
+// ONE-TIME SETUP - run once, then keep or remove.
+// 
 
 /**
- * Создаёт вкладки «История» и «Транзакции» в таблице Полины.
- * Запустить: выбрать функцию setupWifeSheets → ▶ Run
+ * Creates History and Transactions sheets for Polina.
+ * Run setupWifeSheets manually if needed.
  */
 function setupWifeSheets() {
   var wifeSS = SpreadsheetApp.openById(WIFE_SS_ID);
   _createHistorySheet(wifeSS);
   _createTransactionsSheet(wifeSS);
-  Logger.log('✅ Готово: История + Транзакции созданы');
+  Logger.log('setupWifeSheets: done');
 }
 
 function _styleHeader(sheet, row, ncols) {
@@ -552,39 +727,39 @@ function _styleHeader(sheet, row, ncols) {
 }
 
 function _createHistorySheet(ss) {
-  var old = ss.getSheetByName('История');
+  var old = ss.getSheetByName(SHEET_HISTORY);
   if (old) ss.deleteSheet(old);
-  var sh = ss.insertSheet('История');
+  var sh = ss.insertSheet(SHEET_HISTORY);
 
   var eng = ['date','portfolioValue','invested','pnl','pnlPct','reserve','positionsCount','pointType','note','trigger','source','comment'];
-  var rus = ['Дата','Стоимость портфеля','Вложено','PnL $','PnL %','Резерв','Кол-во позиций','Тип точки','Заметка','Триггер','Источник','Комментарий'];
+  var display = ['date','portfolio value','invested','pnl $','pnl %','reserve','positions count','point type','note','trigger','source','comment'];
   sh.getRange(1,1,1,eng.length).setValues([eng]);
-  sh.getRange(2,1,1,rus.length).setValues([rus]);
+  sh.getRange(2,1,1,display.length).setValues([display]);
   _styleHeader(sh, 1, eng.length);
-  sh.getRange(2,1,1,rus.length).setBackground('#0a0a1a').setFontColor('#7a7aaa').setFontWeight('bold');
+  sh.getRange(2,1,1,display.length).setBackground('#0a0a1a').setFontColor('#7a7aaa').setFontWeight('bold');
   sh.setFrozenRows(2);
 
   var widths = [180,150,120,100,80,100,120,100,200,100,100,250];
   widths.forEach(function(w,i){ sh.setColumnWidth(i+1,w); });
-  Logger.log('История: создана');
+  Logger.log('History sheet created');
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// 
 // FIX USDT IN SHEET
-// Вызывается через ?action=fixUsdt или вручную.
-// Фетчит реальные балансы USDT из блокчейна и пишет в главный лист:
-//   quantity = blockchain balance, invested = то же самое (стейблы 1:1)
-// После этого даже если server-side fetch упадёт — в листе будет fallback.
-// ═══════════════════════════════════════════════════════════════════════════════
+// Legacy owner-only helper. Not exposed through doGet.
+// Fetches real USDT balances from chain and writes them to the main sheet.
+//   quantity = blockchain balance, invested = same value for stablecoins.
+// After this the sheet has a fallback value if server-side fetch fails.
+// 
 function fixUsdtInSheet(overrideArb, overrideTon) {
-  // 1. Получаем реальные балансы (или используем переданные значения)
+  // 1. Fetch real balances or use passed values.
   var usdtArb = (overrideArb !== null && overrideArb !== undefined) ? overrideArb : _fetchUsdtArb();
   var usdtTon = (overrideTon !== null && overrideTon !== undefined) ? overrideTon : _fetchUsdtTon();
   var totalUsdt = r2(usdtArb + usdtTon);
 
   Logger.log('fixUsdtInSheet: ARB=' + usdtArb + ' TON=' + usdtTon + ' total=' + totalUsdt);
 
-  // 2. Открываем главный лист
+  // 2. Open the main sheet.
   var ss = SpreadsheetApp.openById(WIFE_SS_ID);
   var sheet = ss.getSheets()[0];
   var data = sheet.getDataRange().getValues();
@@ -603,23 +778,23 @@ function fixUsdtInSheet(overrideArb, overrideTon) {
 
   var updated = [];
 
-  // 3. Ищем USDT строку и обновляем
+  // 3. Find USDT row and update it.
   for (var r = 1; r < data.length; r++) {
     var asset = String(data[r][iAsset] || '').trim().toUpperCase();
     if (asset === 'USDT') {
       sheet.getRange(r + 1, iQty + 1).setValue(totalUsdt);
       sheet.getRange(r + 1, iInvested + 1).setValue(totalUsdt);
-      // avgEntry = 1 если не задан
+      // avgEntry = 1 if empty.
       if (!toFloat(data[r][iEntry])) {
         sheet.getRange(r + 1, iEntry + 1).setValue(1);
       }
       updated.push({ row: r + 1, qty: totalUsdt, invested: totalUsdt });
-      Logger.log('fixUsdtInSheet: строка ' + (r+1) + ' обновлена → qty=' + totalUsdt + ' invested=' + totalUsdt);
+      Logger.log('fixUsdtInSheet: row ' + (r+1) + ' updated qty=' + totalUsdt + ' invested=' + totalUsdt);
     }
   }
 
   if (updated.length === 0) {
-    Logger.log('fixUsdtInSheet: строка USDT не найдена');
+    Logger.log('fixUsdtInSheet: USDT row not found');
     return { success: false, error: 'USDT row not found in sheet', usdtArb: usdtArb, usdtTon: usdtTon };
   }
 
@@ -633,7 +808,7 @@ function fixUsdtInSheet(overrideArb, overrideTon) {
   };
 }
 
-// Балансы USDT напрямую (для fixUsdtInSheet — вызывается с правами владельца)
+// Direct USDT balance helpers for owner-only fixUsdtInSheet.
 function _fetchUsdtArb() {
   try {
     var padded = '000000000000000000000000' + EVM_ADDRESS.slice(2).toLowerCase();
@@ -644,7 +819,7 @@ function _fetchUsdtArb() {
     var resp = UrlFetchApp.fetch(ARB_RPC, { method: 'post', contentType: 'application/json', payload: payload, muteHttpExceptions: true });
     var d = JSON.parse(resp.getContentText());
     var hex = d.result || '0x0';
-    return Math.round(parseInt(hex, 16) / 1e4) / 100; // 6 decimals → 2dp
+    return Math.round(parseInt(hex, 16) / 1e4) / 100; // 6 decimals to 2dp
   } catch(e) {
     Logger.log('_fetchUsdtArb error: ' + e.message);
     return 0;
@@ -658,7 +833,7 @@ function _fetchUsdtTon() {
     var d = JSON.parse(resp.getContentText());
     for (var i = 0; i < (d.balances || []).length; i++) {
       var b = d.balances[i];
-      var sym = (b.jetton && b.jetton.symbol || '').replace('₮','T');
+      var sym = (b.jetton && b.jetton.symbol || '').replace(TEXT_TETHER_SIGN, 'T');
       if (sym === 'USDT') {
         var dec = Number(b.jetton.decimals || 6);
         return Math.round(Number(b.balance) / Math.pow(10, dec) * 100) / 100;
@@ -672,43 +847,43 @@ function _fetchUsdtTon() {
 }
 
 function _createTransactionsSheet(ss) {
-  var old = ss.getSheetByName('Транзакции');
+  var old = ss.getSheetByName(SHEET_TRANSACTIONS);
   if (old) ss.deleteSheet(old);
-  var sh = ss.insertSheet('Транзакции');
+  var sh = ss.insertSheet(SHEET_TRANSACTIONS);
 
   var eng = ['id','date','asset','category','action','quantity','price','amount','chain','hash','status','direction','walletId','counterparty','rawAsset','rawAmount','note','comment'];
-  var rus = ['ID','Дата','Актив','Категория','Действие','Количество','Цена','Сумма $','Сеть','Hash','Статус','Направление','Кошелёк','Контрагент','Исходный актив','Исходная сумма','Заметка','Комментарий'];
+  var display = ['id','date','asset','category','action','quantity','price','amount','chain','hash','status','direction','wallet id','counterparty','raw asset','raw amount','note','comment'];
   sh.getRange(1,1,1,eng.length).setValues([eng]);
-  sh.getRange(2,1,1,rus.length).setValues([rus]);
+  sh.getRange(2,1,1,display.length).setValues([display]);
   _styleHeader(sh, 1, eng.length);
-  sh.getRange(2,1,1,rus.length).setBackground('#0a0a1a').setFontColor('#7a7aaa').setFontWeight('bold');
+  sh.getRange(2,1,1,display.length).setBackground('#0a0a1a').setFontColor('#7a7aaa').setFontWeight('bold');
   sh.setFrozenRows(2);
 
   var widths = [80,180,80,120,80,100,100,100,80,280,100,100,120,120,100,100,200,250];
   widths.forEach(function(w,i){ sh.setColumnWidth(i+1,w); });
-  Logger.log('Транзакции: создана');
+  Logger.log('Transactions sheet created');
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// 
 // BLOCKCHAIN TRANSACTION SYNC
-// Запускается автоматически по триггеру (hourly).
-// Чтобы установить триггер — запусти setupSyncTrigger() вручную 1 раз.
-// ═══════════════════════════════════════════════════════════════════════════════
+// Runs from the hourly trigger.
+// Run setupSyncTrigger once to install the trigger.
+// 
 
-// Установка hourly-триггера. Запустить вручную один раз.
+// Install hourly trigger. Run manually once.
 function setupSyncTrigger() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === 'syncTransactions') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('syncTransactions').timeBased().everyHours(1).create();
-  Logger.log('Триггер syncTransactions установлен — каждый час');
+  Logger.log('syncTransactions trigger installed hourly');
 }
 
-// Главная функция синхронизации — пишет новые blockchain-транзакции в лист «Транзакции».
+// Main sync function. Writes new blockchain transactions to Transactions sheet.
 function syncTransactions() {
   var ss = SpreadsheetApp.openById(WIFE_SS_ID);
-  var sheet = ss.getSheetByName('Транзакции');
-  if (!sheet) { _createTransactionsSheet(ss); sheet = ss.getSheetByName('Транзакции'); }
+  var sheet = ss.getSheetByName(SHEET_TRANSACTIONS);
+  if (!sheet) { _createTransactionsSheet(ss); sheet = ss.getSheetByName(SHEET_TRANSACTIONS); }
 
   var existingIds = _getExistingTxIds(sheet);
   var rows = [];
@@ -721,9 +896,9 @@ function syncTransactions() {
   if (rows.length > 0) {
     var lastRow = Math.max(sheet.getLastRow(), 2);
     sheet.getRange(lastRow + 1, 1, rows.length, 18).setValues(rows);
-    Logger.log('syncTransactions: добавлено ' + rows.length + ' новых транзакций');
+    Logger.log('syncTransactions: added ' + rows.length + ' new transactions');
   } else {
-    Logger.log('syncTransactions: нет новых транзакций');
+    Logger.log('syncTransactions: no new transactions');
   }
 }
 
@@ -742,14 +917,14 @@ function _fmtDate(dt) {
 }
 
 function _isStable(symbol) {
-  return ['USDT','USDC','DAI','BUSD','USDE'].indexOf((symbol || '').toUpperCase().replace('₮','T')) >= 0;
+  return ['USDT','USDC','DAI','BUSD','USDE'].indexOf((symbol || '').toUpperCase().replace(TEXT_TETHER_SIGN, 'T')) >= 0;
 }
 
 function _bcAction(symbol, isIn) {
-  // Стейблы: пришли → продали крипту → «Продажа»; ушли → купили крипту → «Покупка»
-  // Крипта: пришла → «Покупка»; ушла → «Продажа»
-  if (_isStable(symbol)) return isIn ? 'Продажа' : 'Покупка';
-  return isIn ? 'Покупка' : 'Продажа';
+  // Stablecoins in means sell crypto; stablecoins out means buy crypto.
+  // Crypto in means buy; crypto out means sell.
+  if (_isStable(symbol)) return isIn ? TEXT_SELL : TEXT_BUY;
+  return isIn ? TEXT_BUY : TEXT_SELL;
 }
 
 function _fetchArbTokenTransfers(existingIds, rows) {
@@ -770,7 +945,7 @@ function _fetchArbTokenTransfers(existingIds, rows) {
       var isIn = (item.to && item.to.hash || '').toLowerCase() === EVM_ADDRESS.toLowerCase();
       var action = _bcAction(symbol, isIn);
       var amount = _isStable(symbol) ? quantity : 0;
-      rows.push([id, _fmtDate(item.timestamp || new Date()), symbol, 'Крипта', action,
+      rows.push([id, _fmtDate(item.timestamp || new Date()), symbol, CAT_CRYPTO, action,
         quantity, 0, amount, 'ARB', hash, 'CONFIRMED', isIn ? 'IN' : 'OUT',
         EVM_ADDRESS, isIn ? (item.from && item.from.hash || '') : (item.to && item.to.hash || ''),
         symbol, quantity, 'blockchain', '']);
@@ -792,7 +967,7 @@ function _fetchArbEthTransfers(existingIds, rows) {
       var id = 'bc:arb_eth:' + hash;
       if (existingIds[id]) return;
       var isIn = (item.to && item.to.hash || '').toLowerCase() === EVM_ADDRESS.toLowerCase();
-      rows.push([id, _fmtDate(item.timestamp || new Date()), 'ETH', 'Крипта', isIn ? 'Покупка' : 'Продажа',
+      rows.push([id, _fmtDate(item.timestamp || new Date()), 'ETH', CAT_CRYPTO, isIn ? TEXT_BUY : TEXT_SELL,
         ethAmount, 0, 0, 'ARB', hash, item.status === 'ok' ? 'CONFIRMED' : 'PENDING', isIn ? 'IN' : 'OUT',
         EVM_ADDRESS, isIn ? (item.from && item.from.hash || '') : (item.to && item.to.hash || ''),
         'ETH', ethAmount, 'blockchain', '']);
@@ -819,7 +994,7 @@ function _fetchTonTransactions(existingIds, rows) {
           var qty = Number(tt.amount || 0) / 1e9;
           if (qty < 0.01) return;
           var isIn = (tt.sender && tt.sender.address || '').toLowerCase() !== TON_ADDRESS.toLowerCase();
-          rows.push([rowId, _fmtDate(date), 'TON', 'Крипта', isIn ? 'Покупка' : 'Продажа',
+          rows.push([rowId, _fmtDate(date), 'TON', CAT_CRYPTO, isIn ? TEXT_BUY : TEXT_SELL,
             qty, 0, 0, 'TON', eventId, 'CONFIRMED', isIn ? 'IN' : 'OUT',
             TON_ADDRESS, isIn ? (tt.sender && tt.sender.address || '') : (tt.recipient && tt.recipient.address || ''),
             'TON', qty, 'blockchain', '']);
@@ -829,11 +1004,11 @@ function _fetchTonTransactions(existingIds, rows) {
           var decimals = Number(jt.jetton && jt.jetton.decimals || 6);
           var qty = Number(jt.amount || 0) / Math.pow(10, decimals);
           if (qty < 0.001) return;
-          var symbol = (jt.jetton && jt.jetton.symbol || 'USDT').replace('₮', 'T');
+          var symbol = (jt.jetton && jt.jetton.symbol || 'USDT').replace(TEXT_TETHER_SIGN, 'T');
           var isIn = (jt.sender && jt.sender.address || '').toLowerCase() !== TON_ADDRESS.toLowerCase();
           var action = _bcAction(symbol, isIn);
           var amount = _isStable(symbol) ? qty : 0;
-          rows.push([rowId, _fmtDate(date), symbol, 'Крипта', action,
+          rows.push([rowId, _fmtDate(date), symbol, CAT_CRYPTO, action,
             qty, 0, amount, 'TON', eventId, 'CONFIRMED', isIn ? 'IN' : 'OUT',
             TON_ADDRESS, isIn ? (jt.sender && jt.sender.address || '') : (jt.recipient && jt.recipient.address || ''),
             symbol, qty, 'blockchain', '']);
@@ -865,7 +1040,7 @@ function _fetchBtcTransactions(existingIds, rows) {
       var isIn = net > 0;
       var qty = Math.abs(net);
       var ts = tx.status && tx.status.block_time ? new Date(tx.status.block_time * 1000) : new Date();
-      rows.push([id, _fmtDate(ts), 'BTC', 'Крипта', isIn ? 'Покупка' : 'Продажа',
+      rows.push([id, _fmtDate(ts), 'BTC', CAT_CRYPTO, isIn ? TEXT_BUY : TEXT_SELL,
         qty, 0, 0, 'BTC', hash, tx.status && tx.status.confirmed ? 'CONFIRMED' : 'PENDING', isIn ? 'IN' : 'OUT',
         BTC_ADDRESS, '', 'BTC', qty, 'blockchain', '']);
       existingIds[id] = true;

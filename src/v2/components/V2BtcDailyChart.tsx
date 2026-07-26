@@ -292,7 +292,7 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
         </div>
         <div className="v2-btc-header-right">
           <span className="v2-btc-live-dot" />
-          <span className="v2-btc-live-label">LIVE</span>
+          <span className="v2-btc-live-label">ЖИВЫЕ</span>
           <span className="v2-btc-tf">Эмоциональный цикл · 2022–2028</span>
         </div>
       </div>

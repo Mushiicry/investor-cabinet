@@ -2,7 +2,8 @@ const MAIN_APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA/exec";
 
 const WIFE_APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbwPvwu-EMXb9hGCZeRFhr9O8Vvz5-2y1sqn4V4OMsgqNkTs2t3U6zGDw7SVgdPVmrwg/exec";
+  "https://script.google.com/macros/s/AKfycbyLhTunXVbxo1hy8t8qOrQkNfgmM9F9WTFM35ttefl2j7Zkad97lB5ok4FiYDv9pfzo/exec";
+const CAPITAL_LADDER_LEVELS = 7;
 
 const getEnv = (name) => process.env[name]?.trim() ?? "";
 
@@ -96,7 +97,7 @@ export async function proxyInvestorApi(req, res, kind) {
     const action = incoming.searchParams.get("action");
     if (action === "setMaxLevel") {
       const level = Number(incoming.searchParams.get("level"));
-      if (Number.isFinite(level) && level >= 1 && level <= 5) {
+      if (Number.isFinite(level) && level >= 1 && level <= CAPITAL_LADDER_LEVELS) {
         upstreamUrl.searchParams.set("action", action);
         upstreamUrl.searchParams.set("level", String(Math.floor(level)));
       }

@@ -91,7 +91,7 @@ export function useInvestorData(
           const data = buildInvestorStateFromApi(json, prev.data);
 
           // Daily auto-snapshot — only main account here; wife snapshot happens
-          // after applyBlockchainOverride so USDT balances are included.
+          // in the V2 shell after Apps Script/API has assembled live portfolio data.
           if (cacheSlot !== "wife") {
             const nonStable = data.portfolio.filter(
               (p) => p.category !== "Свободные деньги"

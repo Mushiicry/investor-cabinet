@@ -317,6 +317,20 @@ export const buildLiveV2Data = (
     health.components.find((component) => component.key === "diversification")?.score ?? 0;
   const largestRiskShare = state.risk.largestRiskShare;
   const futuresShare = state.risk.futuresShare;
+  const playbookDecisions =
+    slot === "wife"
+      ? state.decisions
+      : [
+          ...state.decisions,
+          ...decisionsData.filter((d) => !state.decisions.find((ld) => ld.asset === d.asset)),
+        ];
+  const playbookScenarios =
+    slot === "wife"
+      ? state.scenarios
+      : [
+          ...state.scenarios,
+          ...scenariosData.filter((s) => !state.scenarios.find((ls) => ls.asset === s.asset)),
+        ];
 
   return {
     ...mockData,
@@ -327,16 +341,7 @@ export const buildLiveV2Data = (
     assetQuality: state.assetQuality ?? emptyAssetQuality,
     health,
     healthInput: liveHealthInput,
-    playbook: buildPlaybookCards(
-      [
-        ...state.decisions,
-        ...decisionsData.filter((d) => !state.decisions.find((ld) => ld.asset === d.asset)),
-      ],
-      [
-        ...state.scenarios,
-        ...scenariosData.filter((s) => !state.scenarios.find((ls) => ls.asset === s.asset)),
-      ]
-    ),
+    playbook: buildPlaybookCards(playbookDecisions, playbookScenarios),
     positions: state.portfolio.map((position) => ({
       asset: position.asset,
       category: position.category,

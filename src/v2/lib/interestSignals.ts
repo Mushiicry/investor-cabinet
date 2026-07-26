@@ -367,6 +367,8 @@ export type AssetSignalGroup = {
   signals: InterestSignal[];
   /** Ближайший к срабатыванию ордер актива — по нему сортируются монеты. */
   nearest: SignalDistance | null;
+  /** Есть сработавшая точка — актив должен бросаться в глаза на странице сигналов. */
+  hasTriggered: boolean;
   /** Есть строки, снятые с дежурства (CHECK/ERROR) — актив требует внимания. */
   needsAttention: boolean;
   /** Сколько ордеров ещё ждут срабатывания. */
@@ -375,8 +377,8 @@ export type AssetSignalGroup = {
 
 /**
  * Группировка по активу: 23 строки списком читаются тяжело, а по монетам
- * это 10 кнопок. Порядок монет — по близости их ближайшего ордера, чтобы
- * первым в сетке стоял актив, за которым надо следить сегодня.
+ * это 10 кнопок. Порядок монет: сначала сработавшие точки, затем сломанные
+ * строки, затем ближайшие к срабатыванию ордера.
  */
 export function groupByAsset(signals: InterestSignal[]): AssetSignalGroup[] {
   const groups = new Map<string, InterestSignal[]>();
@@ -407,6 +409,9 @@ export function groupByAsset(signals: InterestSignal[]): AssetSignalGroup[] {
         asset,
         signals: ordered,
         nearest,
+        hasTriggered: ordered.some((signal) =>
+          DONE_STATUSES.has(normalizeStatus(signal.status))
+        ),
         needsAttention: ordered.some((signal) =>
           ATTENTION_STATUSES.has(normalizeStatus(signal.status))
         ),
@@ -414,6 +419,7 @@ export function groupByAsset(signals: InterestSignal[]): AssetSignalGroup[] {
       };
     })
     .sort((a, b) => {
+      if (a.hasTriggered !== b.hasTriggered) return a.hasTriggered ? -1 : 1;
       if (a.needsAttention !== b.needsAttention) return a.needsAttention ? -1 : 1;
       if (!a.nearest || !b.nearest) return a.nearest ? -1 : b.nearest ? 1 : 0;
       return Math.abs(a.nearest.pct) - Math.abs(b.nearest.pct);

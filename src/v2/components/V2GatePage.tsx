@@ -36,7 +36,7 @@ type Props = {
 
 const NEW_ASSET = "__new__";
 const CATEGORIES = [CRYPTO_CATEGORY, METALS_CATEGORY, STOCKS_CATEGORY, FUTURES_CATEGORY];
-const SETUPS = ["Плановый добор", "Лимитный ордер", "Усреднение", "Ребаланс", "Защитное действие", "Учебная сделка"];
+const SETUPS = ["Плановый добор", "Лимитный ордер", "ДСА добор", "Ребаланс", "Защитное действие", "Учебная сделка"];
 const EMOTIONS = ["Спокойно", "Сомнение", "Страх упустить рост", "Спешка", "После убытка"];
 
 const pct = (share: number) => `${(share * 100).toFixed(1)}%`;
@@ -68,7 +68,7 @@ function bucketRows(buckets: CapitalBuckets) {
   return [
     { label: "Резерв", value: buckets.lockedReserveUsd },
     { label: "Фьючерсы", value: buckets.futuresBudgetUsd },
-    { label: "Усреднение", value: buckets.averagingBudgetUsd },
+    { label: "ДСА добор", value: buckets.averagingBudgetUsd },
     { label: "Спот", value: buckets.spotBudgetUsd },
     { label: "Металлы до", value: buckets.metalsBudgetUsd },
     { label: "Акции до", value: buckets.stocksBudgetUsd },
@@ -117,6 +117,20 @@ export function V2GatePage({
   const isNew = asset === NEW_ASSET;
   const resolvedAsset = isNew ? newAsset.trim().toUpperCase() : asset;
   const selectedPosition = positions.find((p) => p.asset === resolvedAsset);
+  const clearToManualInput = () => {
+    setAsset(NEW_ASSET);
+    setNewAsset("");
+    setCategory(CRYPTO_CATEGORY);
+    setTradeAction("buy");
+    setAmount("");
+    setBuyPrice("");
+    setSetup(SETUPS[0]);
+    setEmotion(EMOTIONS[0]);
+    setJournalNote("");
+    setSavedMarker(null);
+    setExecutionMarker(null);
+    onClearCandidate?.();
+  };
   const handleAssetChange = (nextAsset: string) => {
     setAsset(nextAsset);
     if (nextAsset === NEW_ASSET) {
@@ -289,11 +303,11 @@ export function V2GatePage({
       </div>
 
       {candidate && (
-        <div className="v2-gate-route v2-panel">
-          <div className="v2-gate-route-head">
-            <span>Маршрут сделки</span>
-            <button type="button" onClick={onClearCandidate}>Ручной ввод</button>
-          </div>
+          <div className="v2-gate-route v2-panel">
+            <div className="v2-gate-route-head">
+              <span>Маршрут сделки</span>
+              <button type="button" onClick={clearToManualInput}>Ручной ввод</button>
+            </div>
           <div className="v2-gate-route-steps">
             <span className="is-done">Лимитный ордер</span>
             <span className="is-active">Проверка риска</span>
@@ -313,7 +327,7 @@ export function V2GatePage({
         <div className="v2-gate-cap-main">
           <span className="v2-gate-cap-value">{usd(greenMax)}</span>
           <span className="v2-gate-cap-label">
-            спот-капитал к доборку · сверх {pct(SPOT_RESERVE_FLOOR_SHARE)}-резерва
+            спот-капитал для добора · сверх {pct(SPOT_RESERVE_FLOOR_SHARE)}-резерва
           </span>
         </div>
         {cushionRoom > 0 && (
@@ -332,7 +346,7 @@ export function V2GatePage({
         <div className="v2-gate-plan">
           Плановый крипто-блок: {usd(capitalBuckets.currentCryptoBlockUsd)} куплено +{" "}
           {usd(capitalBuckets.cryptoSpotBudgetUsd)} спот по умолчанию +{" "}
-          {usd(capitalBuckets.averagingBudgetUsd)} усреднение ={" "}
+          {usd(capitalBuckets.averagingBudgetUsd)} ДСА добор ={" "}
           <strong>{usd(capitalBuckets.plannedCryptoBlockUsd)}</strong>
         </div>
       </div>

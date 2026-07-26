@@ -63,7 +63,7 @@ const FULL_NAME: Record<string, string> = {
   SPCXB: "SpaceX",
   ETH: "Ethereum",
   SOL: "Solana",
-  TON: "GRAM",
+  TON: "TON",
   ATOM: "Cosmos",
   "BTC LONG": "Bitcoin",
   "MNT LONG": "Mantle",
@@ -107,14 +107,19 @@ const GROUPS = [
 function IdentityCard({
   asset,
   card,
+  pnlPct,
+  pnl,
   staked,
   onOpen,
 }: {
   asset: string;
   card: PlaybookCard | null;
+  pnlPct: number;
+  pnl: number;
   staked?: boolean;
   onOpen?: () => void;
 }) {
+  const tone = pnlTone(pnl);
   const inner = (
     <>
       <CryptoLogo asset={asset} className="v2-pid-logo" />
@@ -122,23 +127,10 @@ function IdentityCard({
         {fullName(asset)}
         {staked && <span className="v2-pid-staked" title="В стейке (Tonstakers)">🔒 в стейке</span>}
       </span>
-      {card ? (
-        <>
-          <span className="v2-pb-stat is-up">
-            <i>Прибыль</i>
-            {card.attack}
-          </span>
-          <span className="v2-pb-stat is-down">
-            <i>Риск</i>
-            {card.risk}
-          </span>
-        </>
-      ) : (
-        <>
-          <span />
-          <span />
-        </>
-      )}
+      <span className={`v2-pid-pnl ${tone}`}>
+        {trendArrow(pnlPct)}
+        {signedPct(pnlPct)}
+      </span>
     </>
   );
 
@@ -264,7 +256,7 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, r
   return (
     <section className="v2-port-page" aria-label="Портфель — все позиции">
       {showRealized && (
-        <div className="v2-panel v2-port-realized" title="Профит по закрытым и зафиксированным позициям — не входит в текущий PnL портфеля">
+        <div className="v2-panel v2-port-realized" title="Профит по закрытым и зафиксированным позициям — не входит в текущий результат портфеля">
           <span className="v2-port-realized-label">Реализовано за всё время</span>
           {/* Считается НЕ автоматически: блок закрытых позиций в «Расчетах»
               заполняется вручную, автоимпорт туда не пишет. В «Отчётах»
@@ -294,12 +286,11 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, r
                 <div className="v2-port-row v2-port-group-head">
                   <div className="v2-row-block">
                     <span>Ср. вход</span>
-                    <span>PnL %</span>
                     <span>Цена</span>
                   </div>
                   <div className="v2-row-block">
                     <span>Вложено</span>
-                    <span>PnL $</span>
+                    <span>Результат</span>
                     <span>Стоимость</span>
                   </div>
                 </div>
@@ -321,13 +312,14 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, r
                     <IdentityCard
                       asset={position.asset}
                       card={card}
+                      pnlPct={position.pnlPct}
+                      pnl={position.pnl}
                       staked={isStaked}
                       onOpen={card ? () => setSelected({ card, position }) : undefined}
                     />
                     <div className="v2-port-row">
                       <div className="v2-row-block">
                         <span className="v2-rb-val">{money(position.avgEntry)}</span>
-                        <span className={`v2-rb-val v2-port-pnl ${tone}`}>{trendArrow(position.pnl)}{signedPct(position.pnlPct)}</span>
                         <span className="v2-rb-val">{money(position.currentPrice)}</span>
                       </div>
                       <div className="v2-row-block">

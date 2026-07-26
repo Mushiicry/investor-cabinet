@@ -133,6 +133,18 @@ describe("группировка по монетам", () => {
 
     expect(groups[0].waitingCount).toBe(1);
     expect(groups[0].nearest!.pct).toBeCloseTo(-20, 6);
+    expect(groups[0].hasTriggered).toBe(true);
+  });
+
+  it("актив со сработавшей точкой поднимается выше обычного близкого ордера", () => {
+    const groups = groupByAsset([
+      signal({ id: "eth-near", asset: "ETH", currentPrice: 100, triggerPrice: 99 }),
+      signal({ id: "atom-done", asset: "ATOM", status: "TRIGGERED", currentPrice: 100, triggerPrice: 100 }),
+    ]);
+
+    expect(groups.map((g) => g.asset)).toEqual(["ATOM", "ETH"]);
+    expect(groups[0].hasTriggered).toBe(true);
+    expect(groups[1].hasTriggered).toBe(false);
   });
 });
 

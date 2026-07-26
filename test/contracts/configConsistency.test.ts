@@ -6,20 +6,21 @@ const appsScriptIds = (content: string) =>
   [...content.matchAll(/AKfycb[a-zA-Z0-9_-]+/g)].map((match) => match[0]);
 
 describe("local and production API config consistency", () => {
-  it("routes local investor APIs directly to Apps Script for dev parity", () => {
+  it("routes local investor APIs through the same proxy as production", () => {
     const viteConfig = read("vite.config.ts");
     const mainId = "AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA";
-    const wifeId = "AKfycbwPvwu-EMXb9hGCZeRFhr9O8Vvz5-2y1sqn4V4OMsgqNkTs2t3U6zGDw7SVgdPVmrwg";
+    const wifeId = "AKfycbyLhTunXVbxo1hy8t8qOrQkNfgmM9F9WTFM35ttefl2j7Zkad97lB5ok4FiYDv9pfzo";
+    const proxyConfig = read("api/_investorProxy.js");
     const wifeRouteIndex = viteConfig.indexOf("'/api/investor-wife'");
     const mainRouteIndex = viteConfig.indexOf("'/api/investor'");
 
     expect(viteConfig).not.toContain("investor-local-auth-proxy");
-    expect(viteConfig).not.toContain("proxyInvestorApi");
-    expect(viteConfig).toContain("target: 'https://script.google.com'");
+    expect(viteConfig).toContain("proxyInvestorApi");
+    expect(viteConfig).not.toContain("target: 'https://script.google.com'");
     expect(wifeRouteIndex).toBeGreaterThanOrEqual(0);
     expect(mainRouteIndex).toBeGreaterThanOrEqual(0);
     expect(wifeRouteIndex).toBeLessThan(mainRouteIndex);
-    expect(appsScriptIds(viteConfig)).toEqual(expect.arrayContaining([mainId, wifeId]));
+    expect(appsScriptIds(proxyConfig)).toEqual(expect.arrayContaining([mainId, wifeId]));
   });
 
   it("does not expose investor Apps Script URLs through production rewrites", () => {

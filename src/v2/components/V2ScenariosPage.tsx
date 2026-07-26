@@ -106,6 +106,7 @@ export function V2ScenariosPage({ playbook, positions }: Props) {
         <div>
           <h2 className="v2-sc-title">
             Сценарии и решения
+            {" "}
             {/* Весь контент раздела — тезисы владельца из таблицы, а не
                 аналитика системы. Без метки это читается как рекомендация. */}
             <V2SourceTag source="manual" title="Ваши тезисы и планы из листа «Сценарии» — система их не генерирует" />
@@ -181,7 +182,7 @@ export function V2ScenariosPage({ playbook, positions }: Props) {
                     </span>
                   </div>
                   <div className="v2-sc-meta-item">
-                    <span className="v2-sc-meta-label">PnL</span>
+                    <span className="v2-sc-meta-label">Результат</span>
                     <span className={`v2-sc-meta-val ${pnlClass}`}>{signedPct(pos.pnlPct)}</span>
                   </div>
                   <div className="v2-sc-meta-item">

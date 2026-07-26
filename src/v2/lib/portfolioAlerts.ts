@@ -167,7 +167,7 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
         id: "health-critical",
         level: "critical",
         title: "Здоровье портфеля в красной зоне",
-        detail: `Health Factor ${Math.round(hf)} из 100`,
+        detail: `Здоровье капитала ${Math.round(hf)} из 100`,
         action: "Открыть разбор здоровья",
       });
     } else if (hf < 60) {
@@ -175,7 +175,7 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
         id: "health-warn",
         level: "warning",
         title: "Здоровье портфеля ниже нормы",
-        detail: `Health Factor ${Math.round(hf)} из 100`,
+        detail: `Здоровье капитала ${Math.round(hf)} из 100`,
       });
     }
 
@@ -185,7 +185,7 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
       alerts.push({
         id: "health-drop",
         level: "warning",
-        title: "Health Factor снизился",
+        title: "Здоровье капитала снизилось",
         detail: `${Math.round(previous)} → ${Math.round(hf)} со времени прошлого захода`,
       });
     }
