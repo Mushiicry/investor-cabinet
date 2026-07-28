@@ -310,6 +310,43 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .v2-hp-policy-head {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .v2-hp-policy-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-hp-policy-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .v2-hp-policy-row strong {
+    text-align: left;
+  }
+
+  .v2-hp-policy-ray {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .v2-dna-audit-toggle,
+  .v2-dna-question-card,
+  .v2-dna-audit-footer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-dna-audit-toggle b {
+    width: fit-content;
+  }
+
+  .v2-dna-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   /* Breakdown-строки: фикс-лейбл 200px не влезает → гибкие колонки */
   .v2-hp-brow {
     grid-template-columns: minmax(0, 1.5fr) 1fr 42px 30px;

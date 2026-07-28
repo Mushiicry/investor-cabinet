@@ -4,6 +4,7 @@ import {
   buildCapitalLadderPlan,
   buildCapitalLadderSteps,
 } from "../../src/v2/lib/capitalLadder";
+import { WIFE_INVESTOR_STRATEGY } from "../../src/v2/lib/investorStrategy";
 
 describe("лестница капитала", () => {
   it("считает ближайшую ступень от общего депозита, а не рыночной стоимости", () => {
@@ -57,5 +58,23 @@ describe("лестница капитала", () => {
 
     expect(limits.map((limit) => limit.label)).toEqual(["Крупная крипта", "Альткоин", "Одна акция", "Один металл", "Фьючерсы"]);
     expect(limits.map((limit) => limit.valueUsd)).toEqual([210, 30, 50, 50, 100]);
+  });
+
+  it("для стратегии Полины строит ступень без фьючерсов и со своими лимитами", () => {
+    const plan = buildCapitalLadderPlan(606.7, WIFE_INVESTOR_STRATEGY);
+    const limits = buildCapitalLadderAssetLimits(plan, WIFE_INVESTOR_STRATEGY);
+
+    expect(plan.reserveTargetUsd).toBe(100);
+    expect(plan.reserveFloorUsd).toBe(100);
+    expect(plan.cryptoMaxUsd).toBe(750);
+    expect(plan.futuresMaxUsd).toBe(0);
+    expect(plan.stocksMaxUsd).toBe(70);
+    expect(plan.metalsMaxUsd).toBe(80);
+    expect(plan.majorCryptoMaxUsd).toBe(562.5);
+    expect(plan.altCryptoMaxUsd).toBe(0);
+    expect(plan.limits.map((limit) => limit.label)).toEqual(["Резерв", "Крипта до", "Акции до", "Металлы до"]);
+    expect(plan.limits.map((limit) => limit.sharePct)).toEqual([10, 75, 7, 8]);
+    expect(limits.map((limit) => limit.label)).toEqual(["ETH", "BTC / TON", "SOL", "Одна акция", "Золото"]);
+    expect(limits.map((limit) => limit.valueUsd)).toEqual([562.5, 75, 37.5, 70, 80]);
   });
 });

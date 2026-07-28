@@ -22,6 +22,17 @@ const CONCENTRATION_HARD = 0.5; // 0 при ≥50% (лимит на позици
 
 const DISCIPLINE_JOURNAL_TARGET_COVERAGE = 0.8;
 
+export type PortfolioHealthStrategy = {
+  reserveFloorShare: number;
+  reserveTargetShare: number;
+  reserveBandMaxShare: number;
+  futuresMaxShare: number;
+  futuresAllowed: boolean;
+  maxStockSlots: number;
+  maxMetalSlots: number;
+  maxAltcoinSlots: number;
+};
+
 // Лимиты плеча по фьючерсам (правило инвестора):
 // мажоры (BTC / золото) — до 3x, всё остальное (альты) — до 2x.
 export const FUTURES_LEVERAGE_LIMIT_MAJOR = 3;
@@ -271,18 +282,26 @@ export const DIVERSIFIABLE_CLASSES = ["Крипта", "Металлы", "Акц�
  */
 const RESERVE_FLOOR_SCORE = 30; // балл ровно на полу 10% — допустимо, но на пределе
 
-export function computeReserveScore(reserveShare: number): number {
+export function computeReserveScore(
+  reserveShare: number,
+  strategy?: Pick<PortfolioHealthStrategy, "reserveFloorShare" | "reserveTargetShare" | "reserveBandMaxShare">,
+): number {
+  const reserveFloorShare = strategy?.reserveFloorShare ?? RESERVE_FLOOR_SHARE;
+  const reserveTargetShare = strategy?.reserveTargetShare ?? RESERVE_TARGET_SHARE;
+  const reserveBandMaxShare = strategy?.reserveBandMaxShare ?? RESERVE_BAND_MAX_SHARE;
   if (reserveShare <= 0) return 0;
-  if (reserveShare < RESERVE_FLOOR_SHARE) {
-    return Math.round((reserveShare / RESERVE_FLOOR_SHARE) * RESERVE_FLOOR_SCORE);
+  if (reserveShare < reserveFloorShare) {
+    return Math.round((reserveShare / reserveFloorShare) * RESERVE_FLOOR_SCORE);
   }
-  if (reserveShare < RESERVE_TARGET_SHARE) {
+  if (reserveShare < reserveTargetShare) {
     const progress =
-      (reserveShare - RESERVE_FLOOR_SHARE) / (RESERVE_TARGET_SHARE - RESERVE_FLOOR_SHARE);
+      reserveTargetShare > reserveFloorShare
+        ? (reserveShare - reserveFloorShare) / (reserveTargetShare - reserveFloorShare)
+        : 1;
     return Math.round(RESERVE_FLOOR_SCORE + progress * (100 - RESERVE_FLOOR_SCORE));
   }
-  if (reserveShare <= RESERVE_BAND_MAX_SHARE) return 100;
-  return score((1 - reserveShare) / (1 - RESERVE_BAND_MAX_SHARE));
+  if (reserveShare <= reserveBandMaxShare) return 100;
+  return score((1 - reserveShare) / (1 - reserveBandMaxShare));
 }
 
 // Эталон диверсификации — не равные доли, а структура из манифеста.
@@ -355,6 +374,7 @@ export type HealthInput = {
   revengeTrades30d?: number;
   overtradingDays30d?: number;
   disciplineCooldownActive?: boolean;
+  strategy?: PortfolioHealthStrategy;
 };
 
 export type PortfolioHealth = {
@@ -365,18 +385,28 @@ export type PortfolioHealth = {
 };
 
 export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
-  // ── Резерв (Risk First): коридор 30–60%, см. computeReserveScore ──
+  const strategy = input.strategy;
+  const reserveFloorShare = strategy?.reserveFloorShare ?? RESERVE_FLOOR_SHARE;
+  const reserveTargetShare = strategy?.reserveTargetShare ?? RESERVE_TARGET_SHARE;
+  const reserveBandMaxShare = strategy?.reserveBandMaxShare ?? RESERVE_BAND_MAX_SHARE;
+  const futuresMaxShare = strategy?.futuresMaxShare ?? MAX_FUTURES_EXPOSURE_SHARE;
+  const futuresAllowed = strategy?.futuresAllowed ?? true;
+  const maxStockSlots = strategy?.maxStockSlots ?? 2;
+  const maxMetalSlots = strategy?.maxMetalSlots ?? 2;
+  const maxAltcoinSlots = strategy?.maxAltcoinSlots ?? 3;
+
+  // ── Резерв (Risk First): коридор берётся из стратегии аккаунта. ──
   const reserveShare = input.reserveShare ?? input.cashShare;
-  const reserveScore = computeReserveScore(reserveShare);
+  const reserveScore = computeReserveScore(reserveShare, strategy);
   const reserveUsd = input.portfolioValue ? reserveShare * input.portfolioValue : undefined;
   const reserveFloorUsd = input.portfolioValue
-    ? RESERVE_FLOOR_SHARE * input.portfolioValue
+    ? reserveFloorShare * input.portfolioValue
     : undefined;
   const reserveTargetUsd = input.portfolioValue
-    ? RESERVE_TARGET_SHARE * input.portfolioValue
+    ? reserveTargetShare * input.portfolioValue
     : undefined;
   const reserveBandMaxUsd = input.portfolioValue
-    ? RESERVE_BAND_MAX_SHARE * input.portfolioValue
+    ? reserveBandMaxShare * input.portfolioValue
     : undefined;
   const reserveFloorShortfallUsd =
     reserveFloorUsd !== undefined && reserveUsd !== undefined
@@ -394,20 +424,20 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   const reserveWarnings: string[] = [];
   if (reserveShare <= 0) {
     reserveBlockers.push("Резерв отсутствует");
-  } else if (reserveShare < RESERVE_FLOOR_SHARE) {
-    reserveBlockers.push("Резерв ниже пола 10%");
+  } else if (reserveShare < reserveFloorShare) {
+    reserveBlockers.push(`Резерв ниже пола ${Math.round(reserveFloorShare * 100)}%`);
   }
-  if (reserveShare >= RESERVE_FLOOR_SHARE && reserveShare < RESERVE_TARGET_SHARE) {
-    reserveWarnings.push("Резерв ниже цели 30%");
+  if (reserveShare >= reserveFloorShare && reserveShare < reserveTargetShare) {
+    reserveWarnings.push(`Резерв ниже цели ${Math.round(reserveTargetShare * 100)}%`);
   }
-  if (reserveShare > RESERVE_BAND_MAX_SHARE) {
-    reserveWarnings.push("Резерв выше 60% — капитал простаивает");
+  if (reserveShare > reserveBandMaxShare) {
+    reserveWarnings.push(`Резерв выше ${Math.round(reserveBandMaxShare * 100)}% — капитал простаивает`);
   }
   const reserveFormula = [
     `Текущий резерв: ${Math.round(reserveShare * 100)}%`,
-    `Пол: ${Math.round(RESERVE_FLOOR_SHARE * 100)}%`,
-    `Цель: ${Math.round(RESERVE_TARGET_SHARE * 100)}%`,
-    `Норма: ${Math.round(RESERVE_TARGET_SHARE * 100)}–${Math.round(RESERVE_BAND_MAX_SHARE * 100)}%`,
+    `Пол: ${Math.round(reserveFloorShare * 100)}%`,
+    `Цель: ${Math.round(reserveTargetShare * 100)}%`,
+    `Норма: ${Math.round(reserveTargetShare * 100)}–${Math.round(reserveBandMaxShare * 100)}%`,
   ];
 
   // ── Контроль риска: 10% — верхняя граница, а не цель пополнения ──
@@ -415,12 +445,16 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   // стимулировать «добивать» счёт до 10%. Снижение балла начинается только при
   // превышении лимита, нарушении плеча, лишних позициях или риске ликвидации.
   const futuresCapBase = input.investedCapital ?? input.portfolioValue ?? 0;
-  const futuresCapUsd = futuresCapBase > 0 ? MAX_FUTURES_EXPOSURE_SHARE * futuresCapBase : undefined;
+  const futuresCapUsd = futuresCapBase > 0 ? futuresMaxShare * futuresCapBase : undefined;
   const futuresUsedUsd = futuresCapBase > 0 ? input.futuresShare * futuresCapBase : undefined;
   const futuresCapUtilization =
-    futuresCapUsd && futuresCapUsd > 0 && futuresUsedUsd !== undefined
+    futuresCapUsd !== undefined && futuresCapUsd > 0 && futuresUsedUsd !== undefined
       ? futuresUsedUsd / futuresCapUsd
-      : input.futuresShare / MAX_FUTURES_EXPOSURE_SHARE;
+      : futuresMaxShare > 0
+        ? input.futuresShare / futuresMaxShare
+        : input.futuresShare > 0
+          ? Infinity
+          : 0;
   const futuresRemainingUsd =
     futuresCapUsd !== undefined && futuresUsedUsd !== undefined
       ? Math.max(0, futuresCapUsd - futuresUsedUsd)
@@ -477,8 +511,10 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
 
   const riskControlBlockers: string[] = [];
   const riskControlWarnings: string[] = [];
-  if (overLimit > 0) {
-    riskControlBlockers.push("Превышен лимит 10% активной торговли");
+  if (!futuresAllowed && input.futuresShare > 0) {
+    riskControlBlockers.push("Фьючерсы запрещены стратегией");
+  } else if (overLimit > 0) {
+    riskControlBlockers.push(`Превышен лимит ${Math.round(futuresMaxShare * 100)}% активной торговли`);
   } else if (futuresCapUtilization >= 0.8) {
     riskControlWarnings.push("Лимит активной торговли почти выбран");
   }
@@ -594,9 +630,10 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     usePerAssetConcentration &&
     altcoinSlotsUsed !== undefined &&
     altcoinSlotsTotal !== undefined &&
-    altcoinSlotsUsed === altcoinSlotsTotal
+      maxAltcoinSlots > 0 &&
+      altcoinSlotsUsed === altcoinSlotsTotal
   ) {
-    concentrationWarnings.push("Все 3 альткоин-места заняты");
+    concentrationWarnings.push(`Все ${maxAltcoinSlots} альткоин-места заняты`);
   }
   if (
     usePerAssetConcentration &&
@@ -609,9 +646,9 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     usePerAssetConcentration &&
     stockSlotsUsed !== undefined &&
     stockSlotsTotal !== undefined &&
-    stockSlotsUsed === stockSlotsTotal
+      stockSlotsUsed === stockSlotsTotal
   ) {
-    concentrationWarnings.push("Все 2 места акций заняты");
+    concentrationWarnings.push(`Все ${maxStockSlots} места акций заняты`);
   }
   if (
     usePerAssetConcentration &&
@@ -624,9 +661,9 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     usePerAssetConcentration &&
     metalSlotsUsed !== undefined &&
     metalSlotsTotal !== undefined &&
-    metalSlotsUsed === metalSlotsTotal
+      metalSlotsUsed === metalSlotsTotal
   ) {
-    concentrationWarnings.push("Все 2 места металлов заняты");
+    concentrationWarnings.push(`Все ${maxMetalSlots} места металлов заняты`);
   }
   const concentrationFormula = usePerAssetConcentration
     ? [
@@ -653,7 +690,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
         "Лимит legacy-модели: 35% портфеля",
       ];
   const concentrationDesc = usePerAssetConcentration
-    ? "У каждого актива свой лимит: ETH 35% / BTC 20% / SOL·TON·BNB 10% / альты 5% внутри крипто-блока; акции и металлы — 5% портфеля на актив и максимум 2 актива в классе. Балл = системный риск крупнейшей позиции минус ограниченный штраф за активы сверх лимита."
+    ? "У каждого актива свой лимит по стратегии аккаунта: крипто-активы считаются внутри крипто-блока, акции и металлы — по доле портфеля и числу разрешённых позиций. Балл = системный риск крупнейшей позиции минус ограниченный штраф за активы сверх лимита."
     : "Нет перегруза одним активом (≤35%).";
 
   // ── Выживаемость: продолжит ли система работать после сильного падения. ──
@@ -766,7 +803,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       v2Key: "reserve",
       label: "Резерв",
       color: "#56d8f5",
-      desc: "Выделенный резерв. Пол 10%, цель 30%, коридор нормы 30–60%. Ниже пола новые рисковые действия запрещены; выше 60% начинается штраф за простой капитала.",
+      desc: `Выделенный резерв. Пол ${Math.round(reserveFloorShare * 100)}%, цель ${Math.round(reserveTargetShare * 100)}%, коридор нормы ${Math.round(reserveTargetShare * 100)}–${Math.round(reserveBandMaxShare * 100)}%. Ниже пола новые рисковые действия запрещены; выше верхней границы начинается штраф за простой капитала.`,
       weight: 0.2,
       score: reserveScore,
       meta: {
@@ -815,9 +852,11 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     {
       key: "futures",
       v2Key: "riskControl",
-      label: "Контроль риска",
+      label: futuresAllowed ? "Контроль риска" : "Качество активов",
       color: "#e8b35a",
-      desc: "Активная торговля — не более 10% капитала. Балл = 100 минус штраф за превышение лимита, плечо, лишние позиции и близкую ликвидацию. Свободная часть лимита не ухудшает здоровье.",
+      desc: futuresAllowed
+        ? `Активная торговля — не более ${Math.round(futuresMaxShare * 100)}% капитала. Балл = 100 минус штраф за превышение лимита, плечо, лишние позиции и близкую ликвидацию. Свободная часть лимита не ухудшает здоровье.`
+        : "Проверка чистоты портфеля: фьючерсы запрещены стратегией, случайные активы должны блокироваться на уровне лимитов и качества активов.",
       weight: 0.15,
       score: futuresScore,
       meta: {

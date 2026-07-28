@@ -21,6 +21,8 @@ import { V2PortfolioPage } from "./V2PortfolioPage";
 import type { TonStaking } from "../../hooks/useTonStaking";
 import type { CosmosStaking } from "../../hooks/useCosmosStaking";
 import { V2HealthPage } from "./V2HealthPage";
+import { V2InvestorDNAPage } from "./V2InvestorDNAPage";
+import { V2EducationPage } from "./V2EducationPage";
 import { V2NotificationsPanel } from "./V2NotificationsPanel";
 import { buildPortfolioAlerts, sortAlerts, type Alert } from "../lib/portfolioAlerts";
 import { V2Sidebar } from "./V2Sidebar";
@@ -252,9 +254,10 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             disciplineCooldownActive: behavior.healthInputs.disciplineCooldownActive,
           },
           previousHealthFactor,
+          strategy: data.strategy,
         })
       ),
-    [behaviorPortfolio, data.positions, data.allocation, data.fearGreedStrategy.currentIndex, marketPsychology, behaviorHealth, data.signals, behavior.healthInputs.disciplineCooldownActive, previousHealthFactor]
+    [behaviorPortfolio, data.positions, data.allocation, data.fearGreedStrategy.currentIndex, marketPsychology, behaviorHealth, data.signals, behavior.healthInputs.disciplineCooldownActive, previousHealthFactor, data.strategy]
   );
 
   const criticalCount = alerts.filter((alert) => alert.level === "critical").length;
@@ -410,6 +413,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
               : data.signals?.interest
                 ? [data.signals.interest]
                 : []}
+            strategy={data.strategy}
             disciplineCooldownActive={behavior.healthInputs.disciplineCooldownActive}
             onOpenTradeCandidate={handleOpenTradeCandidate}
             onNavigate={handleNavigate}
@@ -423,6 +427,8 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             fearGreedStrategy={data.fearGreedStrategy}
             assetQuality={data.assetQuality}
             healthInput={behaviorHealthInput}
+            strategy={data.strategy}
+            profile={data.profile}
             futuresShare={data.risk.futuresShare}
             onSaveDecision={handleSaveDecision}
             candidate={tradeCandidate}
@@ -438,6 +444,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             realizedPnlUsd={data.portfolio.realizedPnlUsd}
             decisionJournal={decisionJournal}
             behavior={behavior}
+            strategy={data.strategy}
             onDeleteDecision={handleDeleteDecision}
           />
         ) : page === "portfolio" ? (
@@ -448,6 +455,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             cosmosStaking={cosmosStaking}
             realizedPnlUsd={data.portfolio.realizedPnlUsd}
             realizedPnlPct={data.portfolio.realizedPnlPct}
+            strategy={data.strategy}
           />
         ) : page === "scenarios" ? (
           <V2ScenariosPage playbook={data.playbook} positions={data.positions} />
@@ -456,13 +464,24 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             portfolio={behaviorPortfolio}
             health={behaviorHealth}
             healthInput={behaviorHealthInput}
+            strategy={data.strategy}
+            dna={data.dna}
+            onOpenDNA={() => handleNavigate("dna")}
           />
+        ) : page === "dna" ? (
+          <V2InvestorDNAPage
+            dna={data.dna}
+            onNavigate={handleNavigate}
+          />
+        ) : page === "education" ? (
+          <V2EducationPage />
         ) : page === "risk" ? (
           <V2RiskEnginePage
             portfolio={behaviorPortfolio}
             health={behaviorHealth}
             risk={data.risk}
             allocation={data.allocation}
+            strategy={data.strategy}
           />
         ) : (
         <section className="v2-command-grid" aria-label="Investor Cabinet V2 overview">
@@ -478,6 +497,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
                 portfolio={behaviorPortfolio}
                 allocation={data.allocation}
                 strategy={data.fearGreedStrategy}
+                investorStrategy={data.strategy}
                 futuresShare={data.risk.futuresShare}
               />
             </div>
@@ -489,25 +509,27 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
               portfolio={behaviorPortfolio}
               health={behaviorHealth}
               healthInput={behaviorHealthInput}
+              strategy={data.strategy}
               onChipSelect={setSelectedChip}
               onNavigate={onNavigate}
             />
           </div>
 
           <div className="v2-cap-ladder-slot">
-            <V2CapitalLadder portfolio={behaviorPortfolio} />
+            <V2CapitalLadder portfolio={behaviorPortfolio} strategy={data.strategy} />
           </div>
 
           {/* Под радаром: распределение + DCA рядом */}
           <div className="v2-alloc-center-row">
             <div className="v2-alloc-center-inner">
               <span aria-hidden="true" className="v2-hud-corners" />
-              <V2PortfolioAllocationCard allocation={data.allocation} total={data.portfolio.totalPortfolioValue} positions={data.positions} futuresShare={data.risk.futuresShare} />
+              <V2PortfolioAllocationCard allocation={data.allocation} total={data.portfolio.totalPortfolioValue} positions={data.positions} strategy={data.strategy} futuresShare={data.risk.futuresShare} />
             </div>
             <div className="v2-alloc-dca-slot">
               <V2DCAStrategy
                 portfolio={behaviorPortfolio}
                 strategy={data.fearGreedStrategy}
+                investorStrategy={data.strategy}
                 onNavigate={onNavigate}
               />
             </div>
@@ -552,6 +574,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         <V2HealthDetailModal
           component={selectedChip}
           portfolio={behaviorPortfolio}
+          strategy={data.strategy}
           onClose={() => setSelectedChip(null)}
         />
       )}

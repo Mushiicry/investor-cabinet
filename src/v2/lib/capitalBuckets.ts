@@ -1,10 +1,7 @@
 import {
-  MAX_CRYPTO_EXPOSURE_SHARE,
-  MAX_FUTURES_EXPOSURE_SHARE,
-  MAX_METALS_EXPOSURE_SHARE,
-  MAX_STOCKS_EXPOSURE_SHARE,
-  RESERVE_TARGET_SHARE,
-} from "../../config/riskRules";
+  MAIN_INVESTOR_STRATEGY,
+  type InvestorStrategy,
+} from "./investorStrategy";
 
 type AllocationItem = {
   name: string;
@@ -23,6 +20,7 @@ export type CapitalBucketsInput = {
   allocation: AllocationItem[];
   strategyRules?: StrategyRule[];
   futuresDeployableUsd?: number;
+  investorStrategy?: InvestorStrategy;
 };
 
 export type CapitalBuckets = {
@@ -51,9 +49,10 @@ function takeBudget(remaining: number, target: number): [number, number] {
 }
 
 export function buildCapitalBuckets(input: CapitalBucketsInput): CapitalBuckets {
+  const investorStrategy = input.investorStrategy ?? MAIN_INVESTOR_STRATEGY;
   const total = clampMin0(input.totalPortfolioValue);
   const freeCash = clampMin0(input.stableReserve);
-  const lockedReserve = Math.min(freeCash, total * RESERVE_TARGET_SHARE);
+  const lockedReserve = Math.min(freeCash, total * investorStrategy.reserveTargetShare);
   let remaining = clampMin0(freeCash - lockedReserve);
 
   const currentCrypto = clampMin0(allocationValue(input.allocation, "Крипта"));
@@ -61,23 +60,23 @@ export function buildCapitalBuckets(input: CapitalBucketsInput): CapitalBuckets 
   const currentMetals = clampMin0(allocationValue(input.allocation, "Металлы"));
   const currentStocks = clampMin0(allocationValue(input.allocation, "Акции"));
 
-  const futuresTarget = clampMin0(
-    input.futuresDeployableUsd ?? total * MAX_FUTURES_EXPOSURE_SHARE - currentFutures,
-  );
+  const futuresTarget = investorStrategy.futuresAllowed
+    ? clampMin0(input.futuresDeployableUsd ?? total * investorStrategy.futuresMaxShare - currentFutures)
+    : 0;
   const averagingTarget = clampMin0(
     (input.strategyRules ?? [])
       .filter((rule) => rule.buyPct > 0 && rule.status !== "cooldown")
       .reduce((sum, rule) => sum + clampMin0(rule.buyAmount), 0),
   );
-  const metalsTarget = clampMin0(total * MAX_METALS_EXPOSURE_SHARE - currentMetals);
-  const stocksTarget = clampMin0(total * MAX_STOCKS_EXPOSURE_SHARE - currentStocks);
-  const cryptoTarget = clampMin0(total * MAX_CRYPTO_EXPOSURE_SHARE - currentCrypto);
+  const metalsTarget = clampMin0(total * investorStrategy.metalsMaxShare - currentMetals);
+  const stocksTarget = clampMin0(total * investorStrategy.stocksMaxShare - currentStocks);
+  const cryptoTarget = clampMin0(total * investorStrategy.cryptoMaxShare - currentCrypto);
 
   let futuresBudget = 0;
   let averagingBudget = 0;
 
   [averagingBudget, remaining] = takeBudget(remaining, averagingTarget);
-  [futuresBudget, remaining] = takeBudget(remaining, Math.min(futuresTarget, total * MAX_FUTURES_EXPOSURE_SHARE));
+  [futuresBudget, remaining] = takeBudget(remaining, Math.min(futuresTarget, total * investorStrategy.futuresMaxShare));
 
   const spotBudget = remaining;
   const metalsBudget = Math.min(spotBudget, metalsTarget);

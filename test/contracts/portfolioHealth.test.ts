@@ -8,6 +8,7 @@ import {
   toLegacyHealthComponentKey,
   type HealthInput,
 } from "../../src/lib/portfolioHealth";
+import { WIFE_INVESTOR_STRATEGY } from "../../src/v2/lib/investorStrategy";
 
 const base: HealthInput = {
   cashShare: 0.3,
@@ -101,6 +102,34 @@ describe("health concentration — per-asset score passthrough", () => {
     expect(r.meta?.reserveBlockers).toEqual([]);
     expect(r.meta?.reserveWarnings).toEqual(["Резерв выше 60% — капитал простаивает"]);
     expect(r.meta?.reserveIdleUsd).toBeCloseTo(100, 2);
+  });
+
+  it("стратегия Полины: резерв 10% является нормой, а фьючерсы запрещены", () => {
+    const clean = computePortfolioHealth({
+      ...base,
+      reserveShare: 0.1,
+      cashShare: 0.1,
+      futuresShare: 0,
+      portfolioValue: 1000,
+      investedCapital: 1000,
+      strategy: WIFE_INVESTOR_STRATEGY,
+    });
+    const withFutures = computePortfolioHealth({
+      ...base,
+      reserveShare: 0.1,
+      cashShare: 0.1,
+      futuresShare: 0.02,
+      portfolioValue: 1000,
+      investedCapital: 1000,
+      strategy: WIFE_INVESTOR_STRATEGY,
+    });
+
+    expect(reserve(clean).score).toBe(100);
+    expect(reserve(clean).meta?.reserveFormula).toContain("Цель: 10%");
+    expect(findHealthComponentByKey(clean.components, "riskControl")?.label).toBe("Качество активов");
+    expect(findHealthComponentByKey(clean.components, "riskControl")?.score).toBe(100);
+    expect(findHealthComponentByKey(withFutures.components, "riskControl")?.score).toBe(0);
+    expect(findHealthComponentByKey(withFutures.components, "riskControl")?.meta?.riskControlBlockers).toContain("Фьючерсы запрещены стратегией");
   });
 
   it("готовый concentrationScore используется как есть", () => {

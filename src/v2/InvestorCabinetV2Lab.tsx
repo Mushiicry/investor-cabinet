@@ -19,6 +19,8 @@ import { maybeRecordSnapshot } from "../services/dailySnapshotService";
 import type { PortfolioState } from "../types/portfolio";
 import { buildLiveV2Data, buildZeroedV2Data } from "./lib/v2LabData";
 import type { InvestorStrategy } from "./lib/investorStrategy";
+import type { InvestorProfile } from "./lib/investorProfile";
+import type { InvestorDNA } from "./lib/investorDNA";
 import "./v2.css";
 
 export type V2Portfolio = {
@@ -94,6 +96,8 @@ export type V2Scenario = {
 
 export type V2LabData = {
   strategy: InvestorStrategy;
+  profile: InvestorProfile;
+  dna: InvestorDNA;
   portfolio: V2Portfolio;
   positions: V2Position[];
   risk: V2Risk;
@@ -113,10 +117,10 @@ export type V2LabData = {
 };
 
 
-export type V2Page = "overview" | "portfolio" | "scenarios" | "risk" | "reports" | "signals" | "settings" | "health" | "gate";
+export type V2Page = "overview" | "portfolio" | "scenarios" | "risk" | "reports" | "signals" | "settings" | "health" | "gate" | "dna" | "education";
 
 export default function InvestorCabinetV2Lab() {
-  const { configured, user } = useAuth();
+  const { configured, loading: authLoading, user } = useAuth();
   const [page, setPage] = useState<V2Page>("overview");
   const [authOpen, setAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState<"signin" | "signup">("signin");
@@ -125,10 +129,12 @@ export default function InvestorCabinetV2Lab() {
     []
   );
   const wife = isWifeEmail(user?.email);
+  const investorDataReady = !configured || !authLoading;
   const investorData = useInvestorData(
     fallbackData,
     wife ? WIFE_API_URL : INVESTOR_API_URL,
-    wife ? "wife" : undefined
+    wife ? "wife" : undefined,
+    investorDataReady,
   );
   const blockchainTxs = useWifeTransactions(wife);
   const fearGreedLive = useFearGreed();
@@ -208,7 +214,7 @@ export default function InvestorCabinetV2Lab() {
   }, [wife, data, blockchainTxs]);
 
   // Гейт: авторизация настроена и пользователь не вошёл → дашборд заблокирован.
-  const locked = configured && !user;
+  const locked = configured && !authLoading && !user;
 
   // Автооткрытие окна входа, когда дашборд под замком.
   useEffect(() => {

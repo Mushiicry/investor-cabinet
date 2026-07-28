@@ -42,6 +42,7 @@ export type DecisionReasonKind =
   | "слоты"
   | "выживаемость"
   | "качество_актива"
+  | "портрет_инвестора"
   | "дисциплина"
   | "рыночная_лестница"
   | "рыночная_психология"
@@ -107,6 +108,7 @@ export type DecisionHealthPreview = {
 function reasonKind(label: string): DecisionReasonKind {
   const lower = label.toLowerCase();
   if (lower.includes("капитал")) return "капитал";
+  if (lower.includes("портрет")) return "портрет_инвестора";
   if (lower.includes("позици") || lower.includes("доля ")) return "позиция";
   if (lower.includes("мест")) return "слоты";
   if (lower.includes("класс") || lower.includes("портфел")) return "класс";
@@ -176,7 +178,7 @@ function postTradeHealthInput(input: TradeInput, ctx: DecisionContext): HealthIn
   const projectedCryptoBlock = projectedPositions
     .filter((position) => position.category === CRYPTO_CATEGORY)
     .reduce((sum, position) => sum + Math.max(0, position.value), 0);
-  const concentration = assetConcentration(projectedPositions, projectedCryptoBlock, total);
+  const concentration = assetConcentration(projectedPositions, projectedCryptoBlock, total, ctx.investorStrategy);
   const reserveAfterUsd = Math.max(0, ctx.stableReserve - amount);
   const amountShare = amount / total;
   const categoryShare = (name: string) => {

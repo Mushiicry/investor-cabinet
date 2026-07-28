@@ -21,27 +21,57 @@ export type InvestorDataResult = DataLoadState<PortfolioState> & {
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unknown investor data error";
 
+const buildInitialInvestorDataState = (
+  fallbackData: PortfolioState,
+  cacheSlot: "wife" | undefined,
+  allowCache: boolean,
+): InvestorDataResult => {
+  if (!allowCache) {
+    return {
+      data: fallbackData,
+      isLoading: true,
+      isRefreshing: false,
+      status: "initial-loading",
+      error: null,
+      lastLoadedAt: null,
+      source: "fallback",
+    };
+  }
+
+  const cachedInvestorState = readCachedInvestorState(cacheSlot);
+
+  return {
+    data: cachedInvestorState?.data ?? fallbackData,
+    isLoading: true,
+    isRefreshing: Boolean(cachedInvestorState),
+    status: cachedInvestorState ? "refreshing" : "initial-loading",
+    error: null,
+    lastLoadedAt: cachedInvestorState?.cachedAt ?? null,
+    source: cachedInvestorState ? "cache" : "fallback",
+  };
+};
+
 export function useInvestorData(
   fallbackData: PortfolioState,
   apiUrl: string = INVESTOR_API_URL,
-  cacheSlot?: "wife"
+  cacheSlot?: "wife",
+  enabled = true,
 ): InvestorDataResult {
-  const [state, setState] = useState<InvestorDataResult>(() => {
-    const cachedInvestorState = readCachedInvestorState(cacheSlot);
-
-    return {
-      data: cachedInvestorState?.data ?? fallbackData,
-      isLoading: true,
-      isRefreshing: Boolean(cachedInvestorState),
-      status: cachedInvestorState ? "refreshing" : "initial-loading",
-      error: null,
-      lastLoadedAt: cachedInvestorState?.cachedAt ?? null,
-      source: cachedInvestorState ? "cache" : "fallback",
-    };
-  });
+  const [state, setState] = useState<InvestorDataResult>(() =>
+    buildInitialInvestorDataState(fallbackData, cacheSlot, enabled)
+  );
 
   useEffect(() => {
     let isMounted = true;
+
+    if (!enabled) {
+      setState(buildInitialInvestorDataState(fallbackData, cacheSlot, false));
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setState(buildInitialInvestorDataState(fallbackData, cacheSlot, true));
 
     const loadInvestorData = async () => {
       setState((prev) => ({
@@ -143,7 +173,7 @@ export function useInvestorData(
       isMounted = false;
       clearInterval(interval);
     };
-  }, [apiUrl, cacheSlot]);
+  }, [apiUrl, cacheSlot, enabled, fallbackData]);
 
   return state;
 }

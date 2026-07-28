@@ -9,6 +9,7 @@ import { useEscapeClose } from "../../hooks/useEscapeClose";
 import { V2SourceTag } from "./V2SourceTag";
 import { V2StakingCard } from "./V2StakingCard";
 import { V2CosmosStakingCard } from "./V2CosmosStakingCard";
+import type { InvestorStrategy } from "../lib/investorStrategy";
 
 type Props = {
   positions: V2Position[];
@@ -18,6 +19,7 @@ type Props = {
   /** Реализованный профит по закрытым позициям — $ и доля 0..1. */
   realizedPnlUsd?: number;
   realizedPnlPct?: number;
+  strategy?: InvestorStrategy;
 };
 
 const money0 = new Intl.NumberFormat("ru-RU", {
@@ -234,7 +236,7 @@ function PlaybookModal({
   );
 }
 
-export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, realizedPnlUsd, realizedPnlPct }: Props) {
+export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, realizedPnlUsd, realizedPnlPct, strategy }: Props) {
   const [selected, setSelected] = useState<{ card: PlaybookCard; position: V2Position } | null>(null);
   // Какая стейкинг-плашка раскрыта (по тикеру актива): "TON" | "ATOM" | null
   const [openStake, setOpenStake] = useState<string | null>(null);
@@ -252,6 +254,9 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, r
   const stablesTotal = stables.reduce((sum, position) => sum + position.value, 0);
 
   const showRealized = typeof realizedPnlUsd === "number" && realizedPnlUsd !== 0;
+  const visibleGroups = GROUPS.filter(
+    (group) => strategy?.futuresAllowed !== false || group.category !== "Фьючерсы",
+  );
 
   return (
     <section className="v2-port-page" aria-label="Портфель — все позиции">
@@ -271,7 +276,7 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, r
         </div>
       )}
       <div className="v2-panel v2-port-table">
-        {GROUPS.map((group) => {
+        {visibleGroups.map((group) => {
           const rows = positions
             .filter((position) => position.category === group.category)
             .sort((a, b) => b.invested - a.invested);

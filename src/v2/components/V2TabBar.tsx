@@ -36,6 +36,16 @@ const TABS = [
     ),
   },
   {
+    page: "education" as V2Page,
+    label: "Обучение",
+    icon: (
+      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M3 3.5h4.6c1 0 1.4.4 1.4 1.4v10c0-1-.4-1.4-1.4-1.4H3V3.5z" strokeLinejoin="round" />
+        <path d="M15 3.5h-4.6C9.4 3.5 9 3.9 9 4.9v10c0-1 .4-1.4 1.4-1.4H15V3.5z" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     page: "signals" as V2Page,
     label: "Сигналы",
     icon: (

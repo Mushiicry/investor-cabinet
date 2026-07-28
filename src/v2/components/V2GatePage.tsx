@@ -18,6 +18,8 @@ import { BINANCE_MONITORING_ASSET_QUALITY } from "../lib/assetQualitySource";
 import type { DecisionJournalDraft } from "../lib/decisionJournal";
 import { getMarketPsychology } from "../lib/marketPsychology";
 import type { TradeCandidate } from "../lib/tradeCandidate";
+import type { InvestorStrategy } from "../lib/investorStrategy";
+import type { InvestorProfile } from "../lib/investorProfile";
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -26,6 +28,8 @@ type Props = {
   fearGreedStrategy: V2LabData["fearGreedStrategy"];
   assetQuality: V2LabData["assetQuality"];
   healthInput: V2LabData["healthInput"];
+  strategy?: InvestorStrategy;
+  profile?: InvestorProfile;
   futuresShare?: number;
   onSaveDecision?: (draft: DecisionJournalDraft) => void;
   candidate?: TradeCandidate | null;
@@ -64,7 +68,7 @@ function checkValues(c: GateCheck) {
   return { before: usd(c.before), after: usd(c.after), limit: usd(c.limit) };
 }
 
-function bucketRows(buckets: CapitalBuckets) {
+function bucketRows(buckets: CapitalBuckets, strategy?: InvestorStrategy) {
   return [
     { label: "Резерв", value: buckets.lockedReserveUsd },
     { label: "Фьючерсы", value: buckets.futuresBudgetUsd },
@@ -72,7 +76,7 @@ function bucketRows(buckets: CapitalBuckets) {
     { label: "Спот", value: buckets.spotBudgetUsd },
     { label: "Металлы до", value: buckets.metalsBudgetUsd },
     { label: "Акции до", value: buckets.stocksBudgetUsd },
-  ];
+  ].filter((row) => strategy?.futuresAllowed !== false || row.label !== "Фьючерсы" || row.value > 0);
 }
 
 export function V2GatePage({
@@ -82,6 +86,8 @@ export function V2GatePage({
   fearGreedStrategy,
   assetQuality,
   healthInput,
+  strategy,
+  profile,
   futuresShare = 0,
   onSaveDecision,
   candidate,
@@ -142,6 +148,16 @@ export function V2GatePage({
   };
 
   const phase = useMemo(() => getMarketPhase(new Date()), []);
+  const usesAccountStrategyLimits = strategy?.id === "wife";
+  const effectiveReserveFloorShare = usesAccountStrategyLimits
+    ? strategy.reserveFloorShare
+    : phase.reserveFloorShare;
+  const effectiveCryptoMaxShare = usesAccountStrategyLimits
+    ? strategy.cryptoMaxShare
+    : phase.cryptoMaxShare;
+  const effectiveSpotReserveFloorShare = usesAccountStrategyLimits
+    ? strategy.spotReserveFloorShare
+    : SPOT_RESERVE_FLOOR_SHARE;
 
   const capitalBuckets = useMemo(
     () =>
@@ -151,14 +167,18 @@ export function V2GatePage({
         allocation: allocation.map((a) => ({ name: a.name, value: a.value })),
         strategyRules: fearGreedStrategy.rules,
         futuresDeployableUsd: portfolio.futuresDeployable,
+        investorStrategy: strategy,
       }),
-    [portfolio.totalPortfolioValue, portfolio.stableReserve, portfolio.futuresDeployable, allocation, fearGreedStrategy.rules],
+    [portfolio.totalPortfolioValue, portfolio.stableReserve, portfolio.futuresDeployable, allocation, fearGreedStrategy.rules, strategy],
   );
 
   const activeAssetQuality = assetQuality?.connected ? assetQuality : BINANCE_MONITORING_ASSET_QUALITY;
+  const gateSpotDeployable = usesAccountStrategyLimits
+    ? capitalBuckets.workCashUsd
+    : portfolio.spotDeployable || 0;
 
   const ctx: DecisionContext = useMemo(() => {
-    const strategy = buildFearGreedStrategy(
+    const fearGreedPlan = buildFearGreedStrategy(
       fearGreedStrategy.currentIndex,
       portfolio.totalPortfolioValue || 0,
       fearGreedStrategy.rules ?? [],
@@ -170,9 +190,11 @@ export function V2GatePage({
     return {
       totalPortfolioValue: portfolio.totalPortfolioValue,
       stableReserve: portfolio.stableReserve,
-      spotDeployable: portfolio.spotDeployable || 0,
-      reserveFloorShare: phase.reserveFloorShare,
-      cryptoMaxShare: phase.cryptoMaxShare,
+      spotDeployable: gateSpotDeployable,
+      reserveFloorShare: effectiveReserveFloorShare,
+      cryptoMaxShare: effectiveCryptoMaxShare,
+      investorStrategy: strategy,
+      investorProfile: profile,
       futuresShare,
       capitalBuckets,
       marketPsychology,
@@ -189,7 +211,7 @@ export function V2GatePage({
         invested: p.invested,
       })),
       allocation: allocation.map((a) => ({ name: a.name, value: a.value })),
-      fearGreedRules: strategy.rules.map((r) => ({
+      fearGreedRules: fearGreedPlan.rules.map((r) => ({
         mode: r.mode,
         label: r.label,
         buyAmount: r.buyAmount,
@@ -203,7 +225,11 @@ export function V2GatePage({
     positions,
     allocation,
     fearGreedStrategy,
-    phase,
+    strategy,
+    profile,
+    gateSpotDeployable,
+    effectiveReserveFloorShare,
+    effectiveCryptoMaxShare,
     futuresShare,
     capitalBuckets,
     activeAssetQuality,
@@ -241,11 +267,11 @@ export function V2GatePage({
   const isBlocked = decision.status === "БЛОКИРОВКА" || decision.status === "ЖДАТЬ";
   const finalActionText = tradeAction === "sell" ? "Перейти к продаже" : "Перейти к покупке";
 
-  // Капитал под спот: зелёный лимит (сверх 30%) и потолок до пола ФАЗЫ.
-  const greenMax = Math.max(portfolio.spotDeployable || 0, 0);
+  // Капитал под спот: зелёный лимит и потолок до пола стратегии/фазы.
+  const greenMax = Math.max(gateSpotDeployable, 0);
   const hardMax = Math.max(
     greenMax,
-    Math.max(portfolio.stableReserve - phase.reserveFloorShare * portfolio.totalPortfolioValue, 0),
+    Math.max(portfolio.stableReserve - effectiveReserveFloorShare * portfolio.totalPortfolioValue, 0),
   );
   const cushionRoom = Math.max(hardMax - greenMax, 0);
 
@@ -297,8 +323,8 @@ export function V2GatePage({
       <div className="v2-gate-header">
         <span className="v2-gate-title">{tradeAction === "sell" ? "Проверка продажи" : "Проверка покупки"}</span>
         <span className="v2-gate-sub">
-          Фаза: {phase.label} · резерв ≥ {pct(phase.reserveFloorShare)} · крипта ≤{" "}
-          {pct(phase.cryptoMaxShare)}
+          Фаза: {phase.label} · резерв ≥ {pct(effectiveReserveFloorShare)} · крипта ≤{" "}
+          {pct(effectiveCryptoMaxShare)}
         </span>
       </div>
 
@@ -327,16 +353,16 @@ export function V2GatePage({
         <div className="v2-gate-cap-main">
           <span className="v2-gate-cap-value">{usd(greenMax)}</span>
           <span className="v2-gate-cap-label">
-            спот-капитал для добора · сверх {pct(SPOT_RESERVE_FLOOR_SHARE)}-резерва
+            спот-капитал для добора · сверх {pct(effectiveSpotReserveFloorShare)}-резерва
           </span>
         </div>
         {cushionRoom > 0 && (
           <div className="v2-gate-cap-cushion">
-            + подушка ещё {usd(cushionRoom)} до пола фазы {pct(phase.reserveFloorShare)}
+            + подушка ещё {usd(cushionRoom)} до пола {usesAccountStrategyLimits ? "стратегии" : "фазы"} {pct(effectiveReserveFloorShare)}
           </div>
         )}
         <div className="v2-gate-buckets">
-          {bucketRows(capitalBuckets).map((row) => (
+          {bucketRows(capitalBuckets, strategy).map((row) => (
             <div className="v2-gate-bucket" key={row.label}>
               <span>{row.label}</span>
               <strong>{usd(row.value)}</strong>
@@ -691,7 +717,7 @@ export function V2GatePage({
       </div>
 
       <div className="v2-gate-foot">
-        Спот-пол {pct(SPOT_RESERVE_FLOOR_SHARE)} · пол фазы {pct(phase.reserveFloorShare)}. Шлюз
+        Спот-пол {pct(effectiveSpotReserveFloorShare)} · пол {usesAccountStrategyLimits ? "стратегии" : "фазы"} {pct(effectiveReserveFloorShare)}. Шлюз
         не исполняет сделки — только сверяет с политикой риска.
       </div>
     </div>

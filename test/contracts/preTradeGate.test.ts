@@ -10,11 +10,13 @@ import {
   type TradeInput,
 } from "../../src/v2/lib/preTradeGate";
 import { buildCapitalBuckets } from "../../src/v2/lib/capitalBuckets";
+import { WIFE_INVESTOR_STRATEGY } from "../../src/v2/lib/investorStrategy";
+import { MAIN_INVESTOR_PROFILE, WIFE_INVESTOR_PROFILE } from "../../src/v2/lib/investorProfile";
 
 // Портфель 1000$. Крипто-блок 400$ (ETH 100, SOL 40, TON 32 + прочее).
 // Свободные деньги 600$. spotDeployable 200$ (зелёный лимит капитала).
 // Абсолютный пол резерва 10% = 100$ → до пола можно потратить 600−100 = 500$.
-// Per-asset лимиты ВНУТРИ крипто-блока: ETH 35%, BTC 20%, SOL/TON 10%, альты 5%.
+// Per-asset лимиты считаются ВНУТРИ крипто-блока по выбранной стратегии.
 const baseCtx: GateContext = {
   totalPortfolioValue: 1000,
   stableReserve: 600,
@@ -418,5 +420,78 @@ describe("pre-trade gate", () => {
     const v = evaluateTrade(buy({ asset: "ETH", amountUsd: 20 }), ctx);
     const classCheck = v.status !== "idle" ? v.checks.find((c) => c.key === "class") : undefined;
     expect(classCheck?.limit).toBeCloseTo(0.8, 6);
+  });
+
+  it("стратегия Полины: ETH имеет лимит 75% крипто-блока, а альты вне списка запрещены", () => {
+    expect(cryptoAssetLimit("ETH", WIFE_INVESTOR_STRATEGY)).toBeCloseTo(0.75, 6);
+    expect(cryptoAssetLimit("BNB", WIFE_INVESTOR_STRATEGY)).toBe(0);
+    expect(altcoinSlots(["ETH", "BNB"], WIFE_INVESTOR_STRATEGY).total).toBe(0);
+
+    const v = evaluateTrade(
+      buy({ asset: "BNB", amountUsd: 1, category: "Крипта" }),
+      { ...baseCtx, investorStrategy: WIFE_INVESTOR_STRATEGY },
+    );
+
+    expect(v.status).toBe("block");
+    if (v.status === "block") {
+      expect(v.checks.find((check) => check.label === "Качество актива")?.note).toContain("BNB");
+      expect(v.reasons).toContain("Качество актива");
+    }
+  });
+
+  it("стратегия Полины: фьючерсы запрещены, в металлах разрешено только золото", () => {
+    const futures = evaluateTrade(
+      buy({ asset: "ETH LONG", amountUsd: 1, category: "Фьючерсы" }),
+      { ...baseCtx, investorStrategy: WIFE_INVESTOR_STRATEGY },
+    );
+    const silver = evaluateTrade(
+      buy({ asset: "SILVER", amountUsd: 1, category: "Металлы" }),
+      { ...baseCtx, investorStrategy: WIFE_INVESTOR_STRATEGY },
+    );
+
+    expect(futures.status).toBe("block");
+    expect(silver.status).toBe("block");
+    if (futures.status === "block") {
+      expect(futures.checks.find((check) => check.label === "Качество актива")?.note).toContain("Фьючерсы");
+      expect(futures.checks.find((check) => check.key === "class")?.limit).toBe(0);
+    }
+    if (silver.status === "block") {
+      expect(silver.checks.find((check) => check.label === "Качество актива")?.note).toContain("золото");
+      expect(silver.checks.find((check) => check.label.startsWith("Места металлов"))?.limit).toBe(1);
+    }
+  });
+
+  it("портрет Полины: фьючерсы и спекулятивные активы блокируются персональным фильтром", () => {
+    const futures = evaluateTrade(
+      buy({ asset: "ETH LONG", amountUsd: 1, category: "Фьючерсы" }),
+      { ...baseCtx, investorStrategy: WIFE_INVESTOR_STRATEGY, investorProfile: WIFE_INVESTOR_PROFILE },
+    );
+    const speculative = evaluateTrade(
+      buy({ asset: "JASMY", amountUsd: 1, category: "Крипта" }),
+      { ...baseCtx, investorStrategy: WIFE_INVESTOR_STRATEGY, investorProfile: WIFE_INVESTOR_PROFILE },
+    );
+
+    expect(futures.status).toBe("block");
+    expect(speculative.status).toBe("block");
+    if (futures.status === "block") {
+      expect(futures.checks.find((check) => check.key === "investorProfile")?.note).toContain("фьючерсы");
+      expect(futures.reasons).toContain("Портрет инвестора");
+    }
+    if (speculative.status === "block") {
+      expect(speculative.checks.find((check) => check.key === "investorProfile")?.note).toContain("спекулятивным");
+      expect(speculative.reasons).toContain("Портрет инвестора");
+    }
+  });
+
+  it("портрет Полины не влияет на основной аккаунт", () => {
+    const main = evaluateTrade(
+      buy({ asset: "JASMY", amountUsd: 1, category: "Крипта" }),
+      { ...baseCtx, investorProfile: MAIN_INVESTOR_PROFILE },
+    );
+
+    expect(main.status).not.toBe("block");
+    if (main.status !== "idle") {
+      expect(main.checks.some((check) => check.key === "investorProfile" && check.severity === "block")).toBe(false);
+    }
   });
 });

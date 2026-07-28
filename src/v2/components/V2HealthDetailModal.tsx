@@ -1,22 +1,24 @@
 import { useEscapeClose } from "../../hooks/useEscapeClose";
 import type { HealthComponent, HealthComponentKey } from "../../lib/portfolioHealth";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
+import type { InvestorStrategy } from "../lib/investorStrategy";
 
 type Props = {
   component: HealthComponent;
   portfolio: V2Portfolio;
+  strategy?: InvestorStrategy;
   onClose: () => void;
 };
 
 const WHAT: Record<HealthComponentKey, string> = {
   reserve:
-    "Резерв — выделенная защитная часть капитала. Пол 10%, цель 30%, коридор нормы 30–60%. Резерв наполняется первым: в работу идёт только то, что сверх него. Это возможность докупать на просадке, не продавать в панике и спокойно пережить турбулентность.",
+    "Резерв — выделенная защитная часть капитала. Пол, цель и коридор нормы берутся из стратегии аккаунта. Резерв наполняется первым: в работу идёт только то, что сверх него. Это возможность докупать на просадке, не продавать в панике и спокойно пережить турбулентность.",
   crypto:
     "Выживаемость — стресс-проверка портфеля. Луч отвечает не за прибыль и не за прогноз рынка, а за вопрос: останется ли капитал живым, если завтра рухнет крипта, просядут акции США, золото сложится вниз или активная торговля получит полный стресс.",
   futures:
     "Контроль риска: контроль фьючерсных позиций, плеча, занятой части лимита и близости к ликвидации. Лимиты: занято не более 10% от вложенного капитала, не выше 2x на альтах, не выше 3x на BTC и золоте, максимум 3 позиции. Золото остаётся категорией «Металлы», но его плечо контролируется по тому же правилу и учитывается в лимите позиций; маржа золота в лимит 10% пока не входит.",
   concentration:
-    "Концентрация — контроль лимитов отдельных активов. Внутри крипто-блока: ETH 35%, BTC 20%, SOL/TON/BNB 10%, альткоины 5%. Под альткоины есть только 3 места по 5%. Акции: весь класс до 10%, один актив до 5%, максимум 2 акции. Металлы: весь класс до 10%, один актив до 5%, максимум 2 металла. Балл = системный риск крупнейшей позиции минус штраф за активы сверх лимита.",
+    "Концентрация — контроль лимитов отдельных активов. Лимиты крипты, акций, металлов и число разрешённых позиций берутся из стратегии аккаунта. Балл = системный риск крупнейшей позиции минус штраф за активы сверх лимита.",
   diversification:
     "Диверсификация — распределение рискового капитала по спотовым классам: крипта, металлы и акции. Кэш и фьючерсы не входят в этот луч. Чем меньше зависимость от одного класса, тем устойчивее портфель к шокам в отдельных секторах рынка.",
   flexibility:
@@ -27,7 +29,7 @@ const HOW: Record<HealthComponentKey, string[]> = {
   reserve: [
     "Пополните счёт долларами или снизьте часть позиций в стейблы",
     "Не покупайте, пока не накопите резерв — сначала подушка, потом докупки",
-    "Цель — не менее 30% портфеля в выделенном резерве",
+    "Цель резерва берётся из стратегии аккаунта",
   ],
   crypto: [
     "Подготовьте лимитные ордера на падение до входа в стресс-сценарий",
@@ -41,8 +43,8 @@ const HOW: Record<HealthComponentKey, string[]> = {
   ],
   concentration: [
     "Сократите активы, вышедшие за свой лимит (какие — в блоке ниже)",
-    "Крипто-лимиты: ETH 35% · BTC 20% · SOL/TON/BNB 10% · альты 5% · максимум 3 альта",
-    "Акции и металлы: класс 10%, актив 5%, максимум 2 актива",
+    "Крипто-лимиты, акции и металлы сверяются со стратегией аккаунта",
+    "Не добавляйте активы вне разрешённого списка стратегии",
     "Не усредняйтесь в актив сверх его лимита — шлюз «Проверки» это заблокирует",
   ],
   diversification: [
@@ -67,18 +69,24 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     const reserveBlockers = m?.reserveBlockers ?? [];
     const reserveTargetShortfallUsd = m?.reserveTargetShortfallUsd ?? 0;
     const reserveIdleUsd = m?.reserveIdleUsd ?? 0;
+    const targetPct = m?.reserveTargetUsd && portfolio.totalPortfolioValue
+      ? Math.round((m.reserveTargetUsd / portfolio.totalPortfolioValue) * 100)
+      : 30;
+    const bandMaxPct = m?.reserveBandMaxUsd && portfolio.totalPortfolioValue
+      ? Math.round((m.reserveBandMaxUsd / portfolio.totalPortfolioValue) * 100)
+      : 60;
     if (reserveBlockers.length) {
-      return `${reserveBlockers[0]}. До цели 30% не хватает ${Math.round(reserveTargetShortfallUsd)}$. Новые рисковые действия нужно поставить на паузу.`;
+      return `${reserveBlockers[0]}. До цели ${targetPct}% не хватает ${Math.round(reserveTargetShortfallUsd)}$. Новые рисковые действия нужно поставить на паузу.`;
     }
-    if (reserveWarnings.includes("Резерв ниже цели 30%")) {
-      return `Резерв ~${pct}% — ниже целевых 30%. До цели не хватает ${Math.round(reserveTargetShortfallUsd)}$.`;
+    if (reserveWarnings.some((warning) => warning.includes("Резерв ниже цели"))) {
+      return `Резерв ~${pct}% — ниже целевых ${targetPct}%. До цели не хватает ${Math.round(reserveTargetShortfallUsd)}$.`;
     }
-    if (reserveWarnings.includes("Резерв выше 60% — капитал простаивает")) {
-      return `Резерв ~${pct}% — выше коридора нормы. Около ${Math.round(reserveIdleUsd)}$ сверх 60% простаивает без работы.`;
+    if (reserveWarnings.some((warning) => warning.includes("капитал простаивает"))) {
+      return `Резерв ~${pct}% — выше коридора нормы. Около ${Math.round(reserveIdleUsd)}$ сверх ${bandMaxPct}% простаивает без работы.`;
     }
     if (score <= 0) return "Выделенного резерва нет — 0. Портфель полностью без подушки: на просадке нечем докупать и нечем закрыть форс-мажор. Это лечится в первую очередь.";
-    if (score < 40) return `Резерв ~${pct}% от портфеля — значительно ниже цели 30%. При просадке не будет ресурса для покупок по выгодным ценам.`;
-    if (score < 70) return `Резерв ~${pct}% — ниже целевых 30%. Небольшое пополнение значительно улучшит показатель.`;
+    if (score < 40) return `Резерв ~${pct}% от портфеля — значительно ниже цели ${targetPct}%. При просадке не будет ресурса для покупок по выгодным ценам.`;
+    if (score < 70) return `Резерв ~${pct}% — ниже целевых ${targetPct}%. Небольшое пополнение значительно улучшит показатель.`;
     return `Резерв в норме — ~${pct}% от портфеля. Продолжайте поддерживать этот уровень.`;
   }
   if (key === "crypto") {
@@ -103,6 +111,13 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     const breaches = m?.leverageBreaches ?? [];
     const breachUsd = m?.futuresBreachUsd ?? 0;
     const remainingUsd = m?.futuresRemainingUsd ?? 0;
+    const capPct = m?.futuresCapUsd && portfolio.totalInvested
+      ? Math.round((m.futuresCapUsd / portfolio.totalInvested) * 100)
+      : 10;
+
+    if (c.label === "Качество активов" && count === 0 && (m?.futuresShare ?? 0) <= 0) {
+      return "Фьючерсы не используются. Луч контролирует чистоту портфеля: запрещённые активы должны блокироваться стратегией.";
+    }
 
     // 1) Слишком много позиций — самое жёсткое нарушение
     if (count > 3) {
@@ -118,10 +133,10 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     }
     // 3) Превышен лимит активной торговли 10%
     if (breachUsd > 0 && weightPct != null) {
-      return `Контроль риска: занято ${weightPct}% от вложенного капитала, лимит 10% превышен на ${Math.round(breachUsd)}$. Сократите риск до лимита.`;
+      return `Контроль риска: занято ${weightPct}% от вложенного капитала, лимит ${capPct}% превышен на ${Math.round(breachUsd)}$. Сократите риск до лимита.`;
     }
     if (weightPct != null) {
-      return `Контроль риска в норме: ${count}/3 позиций, занято ${weightPct}% от вложенного капитала при лимите 10%. Осталось до лимита ${Math.round(remainingUsd)}$. Плечо в пределах ≤2x альты / ≤3x BTC.`;
+      return `Контроль риска в норме: ${count}/3 позиций, занято ${weightPct}% от вложенного капитала при лимите ${capPct}%. Осталось до лимита ${Math.round(remainingUsd)}$. Плечо в пределах ≤2x альты / ≤3x BTC.`;
     }
     return "Контроль риска в норме — вес, плечо и число позиций в пределах правил.";
   }
@@ -141,13 +156,13 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     const metalTotal = m?.metalSlotsTotal;
     const metals = m?.metals ?? [];
     if (m?.concentrationBlockers?.includes("Превышен лимит альткоин-мест")) {
-      return `Превышен лимит альткоин-мест: занято ${altUsed}/${altTotal}. В крипто-блоке есть только 3 места под альткоины по 5%. Сократите лишний альт или не добавляйте новые.`;
+      return `Превышен лимит альткоин-мест: занято ${altUsed}/${altTotal}. Сократите лишний альт или не добавляйте новые.`;
     }
     if (m?.concentrationBlockers?.includes("Превышен лимит мест акций")) {
-      return `Превышен лимит мест акций: занято ${stockUsed}/${stockTotal}. В портфеле есть только 2 места под акции по 5%. Сократите лишнюю акцию или не добавляйте новые.`;
+      return `Превышен лимит мест акций: занято ${stockUsed}/${stockTotal}. Сократите лишнюю акцию или не добавляйте новые.`;
     }
     if (m?.concentrationBlockers?.includes("Превышен лимит мест металлов")) {
-      return `Превышен лимит мест металлов: занято ${metalUsed}/${metalTotal}. В портфеле есть только 2 места под металлы по 5%. Сократите лишний металл или не добавляйте новые.`;
+      return `Превышен лимит мест металлов: занято ${metalUsed}/${metalTotal}. Сократите лишний металл или не добавляйте новые.`;
     }
     if (worst && worst !== "-" && overCount > 0 && (m?.maxAssetLimitUtilization ?? 0) > 1) {
       const shareBase = Math.round((m?.worstConcentrationShare ?? 0) * 100);
@@ -157,14 +172,14 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
       return `${blocker ?? "Актив выше своего лимита"}: ${worst} сейчас ${shareBase}% при лимите ${limit}% (в портфеле ${portShare}%).${others} Не докупайте и не усредняйте ${worst}, пока доля не вернётся в лимит.`;
     }
     if (warning && worst && worst !== "-") {
-      if (warning === "Все 3 альткоин-места заняты") {
-        return `Все 3 альткоин-места заняты: ${altcoins.join(", ") || "список не определён"}. Новый альткоин добавлять нельзя, пока одно место не освободится.`;
+      if (warning.startsWith("Все") && warning.includes("альткоин-мест")) {
+        return `${warning}: ${altcoins.join(", ") || "список не определён"}. Новый альткоин добавлять нельзя, пока одно место не освободится.`;
       }
-      if (warning === "Все 2 места акций заняты") {
-        return `Все 2 места акций заняты: ${stocks.join(", ") || "список не определён"}. Новую акцию добавлять нельзя, пока одно место не освободится.`;
+      if (warning.startsWith("Все") && warning.includes("места акций")) {
+        return `${warning}: ${stocks.join(", ") || "список не определён"}. Новую акцию добавлять нельзя, пока одно место не освободится.`;
       }
-      if (warning === "Все 2 места металлов заняты") {
-        return `Все 2 места металлов заняты: ${metals.join(", ") || "список не определён"}. Новый металл добавлять нельзя, пока одно место не освободится.`;
+      if (warning.startsWith("Все") && warning.includes("места металлов")) {
+        return `${warning}: ${metals.join(", ") || "список не определён"}. Новый металл добавлять нельзя, пока одно место не освободится.`;
       }
       const util = Math.round((m?.maxAssetLimitUtilization ?? 0) * 100);
       return `${warning}: ${worst} уже использует ${util}% своего лимита. Новые покупки этого актива требуют осторожности.`;
@@ -219,7 +234,7 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
   const label = scoreLabel(component.score);
   const why = whyText(component, portfolio);
   const how = HOW[component.key];
-  const what = WHAT[component.key];
+  const what = component.desc || WHAT[component.key];
   const riskControlBlockers =
     component.key === "futures" ? component.meta?.riskControlBlockers ?? [] : [];
   const riskControlWarnings =

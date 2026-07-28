@@ -9,6 +9,7 @@ import type { V2Position } from "../InvestorCabinetV2Lab";
 import { stakingApy } from "../../config/stakingRules";
 import type { DecisionJournalEntry } from "../lib/decisionJournal";
 import type { BehaviorEngineResult } from "../lib/behaviorEngine";
+import type { InvestorStrategy } from "../lib/investorStrategy";
 
 type Props = {
   history: PortfolioHistoryPoint[];
@@ -18,6 +19,7 @@ type Props = {
   realizedPnlUsd?: number;
   decisionJournal?: DecisionJournalEntry[];
   behavior?: BehaviorEngineResult;
+  strategy?: InvestorStrategy;
   onDeleteDecision?: (id: string) => void;
 };
 

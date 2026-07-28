@@ -3,6 +3,7 @@ import type { PortfolioHealth } from "../../src/lib/portfolioHealth";
 import type { V2Portfolio } from "../../src/v2/InvestorCabinetV2Lab";
 import { buildPortfolioAlerts } from "../../src/v2/lib/portfolioAlerts";
 import { getMarketPsychology } from "../../src/v2/lib/marketPsychology";
+import { WIFE_INVESTOR_STRATEGY } from "../../src/v2/lib/investorStrategy";
 
 const portfolio = (patch: Partial<V2Portfolio> = {}): V2Portfolio => ({
   totalPortfolioValue: 1000,
@@ -85,6 +86,41 @@ describe("единый движок тревог портфеля", () => {
         id: "reserve-low",
         level: "warning",
         title: "Резерв низкий",
+      }),
+    );
+  });
+
+  it("для стратегии Полины не ругается на резерв выше 10% и крипту ниже 75%", () => {
+    const alerts = buildPortfolioAlerts({
+      portfolio: portfolio({ stableReserve: 150, reserveShare: 0.15 }),
+      positions: [],
+      allocation: [{ name: "Крипта", share: 0.7, value: 700 }],
+      currentFG: 50,
+      health,
+      marketPsychology: getMarketPsychology(50),
+      strategy: WIFE_INVESTOR_STRATEGY,
+    });
+
+    expect(alerts.find((alert) => alert.id === "reserve-low")).toBeUndefined();
+    expect(alerts.find((alert) => alert.id === "crypto-warn")).toBeUndefined();
+    expect(alerts.find((alert) => alert.id === "crypto-critical")).toBeUndefined();
+  });
+
+  it("для стратегии Полины считает крипто-предупреждение от лимита 75%", () => {
+    const alerts = buildPortfolioAlerts({
+      portfolio: portfolio({ stableReserve: 150, reserveShare: 0.15 }),
+      positions: [],
+      allocation: [{ name: "Крипта", share: 0.8, value: 800 }],
+      currentFG: 50,
+      health,
+      marketPsychology: getMarketPsychology(50),
+      strategy: WIFE_INVESTOR_STRATEGY,
+    });
+
+    expect(alerts).toContainEqual(
+      expect.objectContaining({
+        id: "crypto-warn",
+        detail: "80.0% · лимит 75%",
       }),
     );
   });

@@ -5,10 +5,12 @@ import {
   buildCapitalLadderSteps,
   type CapitalLadderStepStatus,
 } from "../lib/capitalLadder";
+import type { InvestorStrategy } from "../lib/investorStrategy";
 
 type Props = {
   portfolio: V2Portfolio;
   mode?: "overview" | "health";
+  strategy?: InvestorStrategy;
 };
 
 const money = new Intl.NumberFormat("en-US", {
@@ -79,15 +81,15 @@ function EdgeDots() {
   );
 }
 
-export function V2CapitalLadder({ portfolio, mode = "overview" }: Props) {
-  const steps = buildCapitalLadderSteps(portfolio.totalInvested || 0);
+export function V2CapitalLadder({ portfolio, mode = "overview", strategy }: Props) {
+  const steps = buildCapitalLadderSteps(portfolio.totalInvested || 0, strategy);
   const plan = steps.find((step) => step.status === "current") ?? steps[0];
   const currentStepRef = useRef<HTMLButtonElement | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedTargetOverride, setSelectedTargetOverride] = useState<number | null>(null);
   const selectedTarget = selectedTargetOverride ?? plan.targetUsd;
   const selectedStep = steps.find((step) => step.targetUsd === selectedTarget) ?? plan;
-  const assetLimits = buildCapitalLadderAssetLimits(selectedStep);
+  const assetLimits = buildCapitalLadderAssetLimits(selectedStep, strategy);
   const [selectedAssetLimitId, setSelectedAssetLimitId] = useState("major-crypto");
   const selectedAssetLimit = assetLimits.find((limit) => limit.id === selectedAssetLimitId) ?? assetLimits[0];
 

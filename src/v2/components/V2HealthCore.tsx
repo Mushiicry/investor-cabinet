@@ -3,15 +3,17 @@ import type { HealthComponent, HealthInput, PortfolioHealth } from "../../lib/po
 import { isEmptyAccount } from "../lib/accountState";
 import {
   CX, CY, RADAR_R, OUTER_R, VB_OFF, VB_SIZE, CHIP_W, CHIP_H, CHIP_R,
-  CHIP_LABEL, SCORE_LABEL, scoreAlpha, chipColor,
+  scoreAlpha, chipColor,
   hexPts, hexPtsAt, chipLayout, scaleValuePts,
   healthInterpretation, diagWhy, buildCoreRecs, isActionableHealthComponent,
 } from "../lib/healthCoreHelpers";
+import type { InvestorStrategy } from "../lib/investorStrategy";
 
 type Props = {
   portfolio: V2Portfolio;
   health: PortfolioHealth;
   healthInput: HealthInput;
+  strategy?: InvestorStrategy;
   onChipSelect?: (c: HealthComponent) => void;
   onNavigate?: (page: V2Page) => void;
 };
@@ -44,6 +46,10 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
   const interp = isEmpty
     ? { text: "Подключите кошельки, чтобы увидеть анализ портфеля", color: "#55C7FF" }
     : healthInterpretation(health.healthFactor);
+  const chipLabelLines = (c: HealthComponent) => {
+    if (c.key !== "futures") return [c.label];
+    return c.label === "Качество активов" ? ["Качество", "активов"] : ["Контроль", "риска"];
+  };
 
   return (
     <section className="v2-panel v2-health-core v2-health-core--premium" aria-label="Portfolio health factor">
@@ -104,7 +110,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
             <div key={c.key} className="v2-hc-diag-row v2-hc-diag-row--ok">
               <span className="v2-hc-diag-icon">✓</span>
               <div className="v2-hc-diag-body">
-                <span className="v2-hc-diag-name">{SCORE_LABEL[c.key]}</span>
+                <span className="v2-hc-diag-name">{c.label}</span>
                 <span className="v2-hc-diag-why">{diagWhy(c, portfolio)}</span>
               </div>
               <span className="v2-hc-diag-val">{c.score}</span>
@@ -114,7 +120,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
             <div key={c.key} className="v2-hc-diag-row v2-hc-diag-row--warn">
               <span className="v2-hc-diag-icon">⚠</span>
               <div className="v2-hc-diag-body">
-                <span className="v2-hc-diag-name">{SCORE_LABEL[c.key]}</span>
+                <span className="v2-hc-diag-name">{c.label}</span>
                 <span className="v2-hc-diag-why">{diagWhy(c, portfolio)}</span>
               </div>
               <span className="v2-hc-diag-val">{c.score}</span>
@@ -490,8 +496,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
             {components.map((c, i) => {
               const { rx, ry, vx, vy, ax, ay } = chipLayout(i);
               const color = chipColor(c.score);
-              const label = CHIP_LABEL[c.key as keyof typeof CHIP_LABEL] ?? c.key;
-              const labelLines = c.key === "futures" ? ["Контроль", "риска"] : [label];
+              const labelLines = chipLabelLines(c);
               const cx = rx + CHIP_W / 2 + 1.5;
               const cy = ry + CHIP_H / 2;
 

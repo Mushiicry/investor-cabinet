@@ -116,15 +116,18 @@ export const fmt$ = (v: number) =>
 export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
   const reservePct = Math.round(portfolio.reserveShare * 100);
   const reserveUsd = portfolio.stableReserve;
-  const targetUsd  = Math.round(portfolio.totalPortfolioValue * 0.30);
+  const targetUsd = Math.round(c.meta?.reserveTargetUsd ?? portfolio.totalPortfolioValue * 0.30);
+  const targetPct = c.meta?.reserveTargetUsd && portfolio.totalPortfolioValue
+    ? Math.round((c.meta.reserveTargetUsd / portfolio.totalPortfolioValue) * 100)
+    : 30;
   switch (c.key) {
     case "reserve":
       if ((c.meta?.reserveBlockers ?? []).length) return c.meta?.reserveBlockers?.[0] ?? "";
       if ((c.meta?.reserveWarnings ?? []).length) return c.meta?.reserveWarnings?.[0] ?? "";
       if (c.score <= 0) return `Резерв $0 — подушки нет, нечем откупать`;
       if (c.score < 50)
-        return `${reservePct}% от цели 30%. Дефицит ${fmt$(Math.max(0, targetUsd - reserveUsd))}`;
-      return `${reservePct}% от цели 30%`;
+        return `${reservePct}% от цели ${targetPct}%. Дефицит ${fmt$(Math.max(0, targetUsd - reserveUsd))}`;
+      return `${reservePct}% от цели ${targetPct}%`;
     case "flexibility":
       if ((c.meta?.disciplineBlockers ?? []).length) return c.meta?.disciplineBlockers?.[0] ?? "";
       if ((c.meta?.disciplineWarnings ?? []).length) return c.meta?.disciplineWarnings?.[0] ?? "";
@@ -156,12 +159,17 @@ export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
       if (c.score < 70) return "Актив близко к своему лимиту";
       return "Активы в пределах лимитов";
     }
-    case "futures":
+    case "futures": {
       if ((c.meta?.riskControlBlockers ?? []).length) return c.meta?.riskControlBlockers?.[0] ?? "";
       if ((c.meta?.leverageBreaches ?? []).length) return "Плечо превышено";
       if (c.meta?.futuresCount && c.meta.futuresCount > 3) return `${c.meta.futuresCount}/3 позиций — лимит превышен`;
-      if ((c.meta?.futuresBreachUsd ?? 0) > 0) return "Превышен лимит активной торговли 10%";
-      return `Занято ${Math.round((c.meta?.futuresShare ?? 0) * 1000) / 10}% из лимита 10%, плечо в норме`;
+      if (c.label === "Качество активов") return "Запрещённые активы не нарушают стратегию";
+      const futuresLimit = c.meta?.futuresCapUtilization && c.meta.futuresShare
+        ? c.meta.futuresShare / c.meta.futuresCapUtilization
+        : 0.1;
+      if ((c.meta?.futuresBreachUsd ?? 0) > 0) return `Превышен лимит активной торговли ${Math.round(futuresLimit * 100)}%`;
+      return `Занято ${Math.round((c.meta?.futuresShare ?? 0) * 1000) / 10}% из лимита ${Math.round(futuresLimit * 100)}%, плечо в норме`;
+    }
     default:
       return "";
   }
@@ -308,10 +316,14 @@ export function buildCoreRecs(
   all: HealthComponent[] = [],
   healthInput?: HealthInput,
 ): CoreRec[] {
-  const deficit = Math.max(0, portfolio.totalPortfolioValue * 0.30 - portfolio.stableReserve);
   const result: CoreRec[] = [];
   const reserve = all.find((c) => c.key === "reserve");
   const rm = reserve?.meta;
+  const reserveTargetUsd = rm?.reserveTargetUsd ?? portfolio.totalPortfolioValue * 0.30;
+  const reserveTargetPct = portfolio.totalPortfolioValue > 0
+    ? Math.round((reserveTargetUsd / portfolio.totalPortfolioValue) * 100)
+    : 30;
+  const deficit = Math.max(0, reserveTargetUsd - portfolio.stableReserve);
   const reserveBlockers = rm?.reserveBlockers ?? [];
   const reserveTargetShortfallUsd = rm?.reserveTargetShortfallUsd ?? deficit;
   const reserveShare = portfolio.reserveShare ?? 0;
@@ -479,7 +491,7 @@ export function buildCoreRecs(
   // ── Критический сигнал: резерв сильно ниже цели ──
   if (deficit > portfolio.totalPortfolioValue * 0.10) {
     result.push({
-      action: reserveTargetShortfallUsd > 0 ? `Пополнить резерв на ${fmt$(reserveTargetShortfallUsd)} до целевых 30%` : "Поддерживать резерв выше 30%",
+      action: reserveTargetShortfallUsd > 0 ? `Пополнить резерв на ${fmt$(reserveTargetShortfallUsd)} до целевых ${reserveTargetPct}%` : `Поддерживать резерв выше ${reserveTargetPct}%`,
       gain: 6,
       source: "Резерв вернётся к норме",
       critical: true,
@@ -492,7 +504,7 @@ export function buildCoreRecs(
       case "reserve":
         if (!result.some(r => r.source.startsWith("Резерв")))
           result.push({
-            action: reserveTargetShortfallUsd > 0 ? `Пополнить резерв на ${fmt$(reserveTargetShortfallUsd)}` : "Поддерживать резерв выше 30%",
+            action: reserveTargetShortfallUsd > 0 ? `Пополнить резерв на ${fmt$(reserveTargetShortfallUsd)}` : `Поддерживать резерв выше ${reserveTargetPct}%`,
             gain: 6, source: "Резерв вернётся к норме", kind: "reserve"
           });
         result.push({ action: "Не открывать новые позиции, пока резерв не достигнут", gain: 3, source: "Сохранит подушку и манёвр", kind: "reserve" });

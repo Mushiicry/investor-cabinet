@@ -1,3 +1,5 @@
+import type { InvestorDNA } from "../v2/lib/investorDNA";
+
 export type Category =
   | "Крипта"
   | "Металлы"
@@ -265,6 +267,7 @@ export type PortfolioState = {
   };
   fearGreedStrategy: FearGreedStrategy;
   assetQuality: AssetQualitySource;
+  investorDNA?: InvestorDNA;
   updatedAt: string;
 };
 

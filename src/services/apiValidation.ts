@@ -67,6 +67,10 @@ export function validateInvestorApiPayload(value: unknown): ApiValidationResult<
     return validationError("assetQuality must be an object");
   }
 
+  if (!hasOptionalRecord(value, "investorDNA")) {
+    return validationError("investorDNA must be an object");
+  }
+
   if (
     isRecord(value.assetQuality) &&
     !hasOptionalArray(value.assetQuality, "records")

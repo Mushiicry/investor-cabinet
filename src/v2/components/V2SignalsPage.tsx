@@ -21,6 +21,7 @@ import {
   type AlertLevel,
 } from "../lib/portfolioAlerts";
 import { buildTradeCandidateFromSignal, type TradeCandidate } from "../lib/tradeCandidate";
+import type { InvestorStrategy } from "../lib/investorStrategy";
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -30,6 +31,7 @@ type Props = {
   fearGreedStrategy: V2LabData["fearGreedStrategy"];
   allocation: V2LabData["allocation"];
   interestSignals: InterestSignal[];
+  strategy?: InvestorStrategy;
   disciplineCooldownActive?: boolean;
   onOpenTradeCandidate?: (candidate: TradeCandidate) => void;
   onNavigate?: (page: V2Page) => void;
@@ -87,6 +89,7 @@ export function V2SignalsPage({
   fearGreedStrategy,
   allocation,
   interestSignals,
+  strategy,
   disciplineCooldownActive = false,
   onOpenTradeCandidate,
   onNavigate,
@@ -171,9 +174,18 @@ export function V2SignalsPage({
       interestSignals,
       marketPsychology: psychology,
       signalNotification: { disciplineCooldownActive },
+      strategy,
     }),
   );
   const criticalCount = alerts.filter((a) => a.level === "critical").length;
+  const marketRows = [
+    { label: "Здоровье портфеля", value: `${portfolio.healthFactor}/100`, tone: portfolio.healthFactor >= 60 ? "green" : portfolio.healthFactor >= 40 ? "amber" : "red" },
+    { label: "Статус", value: portfolio.healthStatus === "CONTROL" ? "Контроль" : portfolio.healthStatus === "BALANCED" ? "Баланс" : "Риск", tone: portfolio.healthStatus === "CONTROL" ? "green" : portfolio.healthStatus === "BALANCED" ? "amber" : "red" },
+    { label: "Концентрация крипто", value: risk.concentration === "HIGH" ? "Высокая" : risk.concentration === "MEDIUM" ? "Средняя" : "Низкая", tone: risk.concentration === "HIGH" ? "red" : risk.concentration === "MEDIUM" ? "amber" : "green" },
+    ...(strategy?.futuresAllowed === false
+      ? []
+      : [{ label: "Давление фьючерсов", value: risk.futuresPressure === "HIGH" ? "Высокое" : risk.futuresPressure === "MEDIUM" ? "Среднее" : "Низкое", tone: risk.futuresPressure === "HIGH" ? "red" : risk.futuresPressure === "MEDIUM" ? "amber" : "green" }]),
+  ];
 
   return (
     <div className="v2-signals-page">
@@ -473,12 +485,7 @@ export function V2SignalsPage({
           <div className="v2-sig-divider" />
 
           <div className="v2-sig-market-rows">
-            {[
-              { label: "Здоровье портфеля", value: `${portfolio.healthFactor}/100`, tone: portfolio.healthFactor >= 60 ? "green" : portfolio.healthFactor >= 40 ? "amber" : "red" },
-              { label: "Статус", value: portfolio.healthStatus === "CONTROL" ? "Контроль" : portfolio.healthStatus === "BALANCED" ? "Баланс" : "Риск", tone: portfolio.healthStatus === "CONTROL" ? "green" : portfolio.healthStatus === "BALANCED" ? "amber" : "red" },
-              { label: "Концентрация крипто", value: risk.concentration === "HIGH" ? "Высокая" : risk.concentration === "MEDIUM" ? "Средняя" : "Низкая", tone: risk.concentration === "HIGH" ? "red" : risk.concentration === "MEDIUM" ? "amber" : "green" },
-              { label: "Давление фьючерсов", value: risk.futuresPressure === "HIGH" ? "Высокое" : risk.futuresPressure === "MEDIUM" ? "Среднее" : "Низкое", tone: risk.futuresPressure === "HIGH" ? "red" : risk.futuresPressure === "MEDIUM" ? "amber" : "green" },
-            ].map((row) => (
+            {marketRows.map((row) => (
               <div key={row.label} className="v2-sig-market-row">
                 <span className="v2-sig-row-label">{row.label}</span>
                 <span className={`v2-sig-row-val val-${row.tone}`}>{row.value}</span>

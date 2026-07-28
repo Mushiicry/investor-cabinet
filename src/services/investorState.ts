@@ -4,6 +4,7 @@ import { normalizeDecisions, normalizeScenarios } from "../lib/playbookNormalize
 import { normalizePortfolio, toNumber } from "../lib/portfolioNormalizers";
 import { normalizeTransactions } from "../lib/transactionNormalizers";
 import { getOpenRiskPositions } from "../lib/portfolioSelectors";
+import { dnaForSlot, normalizeInvestorDNAFromApi } from "../v2/lib/investorDNA";
 import type { AssetQualityApiItem, InvestorApiResponse } from "../types/api";
 import type { AssetQualityRecord, AssetQualitySource, InterestSignal, PortfolioState } from "../types/portfolio";
 import {
@@ -121,6 +122,12 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
   const decisions = normalizeDecisions(json?.decisions, prev.decisions);
   const scenarios = normalizeScenarios(json?.scenarios, prev.scenarios);
   const assetQuality = normalizeAssetQuality(json?.assetQuality, prev.assetQuality);
+  const investorDNA = normalizeInvestorDNAFromApi(
+    json?.investorDNA,
+    prev.investorDNA ?? dnaForSlot(json?.investorDNA && typeof json.investorDNA === "object"
+      ? (json.investorDNA as { accountId?: unknown }).accountId as string | undefined
+      : undefined),
+  );
   const openRiskPositions = getOpenRiskPositions(portfolio);
 
   // Google Sheets overview is the accounting source of truth. Position rows are
@@ -142,6 +149,7 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
     decisions,
     scenarios,
     assetQuality,
+    investorDNA,
     fearGreedStrategy,
     signals: {
       interest: normalizeInterestSignal(json.signals?.interest, prev.signals?.interest ?? null),

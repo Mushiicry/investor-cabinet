@@ -11,6 +11,8 @@ import { mergeWithLocalSnapshots } from "../../services/dailySnapshotService";
 import { assetConcentration } from "./preTradeGate";
 import { plannedLimitOrdersSummary } from "./interestSignals";
 import { strategyForSlot } from "./investorStrategy";
+import { profileForSlot } from "./investorProfile";
+import { dnaForSlot } from "./investorDNA";
 import type { PortfolioState } from "../../types/portfolio";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 
@@ -35,6 +37,8 @@ const mockHealthInput: HealthInput = {
 
 const mockData: V2LabData = {
   strategy: strategyForSlot("main"),
+  profile: profileForSlot("main"),
+  dna: dnaForSlot("main"),
   portfolio: {
     totalPortfolioValue: 754691.21,
     totalInvested: 710570,
@@ -168,6 +172,8 @@ export function buildZeroedV2Data(): V2LabData {
   return {
     ...mockData,
     strategy: strategyForSlot("main"),
+    profile: profileForSlot("main"),
+    dna: dnaForSlot("main"),
     positions: [],
     decisions: [],
     scenarios: [],
@@ -231,6 +237,9 @@ export const buildLiveV2Data = (
   slot: import("../../services/dailySnapshotService").SnapshotSlot = "main"
 ): V2LabData => {
   const strategy = strategyForSlot(slot);
+  const profile = profileForSlot(slot);
+  const fallbackDna = dnaForSlot(slot);
+  const dna = state.investorDNA?.accountId === slot ? state.investorDNA : fallbackDna;
   // Реальное выставленное плечо фьючерс-позиций берём с Hyperliquid (по монете).
   // Монету извлекаем из имени актива ("BTC LONG" → "BTC"). Нет данных → null (не штрафуем).
   // GOLD остаётся категорией «Металлы», но торгуется с плечом на HL — поэтому его плечо
@@ -268,6 +277,7 @@ export const buildLiveV2Data = (
     state.portfolio.map((p) => ({ asset: p.asset, category: p.category, value: p.currentValue })),
     cryptoBlockValue,
     state.overview.portfolioValue,
+    strategy,
   );
   const plannedLimitOrders = plannedLimitOrdersSummary(state.signals.interestList);
   const plannedLimitOrdersUsd =
@@ -286,6 +296,7 @@ export const buildLiveV2Data = (
     spotDeployableUsd: state.risk.spotDeployableCash,
     futuresDeployableUsd: state.risk.futuresDeployableCash,
     plannedLimitOrdersUsd,
+    strategy,
     concentrationScore: concentration.score,
     maxAssetLimitUtilization: concentration.maxUtilization,
     worstConcentrationAsset: concentration.worstAsset,
@@ -339,8 +350,10 @@ export const buildLiveV2Data = (
   return {
     ...mockData,
     strategy,
+    profile,
+    dna,
     fearGreedStrategy: state.fearGreedStrategy,
-    history: mergeWithLocalSnapshots(state.history, slot),
+    history: slot === "wife" ? state.history : mergeWithLocalSnapshots(state.history, slot),
     transactions: state.transactions,
     signals: state.signals,
     assetQuality: state.assetQuality ?? emptyAssetQuality,
@@ -371,7 +384,12 @@ export const buildLiveV2Data = (
       futuresShare,
       diversification,
       volatility: 0,
-      concentration: largestRiskShare > 0.35 ? "HIGH" : largestRiskShare > 0.25 ? "MEDIUM" : "LOW",
+      concentration:
+        concentration.maxUtilization > 1
+          ? "HIGH"
+          : concentration.maxUtilization >= 0.85 || largestRiskShare > 0.25
+            ? "MEDIUM"
+            : "LOW",
       futuresPressure: futuresShare > 0.1 ? "HIGH" : futuresShare > 0.05 ? "MEDIUM" : "LOW",
     },
     portfolio: {

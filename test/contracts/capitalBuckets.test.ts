@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildCapitalBuckets } from "../../src/v2/lib/capitalBuckets";
+import { WIFE_INVESTOR_STRATEGY } from "../../src/v2/lib/investorStrategy";
 
 describe("карманы капитала", () => {
   it("считает торговый капитал как стейблы минус резерв 30%", () => {
@@ -77,5 +78,29 @@ describe("карманы капитала", () => {
     expect(buckets.metalsBudgetUsd).toBe(40);
     expect(buckets.stocksBudgetUsd).toBe(60);
     expect(buckets.cryptoSpotBudgetUsd).toBe(200);
+  });
+
+  it("для стратегии Полины держит резерв 10% и не выделяет карман фьючерсов", () => {
+    const buckets = buildCapitalBuckets({
+      totalPortfolioValue: 1000,
+      stableReserve: 500,
+      futuresDeployableUsd: 40,
+      allocation: [
+        { name: "Крипта", value: 700 },
+        { name: "Металлы", value: 60 },
+        { name: "Акции", value: 20 },
+        { name: "Фьючерсы", value: 0 },
+      ],
+      strategyRules: [{ buyPct: 0.01, buyAmount: 10, status: "active" }],
+      investorStrategy: WIFE_INVESTOR_STRATEGY,
+    });
+
+    expect(buckets.lockedReserveUsd).toBe(100);
+    expect(buckets.workCashUsd).toBe(400);
+    expect(buckets.averagingBudgetUsd).toBe(10);
+    expect(buckets.futuresBudgetUsd).toBe(0);
+    expect(buckets.metalsBudgetUsd).toBe(20);
+    expect(buckets.stocksBudgetUsd).toBe(50);
+    expect(buckets.cryptoSpotBudgetUsd).toBe(50);
   });
 });

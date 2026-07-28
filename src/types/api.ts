@@ -120,5 +120,6 @@ export type InvestorApiResponse = {
     source?: unknown;
     records?: AssetQualityApiItem[];
   };
+  investorDNA?: unknown;
   updatedAt?: string;
 };

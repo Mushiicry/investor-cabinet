@@ -4,28 +4,36 @@
 // до сделки ответить на вопросы конституции: «можно ли сейчас добирать,
 // сколько, где перегруз, не роняет ли добор резерв».
 //
-// Капитал под спот-добор — это ОДИН пул стейблов с двумя порогами резерва
-// (оба уже есть в riskRules, единый источник правды):
-//   • спот-пол 30% — движок отдаёт «безопасно к работе» как spotDeployable;
-//   • абсолютный пол 10% — «святое», ниже не опускаемся никогда.
+// Капитал под спот-добор — это ОДИН пул стейблов с двумя порогами резерва:
+//   • рабочий пол стратегии — всё сверх него можно отдавать в добор;
+//   • абсолютный пол стратегии — «святое», ниже не опускаемся никогда.
 // Отсюда три зоны добора:
-//   🟢 ok      — в пределах spotDeployable (спот-резерв ≥ 30%);
-//   🟡 caution — заходим в подушку (резерв 10–30%), разрешено, но с пометкой;
-//   🔴 block   — пробили абсолютный пол 10% ИЛИ лимит позиции/класса.
+//   🟢 ok      — в пределах рабочего капитала стратегии;
+//   🟡 caution — заходим в подушку стратегии, разрешено, но с пометкой;
+//   🔴 block   — пробили абсолютный пол стратегии ИЛИ лимит позиции/класса.
 // Лимиты позиции и класса — жёсткие (block). Fear & Greed — сверка со ступенью
 // откупа. Рыночная психология может усилить её до блока в зоне эйфории.
 
 import {
-  MAX_CRYPTO_EXPOSURE_SHARE,
-  MAX_FUTURES_EXPOSURE_SHARE,
-  MAX_METALS_EXPOSURE_SHARE,
   MAX_SINGLE_RISK_ASSET_SHARE,
-  MAX_STOCKS_EXPOSURE_SHARE,
   RESERVE_FLOOR_SHARE,
   RESERVE_TARGET_SHARE,
   SPOT_RESERVE_FLOOR_SHARE,
 } from "../../config/riskRules";
 import type { CapitalBuckets } from "./capitalBuckets";
+import {
+  MAIN_INVESTOR_STRATEGY,
+  assetLimitForStrategy,
+  cryptoAssetLimitForStrategy,
+  isAssetAllowedByStrategy,
+  isCryptoMajorForStrategy,
+  type InvestorStrategy,
+} from "./investorStrategy";
+import {
+  MAIN_INVESTOR_PROFILE,
+  evaluateInvestorProfileTrade,
+  type InvestorProfile,
+} from "./investorProfile";
 import type { MarketPsychology } from "./marketPsychology";
 
 /** Категория актива — совпадает с именами в allocation/positions. */
@@ -40,44 +48,31 @@ export const CASH_CATEGORY = "Свободные деньги";
 // НЕ от всего портфеля. Прочие (альткоины) — 5%.
 // Мажоры при полном сборе: BTC 20 + ETH 35 + SOL 10 + TON 10 + BNB 10 = 85%,
 // оставшиеся 15% → 3 места для альткоинов по 5%.
-export const CRYPTO_ASSET_LIMITS: Record<string, number> = {
-  ETH: 0.35,
-  WETH: 0.35,
-  ETHEREUM: 0.35,
-  BTC: 0.2,
-  WBTC: 0.2,
-  BITCOIN: 0.2,
-  SOL: 0.1,
-  SOLANA: 0.1,
-  TON: 0.1,
-  GRAM: 0.1, // GRAM = ex-TON тикер в учёте
-  BNB: 0.1,
-  WBNB: 0.1,
-};
-export const CRYPTO_ALT_LIMIT = 0.05;
-export const STOCK_ASSET_LIMIT = 0.05;
-export const METAL_ASSET_LIMIT = 0.05;
+export const CRYPTO_ASSET_LIMITS: Record<string, number> = MAIN_INVESTOR_STRATEGY.cryptoAssetLimits;
+export const CRYPTO_ALT_LIMIT = MAIN_INVESTOR_STRATEGY.defaultCryptoAssetLimit;
+export const STOCK_ASSET_LIMIT = MAIN_INVESTOR_STRATEGY.stockAssetLimit;
+export const METAL_ASSET_LIMIT = MAIN_INVESTOR_STRATEGY.metalAssetLimit;
 
 /** Мест под альткоины: 15% крипто-блока ÷ 5% = 3 (мажоры занимают 85%). */
-export const MAX_ALTCOIN_SLOTS = 3;
-export const MAX_STOCK_SLOTS = 2;
-export const MAX_METAL_SLOTS = 2;
+export const MAX_ALTCOIN_SLOTS = MAIN_INVESTOR_STRATEGY.maxAltcoinSlots;
+export const MAX_STOCK_SLOTS = MAIN_INVESTOR_STRATEGY.maxStockSlots;
+export const MAX_METAL_SLOTS = MAIN_INVESTOR_STRATEGY.maxMetalSlots;
 
 /** true — актив это «мажор» с именным лимитом (не альткоин). */
-export function isCryptoMajor(asset: string): boolean {
-  return CRYPTO_ASSET_LIMITS[asset.trim().toUpperCase()] !== undefined;
+export function isCryptoMajor(asset: string, strategy = MAIN_INVESTOR_STRATEGY): boolean {
+  return isCryptoMajorForStrategy(asset, strategy);
 }
 
 /** Лимит доли одного крипто-актива внутри крипто-блока. */
-export function cryptoAssetLimit(asset: string): number {
-  return CRYPTO_ASSET_LIMITS[asset.trim().toUpperCase()] ?? CRYPTO_ALT_LIMIT;
+export function cryptoAssetLimit(asset: string, strategy = MAIN_INVESTOR_STRATEGY): number {
+  return cryptoAssetLimitForStrategy(asset, strategy);
 }
 
 /**
  * Учёт альткоин-мест по списку крипто-активов портфеля.
  * Альткоин = крипто-позиция без именного лимита (не мажор).
  */
-export function altcoinSlots(cryptoAssets: string[]): {
+export function altcoinSlots(cryptoAssets: string[], strategy = MAIN_INVESTOR_STRATEGY): {
   used: number;
   total: number;
   free: number;
@@ -87,12 +82,17 @@ export function altcoinSlots(cryptoAssets: string[]): {
   const altcoins: string[] = [];
   for (const raw of cryptoAssets) {
     const key = raw.trim().toUpperCase();
-    if (!key || seen.has(key) || isCryptoMajor(raw)) continue;
+    if (!key || seen.has(key) || isCryptoMajor(raw, strategy)) continue;
     seen.add(key);
     altcoins.push(raw.trim());
   }
   const used = altcoins.length;
-  return { used, total: MAX_ALTCOIN_SLOTS, free: Math.max(MAX_ALTCOIN_SLOTS - used, 0), altcoins };
+  return {
+    used,
+    total: strategy.maxAltcoinSlots,
+    free: Math.max(strategy.maxAltcoinSlots - used, 0),
+    altcoins,
+  };
 }
 
 function uniqueAssets(assets: string[]): string[] {
@@ -117,11 +117,12 @@ export function fixedClassSlots(assets: string[], total: number): {
   return { used: listed.length, total, free: Math.max(total - listed.length, 0), assets: listed };
 }
 
-export function assetLimit(category: string, asset: string): number {
-  if (category === CRYPTO_CATEGORY) return cryptoAssetLimit(asset);
-  if (category === STOCKS_CATEGORY) return STOCK_ASSET_LIMIT;
-  if (category === METALS_CATEGORY) return METAL_ASSET_LIMIT;
-  return MAX_SINGLE_RISK_ASSET_SHARE;
+export function assetLimit(
+  category: string,
+  asset: string,
+  strategy = MAIN_INVESTOR_STRATEGY,
+): number {
+  return assetLimitForStrategy(category, asset, strategy);
 }
 
 // ── Модель «Концентрации» (двухчастная, не роняет в 0 из-за одного актива) ──
@@ -162,15 +163,16 @@ export type AssetConcentration = {
 };
 
 /**
- * Концентрация по per-asset лимитам (единый источник со шлюзом): крипто —
- * против лимита ВНУТРИ крипто-блока (ETH 35%…альт 5%), акции/металлы —
- * 5% портфеля на актив и максимум 2 актива в классе. Кэш не концентрируем.
+ * Концентрация по per-asset лимитам стратегии (единый источник со шлюзом):
+ * крипто считается внутри крипто-блока, акции/металлы — по доле портфеля
+ * и числу разрешённых позиций. Кэш не концентрируем.
  * Считает итоговый балл двухчастной моделью.
  */
 export function assetConcentration(
   positions: GatePosition[],
   cryptoBlockValue: number,
   totalPortfolio: number,
+  strategy = MAIN_INVESTOR_STRATEGY,
 ): AssetConcentration {
   let maxUtilization = 0;
   let worstAsset = "-";
@@ -184,18 +186,19 @@ export function assetConcentration(
     positions
       .filter((position) => position.category === CRYPTO_CATEGORY && position.value > 0)
       .map((position) => position.asset),
+    strategy,
   );
   const stockSlots = fixedClassSlots(
     positions
       .filter((position) => position.category === STOCKS_CATEGORY && position.value > 0)
       .map((position) => position.asset),
-    MAX_STOCK_SLOTS,
+    strategy.maxStockSlots,
   );
   const metalSlots = fixedClassSlots(
     positions
       .filter((position) => position.category === METALS_CATEGORY && position.value > 0)
       .map((position) => position.asset),
-    MAX_METAL_SLOTS,
+    strategy.maxMetalSlots,
   );
 
   for (const p of positions) {
@@ -205,7 +208,7 @@ export function assetConcentration(
     if (base <= 0) continue;
     const share = p.value / base;
     const portfolioShare = totalPortfolio > 0 ? p.value / totalPortfolio : 0;
-    const limit = assetLimit(p.category, p.asset);
+    const limit = assetLimit(p.category, p.asset, strategy);
     const util = limit > 0 ? share / limit : 0;
 
     if (portfolioShare > largestPortfolioShare) largestPortfolioShare = portfolioShare;
@@ -254,16 +257,16 @@ export function assetConcentration(
 }
 
 /** Потолок доли класса в портфеле. null — класс без лимита (кэш). */
-export function categoryCap(category: string): number | null {
+export function categoryCap(category: string, strategy = MAIN_INVESTOR_STRATEGY): number | null {
   switch (category) {
     case CRYPTO_CATEGORY:
-      return MAX_CRYPTO_EXPOSURE_SHARE;
+      return strategy.cryptoMaxShare;
     case METALS_CATEGORY:
-      return MAX_METALS_EXPOSURE_SHARE;
+      return strategy.metalsMaxShare;
     case FUTURES_CATEGORY:
-      return MAX_FUTURES_EXPOSURE_SHARE;
+      return strategy.futuresAllowed ? strategy.futuresMaxShare : 0;
     case STOCKS_CATEGORY:
-      return MAX_STOCKS_EXPOSURE_SHARE;
+      return strategy.stocksMaxShare;
     default:
       return null; // Свободные деньги / неизвестный класс — не риск-добор.
   }
@@ -297,7 +300,7 @@ export type GateContext = {
   totalPortfolioValue: number;
   /** Вся категория «Свободные деньги», $ (для пола резерва). */
   stableReserve: number;
-  /** Спот-капитал сверх 30%-пола, $ — канон движка (portfolioCalculations). */
+  /** Спот-капитал сверх рабочего пола стратегии, $. */
   spotDeployable: number;
   positions: GatePosition[];
   allocation: GateAllocation[];
@@ -306,6 +309,10 @@ export type GateContext = {
   reserveFloorShare?: number;
   /** Максимальная доля крипты текущей фазы, доля 0..1 (по умолчанию 60%). */
   cryptoMaxShare?: number;
+  /** Стратегия конкретного аккаунта. По умолчанию — основной аккаунт. */
+  investorStrategy?: InvestorStrategy;
+  /** Портрет конкретного инвестора. По умолчанию — основной аккаунт. */
+  investorProfile?: InvestorProfile;
   /** Расклад свободных денег по карманам риска. */
   capitalBuckets?: CapitalBuckets;
   /** Поведенческий режим рынка от живого F&G. Не меняет Health, но влияет на допуск сделки. */
@@ -319,7 +326,7 @@ export type TradeInput = {
   category?: string;
 };
 
-export type GateCheckKey = "capital" | "capitalBucket" | "position" | "class" | "assetSlots";
+export type GateCheckKey = "capital" | "capitalBucket" | "position" | "class" | "assetSlots" | "investorProfile";
 export type GateCheckSeverity = "block" | "warn";
 
 export type GateCheck = {
@@ -476,6 +483,8 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   }
 
   const total = ctx.totalPortfolioValue;
+  const strategy = ctx.investorStrategy ?? MAIN_INVESTOR_STRATEGY;
+  const profile = ctx.investorProfile ?? MAIN_INVESTOR_PROFILE;
   const category = resolveCategory(input, ctx);
   const checks: GateCheck[] = [];
 
@@ -484,7 +493,7 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   // Жёсткая граница — пол резерва ТЕКУЩЕЙ ФАЗЫ: в постепенном накоплении
   // 30% (подушки нет), в агрессивном окне открывается до 10%. Ниже фазового
   // пола — блок. reserveFloorShare приходит из marketPhases (дефолт — 10%).
-  const phaseFloor = ctx.reserveFloorShare ?? RESERVE_FLOOR_SHARE;
+  const phaseFloor = ctx.reserveFloorShare ?? strategy.reserveFloorShare;
   const greenMax = clampMin0(ctx.spotDeployable);
   const phaseFloorMax = clampMin0(ctx.stableReserve - phaseFloor * total);
   const hardMax = Math.max(greenMax, phaseFloorMax);
@@ -535,7 +544,44 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   const isStockAsset = category === STOCKS_CATEGORY;
   const isMetalAsset = category === METALS_CATEGORY;
   const cryptoBlockValue = ctx.allocation.find((a) => a.name === CRYPTO_CATEGORY)?.value ?? 0;
-  const positionLimit = assetLimit(category, input.asset);
+  const assetVerdict = isAssetAllowedByStrategy(input.asset, category, strategy);
+  if (!assetVerdict.allowed) {
+    checks.push({
+      key: "assetSlots",
+      label: "Качество актива",
+      ok: false,
+      severity: "block",
+      before: 0,
+      after: 1,
+      limit: 0,
+      isShare: false,
+      note: assetVerdict.reason,
+    });
+  }
+
+  for (const profileVerdict of evaluateInvestorProfileTrade({
+    asset: input.asset,
+    category,
+    amountUsd: amount,
+    totalPortfolioValue: total,
+    stableReserve: ctx.stableReserve,
+    reserveTargetShare: strategy.reserveTargetShare,
+    profile,
+  })) {
+    checks.push({
+      key: "investorProfile",
+      label: profileVerdict.label,
+      ok: profileVerdict.ok,
+      severity: profileVerdict.severity,
+      before: 0,
+      after: profileVerdict.ok ? 0 : 1,
+      limit: 0,
+      isShare: false,
+      note: profileVerdict.note,
+    });
+  }
+
+  const positionLimit = assetLimit(category, input.asset, strategy);
   const plannedCryptoBlock = isCryptoAsset && ctx.capitalBuckets
     ? Math.max(cryptoBlockValue, ctx.capitalBuckets.plannedCryptoBlockUsd)
     : cryptoBlockValue;
@@ -552,15 +598,15 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   const positionLimitPct = Math.round(positionLimit * 100);
   const existingAsset = ctx.positions.find((p) => p.asset === input.asset && p.value > 0);
   const altSlots = isCryptoAsset
-    ? altcoinSlots(ctx.positions.filter((p) => p.category === CRYPTO_CATEGORY && p.value > 0).map((p) => p.asset))
+    ? altcoinSlots(ctx.positions.filter((p) => p.category === CRYPTO_CATEGORY && p.value > 0).map((p) => p.asset), strategy)
     : null;
   const stockSlots = isStockAsset
-    ? fixedClassSlots(ctx.positions.filter((p) => p.category === STOCKS_CATEGORY && p.value > 0).map((p) => p.asset), MAX_STOCK_SLOTS)
+    ? fixedClassSlots(ctx.positions.filter((p) => p.category === STOCKS_CATEGORY && p.value > 0).map((p) => p.asset), strategy.maxStockSlots)
     : null;
   const metalSlots = isMetalAsset
-    ? fixedClassSlots(ctx.positions.filter((p) => p.category === METALS_CATEGORY && p.value > 0).map((p) => p.asset), MAX_METAL_SLOTS)
+    ? fixedClassSlots(ctx.positions.filter((p) => p.category === METALS_CATEGORY && p.value > 0).map((p) => p.asset), strategy.maxMetalSlots)
     : null;
-  const isAltcoin = isCryptoAsset && !isCryptoMajor(input.asset);
+  const isAltcoin = isCryptoAsset && !isCryptoMajor(input.asset, strategy);
   const isNewAltcoin =
     isAltcoin && !altSlots?.altcoins.some((asset) => asset.toUpperCase() === input.asset.trim().toUpperCase()) && !existingAsset;
   const isNewStock =
@@ -591,50 +637,54 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
     const afterSlots = altSlots.used + 1;
     checks.push({
       key: "assetSlots",
-      label: "Альткоин-места по 5%",
+      label: strategy.maxAltcoinSlots > 0
+        ? `Альткоин-места по ${Math.round(strategy.defaultCryptoAssetLimit * 100)}%`
+        : "Альты вне стратегии",
       ok: afterSlots <= altSlots.total,
       severity: "block",
       before: altSlots.used,
       after: afterSlots,
       limit: altSlots.total,
       isShare: false,
-      note: "В крипто-блоке есть только 3 места под альткоины по 5%.",
+      note: strategy.maxAltcoinSlots > 0
+        ? `В крипто-блоке есть только ${strategy.maxAltcoinSlots} места под альткоины по ${Math.round(strategy.defaultCryptoAssetLimit * 100)}%.`
+        : "Альты вне списка стратегии запрещены.",
     });
   }
   if (isNewStock && stockSlots) {
     const afterSlots = stockSlots.used + 1;
     checks.push({
       key: "assetSlots",
-      label: "Места акций по 5%",
+      label: `Места акций по ${Math.round(strategy.stockAssetLimit * 100)}%`,
       ok: afterSlots <= stockSlots.total,
       severity: "block",
       before: stockSlots.used,
       after: afterSlots,
       limit: stockSlots.total,
       isShare: false,
-      note: "В портфеле есть только 2 места под акции по 5%.",
+      note: `В портфеле есть только ${strategy.maxStockSlots} места под акции по ${Math.round(strategy.stockAssetLimit * 100)}%.`,
     });
   }
   if (isNewMetal && metalSlots) {
     const afterSlots = metalSlots.used + 1;
     checks.push({
       key: "assetSlots",
-      label: "Места металлов по 5%",
+      label: `Места металлов по ${Math.round(strategy.metalAssetLimit * 100)}%`,
       ok: afterSlots <= metalSlots.total,
       severity: "block",
       before: metalSlots.used,
       after: afterSlots,
       limit: metalSlots.total,
       isShare: false,
-      note: "В портфеле есть только 2 места под металлы по 5%.",
+      note: `В портфеле есть только ${strategy.maxMetalSlots} места под металлы по ${Math.round(strategy.metalAssetLimit * 100)}%.`,
     });
   }
 
   // ── Лимит доли класса (жёсткий, кроме кэша) ───────────────────
   // Крипта — фазовый лимит (60% обычно / 80% агрессив / 40% эйфория).
-  const baseCap = categoryCap(category);
+  const baseCap = categoryCap(category, strategy);
   const cap =
-    baseCap !== null && isCryptoAsset && ctx.cryptoMaxShare !== undefined
+    baseCap !== null && isCryptoAsset && ctx.cryptoMaxShare !== undefined && strategy.id === MAIN_INVESTOR_STRATEGY.id
       ? ctx.cryptoMaxShare
       : baseCap;
   if (cap !== null) {

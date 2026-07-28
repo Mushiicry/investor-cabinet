@@ -64,7 +64,7 @@ export async function proxyInvestorApi(req, res, kind) {
     return;
   }
 
-  if (req.method !== "GET") {
+  if (req.method !== "GET" && req.method !== "POST") {
     sendJson(res, 405, { success: false, error: "Method not allowed" });
     return;
   }
@@ -93,8 +93,15 @@ export async function proxyInvestorApi(req, res, kind) {
     // Сейчас единственная операция — запись достигнутого уровня лестницы
     // (?action=setMaxLevel&level=N). Владельца уже проверили выше по Supabase.
     const upstreamUrl = new URL(targetUrlFor(kind));
+    upstreamUrl.searchParams.set("accountId", kind);
     const incoming = new URL(req.url ?? "/", "http://localhost");
     const action = incoming.searchParams.get("action");
+
+    if (req.method === "POST" && action !== "saveInvestorDNAAnswers") {
+      sendJson(res, 405, { success: false, error: "Method not allowed" });
+      return;
+    }
+
     if (action === "setMaxLevel") {
       const level = Number(incoming.searchParams.get("level"));
       if (Number.isFinite(level) && level >= 1 && level <= CAPITAL_LADDER_LEVELS) {
@@ -103,8 +110,15 @@ export async function proxyInvestorApi(req, res, kind) {
       }
     }
 
+    if (action === "saveInvestorDNAAnswers") {
+      upstreamUrl.searchParams.set("action", action);
+    }
+
     const upstream = await fetch(upstreamUrl.toString(), {
+      method: req.method,
       headers: { accept: "application/json" },
+      body: req.method === "POST" ? req : undefined,
+      duplex: req.method === "POST" ? "half" : undefined,
       redirect: "follow",
     });
     const body = await upstream.text();

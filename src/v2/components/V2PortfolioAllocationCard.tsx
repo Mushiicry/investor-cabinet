@@ -1,7 +1,11 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { isEmptyAccount } from "../lib/accountState";
-import { cryptoAssetLimit } from "../lib/preTradeGate";
 import type { V2Position } from "../InvestorCabinetV2Lab";
+import {
+  MAIN_INVESTOR_STRATEGY,
+  assetLimitForStrategy,
+  type InvestorStrategy,
+} from "../lib/investorStrategy";
 
 // Палитра для дриллдауна (активы внутри класса) — циклическая, холодная гамма.
 const ASSET_COLORS = [
@@ -14,14 +18,12 @@ type LimitKind = "max" | "min" | "none";
 
 const CFG: Record<string, {
   glyph: string; color: string; iconColor: string; glow: string;
-  limit: number | null; limitKind: LimitKind;
-  limitLabel: string;
 }> = {
-  "Крипта":           { glyph: "₿", color: "#1260E8", iconColor: "#3D8FFF", glow: "rgba(18,96,232,0.85)",   limit: 0.60, limitKind: "max", limitLabel: "ЛИМИТ 60%" },
-  "Металлы":          { glyph: "◆", color: "#E6A200", iconColor: "#FFB800", glow: "rgba(230,162,0,0.80)",   limit: 0.10, limitKind: "max", limitLabel: "ЛИМИТ 10%" },
-  "Фьючерсы":         { glyph: "↗", color: "#8B20FF", iconColor: "#B060FF", glow: "rgba(139,32,255,0.82)",  limit: 0.10, limitKind: "max", limitLabel: "ЛИМИТ 10%" },
-  "Акции":            { glyph: "▲", color: "#00BFFF", iconColor: "#22E5FF", glow: "rgba(0,191,255,0.80)",   limit: 0.10, limitKind: "max", limitLabel: "ЛИМИТ 10%" },
-  "Свободные деньги": { glyph: "$", color: "#00CC66", iconColor: "#00FF80", glow: "rgba(0,204,102,0.80)",   limit: 0.30, limitKind: "min", limitLabel: "ЦЕЛЬ 30%" },
+  "Крипта":           { glyph: "₿", color: "#1260E8", iconColor: "#3D8FFF", glow: "rgba(18,96,232,0.85)" },
+  "Металлы":          { glyph: "◆", color: "#E6A200", iconColor: "#FFB800", glow: "rgba(230,162,0,0.80)" },
+  "Фьючерсы":         { glyph: "↗", color: "#8B20FF", iconColor: "#B060FF", glow: "rgba(139,32,255,0.82)" },
+  "Акции":            { glyph: "▲", color: "#00BFFF", iconColor: "#22E5FF", glow: "rgba(0,191,255,0.80)" },
+  "Свободные деньги": { glyph: "$", color: "#00CC66", iconColor: "#00FF80", glow: "rgba(0,204,102,0.80)" },
 };
 
 const ORDER = ["Крипта", "Металлы", "Фьючерсы", "Акции", "Свободные деньги"];
@@ -112,8 +114,29 @@ function buildSegs(items: AllocItem[]) {
   return out;
 }
 
+type StrategyLimitConfig = {
+  limit: number | null;
+  limitKind: LimitKind;
+  limitLabel: string;
+};
+
+const pctLabel = (share: number) => `${Math.round(share * 100)}%`;
+
+function categoryLimitConfig(name: string, strategy: InvestorStrategy): StrategyLimitConfig {
+  if (name === "Крипта") return { limit: strategy.cryptoMaxShare, limitKind: "max", limitLabel: `ЛИМИТ ${pctLabel(strategy.cryptoMaxShare)}` };
+  if (name === "Металлы") return { limit: strategy.metalsMaxShare, limitKind: "max", limitLabel: `ЛИМИТ ${pctLabel(strategy.metalsMaxShare)}` };
+  if (name === "Фьючерсы") {
+    return strategy.futuresAllowed
+      ? { limit: strategy.futuresMaxShare, limitKind: "max", limitLabel: `ЛИМИТ ${pctLabel(strategy.futuresMaxShare)}` }
+      : { limit: 0, limitKind: "max", limitLabel: "ЗАПРЕТ" };
+  }
+  if (name === "Акции") return { limit: strategy.stocksMaxShare, limitKind: "max", limitLabel: `ЛИМИТ ${pctLabel(strategy.stocksMaxShare)}` };
+  if (name === "Свободные деньги") return { limit: strategy.reserveTargetShare, limitKind: "min", limitLabel: `ЦЕЛЬ ${pctLabel(strategy.reserveTargetShare)}` };
+  return { limit: null, limitKind: "none", limitLabel: "" };
+}
+
 function statusOf(share: number, limit: number | null, kind: LimitKind) {
-  if (!limit || kind === "none") return null;
+  if (limit === null || kind === "none") return null;
   if (kind === "max") return share > limit ? { text: "ВЫШЕ", ok: false } : { text: "ОК", ok: true };
   return share < limit ? { text: "НИЖЕ", ok: false } : { text: "ОК", ok: true };
 }
@@ -152,11 +175,18 @@ type Props = {
   allocation: AllocItem[];
   total: number;
   positions?: V2Position[];
+  strategy?: InvestorStrategy;
   /** Спекулятивная нагрузка 0..1: маржа открытых фьючей + свободная маржа HL. */
   futuresShare?: number;
 };
 
-export function V2PortfolioAllocationCard({ allocation, total, positions = [], futuresShare = 0 }: Props) {
+export function V2PortfolioAllocationCard({
+  allocation,
+  total,
+  positions = [],
+  strategy = MAIN_INVESTOR_STRATEGY,
+  futuresShare = 0,
+}: Props) {
   const [hoveredName, setHoveredName] = useState<string | null>(null);
   // Дриллдаун: null — классы, иначе имя класса, внутри которого показываем активы.
   const [drill, setDrill] = useState<string | null>(null);
@@ -168,7 +198,7 @@ export function V2PortfolioAllocationCard({ allocation, total, positions = [], f
   const drillable = (name: string) => positions.some(p => p.category === name && p.value > 0);
 
   // Активы внутри класса: доли считаются ВНУТРИ класса (база — сам класс),
-  // чтобы совпадать с per-asset лимитами манифеста (ETH 35% крипто-блока и т.д.).
+  // чтобы совпадать с per-asset лимитами выбранной стратегии.
   const drillItems = useMemo(() => {
     if (!drill) return null;
     const inside = positions.filter(p => p.category === drill && p.value > 0);
@@ -178,7 +208,9 @@ export function V2PortfolioAllocationCard({ allocation, total, positions = [], f
       .sort((a, b) => b.share - a.share);
   }, [drill, positions]);
 
-  const sortedCats = [...allocation].sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
+  const sortedCats = [...allocation]
+    .filter((item) => strategy.futuresAllowed || item.name !== "Фьючерсы" || item.value > 0)
+    .sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name));
   const viewItems: AllocItem[] = drillItems ?? sortedCats;
   // Сумма в центре доната: весь портфель на верхнем уровне, стоимость класса — в дриллдауне.
   const levelTotal = drillItems
@@ -188,14 +220,15 @@ export function V2PortfolioAllocationCard({ allocation, total, positions = [], f
   // Конфиг элемента текущего уровня: класс — из CFG, актив — палитра + свой лимит.
   const cfgOf = (name: string, index: number) => {
     if (!drill) {
-      return CFG[name] ?? { glyph: "•", color: "#6f86a6", iconColor: "#7fd8ff", glow: "rgba(111,134,166,0.4)", limit: null, limitKind: "none" as LimitKind, limitLabel: "" };
+      const base = CFG[name] ?? { glyph: "•", color: "#6f86a6", iconColor: "#7fd8ff", glow: "rgba(111,134,166,0.4)" };
+      return { ...base, ...categoryLimitConfig(name, strategy) };
     }
     const color = ASSET_COLORS[index % ASSET_COLORS.length];
-    const limit = drill === "Крипта" ? cryptoAssetLimit(name) : null;
+    const limit = assetLimitForStrategy(drill, name, strategy);
     return {
       glyph: "•", color, iconColor: color, glow: `${color}99`,
-      limit, limitKind: (limit ? "max" : "none") as LimitKind,
-      limitLabel: limit ? `ЛИМИТ ${Math.round(limit * 100)}%` : "",
+      limit, limitKind: limit > 0 ? "max" as LimitKind : "none" as LimitKind,
+      limitLabel: limit > 0 ? `ЛИМИТ ${Math.round(limit * 100)}%` : "",
     };
   };
 
@@ -261,7 +294,7 @@ export function V2PortfolioAllocationCard({ allocation, total, positions = [], f
               ? `СПЕК ${(futuresShare * 100).toFixed(1)}% / ${Math.round(cfg.limit * 100)}%`
               : cfg.limitLabel;
             const bar = Math.min(100, item.share * 100);
-            const lim = cfg.limit ? cfg.limit * 100 : null;
+            const lim = cfg.limit !== null ? cfg.limit * 100 : null;
             const canDrill = !drill && drillable(item.name);
             return (
               <div key={item.name} className={`v2-pac-card${hoveredName === item.name ? " is-active" : ""}${hoveredName && hoveredName !== item.name ? " is-muted" : ""}${canDrill ? " is-drillable" : ""}`}

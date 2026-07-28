@@ -39,6 +39,27 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
     ),
   },
   {
+    label: "ДНК",
+    page: "dna",
+    icon: (
+      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M5 2c5 3 3 11 8 14M13 2C8 5 10 13 5 16" strokeLinecap="round" />
+        <path d="M6.3 5h5.4M6.3 13h5.4M7.2 9h3.6" strokeLinecap="round" opacity=".55" />
+      </svg>
+    ),
+  },
+  {
+    label: "Обучение",
+    page: "education",
+    icon: (
+      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M3 3.5h4.6c1 0 1.4.4 1.4 1.4v10c0-1-.4-1.4-1.4-1.4H3V3.5z" strokeLinejoin="round" />
+        <path d="M15 3.5h-4.6C9.4 3.5 9 3.9 9 4.9v10c0-1 .4-1.4 1.4-1.4H15V3.5z" strokeLinejoin="round" />
+        <path d="M5 6.5h2M11 6.5h2M11 9.5h2" strokeLinecap="round" opacity=".55" />
+      </svg>
+    ),
+  },
+  {
     label: "Сценарии",
     page: "scenarios",
     icon: (

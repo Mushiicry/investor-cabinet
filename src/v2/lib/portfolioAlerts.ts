@@ -1,12 +1,13 @@
-import {
-  MAX_CRYPTO_EXPOSURE_SHARE,
-  MAX_SINGLE_RISK_ASSET_SHARE,
-  RESERVE_TARGET_SHARE,
-} from "../../config/riskRules";
+import { MAX_SINGLE_RISK_ASSET_SHARE } from "../../config/riskRules";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import type { InterestSignal } from "../../types/portfolio";
 import type { V2LabData } from "../InvestorCabinetV2Lab";
 import { isEmptyAccount } from "./accountState";
+import {
+  MAIN_INVESTOR_STRATEGY,
+  assetLimitForStrategy,
+  type InvestorStrategy,
+} from "./investorStrategy";
 import type { MarketPsychology } from "./marketPsychology";
 import { altcoinSlots, CRYPTO_ALT_LIMIT } from "./preTradeGate";
 import {
@@ -48,6 +49,7 @@ export type AlertContext = {
   signalNotification?: SignalNotificationPolicyOptions;
   /** Предыдущий Health Factor (с прошлого визита) — для тревоги о снижении. */
   previousHealthFactor?: number | null;
+  strategy?: InvestorStrategy;
 };
 
 const toPercent = (share: number) => share * 100;
@@ -59,6 +61,7 @@ const toPercent = (share: number) => share * 100;
  */
 export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
   const { portfolio, positions, allocation, currentFG } = ctx;
+  const strategy = ctx.strategy ?? MAIN_INVESTOR_STRATEGY;
   const alerts: Alert[] = [];
   const marketPsychology = ctx.marketPsychology;
 
@@ -70,36 +73,39 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
 
   // 1. Резерв
   const reservePct = portfolio.reserveShare * 100;
-  if (portfolio.stableReserve < portfolio.totalPortfolioValue * 0.05) {
+  const reserveFloorUsd = portfolio.totalPortfolioValue * strategy.reserveFloorShare;
+  const reserveTargetUsd = portfolio.totalPortfolioValue * strategy.reserveTargetShare;
+  const reserveTargetPct = toPercent(strategy.reserveTargetShare);
+  if (portfolio.stableReserve < reserveFloorUsd) {
     alerts.push({
       id: "reserve-critical",
       level: "critical",
       title: "Нет резерва",
-      detail: `${portfolio.stableReserve.toFixed(0)}$ · цель ${(RESERVE_TARGET_SHARE * 100).toFixed(0)}% (${(portfolio.totalPortfolioValue * RESERVE_TARGET_SHARE).toFixed(0)}$)`,
+      detail: `${portfolio.stableReserve.toFixed(0)}$ · цель ${reserveTargetPct.toFixed(0)}% (${reserveTargetUsd.toFixed(0)}$)`,
       action: "Вывести часть прибыли в резерв",
     });
-  } else if (reservePct < 20) {
+  } else if (portfolio.reserveShare < strategy.reserveTargetShare) {
     alerts.push({
       id: "reserve-low",
       level: "warning",
       title: "Резерв низкий",
-      detail: `${reservePct.toFixed(0)}% портфеля · цель ${(RESERVE_TARGET_SHARE * 100).toFixed(0)}%`,
+      detail: `${reservePct.toFixed(0)}% портфеля · цель ${reserveTargetPct.toFixed(0)}%`,
     });
   }
 
-  // 2. Крипта > 60% портфеля
+  // 2. Крипта выше лимита стратегии
   const cryptoAlloc = allocation.find((a) => a.name === "Крипта" || a.name === "Crypto");
   if (cryptoAlloc) {
     const cryptoPct = toPercent(cryptoAlloc.share);
-    const cryptoLimitPct = toPercent(MAX_CRYPTO_EXPOSURE_SHARE);
-    if (cryptoAlloc.share > MAX_CRYPTO_EXPOSURE_SHARE + 0.1) {
+    const cryptoLimitPct = toPercent(strategy.cryptoMaxShare);
+    if (cryptoAlloc.share > strategy.cryptoMaxShare + 0.1) {
       alerts.push({
         id: "crypto-critical",
         level: "critical",
         title: "Крипта сильно превышает лимит",
         detail: `${cryptoPct.toFixed(1)}% при лимите ${cryptoLimitPct.toFixed(0)}%`,
       });
-    } else if (cryptoAlloc.share > MAX_CRYPTO_EXPOSURE_SHARE) {
+    } else if (cryptoAlloc.share > strategy.cryptoMaxShare) {
       alerts.push({
         id: "crypto-warn",
         level: "warning",
@@ -110,11 +116,16 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
   }
 
   // 3. Перевес отдельной позиции — любой актив у своего лимита, не только ETH.
-  const positionLimitPct = toPercent(MAX_SINGLE_RISK_ASSET_SHARE);
   positions.forEach((position) => {
     if (!portfolio.totalPortfolioValue) return;
     // Резерв в стейблах — это подушка, а не перевес: чем его больше, тем спокойнее.
     if (CASH_CATEGORIES.has(position.category)) return;
+    const limitShare =
+      position.category === "Крипта"
+        ? assetLimitForStrategy(position.category, position.asset, strategy) * (cryptoAlloc?.share ?? strategy.cryptoMaxShare)
+        : assetLimitForStrategy(position.category, position.asset, strategy);
+    const normalizedLimitShare = limitShare > 0 ? limitShare : MAX_SINGLE_RISK_ASSET_SHARE;
+    const positionLimitPct = toPercent(normalizedLimitShare);
     const share = (position.value / portfolio.totalPortfolioValue) * 100;
     if (share > positionLimitPct) {
       alerts.push({

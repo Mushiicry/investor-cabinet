@@ -1,15 +1,14 @@
 import type { CSSProperties } from "react";
 import type { FearGreedStrategy } from "../../types/portfolio";
 import type { V2LabData, V2Portfolio } from "../InvestorCabinetV2Lab";
-import { MAX_FUTURES_EXPOSURE_SHARE, RESERVE_TARGET_SHARE } from "../../config/riskRules";
 import { buildCapitalBuckets } from "../lib/capitalBuckets";
-
-const RESERVE_TARGET_PCT = RESERVE_TARGET_SHARE;
+import { MAIN_INVESTOR_STRATEGY, type InvestorStrategy } from "../lib/investorStrategy";
 
 type Props = {
   portfolio: V2Portfolio;
   allocation: V2LabData["allocation"];
   strategy: FearGreedStrategy;
+  investorStrategy?: InvestorStrategy;
   /** Спекулятивная нагрузка 0..1 (маржа открытых фьючей + свободная маржа HL). */
   futuresShare?: number;
 };
@@ -21,15 +20,22 @@ const money = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 2,
 });
 
-export function V2DeployableCapital({ portfolio, allocation, strategy, futuresShare = 0 }: Props) {
+export function V2DeployableCapital({
+  portfolio,
+  allocation,
+  strategy,
+  investorStrategy = MAIN_INVESTOR_STRATEGY,
+  futuresShare = 0,
+}: Props) {
   const totalPortfolio = portfolio.totalPortfolioValue || 0;
-  const reserveTarget = totalPortfolio * RESERVE_TARGET_PCT;
+  const reserveTarget = totalPortfolio * investorStrategy.reserveTargetShare;
   const buckets = buildCapitalBuckets({
     totalPortfolioValue: portfolio.totalPortfolioValue,
     stableReserve: portfolio.stableReserve || portfolio.spotDeployable + portfolio.futuresDeployable,
     allocation,
     strategyRules: strategy.rules,
     futuresDeployableUsd: portfolio.futuresDeployable,
+    investorStrategy,
   });
   const deployable = buckets.workCashUsd;
   const pureReserve = buckets.lockedReserveUsd;
@@ -39,10 +45,14 @@ export function V2DeployableCapital({ portfolio, allocation, strategy, futuresSh
   // свободная маржа торгового счёта. Свободный остаток не является задачей.
   // База — вложенный капитал, как в calculateFuturesMarginShare.
   const investedCapital = portfolio.totalInvested || 0;
-  const futuresLimit = MAX_FUTURES_EXPOSURE_SHARE * investedCapital;
+  const futuresLimit = investorStrategy.futuresMaxShare * investedCapital;
   const futuresUsed = futuresShare * investedCapital;
   const futuresRemaining = Math.max(futuresLimit - futuresUsed, 0);
   const futuresOver = futuresUsed > futuresLimit;
+  const reserveTargetPct = Math.round(investorStrategy.reserveTargetShare * 100);
+  const futuresLimitPct = Math.round(investorStrategy.futuresMaxShare * 100);
+  const metalsLimitPct = Math.round(investorStrategy.metalsMaxShare * 100);
+  const stocksLimitPct = Math.round(investorStrategy.stocksMaxShare * 100);
 
   const rows: Array<{
     label: string;
@@ -54,31 +64,33 @@ export function V2DeployableCapital({ portfolio, allocation, strategy, futuresSh
   }> = [
     { label: "ДСА добор", value: buckets.averagingBudgetUsd, glyph: "◇", color: "#5fe0cf" },
     { label: "Спот", value: buckets.spotBudgetUsd, glyph: "○", color: "#56d8f5" },
-    {
-      label: "Фьючерсы",
-      value: buckets.futuresBudgetUsd,
-      glyph: "↗",
-      color: "#8f9ff0",
-      hint: investedCapital
-        ? futuresOver
-          ? `Лимит 10% превышен на ${money.format(futuresUsed - futuresLimit)} — новый риск не добавлять`
-          : `Занято ${money.format(futuresUsed)} из лимита ${money.format(futuresLimit)}. Осталось ${money.format(futuresRemaining)}`
-        : undefined,
-      hintDanger: futuresOver,
-    },
+    ...(investorStrategy.futuresAllowed
+      ? [{
+          label: "Фьючерсы",
+          value: buckets.futuresBudgetUsd,
+          glyph: "↗",
+          color: "#8f9ff0",
+          hint: investedCapital
+            ? futuresOver
+              ? `Лимит ${futuresLimitPct}% превышен на ${money.format(futuresUsed - futuresLimit)} — новый риск не добавлять`
+              : `Занято ${money.format(futuresUsed)} из лимита ${money.format(futuresLimit)}. Осталось ${money.format(futuresRemaining)}`
+            : undefined,
+          hintDanger: futuresOver,
+        }]
+      : []),
     {
       label: "Металлы до",
       value: buckets.metalsBudgetUsd,
       glyph: "◆",
       color: "#e2b66b",
-      hint: "Класс металлов ограничен 10% портфеля",
+      hint: `Класс металлов ограничен ${metalsLimitPct}% портфеля`,
     },
     {
       label: "Акции до",
       value: buckets.stocksBudgetUsd,
       glyph: "□",
       color: "#76dcaa",
-      hint: "Класс акций ограничен 10% портфеля",
+      hint: `Класс акций ограничен ${stocksLimitPct}% портфеля`,
     },
   ];
 
@@ -131,7 +143,7 @@ export function V2DeployableCapital({ portfolio, allocation, strategy, futuresSh
             <div className="v2-alloc-line">
               <span className="v2-alloc-name">
                 Резерв
-                <span className="v2-reserve-target"> · цель 30%</span>
+                <span className="v2-reserve-target"> · цель {reserveTargetPct}%</span>
               </span>
               <strong className="v2-alloc-pct">{money.format(pureReserve)}</strong>
             </div>

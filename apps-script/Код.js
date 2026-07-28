@@ -35,6 +35,7 @@ function normalizePortfolioPnlPct(pnlPct, invested, pnl) {
 
 function doGet(e) {
   const ss = SpreadsheetApp.openById("1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8");
+  const dnaAccountId = e && e.parameter && e.parameter.accountId === "wife" ? "wife" : "main";
 
   // Запись достигнутого уровня (лестница на сайте): ?action=setMaxLevel&level=N.
   // Авторизацию владельца обеспечивает Vercel-прокси (Supabase), сюда чужие
@@ -74,6 +75,7 @@ function doGet(e) {
     history: getHistory(history),
     transactions: getTransactions(transactions),
     assetQuality: getAssetQuality(assetQuality),
+    investorDNA: IC_DNA_getInvestorDNA_(ss, dnaAccountId),
     fearGreedStrategy: getFearGreedStrategyReadOnly(ss, overviewData.invested),
     // Достигнутый уровень лестницы (лист «Прогресс», монотонный) — общий
     // для всех устройств; localStorage на сайте остаётся офлайн-кэшем.
@@ -83,6 +85,276 @@ function doGet(e) {
   return ContentService
     .createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const ss = SpreadsheetApp.openById("1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8");
+  const action = e && e.parameter && e.parameter.action;
+
+  if (action === "saveInvestorDNAAnswers") {
+    return IC_DNA_handleSaveAnswers_(ss, e);
+  }
+
+  return ContentService
+    .createTextOutput(JSON.stringify({ success: false, error: "Unsupported action" }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+const IC_DNA_PROFILE_SHEET = "ДНК_Профили";
+const IC_DNA_RECOMMENDATIONS_SHEET = "ДНК_Рекомендации";
+const IC_DNA_ANSWERS_SHEET = "ДНК_Ответы";
+const IC_DNA_RESULTS_SHEET = "ДНК_Результаты";
+
+const IC_DNA_ANSWER_HEADERS = [
+  "auditId",
+  "accountId",
+  "auditType",
+  "questionId",
+  "option",
+  "note",
+  "answeredAt",
+  "source"
+];
+
+const IC_DNA_RESULT_HEADERS = [
+  "auditId",
+  "accountId",
+  "auditType",
+  "submittedAt",
+  "answeredCount",
+  "totalQuestions",
+  "profileId",
+  "investorType",
+  "riskWillingness",
+  "riskCapacity",
+  "resultNote"
+];
+
+function IC_DNA_getInvestorDNA_(ss, accountId) {
+  const profileSheet = ss.getSheetByName(IC_DNA_PROFILE_SHEET);
+  if (!profileSheet || profileSheet.getLastRow() < 2) return null;
+
+  const profile = IC_DNA_findRow_(profileSheet, "accountId", accountId);
+  if (!profile) return null;
+
+  return {
+    id: IC_DNA_text_(profile.profileId),
+    accountId: accountId,
+    title: IC_DNA_text_(profile.title) || "ДНК Инвестора",
+    investorType: IC_DNA_text_(profile.investorType),
+    thesis: IC_DNA_text_(profile.thesis),
+    riskWillingness: {
+      label: IC_DNA_text_(profile.riskWillingnessLabel) || "Готовность к риску",
+      value: IC_DNA_number_(profile.riskWillingnessValue),
+      note: IC_DNA_text_(profile.riskWillingnessNote)
+    },
+    riskCapacity: {
+      label: IC_DNA_text_(profile.riskCapacityLabel) || "Способность принимать риск",
+      value: IC_DNA_number_(profile.riskCapacityValue),
+      note: IC_DNA_text_(profile.riskCapacityNote)
+    },
+    horizon: IC_DNA_text_(profile.horizon),
+    capitalGoal: IC_DNA_text_(profile.capitalGoal),
+    benchmarkVerdict: IC_DNA_text_(profile.benchmarkVerdict),
+    maxDrawdownRule: IC_DNA_text_(profile.maxDrawdownRule),
+    stressDrawdown: IC_DNA_text_(profile.stressDrawdown),
+    liquidityRule: IC_DNA_text_(profile.liquidityRule),
+    tradingBudgetRule: IC_DNA_text_(profile.tradingBudgetRule),
+    leverageRule: IC_DNA_text_(profile.leverageRule),
+    keyVerdict: IC_DNA_text_(profile.keyVerdict),
+    recommendations: IC_DNA_getRecommendations_(ss, accountId),
+    answers: IC_DNA_getLatestAnswers_(ss, accountId),
+    auditHistory: IC_DNA_getAuditHistory_(ss, accountId)
+  };
+}
+
+function IC_DNA_handleSaveAnswers_(ss, e) {
+  const payload = IC_DNA_parsePostPayload_(e);
+  if (!payload) {
+    return IC_DNA_json_({ success: false, error: "Invalid JSON payload" });
+  }
+
+  const accountId = payload.accountId === "wife" ? "wife" : "main";
+  const auditType = payload.auditType === "full" ? "full" : "lite";
+  const submittedAt = IC_DNA_text_(payload.submittedAt) || new Date().toISOString();
+  const answers = Array.isArray(payload.answers) ? payload.answers : [];
+  const auditId = [accountId, auditType, submittedAt.replace(/[^0-9A-Za-z]/g, "")].join("-");
+  const answerSheet = IC_DNA_getOrCreateSheet_(ss, IC_DNA_ANSWERS_SHEET, IC_DNA_ANSWER_HEADERS);
+  const resultSheet = IC_DNA_getOrCreateSheet_(ss, IC_DNA_RESULTS_SHEET, IC_DNA_RESULT_HEADERS);
+  const now = new Date().toISOString();
+
+  const answerRows = answers
+    .filter(function(answer) {
+      return answer && IC_DNA_text_(answer.questionId);
+    })
+    .map(function(answer) {
+      return [
+        auditId,
+        accountId,
+        auditType,
+        IC_DNA_text_(answer.questionId),
+        IC_DNA_text_(answer.option),
+        IC_DNA_text_(answer.note),
+        submittedAt,
+        "site"
+      ];
+    });
+
+  if (answerRows.length) {
+    answerSheet.getRange(answerSheet.getLastRow() + 1, 1, answerRows.length, IC_DNA_ANSWER_HEADERS.length).setValues(answerRows);
+  }
+
+  const profile = IC_DNA_getInvestorDNA_(ss, accountId) || {};
+  const resultRow = [[
+    auditId,
+    accountId,
+    auditType,
+    submittedAt,
+    IC_DNA_number_(payload.answeredCount),
+    IC_DNA_number_(payload.totalQuestions),
+    IC_DNA_text_(profile.id),
+    IC_DNA_text_(profile.investorType),
+    profile.riskWillingness ? IC_DNA_number_(profile.riskWillingness.value) : 0,
+    profile.riskCapacity ? IC_DNA_number_(profile.riskCapacity.value) : 0,
+    "Ответы сохранены через сайт " + now
+  ]];
+  resultSheet.getRange(resultSheet.getLastRow() + 1, 1, 1, IC_DNA_RESULT_HEADERS.length).setValues(resultRow);
+
+  return IC_DNA_json_({
+    success: true,
+    auditId: auditId,
+    savedAnswers: answerRows.length,
+    investorDNA: IC_DNA_getInvestorDNA_(ss, accountId)
+  });
+}
+
+function IC_DNA_getRecommendations_(ss, accountId) {
+  const sheet = ss.getSheetByName(IC_DNA_RECOMMENDATIONS_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  return IC_DNA_readObjects_(sheet)
+    .filter(function(row) { return IC_DNA_text_(row.accountId) === accountId; })
+    .map(function(row) {
+      return {
+        id: IC_DNA_text_(row.id),
+        priority: IC_DNA_text_(row.priority) || "medium",
+        area: IC_DNA_text_(row.area) || "риск",
+        title: IC_DNA_text_(row.title),
+        action: IC_DNA_text_(row.action),
+        reason: IC_DNA_text_(row.reason),
+        expectedEffect: IC_DNA_text_(row.expectedEffect)
+      };
+    })
+    .filter(function(row) { return row.id && row.title; });
+}
+
+function IC_DNA_getLatestAnswers_(ss, accountId) {
+  const sheet = ss.getSheetByName(IC_DNA_ANSWERS_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  const rows = IC_DNA_readObjects_(sheet)
+    .filter(function(row) { return IC_DNA_text_(row.accountId) === accountId; });
+  const latestByQuestion = {};
+
+  rows.forEach(function(row) {
+    const questionId = IC_DNA_text_(row.questionId);
+    if (!questionId) return;
+    latestByQuestion[questionId] = row;
+  });
+
+  return Object.keys(latestByQuestion).map(function(questionId) {
+    const row = latestByQuestion[questionId];
+    return {
+      auditId: IC_DNA_text_(row.auditId),
+      accountId: accountId,
+      auditType: IC_DNA_text_(row.auditType) === "full" ? "full" : "lite",
+      questionId: questionId,
+      option: IC_DNA_text_(row.option),
+      note: IC_DNA_text_(row.note),
+      answeredAt: IC_DNA_text_(row.answeredAt),
+      source: IC_DNA_text_(row.source) || "google-sheets"
+    };
+  });
+}
+
+function IC_DNA_getAuditHistory_(ss, accountId) {
+  const sheet = ss.getSheetByName(IC_DNA_RESULTS_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+
+  return IC_DNA_readObjects_(sheet)
+    .filter(function(row) { return IC_DNA_text_(row.accountId) === accountId; })
+    .map(function(row) {
+      return {
+        auditId: IC_DNA_text_(row.auditId),
+        accountId: accountId,
+        auditType: IC_DNA_text_(row.auditType) === "full" ? "full" : "lite",
+        submittedAt: IC_DNA_text_(row.submittedAt),
+        answeredCount: IC_DNA_number_(row.answeredCount),
+        totalQuestions: IC_DNA_number_(row.totalQuestions),
+        profileId: IC_DNA_text_(row.profileId),
+        investorType: IC_DNA_text_(row.investorType),
+        riskWillingness: IC_DNA_number_(row.riskWillingness),
+        riskCapacity: IC_DNA_number_(row.riskCapacity),
+        resultNote: IC_DNA_text_(row.resultNote)
+      };
+    });
+}
+
+function IC_DNA_getOrCreateSheet_(ss, name, headers) {
+  const sheet = ss.getSheetByName(name) || ss.insertSheet(name);
+  if (sheet.getLastRow() < 1) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function IC_DNA_findRow_(sheet, key, value) {
+  const rows = IC_DNA_readObjects_(sheet);
+  for (let i = 0; i < rows.length; i += 1) {
+    if (IC_DNA_text_(rows[i][key]) === value) return rows[i];
+  }
+  return null;
+}
+
+function IC_DNA_readObjects_(sheet) {
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  if (lastRow < 2 || lastColumn < 1) return [];
+
+  const values = sheet.getRange(1, 1, lastRow, lastColumn).getDisplayValues();
+  const headers = values[0].map(function(header) { return IC_DNA_text_(header); });
+
+  return values.slice(1).map(function(row) {
+    const item = {};
+    headers.forEach(function(header, index) {
+      if (header) item[header] = row[index];
+    });
+    return item;
+  });
+}
+
+function IC_DNA_parsePostPayload_(e) {
+  try {
+    return JSON.parse(e && e.postData && e.postData.contents ? e.postData.contents : "{}");
+  } catch (error) {
+    return null;
+  }
+}
+
+function IC_DNA_json_(body) {
+  return ContentService
+    .createTextOutput(JSON.stringify(body))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function IC_DNA_text_(value) {
+  return String(value === null || value === undefined ? "" : value).trim();
+}
+
+function IC_DNA_number_(value) {
+  const parsed = Number(IC_DNA_text_(value).replace(",", ".").replace("%", ""));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function getSignals(sheet) {

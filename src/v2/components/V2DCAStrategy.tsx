@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { buildFearGreedStrategy } from "../../lib/fearGreedStrategy";
 import type { FearGreedMode, FearGreedStrategy, FearGreedStrategyRule } from "../../types/portfolio";
 import type { V2Portfolio, V2Page } from "../InvestorCabinetV2Lab";
+import type { InvestorStrategy } from "../lib/investorStrategy";
 
 // Открытая подсказка «?» закрывается тапом в любом месте экрана
 // (обработчик самого тултипа стоит раньше и через stopPropagation
@@ -19,6 +20,7 @@ function useCloseOnOutsideTap(open: boolean, close: () => void) {
 type Props = {
   portfolio: V2Portfolio;
   strategy: FearGreedStrategy;
+  investorStrategy?: InvestorStrategy;
   onNavigate?: (page: V2Page) => void;
 };
 

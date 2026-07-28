@@ -1,6 +1,10 @@
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
 import type { V2Portfolio, V2Risk } from "../InvestorCabinetV2Lab";
 import { isEmptyAccount } from "../lib/accountState";
+import {
+  MAIN_INVESTOR_STRATEGY,
+  type InvestorStrategy,
+} from "../lib/investorStrategy";
 
 type AllocationItem = { name: string; share: number; value: number };
 
@@ -9,15 +13,22 @@ type Props = {
   health: PortfolioHealth;
   risk: V2Risk;
   allocation: AllocationItem[];
+  strategy?: InvestorStrategy;
 };
 
-const ALLOC_LIMITS: Record<string, { limit: number; target?: number; dir: "above" | "below" | "target" }> = {
-  Крипта:           { limit: 0.6, dir: "above" },
-  Фьючерсы:        { limit: 0.1, dir: "above" },
-  "Свободные деньги": { limit: 0.3, dir: "below", target: 0.3 },
-  Металлы:         { limit: 0.15, dir: "above" },
-  Акции:           { limit: 0.2, dir: "above" },
-};
+function allocationLimit(
+  name: string,
+  strategy: InvestorStrategy,
+): { limit: number; target?: number; dir: "above" | "below" | "target" } | null {
+  if (name === "Крипта") return { limit: strategy.cryptoMaxShare, dir: "above" };
+  if (name === "Фьючерсы") return { limit: strategy.futuresMaxShare, dir: "above" };
+  if (name === "Свободные деньги") {
+    return { limit: strategy.reserveTargetShare, dir: "below", target: strategy.reserveTargetShare };
+  }
+  if (name === "Металлы") return { limit: strategy.metalsMaxShare, dir: "above" };
+  if (name === "Акции") return { limit: strategy.stocksMaxShare, dir: "above" };
+  return null;
+}
 
 function pct(value: number) {
   return (value * 100).toFixed(1) + "%";
@@ -52,7 +63,13 @@ function scoreColor(score: number) {
 // Нейтральный «нет данных» тон для пустого аккаунта — вместо тревожного красного.
 const EMPTY_TONE = "rgba(150, 170, 190, 0.5)";
 
-export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props) {
+export function V2RiskEnginePage({
+  portfolio,
+  health,
+  risk,
+  allocation,
+  strategy = MAIN_INVESTOR_STRATEGY,
+}: Props) {
   // Пустой/кастдев-аккаунт (кошельки не подключены): нули — это отсутствие данных,
   // а не критический риск. Гасим красные тона и флаги, геометрию сохраняем.
   // Реальный аккаунт (value > 0) идёт по прежней risk-логике без изменений.
@@ -60,17 +77,22 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
   const toneColor = (v: number) => (isEmpty ? EMPTY_TONE : scoreColor(v));
 
   const reservePct = portfolio.reserveShare * 100;
-  const reserveTarget = 30;
+  const reserveTarget = strategy.reserveTargetShare * 100;
   const reserveDelta = reservePct - reserveTarget;
   const reserveStatus = reserveDelta >= 0 ? "above" : reserveDelta >= -5 ? "near" : "below";
+  const visibleAllocation = allocation.filter(
+    (item) => strategy.futuresAllowed || item.name !== "Фьючерсы" || item.value > 0,
+  );
 
   return (
     <section className="v2-re-page">
       {/* ── HERO STATUS ── */}
       <div className="v2-re-hero">
         <div className="v2-re-hero-left">
-          <h2 className="v2-re-title">Контроль риска</h2>
-          <p className="v2-re-subtitle">Системный контроль рисков портфеля</p>
+          <h2 className="v2-re-title">{strategy.futuresAllowed ? "Контроль риска" : "Качество активов"}</h2>
+          <p className="v2-re-subtitle">
+            {strategy.futuresAllowed ? "Системный контроль рисков портфеля" : "Контроль чистоты портфеля Полины"}
+          </p>
         </div>
         <div className="v2-re-hero-scores">
           <div className={`v2-re-hf-badge ${isEmpty ? "re-status-empty" : statusClass(health.healthFactor)}`}>
@@ -122,8 +144,8 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
               <span className="v2-re-card-note">текущее / лимит политики</span>
             </div>
             <div className="v2-re-alloc-list">
-              {allocation.map((item) => {
-                const rule = ALLOC_LIMITS[item.name];
+              {visibleAllocation.map((item) => {
+                const rule = allocationLimit(item.name, strategy);
                 const exposureShare = item.name === "Фьючерсы" ? risk.futuresShare : item.share;
                 // Пустой аккаунт: доли по нулям — не считаем это нарушением лимитов.
                 const over = !isEmpty && rule && exposureShare > rule.limit;
@@ -175,7 +197,7 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
           <div className="v2-re-card">
             <div className="v2-re-card-head">
               <span className="v2-re-card-title">Резервный слой</span>
-              <span className="v2-re-card-note">цель 30% · текущее</span>
+              <span className="v2-re-card-note">цель {reserveTarget.toFixed(0)}% · текущее</span>
             </div>
             <div className="v2-re-reserve-hero">
               <span className="v2-re-reserve-pct">{reservePct.toFixed(1)}%</span>
@@ -216,10 +238,12 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
                 <span className="v2-re-field-label">Спот</span>
                 <span className="v2-re-deploy-val is-spot">{money(portfolio.spotDeployable)}</span>
               </div>
-              <div className="v2-re-deploy-item">
-                <span className="v2-re-field-label">Фьючерсы</span>
-                <span className="v2-re-deploy-val is-futures">{money(portfolio.futuresDeployable)}</span>
-              </div>
+              {strategy.futuresAllowed && (
+                <div className="v2-re-deploy-item">
+                  <span className="v2-re-field-label">Фьючерсы</span>
+                  <span className="v2-re-deploy-val is-futures">{money(portfolio.futuresDeployable)}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -235,12 +259,14 @@ export function V2RiskEnginePage({ portfolio, health, risk, allocation }: Props)
                   {levelLabel(risk.concentration)}
                 </span>
               </div>
-              <div className="v2-re-signal-item">
-                <span className="v2-re-field-label">Давление фьючерсов</span>
-                <span className={`v2-re-lvl-badge ${levelBadge(risk.futuresPressure)}`}>
-                  {levelLabel(risk.futuresPressure)}
-                </span>
-              </div>
+              {strategy.futuresAllowed && (
+                <div className="v2-re-signal-item">
+                  <span className="v2-re-field-label">Давление фьючерсов</span>
+                  <span className={`v2-re-lvl-badge ${levelBadge(risk.futuresPressure)}`}>
+                    {levelLabel(risk.futuresPressure)}
+                  </span>
+                </div>
+              )}
               <div className="v2-re-signal-item">
                 <span className="v2-re-field-label">Режим экспозиции</span>
                 <span className="v2-re-sig-chip">{portfolio.exposureMode}</span>
