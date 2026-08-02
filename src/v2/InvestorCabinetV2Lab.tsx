@@ -129,7 +129,7 @@ export default function InvestorCabinetV2Lab() {
     []
   );
   const wife = isWifeEmail(user?.email);
-  const investorDataReady = !configured || !authLoading;
+  const investorDataReady = !configured || (!authLoading && Boolean(user));
   const investorData = useInvestorData(
     fallbackData,
     wife ? WIFE_API_URL : INVESTOR_API_URL,

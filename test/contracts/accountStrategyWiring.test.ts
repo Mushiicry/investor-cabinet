@@ -9,7 +9,7 @@ describe("account strategy wiring", () => {
     const lab = read("src/v2/InvestorCabinetV2Lab.tsx");
 
     expect(lab).toContain("investorDataReady");
-    expect(lab).toContain("!configured || !authLoading");
+    expect(lab).toContain("!configured || (!authLoading && Boolean(user))");
     expect(lab).toContain("useInvestorData(");
     expect(shell).toContain("<V2SignalsPage");
     expect(shell).toContain("strategy={data.strategy}");
