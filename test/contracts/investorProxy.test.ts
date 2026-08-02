@@ -10,8 +10,9 @@ type MockResponse = ServerResponse & {
 const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
 
-const mockReq = (authorization?: string): IncomingMessage => ({
+const mockReq = (authorization?: string, url = "/api/investor"): IncomingMessage => ({
   method: "GET",
+  url,
   headers: authorization ? { authorization } : {},
 }) as IncomingMessage;
 
@@ -53,11 +54,24 @@ describe("investor serverless auth proxy", () => {
     vi.restoreAllMocks();
   });
 
-  it("rejects requests without a Supabase bearer token", async () => {
+  it("allows public read-only GET requests without a Supabase bearer token", async () => {
     setProxyEnv();
+    globalThis.fetch = vi.fn(async () => Response.json({ success: true, overview: {}, portfolio: [] })) as typeof fetch;
     const res = mockRes();
 
     await proxyInvestorApi(mockReq(), res, "main");
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body ?? "{}")).toMatchObject({ success: true });
+    expect(globalThis.fetch).toHaveBeenCalledOnce();
+    expect(String(vi.mocked(globalThis.fetch).mock.calls[0][0])).toBe("https://apps-script.example/main?accountId=main");
+  });
+
+  it("rejects write requests without a Supabase bearer token", async () => {
+    setProxyEnv();
+    const res = mockRes();
+
+    await proxyInvestorApi(mockPostReq(), res, "main");
 
     expect(res.statusCode).toBe(401);
     expect(JSON.parse(res.body ?? "{}")).toMatchObject({ success: false });
@@ -68,7 +82,7 @@ describe("investor serverless auth proxy", () => {
     globalThis.fetch = vi.fn(async () => Response.json({ email: "other@example.com" })) as typeof fetch;
     const res = mockRes();
 
-    await proxyInvestorApi(mockReq("Bearer token"), res, "main");
+    await proxyInvestorApi(mockReq("Bearer token", "/api/investor?action=setMaxLevel&level=2"), res, "main");
 
     expect(res.statusCode).toBe(403);
     expect(globalThis.fetch).toHaveBeenCalledOnce();
@@ -87,12 +101,14 @@ describe("investor serverless auth proxy", () => {
     }) as typeof fetch;
     const res = mockRes();
 
-    await proxyInvestorApi(mockReq("Bearer token"), res, "main");
+    await proxyInvestorApi(mockReq("Bearer token", "/api/investor?action=setMaxLevel&level=2"), res, "main");
 
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body ?? "{}")).toMatchObject({ success: true });
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-    expect(String(vi.mocked(globalThis.fetch).mock.calls[1][0])).toBe("https://apps-script.example/main?accountId=main");
+    expect(String(vi.mocked(globalThis.fetch).mock.calls[1][0])).toBe(
+      "https://apps-script.example/main?accountId=main&action=setMaxLevel&level=2",
+    );
   });
 
   it("forwards DNA answer POST through the authenticated investor proxy", async () => {

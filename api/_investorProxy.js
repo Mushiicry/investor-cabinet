@@ -70,23 +70,29 @@ export async function proxyInvestorApi(req, res, kind) {
   }
 
   try {
-    const ownerEmail = ownerEmailFor(kind);
-    const user = await verifySupabaseUser(req);
-    const userEmail = user?.email?.trim().toLowerCase() ?? "";
+    const incoming = new URL(req.url ?? "/", "http://localhost");
+    const action = incoming.searchParams.get("action");
+    const requiresOwnerAuth = req.method !== "GET" || Boolean(action);
 
-    if (!userEmail) {
-      sendJson(res, 401, { success: false, error: "Unauthorized" });
-      return;
-    }
+    if (requiresOwnerAuth) {
+      const ownerEmail = ownerEmailFor(kind);
+      const user = await verifySupabaseUser(req);
+      const userEmail = user?.email?.trim().toLowerCase() ?? "";
 
-    if (!ownerEmail) {
-      sendJson(res, 503, { success: false, error: "Owner email is not configured" });
-      return;
-    }
+      if (!userEmail) {
+        sendJson(res, 401, { success: false, error: "Unauthorized" });
+        return;
+      }
 
-    if (userEmail !== ownerEmail) {
-      sendJson(res, 403, { success: false, error: "Forbidden" });
-      return;
+      if (!ownerEmail) {
+        sendJson(res, 503, { success: false, error: "Owner email is not configured" });
+        return;
+      }
+
+      if (userEmail !== ownerEmail) {
+        sendJson(res, 403, { success: false, error: "Forbidden" });
+        return;
+      }
     }
 
     // Белый список query-параметров, которые уезжают в Apps Script.
@@ -94,8 +100,6 @@ export async function proxyInvestorApi(req, res, kind) {
     // (?action=setMaxLevel&level=N). Владельца уже проверили выше по Supabase.
     const upstreamUrl = new URL(targetUrlFor(kind));
     upstreamUrl.searchParams.set("accountId", kind);
-    const incoming = new URL(req.url ?? "/", "http://localhost");
-    const action = incoming.searchParams.get("action");
 
     if (req.method === "POST" && action !== "saveInvestorDNAAnswers") {
       sendJson(res, 405, { success: false, error: "Method not allowed" });
