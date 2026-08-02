@@ -114,11 +114,12 @@ export const fmt$ = (v: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
 
 export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
-  const reservePct = Math.round(portfolio.reserveShare * 100);
+  const reservePct = Math.round((c.meta?.reserveShare ?? portfolio.reserveShare) * 100);
   const reserveUsd = portfolio.stableReserve;
   const targetUsd = Math.round(c.meta?.reserveTargetUsd ?? portfolio.totalPortfolioValue * 0.30);
-  const targetPct = c.meta?.reserveTargetUsd && portfolio.totalPortfolioValue
-    ? Math.round((c.meta.reserveTargetUsd / portfolio.totalPortfolioValue) * 100)
+  const reserveBaseUsd = c.meta?.reserveBaseUsd ?? portfolio.totalPortfolioValue;
+  const targetPct = c.meta?.reserveTargetUsd && reserveBaseUsd
+    ? Math.round((c.meta.reserveTargetUsd / reserveBaseUsd) * 100)
     : 30;
   switch (c.key) {
     case "reserve":
@@ -320,13 +321,14 @@ export function buildCoreRecs(
   const reserve = all.find((c) => c.key === "reserve");
   const rm = reserve?.meta;
   const reserveTargetUsd = rm?.reserveTargetUsd ?? portfolio.totalPortfolioValue * 0.30;
-  const reserveTargetPct = portfolio.totalPortfolioValue > 0
-    ? Math.round((reserveTargetUsd / portfolio.totalPortfolioValue) * 100)
+  const reserveBaseUsd = rm?.reserveBaseUsd ?? portfolio.totalPortfolioValue;
+  const reserveTargetPct = reserveBaseUsd > 0
+    ? Math.round((reserveTargetUsd / reserveBaseUsd) * 100)
     : 30;
   const deficit = Math.max(0, reserveTargetUsd - portfolio.stableReserve);
   const reserveBlockers = rm?.reserveBlockers ?? [];
   const reserveTargetShortfallUsd = rm?.reserveTargetShortfallUsd ?? deficit;
-  const reserveShare = portfolio.reserveShare ?? 0;
+  const reserveShare = rm?.reserveShare ?? portfolio.reserveShare ?? 0;
   const hasHardReserveGate = reserveBlockers.length > 0 || reserveShare < 0.10 || portfolio.deployableCapital < 50;
   if (reserveBlockers.length) {
     result.push({

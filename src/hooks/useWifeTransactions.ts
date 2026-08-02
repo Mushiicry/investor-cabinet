@@ -10,8 +10,21 @@ const REFRESH_MS = 5 * 60 * 1000;
 
 const STABLE_SYMBOLS = new Set(["USDT", "USDC", "DAI", "BUSD", "USDE"]);
 
+function normalizeAssetSymbol(symbol: string): string {
+  const normalized = symbol
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/₮/g, "T")
+    .replace(/Т/g, "T")
+    .toUpperCase();
+  if (normalized === "USDT0" || normalized === "USDTE" || normalized.startsWith("USDT")) {
+    return "USDT";
+  }
+  return normalized;
+}
+
 function isStable(symbol: string): boolean {
-  return STABLE_SYMBOLS.has(symbol.toUpperCase().replace("₮", "T"));
+  return STABLE_SYMBOLS.has(normalizeAssetSymbol(symbol));
 }
 
 function addrLower(a: string | null | undefined): string {
@@ -19,27 +32,28 @@ function addrLower(a: string | null | undefined): string {
 }
 
 function bcAction(assetSymbol: string, isIn: boolean): string {
-  // For stables: IN means you sold crypto and received stables → "Продажа"
-  //              OUT means you spent stables to buy crypto → "Покупка"
+  // Raw wallet stable transfers are capital flows unless a paired swap importer
+  // explicitly rewrites them into Покупка/Продажа.
+  if (isStable(assetSymbol)) return isIn ? "Пополнение" : "Вывод";
   // For non-stables: IN → "Покупка", OUT → "Продажа"
-  if (isStable(assetSymbol)) return isIn ? "Продажа" : "Покупка";
   return isIn ? "Покупка" : "Продажа";
 }
 
 // ─── Blockscout (Arbitrum) ────────────────────────────────────────────────────
 
 async function fetchArbTokenTransfers(): Promise<InvestorTransaction[]> {
-  const url = `https://arbitrum.blockscout.com/api/v2/addresses/${EVM_ADDRESS}/token-transfers?filter=from%7Cto&limit=100`;
+  const url = `https://arbitrum.blockscout.com/api/v2/addresses/${EVM_ADDRESS}/token-transfers`;
   const r = await fetch(url);
   const d: any = await r.json();
   const items: any[] = d.items ?? [];
 
   return items.flatMap((item) => {
-    const hash: string = item.tx_hash ?? "";
+    const hash: string = item.tx_hash ?? item.transaction_hash ?? "";
     const decimals = Number(item.token?.decimals ?? 6);
     const rawQty = Number(item.total?.value ?? 0);
     const quantity = rawQty / Math.pow(10, decimals);
-    const symbol: string = item.token?.symbol ?? "UNKNOWN";
+    const rawSymbol: string = item.token?.symbol ?? "UNKNOWN";
+    const symbol = normalizeAssetSymbol(rawSymbol);
 
     if (quantity < 0.0001 || !hash) return [];
 
@@ -50,7 +64,7 @@ async function fetchArbTokenTransfers(): Promise<InvestorTransaction[]> {
       id: `bc:arb_tok:${hash}:${item.total?.value ?? rawQty}`,
       date: item.timestamp ?? new Date().toISOString(),
       asset: symbol,
-      category: "Крипта",
+      category: isStable(symbol) ? "Свободные деньги" : "Крипта",
       action,
       quantity,
       price: 0,
@@ -64,7 +78,7 @@ async function fetchArbTokenTransfers(): Promise<InvestorTransaction[]> {
       counterparty: isIn
         ? (item.from?.hash ?? "")
         : (item.to?.hash ?? ""),
-      rawAsset: symbol,
+      rawAsset: rawSymbol,
       rawAmount: quantity,
       note: "blockchain",
     };
@@ -73,7 +87,7 @@ async function fetchArbTokenTransfers(): Promise<InvestorTransaction[]> {
 }
 
 async function fetchArbEthTransfers(): Promise<InvestorTransaction[]> {
-  const url = `https://arbitrum.blockscout.com/api/v2/addresses/${EVM_ADDRESS}/transactions?filter=to%7Cfrom&limit=50`;
+  const url = `https://arbitrum.blockscout.com/api/v2/addresses/${EVM_ADDRESS}/transactions`;
   const r = await fetch(url);
   const d: any = await r.json();
   const items: any[] = d.items ?? [];
@@ -168,14 +182,14 @@ async function fetchTonTransactions(): Promise<InvestorTransaction[]> {
         const quantity = Number(jt.amount ?? 0) / Math.pow(10, decimals);
         if (quantity < 0.001) continue;
         const symbol: string = jt.jetton?.symbol ?? "USDT";
-        const cleanSymbol = symbol.replace("₮", "T");
+        const cleanSymbol = normalizeAssetSymbol(symbol);
         const isIn = addrLower(jt.sender?.address) !== addrLower(TON_ADDRESS);
         const action = bcAction(cleanSymbol, isIn);
         txs.push({
           id: rowId,
           date,
           asset: cleanSymbol,
-          category: "Крипта",
+          category: isStable(cleanSymbol) ? "Свободные деньги" : "Крипта",
           action,
           quantity,
           price: 0,

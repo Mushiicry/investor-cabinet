@@ -279,9 +279,11 @@ export const buildLiveV2Data = (
     state.overview.portfolioValue,
     strategy,
   );
-  const plannedLimitOrders = plannedLimitOrdersSummary(state.signals.interestList);
+  const signals = state.signals ?? { interest: null, interestList: [] };
+  const interestSignals = signals.interestList ?? [];
+  const plannedLimitOrders = plannedLimitOrdersSummary(interestSignals);
   const plannedLimitOrdersUsd =
-    state.signals.interestList.length > 0 ? plannedLimitOrders.totalUsd : undefined;
+    interestSignals.length > 0 ? plannedLimitOrders.totalUsd : undefined;
 
   const liveHealthInput: HealthInput = {
     cashShare: categoryShare(state, "Свободные деньги"),
@@ -355,7 +357,7 @@ export const buildLiveV2Data = (
     fearGreedStrategy: state.fearGreedStrategy,
     history: slot === "wife" ? state.history : mergeWithLocalSnapshots(state.history, slot),
     transactions: state.transactions,
-    signals: state.signals,
+    signals,
     assetQuality: state.assetQuality ?? emptyAssetQuality,
     health,
     healthInput: liveHealthInput,

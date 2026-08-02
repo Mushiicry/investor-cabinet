@@ -61,7 +61,7 @@ const HOW: Record<HealthComponentKey, string[]> = {
 
 function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
   const { key, score } = c;
-  const pct = Math.round(portfolio.reserveShare * 100);
+  const pct = Math.round((c.meta?.reserveShare ?? portfolio.reserveShare) * 100);
 
   if (key === "reserve") {
     const m = c.meta;
@@ -69,11 +69,12 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     const reserveBlockers = m?.reserveBlockers ?? [];
     const reserveTargetShortfallUsd = m?.reserveTargetShortfallUsd ?? 0;
     const reserveIdleUsd = m?.reserveIdleUsd ?? 0;
-    const targetPct = m?.reserveTargetUsd && portfolio.totalPortfolioValue
-      ? Math.round((m.reserveTargetUsd / portfolio.totalPortfolioValue) * 100)
+    const reserveBaseUsd = m?.reserveBaseUsd ?? portfolio.totalPortfolioValue;
+    const targetPct = m?.reserveTargetUsd && reserveBaseUsd
+      ? Math.round((m.reserveTargetUsd / reserveBaseUsd) * 100)
       : 30;
-    const bandMaxPct = m?.reserveBandMaxUsd && portfolio.totalPortfolioValue
-      ? Math.round((m.reserveBandMaxUsd / portfolio.totalPortfolioValue) * 100)
+    const bandMaxPct = m?.reserveBandMaxUsd && reserveBaseUsd
+      ? Math.round((m.reserveBandMaxUsd / reserveBaseUsd) * 100)
       : 60;
     if (reserveBlockers.length) {
       return `${reserveBlockers[0]}. До цели ${targetPct}% не хватает ${Math.round(reserveTargetShortfallUsd)}$. Новые рисковые действия нужно поставить на паузу.`;

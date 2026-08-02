@@ -16,6 +16,7 @@ type StrategyRule = {
 
 export type CapitalBucketsInput = {
   totalPortfolioValue: number;
+  investedCapital?: number;
   stableReserve: number;
   allocation: AllocationItem[];
   strategyRules?: StrategyRule[];
@@ -51,8 +52,9 @@ function takeBudget(remaining: number, target: number): [number, number] {
 export function buildCapitalBuckets(input: CapitalBucketsInput): CapitalBuckets {
   const investorStrategy = input.investorStrategy ?? MAIN_INVESTOR_STRATEGY;
   const total = clampMin0(input.totalPortfolioValue);
+  const reserveBase = clampMin0(input.investedCapital ?? input.totalPortfolioValue);
   const freeCash = clampMin0(input.stableReserve);
-  const lockedReserve = Math.min(freeCash, total * investorStrategy.reserveTargetShare);
+  const lockedReserve = Math.min(freeCash, reserveBase * investorStrategy.reserveTargetShare);
   let remaining = clampMin0(freeCash - lockedReserve);
 
   const currentCrypto = clampMin0(allocationValue(input.allocation, "Крипта"));

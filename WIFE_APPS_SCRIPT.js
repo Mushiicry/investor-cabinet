@@ -30,6 +30,7 @@ var TEXT_SELL = String.fromCharCode(1055, 1088, 1086, 1076, 1072, 1078, 1072);
 var SHEET_HISTORY = U(1048, 1089, 1090, 1086, 1088, 1080, 1103);
 var SHEET_TRANSACTIONS = U(1058, 1088, 1072, 1085, 1079, 1072, 1082, 1094, 1080, 1080);
 var SHEET_PORTFOLIO = U(1055, 1086, 1088, 1090, 1092, 1077, 1083, 1100);
+var WIFE_HISTORY_TRIGGER_HANDLER = 'syncWifeDailySnapshot';
 var H_DATE = U(1044, 1072, 1090, 1072);
 var H_PORTFOLIO_VALUE = U(1057, 1090, 1086, 1080, 1084, 1086, 1089, 1090, 1100, 32, 1087, 1086, 1088, 1090, 1092, 1077, 1083, 1103);
 var H_INVESTED = U(1042, 1083, 1086, 1078, 1077, 1085, 1086);
@@ -70,18 +71,20 @@ var HL_INFO_URL  = 'https://api.hyperliquid.xyz/info';
 function doGet(e) {
   try {
     var result = buildWifePortfolioJson();
-    return ContentService
-      .createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
+    return jsonOutput_(result);
   } catch (err) {
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success:   false,
-        error:     err.message,
-        updatedAt: new Date().toISOString()
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return jsonOutput_({
+      success:   false,
+      error:     err.message,
+      updatedAt: new Date().toISOString()
+    });
   }
+}
+
+function jsonOutput_(value) {
+  return ContentService
+    .createTextOutput(JSON.stringify(value))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function buildWifePortfolioJson() {
@@ -319,6 +322,129 @@ function readHistory(ss) {
   }
 
   return rows;
+}
+
+function syncWifeDailySnapshot() {
+  var wifeJson = buildWifePortfolioJson();
+  if (!wifeJson || !wifeJson.success || !wifeJson.overview) {
+    throw new Error('Wife portfolio JSON is not available');
+  }
+
+  var ss = SpreadsheetApp.openById(WIFE_SS_ID);
+  var sheet = getOrCreateWifeHistorySheet_(ss);
+  var timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone() || 'Europe/Moscow';
+  var now = new Date();
+  var targetRow = findWifeHistoryDateRow_(sheet, now, timezone);
+  if (!targetRow) targetRow = Math.max(sheet.getLastRow() + 1, 3);
+
+  var overview = wifeJson.overview;
+  var portfolioValue = r2(toFloat(overview.portfolioValue));
+  var invested = r2(toFloat(overview.invested));
+  var pnl = r2(toFloat(overview.pnl));
+  var pnlPct = r6(toFloat(overview.pnlPct));
+  var reserve = r2(toFloat(overview.reserve));
+  var positionsCount = Math.round(toFloat(overview.positionsCount));
+
+  if (portfolioValue <= 0) throw new Error('Wife portfolio value is empty');
+
+  sheet.getRange(targetRow, 1, 1, 12).setValues([[
+    now,
+    portfolioValue,
+    invested,
+    pnl,
+    pnlPct,
+    reserve,
+    positionsCount,
+    'auto',
+    H_AUTO_SNAPSHOT,
+    'daily',
+    'apps-script',
+    'Wife portfolio daily snapshot; one point per date'
+  ]]);
+  sheet.getRange(targetRow, 1).setNumberFormat('dd.MM.yyyy');
+  sheet.getRange(targetRow, 5).setNumberFormat('0.00%');
+
+  return {
+    row: targetRow,
+    date: Utilities.formatDate(now, timezone, 'dd.MM.yyyy'),
+    portfolioValue: portfolioValue,
+    invested: invested,
+    pnl: pnl,
+    pnlPct: pnlPct,
+    reserve: reserve,
+    positionsCount: positionsCount
+  };
+}
+
+function setupWifeDailySnapshotTrigger() {
+  removeWifeDailySnapshotTrigger();
+
+  ScriptApp.newTrigger(WIFE_HISTORY_TRIGGER_HANDLER)
+    .timeBased()
+    .everyDays(1)
+    .atHour(23)
+    .nearMinute(55)
+    .create();
+
+  return syncWifeDailySnapshot();
+}
+
+function removeWifeDailySnapshotTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === WIFE_HISTORY_TRIGGER_HANDLER) {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+}
+
+function getOrCreateWifeHistorySheet_(ss) {
+  var sheet = ss.getSheetByName(SHEET_HISTORY) || ss.getSheetByName('History');
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_HISTORY);
+  }
+
+  var headers = ['date','portfolioValue','invested','pnl','pnlPct','reserve','positionsCount','pointType','note','trigger','source','comment'];
+  var labels = [H_DATE,H_PORTFOLIO_VALUE,H_INVESTED,'PnL $','PnL %',H_RESERVE,H_POSITIONS_COUNT,H_POINT_TYPE,H_NOTE,H_TRIGGER,H_SOURCE,H_COMMENT];
+
+  var firstRow = sheet.getLastRow() >= 1
+    ? sheet.getRange(1, 1, 1, headers.length).getValues()[0].map(function(value) { return String(value).trim(); })
+    : [];
+  var needsHeaders = headers.some(function(header, index) { return firstRow[index] !== header; });
+
+  if (needsHeaders) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(2, 1, 1, labels.length).setValues([labels]);
+    sheet.setFrozenRows(2);
+  }
+
+  return sheet;
+}
+
+function findWifeHistoryDateRow_(sheet, date, timezone) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 3) return 0;
+
+  var targetKey = wifeHistoryDateKey_(date, timezone);
+  var values = sheet.getRange(3, 1, lastRow - 2, 1).getValues();
+  for (var i = values.length - 1; i >= 0; i--) {
+    if (wifeHistoryDateKey_(values[i][0], timezone) === targetKey) return i + 3;
+  }
+
+  return 0;
+}
+
+function wifeHistoryDateKey_(value, timezone) {
+  if (value instanceof Date) return Utilities.formatDate(value, timezone, 'yyyy-MM-dd');
+
+  var text = String(value || '').trim();
+  if (!text) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+
+  var match = text.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (match) return match[3] + '-' + match[2] + '-' + match[1];
+
+  var parsed = new Date(text);
+  return isNaN(parsed.getTime()) ? text : Utilities.formatDate(parsed, timezone, 'yyyy-MM-dd');
 }
 
 //  Transaction history sheet 
@@ -917,38 +1043,49 @@ function _fmtDate(dt) {
 }
 
 function _isStable(symbol) {
-  return ['USDT','USDC','DAI','BUSD','USDE'].indexOf((symbol || '').toUpperCase().replace(TEXT_TETHER_SIGN, 'T')) >= 0;
+  return ['USDT','USDC','DAI','BUSD','USDE'].indexOf(_normalizeAssetSymbol(symbol)) >= 0;
+}
+
+function _normalizeAssetSymbol(symbol) {
+  var normalized = String(symbol || '')
+    .toUpperCase()
+    .replace(/\u0301/g, '')
+    .replace(TEXT_TETHER_SIGN, 'T')
+    .replace(/Т/g, 'T');
+  if (normalized === 'USDT0' || normalized === 'USDTE' || normalized.indexOf('USDT') === 0) return 'USDT';
+  return normalized;
 }
 
 function _bcAction(symbol, isIn) {
-  // Stablecoins in means sell crypto; stablecoins out means buy crypto.
-  // Crypto in means buy; crypto out means sell.
-  if (_isStable(symbol)) return isIn ? TEXT_SELL : TEXT_BUY;
+  // Raw wallet stable transfers are capital flows unless a paired swap importer
+  // explicitly rewrites them into buy/sell rows.
+  if (_isStable(symbol)) return isIn ? 'Пополнение' : 'Вывод';
   return isIn ? TEXT_BUY : TEXT_SELL;
 }
 
 function _fetchArbTokenTransfers(existingIds, rows) {
   try {
-    var url = 'https://arbitrum.blockscout.com/api/v2/addresses/' + EVM_ADDRESS + '/token-transfers?filter=from%7Cto&limit=100';
+    var url = 'https://arbitrum.blockscout.com/api/v2/addresses/' + EVM_ADDRESS + '/token-transfers';
     var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
     var d = JSON.parse(resp.getContentText());
     var items = d.items || [];
     items.forEach(function(item) {
-      var hash = item.tx_hash || '';
+      var hash = item.tx_hash || item.transaction_hash || '';
       var decimals = Number(item.token && item.token.decimals || 6);
       var rawQty = Number(item.total && item.total.value || 0);
       var quantity = rawQty / Math.pow(10, decimals);
-      var symbol = (item.token && item.token.symbol) || 'UNKNOWN';
+      var rawSymbol = (item.token && item.token.symbol) || 'UNKNOWN';
+      var symbol = _normalizeAssetSymbol(rawSymbol);
       if (quantity < 0.0001 || !hash) return;
       var id = 'bc:arb_tok:' + hash + ':' + rawQty;
       if (existingIds[id]) return;
       var isIn = (item.to && item.to.hash || '').toLowerCase() === EVM_ADDRESS.toLowerCase();
       var action = _bcAction(symbol, isIn);
       var amount = _isStable(symbol) ? quantity : 0;
-      rows.push([id, _fmtDate(item.timestamp || new Date()), symbol, CAT_CRYPTO, action,
+      rows.push([id, _fmtDate(item.timestamp || new Date()), symbol, _isStable(symbol) ? CAT_STABLE : CAT_CRYPTO, action,
         quantity, 0, amount, 'ARB', hash, 'CONFIRMED', isIn ? 'IN' : 'OUT',
         EVM_ADDRESS, isIn ? (item.from && item.from.hash || '') : (item.to && item.to.hash || ''),
-        symbol, quantity, 'blockchain', '']);
+        rawSymbol, quantity, 'blockchain', '']);
       existingIds[id] = true;
     });
   } catch(e) { Logger.log('_fetchArbTokenTransfers error: ' + e.message); }
@@ -956,7 +1093,7 @@ function _fetchArbTokenTransfers(existingIds, rows) {
 
 function _fetchArbEthTransfers(existingIds, rows) {
   try {
-    var url = 'https://arbitrum.blockscout.com/api/v2/addresses/' + EVM_ADDRESS + '/transactions?filter=to%7Cfrom&limit=50';
+    var url = 'https://arbitrum.blockscout.com/api/v2/addresses/' + EVM_ADDRESS + '/transactions';
     var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
     var d = JSON.parse(resp.getContentText());
     var items = d.items || [];
@@ -1004,14 +1141,15 @@ function _fetchTonTransactions(existingIds, rows) {
           var decimals = Number(jt.jetton && jt.jetton.decimals || 6);
           var qty = Number(jt.amount || 0) / Math.pow(10, decimals);
           if (qty < 0.001) return;
-          var symbol = (jt.jetton && jt.jetton.symbol || 'USDT').replace(TEXT_TETHER_SIGN, 'T');
+          var rawSymbol = jt.jetton && jt.jetton.symbol || 'USDT';
+          var symbol = _normalizeAssetSymbol(rawSymbol);
           var isIn = (jt.sender && jt.sender.address || '').toLowerCase() !== TON_ADDRESS.toLowerCase();
           var action = _bcAction(symbol, isIn);
           var amount = _isStable(symbol) ? qty : 0;
-          rows.push([rowId, _fmtDate(date), symbol, CAT_CRYPTO, action,
+          rows.push([rowId, _fmtDate(date), symbol, _isStable(symbol) ? CAT_STABLE : CAT_CRYPTO, action,
             qty, 0, amount, 'TON', eventId, 'CONFIRMED', isIn ? 'IN' : 'OUT',
             TON_ADDRESS, isIn ? (jt.sender && jt.sender.address || '') : (jt.recipient && jt.recipient.address || ''),
-            symbol, qty, 'blockchain', '']);
+            rawSymbol, qty, 'blockchain', '']);
           existingIds[rowId] = true;
         }
       });

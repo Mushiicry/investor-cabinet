@@ -111,7 +111,7 @@ describe("health concentration — per-asset score passthrough", () => {
       cashShare: 0.1,
       futuresShare: 0,
       portfolioValue: 1000,
-      investedCapital: 1000,
+      investedCapital: 600,
       strategy: WIFE_INVESTOR_STRATEGY,
     });
     const withFutures = computePortfolioHealth({
@@ -305,7 +305,7 @@ describe("health concentration — per-asset score passthrough", () => {
     const h = computePortfolioHealth({
       ...base,
       futuresShare: 0.16,
-      investedCapital: 600,
+      investedCapital: 1000,
       futuresLegs: [
         { asset: "MNT LONG", leverage: 3, liqDistance: 0.08 },
         { asset: "TON LONG", leverage: 2, liqDistance: 0.5 },
@@ -464,7 +464,7 @@ describe("health concentration — per-asset score passthrough", () => {
       largestShare: 0.05,
       riskCategoryShares: [0.2, 0.1, 0.1],
       portfolioValue: 1000,
-      investedCapital: 600,
+      investedCapital: 1000,
       concentrationScore: 100,
       maxAssetLimitUtilization: 0.5,
       worstConcentrationAsset: "ETH",

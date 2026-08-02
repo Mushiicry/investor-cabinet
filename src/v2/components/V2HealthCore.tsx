@@ -50,6 +50,10 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
     if (c.key !== "futures") return [c.label];
     return c.label === "Качество активов" ? ["Качество", "активов"] : ["Контроль", "риска"];
   };
+  const chipLabelSize = (c: HealthComponent) => {
+    if (c.key === "futures") return 6.2;
+    return c.label.length >= 13 ? 6.6 : 7.8;
+  };
 
   return (
     <section className="v2-panel v2-health-core v2-health-core--premium" aria-label="Portfolio health factor">
@@ -590,7 +594,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
 
                   {/* Label */}
                   <text x={cx} y={cy - 15}
-                    fontSize={c.key === "futures" ? "6.2" : "7.8"} fontWeight="900"
+                    fontSize={chipLabelSize(c)} fontWeight="900"
                     fill="rgba(178,231,247,0.95)"
                     fontFamily="var(--v2-sans,system-ui,sans-serif)"
                     letterSpacing="0.2" textAnchor="middle">

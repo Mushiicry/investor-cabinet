@@ -96,4 +96,19 @@ describe("account strategy wiring", () => {
     expect(labData).toContain("concentration.maxUtilization > 1");
     expect(labData).toContain("concentration.maxUtilization >= 0.85");
   });
+
+  it("imports Polina wallet stable inflows as deposits from the working Blockscout endpoint", () => {
+    const wifeHook = read("src/hooks/useWifeTransactions.ts");
+    const wifeScript = read("WIFE_APPS_SCRIPT.js");
+
+    expect(wifeHook).toContain("/token-transfers`");
+    expect(wifeHook).not.toContain("token-transfers?filter=from%7Cto");
+    expect(wifeHook).toContain("return isIn ? \"Пополнение\" : \"Вывод\"");
+    expect(wifeHook).toContain("normalized === \"USDT0\"");
+
+    expect(wifeScript).toContain("'/token-transfers'");
+    expect(wifeScript).not.toContain("token-transfers?filter=from%7Cto");
+    expect(wifeScript).toContain("return isIn ? 'Пополнение' : 'Вывод'");
+    expect(wifeScript).toContain("normalized === 'USDT0'");
+  });
 });

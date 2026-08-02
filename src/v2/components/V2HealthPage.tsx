@@ -246,11 +246,12 @@ function interpretation(hf: number): { text: string; sub: string; color: string 
 
 // ── Конкретная строка «почему» для слабой стороны ─────────────
 function whyLine(c: HealthComponent, portfolio: V2Portfolio): string {
-  const reservePct = Math.round(portfolio.reserveShare * 100);
+  const reservePct = Math.round((c.meta?.reserveShare ?? portfolio.reserveShare) * 100);
   const reserveUsd = portfolio.stableReserve;
   const targetUsd = Math.round(c.meta?.reserveTargetUsd ?? portfolio.totalPortfolioValue * 0.30);
-  const targetPct = c.meta?.reserveTargetUsd && portfolio.totalPortfolioValue
-    ? Math.round((c.meta.reserveTargetUsd / portfolio.totalPortfolioValue) * 100)
+  const reserveBaseUsd = c.meta?.reserveBaseUsd ?? portfolio.totalPortfolioValue;
+  const targetPct = c.meta?.reserveTargetUsd && reserveBaseUsd
+    ? Math.round((c.meta.reserveTargetUsd / reserveBaseUsd) * 100)
     : 30;
 
   switch (c.key) {
@@ -301,7 +302,7 @@ function richDiagnosis(components: HealthComponent[], portfolio: V2Portfolio) {
   const strong = sorted.filter(c => c.score >= 70).reverse().map<DiagItem>(c => ({
     label: c.label, score: c.score,
     why: c.key === "futures"     ? (c.label === "Качество активов" ? "Запрещённые активы не нарушают стратегию." : "Занятая часть лимита, плечо и число позиций в пределах правил.")
-       : c.key === "reserve"     ? `Резерв ${Math.round(portfolio.reserveShare * 100)}% — подушка сформирована.`
+       : c.key === "reserve"     ? `Резерв ${Math.round((c.meta?.reserveShare ?? portfolio.reserveShare) * 100)}% — подушка сформирована.`
        : c.key === "flexibility" ? "Журнал и поведенческие правила в норме."
        : "В пределах нормы.",
   }));
@@ -391,14 +392,15 @@ export function V2HealthPage({
   const baseReserve = healthInput.reserveShare ?? healthInput.cashShare;
   const reserveComponent = health.components.find((component) => component.key === "reserve");
   const riskControlComponent = health.components.find((component) => component.key === "futures");
-  const reserveTargetShare = reserveComponent?.meta?.reserveTargetUsd && portfolio.totalPortfolioValue
-    ? reserveComponent.meta.reserveTargetUsd / portfolio.totalPortfolioValue
+  const reserveBaseUsd = reserveComponent?.meta?.reserveBaseUsd ?? portfolio.totalPortfolioValue;
+  const reserveTargetShare = reserveComponent?.meta?.reserveTargetUsd && reserveBaseUsd
+    ? reserveComponent.meta.reserveTargetUsd / reserveBaseUsd
     : 0.3;
-  const reserveFloorShare = reserveComponent?.meta?.reserveFloorUsd && portfolio.totalPortfolioValue
-    ? reserveComponent.meta.reserveFloorUsd / portfolio.totalPortfolioValue
+  const reserveFloorShare = reserveComponent?.meta?.reserveFloorUsd && reserveBaseUsd
+    ? reserveComponent.meta.reserveFloorUsd / reserveBaseUsd
     : 0.1;
-  const reserveBandMaxShare = reserveComponent?.meta?.reserveBandMaxUsd && portfolio.totalPortfolioValue
-    ? reserveComponent.meta.reserveBandMaxUsd / portfolio.totalPortfolioValue
+  const reserveBandMaxShare = reserveComponent?.meta?.reserveBandMaxUsd && reserveBaseUsd
+    ? reserveComponent.meta.reserveBandMaxUsd / reserveBaseUsd
     : 0.6;
   const hasFutures = (healthInput.futuresLegs ?? []).length > 0 || healthInput.futuresShare > 0;
   const defaultLevers = buildDefaultHealthSimulatorLevers(healthInput);

@@ -15,9 +15,12 @@ html:has(.v2-lab) {
 body:has(.v2-lab) {
   margin: 0;
   overflow-x: hidden;
-  background: #00030a;
-  display: flex;
-  justify-content: center;
+  background:
+    #00030a
+    url("/bg-space.png")
+    center top / cover
+    no-repeat
+    fixed;
 }
 
 /* ── CryptoLogo base (required after App.css removal) ── */
@@ -50,12 +53,21 @@ body:has(.v2-lab) {
   height: 100%;
 }
 
+.v2-canvas {
+  position: relative;
+  width: var(--v2-canvas-width, 1920px);
+  min-height: var(--v2-canvas-height, 100vh);
+  margin-left: var(--v2-canvas-offset-x, 0);
+  margin-right: auto;
+  overflow-x: clip;
+}
+
 .v2-lab {
   width: 1920px;
   min-height: var(--v2-logical-height, 100vh);
   box-sizing: border-box;
-  flex: 0 0 auto;
-  zoom: var(--v2-desktop-scale, 1);
+  transform: scale(var(--v2-desktop-scale, 1));
+  transform-origin: top left;
   display: grid;
   grid-template-columns: 260px 1fr;
   gap: 18px;
@@ -64,6 +76,19 @@ body:has(.v2-lab) {
   font-size: 15px;
   font-family: "Bodoni Moda", Georgia, serif;
   background: transparent;
+}
+
+@media (max-width: 768px) {
+  .v2-canvas {
+    width: 100%;
+    min-height: 100dvh;
+    margin: 0;
+  }
+
+  .v2-lab {
+    width: 100%;
+    transform: none;
+  }
 }
 
 .v2-number-font {

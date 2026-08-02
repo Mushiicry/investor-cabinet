@@ -298,6 +298,7 @@ export type GateFearGreedRule = {
 
 export type GateContext = {
   totalPortfolioValue: number;
+  investedCapital?: number;
   /** Вся категория «Свободные деньги», $ (для пола резерва). */
   stableReserve: number;
   /** Спот-капитал сверх рабочего пола стратегии, $. */
@@ -483,6 +484,7 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   }
 
   const total = ctx.totalPortfolioValue;
+  const reserveBase = ctx.investedCapital && ctx.investedCapital > 0 ? ctx.investedCapital : total;
   const strategy = ctx.investorStrategy ?? MAIN_INVESTOR_STRATEGY;
   const profile = ctx.investorProfile ?? MAIN_INVESTOR_PROFILE;
   const category = resolveCategory(input, ctx);
@@ -495,7 +497,7 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   // пола — блок. reserveFloorShare приходит из marketPhases (дефолт — 10%).
   const phaseFloor = ctx.reserveFloorShare ?? strategy.reserveFloorShare;
   const greenMax = clampMin0(ctx.spotDeployable);
-  const phaseFloorMax = clampMin0(ctx.stableReserve - phaseFloor * total);
+  const phaseFloorMax = clampMin0(ctx.stableReserve - phaseFloor * reserveBase);
   const hardMax = Math.max(greenMax, phaseFloorMax);
 
   const inGreen = amount <= greenMax + EPS;
@@ -563,7 +565,7 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
     asset: input.asset,
     category,
     amountUsd: amount,
-    totalPortfolioValue: total,
+    totalPortfolioValue: reserveBase,
     stableReserve: ctx.stableReserve,
     reserveTargetShare: strategy.reserveTargetShare,
     profile,

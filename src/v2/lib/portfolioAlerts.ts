@@ -72,9 +72,10 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
   }
 
   // 1. Резерв
-  const reservePct = portfolio.reserveShare * 100;
-  const reserveFloorUsd = portfolio.totalPortfolioValue * strategy.reserveFloorShare;
-  const reserveTargetUsd = portfolio.totalPortfolioValue * strategy.reserveTargetShare;
+  const reserveBaseUsd = portfolio.totalInvested > 0 ? portfolio.totalInvested : portfolio.totalPortfolioValue;
+  const reservePct = reserveBaseUsd > 0 ? (portfolio.stableReserve / reserveBaseUsd) * 100 : 0;
+  const reserveFloorUsd = reserveBaseUsd * strategy.reserveFloorShare;
+  const reserveTargetUsd = reserveBaseUsd * strategy.reserveTargetShare;
   const reserveTargetPct = toPercent(strategy.reserveTargetShare);
   if (portfolio.stableReserve < reserveFloorUsd) {
     alerts.push({
@@ -84,12 +85,12 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
       detail: `${portfolio.stableReserve.toFixed(0)}$ · цель ${reserveTargetPct.toFixed(0)}% (${reserveTargetUsd.toFixed(0)}$)`,
       action: "Вывести часть прибыли в резерв",
     });
-  } else if (portfolio.reserveShare < strategy.reserveTargetShare) {
+  } else if (reserveBaseUsd > 0 && portfolio.stableReserve / reserveBaseUsd < strategy.reserveTargetShare) {
     alerts.push({
       id: "reserve-low",
       level: "warning",
       title: "Резерв низкий",
-      detail: `${reservePct.toFixed(0)}% портфеля · цель ${reserveTargetPct.toFixed(0)}%`,
+      detail: `${reservePct.toFixed(0)}% вложенного капитала · цель ${reserveTargetPct.toFixed(0)}%`,
     });
   }
 

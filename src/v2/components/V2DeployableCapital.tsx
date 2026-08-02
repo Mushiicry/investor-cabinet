@@ -28,9 +28,11 @@ export function V2DeployableCapital({
   futuresShare = 0,
 }: Props) {
   const totalPortfolio = portfolio.totalPortfolioValue || 0;
-  const reserveTarget = totalPortfolio * investorStrategy.reserveTargetShare;
+  const investedCapital = portfolio.totalInvested || totalPortfolio;
+  const reserveTarget = investedCapital * investorStrategy.reserveTargetShare;
   const buckets = buildCapitalBuckets({
     totalPortfolioValue: portfolio.totalPortfolioValue,
+    investedCapital,
     stableReserve: portfolio.stableReserve || portfolio.spotDeployable + portfolio.futuresDeployable,
     allocation,
     strategyRules: strategy.rules,
@@ -44,7 +46,6 @@ export function V2DeployableCapital({
   // Контроль лимита активной торговли. Занято = маржа открытых фьючей +
   // свободная маржа торгового счёта. Свободный остаток не является задачей.
   // База — вложенный капитал, как в calculateFuturesMarginShare.
-  const investedCapital = portfolio.totalInvested || 0;
   const futuresLimit = investorStrategy.futuresMaxShare * investedCapital;
   const futuresUsed = futuresShare * investedCapital;
   const futuresRemaining = Math.max(futuresLimit - futuresUsed, 0);

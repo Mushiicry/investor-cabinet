@@ -39,6 +39,7 @@ const normalizeCachedPortfolioState = (value: unknown): PortfolioState | null =>
     const pnlPct = Number.isFinite(invested) && Number.isFinite(pnl) && invested
       ? pnl / invested
       : cachedState.overview.pnlPct;
+    const cachedSignals = isRecord(value.signals) ? value.signals : null;
 
     return {
       ...cachedState,
@@ -49,6 +50,14 @@ const normalizeCachedPortfolioState = (value: unknown): PortfolioState | null =>
       },
       history: Array.isArray(value.history) ? value.history : [],
       transactions: Array.isArray(value.transactions) ? value.transactions : [],
+      signals: {
+        interest: isRecord(cachedSignals?.interest)
+          ? cachedSignals.interest as PortfolioState["signals"]["interest"]
+          : null,
+        interestList: Array.isArray(cachedSignals?.interestList)
+          ? cachedSignals.interestList
+          : [],
+      },
       fearGreedStrategy: cachedState.fearGreedStrategy ?? buildFearGreedStrategy(50, cachedState.overview.invested),
       assetQuality: cachedState.assetQuality ?? emptyAssetQuality,
     };

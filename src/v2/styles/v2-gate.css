@@ -293,6 +293,42 @@
   color: rgba(210, 230, 246, 0.9);
 }
 
+.v2-gate-blockers {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: -2px 0 12px;
+}
+.v2-gate-blocker-line {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 8px 11px;
+  border-left: 2px solid rgba(224, 96, 96, 0.75);
+  border-radius: 0 9px 9px 0;
+  background: rgba(70, 26, 26, 0.28);
+}
+.v2-gate-blocker-tag {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 18px;
+  border-radius: 6px;
+  background: rgba(130, 45, 45, 0.34);
+  color: rgba(255, 175, 175, 0.96);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.v2-gate-blocker-text {
+  color: rgba(230, 215, 205, 0.92);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .v2-gate-checks {
   display: flex;
   flex-direction: column;

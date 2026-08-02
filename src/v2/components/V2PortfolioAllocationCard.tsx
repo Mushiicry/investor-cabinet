@@ -224,6 +224,12 @@ export function V2PortfolioAllocationCard({
       return { ...base, ...categoryLimitConfig(name, strategy) };
     }
     const color = ASSET_COLORS[index % ASSET_COLORS.length];
+    if (drill === "Свободные деньги") {
+      return {
+        glyph: "$", color, iconColor: color, glow: `${color}99`,
+        limit: null, limitKind: "none" as LimitKind, limitLabel: "",
+      };
+    }
     const limit = assetLimitForStrategy(drill, name, strategy);
     return {
       glyph: "•", color, iconColor: color, glow: `${color}99`,

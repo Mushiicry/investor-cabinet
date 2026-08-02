@@ -163,13 +163,14 @@ export function V2GatePage({
     () =>
       buildCapitalBuckets({
         totalPortfolioValue: portfolio.totalPortfolioValue,
+        investedCapital: portfolio.totalInvested,
         stableReserve: portfolio.stableReserve,
         allocation: allocation.map((a) => ({ name: a.name, value: a.value })),
         strategyRules: fearGreedStrategy.rules,
         futuresDeployableUsd: portfolio.futuresDeployable,
         investorStrategy: strategy,
       }),
-    [portfolio.totalPortfolioValue, portfolio.stableReserve, portfolio.futuresDeployable, allocation, fearGreedStrategy.rules, strategy],
+    [portfolio.totalPortfolioValue, portfolio.totalInvested, portfolio.stableReserve, portfolio.futuresDeployable, allocation, fearGreedStrategy.rules, strategy],
   );
 
   const activeAssetQuality = assetQuality?.connected ? assetQuality : BINANCE_MONITORING_ASSET_QUALITY;
@@ -189,6 +190,7 @@ export function V2GatePage({
     );
     return {
       totalPortfolioValue: portfolio.totalPortfolioValue,
+      investedCapital: portfolio.totalInvested,
       stableReserve: portfolio.stableReserve,
       spotDeployable: gateSpotDeployable,
       reserveFloorShare: effectiveReserveFloorShare,
@@ -271,7 +273,7 @@ export function V2GatePage({
   const greenMax = Math.max(gateSpotDeployable, 0);
   const hardMax = Math.max(
     greenMax,
-    Math.max(portfolio.stableReserve - effectiveReserveFloorShare * portfolio.totalPortfolioValue, 0),
+    Math.max(portfolio.stableReserve - effectiveReserveFloorShare * (portfolio.totalInvested || portfolio.totalPortfolioValue), 0),
   );
   const cushionRoom = Math.max(hardMax - greenMax, 0);
 
@@ -301,6 +303,7 @@ export function V2GatePage({
   const hasAssetQualityBlock = decision.reasons.some((reason) => reason.kind === "качество_актива");
   const hasDisciplineBlock = decision.reasons.some((reason) => reason.kind === "дисциплина");
   const hasMarketPsychologyBlock = decision.reasons.some((reason) => reason.kind === "рыночная_психология");
+  const blockReasons = decision.status === "БЛОКИРОВКА" ? decision.reasons : [];
   const canSaveDecision = Boolean(onSaveDecision) && decision.status !== "ЖДАТЬ" && Boolean(resolvedAsset);
   const saveDecision = () => {
     if (!onSaveDecision || !canSaveDecision) return;
@@ -479,10 +482,21 @@ export function V2GatePage({
                 {decision.status === "РАЗРЕШЕНО"
                   ? `${resolvedAsset} · ${usd(amountNum)} — проходит проверку риска`
                   : decision.status === "БЛОКИРОВКА"
-                    ? `Запрещено: ${decision.reasons.map((reason) => reason.text).join(", ")}`
+                    ? "Запрещено: сделка не проходит риск-фильтр"
                     : `${resolvedAsset} · ${usd(amountNum)} — ${decision.recommendedAction.toLowerCase()}`}
               </span>
             </div>
+
+            {blockReasons.length > 0 && (
+              <div className="v2-gate-blockers">
+                {blockReasons.map((reason, i) => (
+                  <div key={`${reason.kind}-${i}`} className="v2-gate-blocker-line">
+                    <span className="v2-gate-blocker-tag">СТОП</span>
+                    <span className="v2-gate-blocker-text">{reason.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="v2-gate-checks">
               {verdict.status !== "idle" && verdict.checks.map((c: GateCheck) => {

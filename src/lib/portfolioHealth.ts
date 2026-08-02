@@ -129,6 +129,7 @@ export function findHealthComponentByKey(
 
 export type HealthComponentMeta = {
   reserveUsd?: number;
+  reserveBaseUsd?: number;
   reserveShare?: number;
   reserveFloorUsd?: number;
   reserveTargetUsd?: number;
@@ -395,18 +396,21 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   const maxMetalSlots = strategy?.maxMetalSlots ?? 2;
   const maxAltcoinSlots = strategy?.maxAltcoinSlots ?? 3;
 
-  // ── Резерв (Risk First): коридор берётся из стратегии аккаунта. ──
-  const reserveShare = input.reserveShare ?? input.cashShare;
+  // ── Резерв (Risk First): база — внесённый капитал, а не просевшая стоимость портфеля. ──
+  const reservePortfolioShare = input.reserveShare ?? input.cashShare;
+  const reserveUsd = input.portfolioValue ? reservePortfolioShare * input.portfolioValue : undefined;
+  const reserveBaseUsd = input.investedCapital ?? input.portfolioValue;
+  const reserveShare =
+    reserveBaseUsd && reserveUsd !== undefined ? reserveUsd / reserveBaseUsd : reservePortfolioShare;
   const reserveScore = computeReserveScore(reserveShare, strategy);
-  const reserveUsd = input.portfolioValue ? reserveShare * input.portfolioValue : undefined;
-  const reserveFloorUsd = input.portfolioValue
-    ? reserveFloorShare * input.portfolioValue
+  const reserveFloorUsd = reserveBaseUsd
+    ? reserveFloorShare * reserveBaseUsd
     : undefined;
-  const reserveTargetUsd = input.portfolioValue
-    ? reserveTargetShare * input.portfolioValue
+  const reserveTargetUsd = reserveBaseUsd
+    ? reserveTargetShare * reserveBaseUsd
     : undefined;
-  const reserveBandMaxUsd = input.portfolioValue
-    ? reserveBandMaxShare * input.portfolioValue
+  const reserveBandMaxUsd = reserveBaseUsd
+    ? reserveBandMaxShare * reserveBaseUsd
     : undefined;
   const reserveFloorShortfallUsd =
     reserveFloorUsd !== undefined && reserveUsd !== undefined
@@ -808,6 +812,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       score: reserveScore,
       meta: {
         reserveUsd,
+        reserveBaseUsd,
         reserveShare,
         reserveFloorUsd,
         reserveTargetUsd,

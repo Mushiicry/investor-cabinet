@@ -15,7 +15,6 @@ import { buildPortfolioState } from "../lib/portfolioCalculations";
 import type { HealthInput, PortfolioHealth } from "../lib/portfolioHealth";
 import type { PlaybookCard } from "../lib/playbookSelectors";
 import { rawPositions, decisionsData, scenariosData } from "../mocks/portfolioData";
-import { maybeRecordSnapshot } from "../services/dailySnapshotService";
 import type { PortfolioState } from "../types/portfolio";
 import { buildLiveV2Data, buildZeroedV2Data } from "./lib/v2LabData";
 import type { InvestorStrategy } from "./lib/investorStrategy";
@@ -146,21 +145,6 @@ export default function InvestorCabinetV2Lab() {
   // чтобы Google Sheets + Apps Script оставались единственным источником фактов.
   const portfolioData = investorData.data;
 
-  // Wife snapshot: taken here after Apps Script/API assembled live portfolio data.
-  useEffect(() => {
-    if (!wife || investorData.status !== "ready" || !portfolioData.overview.portfolioValue) return;
-    const nonStable = portfolioData.portfolio.filter(
-      (p) => p.category !== "Свободные деньги"
-    );
-    maybeRecordSnapshot({
-      portfolioValue: portfolioData.overview.portfolioValue,
-      invested:       portfolioData.overview.invested,
-      reserve:        portfolioData.overview.reserve,
-      positionsCount: nonStable.length,
-      slot:           "wife",
-    });
-  }, [wife, portfolioData, investorData.status]);
-
   const liveBase = useMemo(
     () => buildLiveV2Data(portfolioData, hlLeverage.leverage, hlLeverage.risk, wife ? "wife" : "main"),
     [portfolioData, hlLeverage.leverage, hlLeverage.risk, wife]
@@ -202,7 +186,7 @@ export default function InvestorCabinetV2Lab() {
     };
   }, [base, fearGreedLive.status, fearGreedLive.data.value, fearGreedLive.liveHistory]);
 
-  // Для аккаунта жены: вшиваем blockchain-транзакции поверх API (Google Sheets пустой).
+  // Для аккаунта жены: добавляем blockchain-транзакции как fallback поверх API.
   // Дедупликация по id — API-запись побеждает при совпадении.
   const finalData = useMemo(() => {
     if (!wife || blockchainTxs.length === 0) return data;

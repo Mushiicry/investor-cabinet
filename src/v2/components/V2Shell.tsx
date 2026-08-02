@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
 import { computePortfolioHealth, type HealthComponent, type PortfolioHealth } from "../../lib/portfolioHealth";
@@ -67,17 +67,21 @@ const SIDEBAR_COLLAPSED_WIDTH = 64;
 
 function getDesktopViewport() {
   if (window.innerWidth <= MOBILE_BREAKPOINT) {
-    return { scale: 1, logicalHeight: window.innerHeight };
+    return { scale: 1, logicalHeight: window.innerHeight, offsetX: 0 };
   }
 
+  // Museum canvas: one fixed 1920x1080 composition. Every desktop viewport sees
+  // the same scene, scaled as a whole and centered with controlled side fields.
   const scale = Math.min(
     window.innerWidth / DESKTOP_DESIGN_WIDTH,
     window.innerHeight / DESKTOP_DESIGN_HEIGHT,
   );
+  const offsetX = Math.max(0, (window.innerWidth - DESKTOP_DESIGN_WIDTH * scale) / 2);
 
   return {
     scale,
-    logicalHeight: window.innerHeight / scale,
+    logicalHeight: Math.max(DESKTOP_DESIGN_HEIGHT, window.innerHeight / scale),
+    offsetX,
   };
 }
 
@@ -126,6 +130,8 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
   const [selectedChip, setSelectedChip] = useState<HealthComponent | null>(null);
   const [capitalOpen, setCapitalOpen] = useState(false);
   const [desktopViewport, setDesktopViewport] = useState(getDesktopViewport);
+  const labRef = useRef<HTMLDivElement | null>(null);
+  const [canvasContentHeight, setCanvasContentHeight] = useState(DESKTOP_DESIGN_HEIGHT);
   const [tradeCandidate, setTradeCandidate] = useState<TradeCandidate | null>(null);
 
   useEffect(() => {
@@ -220,6 +226,21 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
       return !prev;
     });
   };
+
+  useLayoutEffect(() => {
+    const node = labRef.current;
+    if (!node || window.innerWidth <= MOBILE_BREAKPOINT) return undefined;
+
+    const measure = () => {
+      const nextHeight = Math.max(DESKTOP_DESIGN_HEIGHT, Math.ceil(node.scrollHeight));
+      setCanvasContentHeight((current) => current === nextHeight ? current : nextHeight);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [page, sidebarCollapsed, capitalOpen, selectedChip]);
 
   // Health Factor с прошлого захода — чтобы поймать его просадку.
   // Читаем один раз при монтировании, перезаписываем уже после сравнения.
@@ -318,17 +339,23 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
   // Сцена шириной 1920 масштабируется и центрируется, поэтому к отступу
   // сцены добавляем масштабированную ширину колонки и половину зазора.
   const isMobile = desktopViewport.scale === 1 && window.innerWidth <= MOBILE_BREAKPOINT;
-  const sceneOffset = Math.max(0, (window.innerWidth - DESKTOP_DESIGN_WIDTH * desktopViewport.scale) / 2);
-  const railLeft = sceneOffset +
+  const railLeft = desktopViewport.offsetX +
     (SCENE_PADDING + (sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH) + SCENE_GAP / 2) * desktopViewport.scale;
 
   return (
     <div
-      className={sidebarCollapsed ? "v2-lab is-sidebar-collapsed" : "v2-lab"}
+      className="v2-canvas"
       style={{
         "--v2-desktop-scale": desktopViewport.scale,
         "--v2-logical-height": `${desktopViewport.logicalHeight}px`,
+        "--v2-canvas-offset-x": `${desktopViewport.offsetX}px`,
+        "--v2-canvas-width": `${DESKTOP_DESIGN_WIDTH * desktopViewport.scale}px`,
+        "--v2-canvas-height": `${canvasContentHeight * desktopViewport.scale}px`,
       } as CSSProperties}
+    >
+    <div
+      ref={labRef}
+      className={sidebarCollapsed ? "v2-lab is-sidebar-collapsed" : "v2-lab"}
     >
       {/* Мобильная шапка (только ≤768px) */}
       <header className="v2-mob-header">
@@ -350,17 +377,6 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         </button>
       </header>
 
-      {/* Фото-фон космоса (nebula — в body CSS) */}
-      <div style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: -2,
-        backgroundImage: 'url("/bg-space.png")',
-        backgroundSize: "cover",
-        backgroundPosition: "center top",
-        backgroundRepeat: "no-repeat",
-        backgroundColor: "#00030a",
-      }} aria-hidden="true" />
       {/* Живые звёзды и вспышки поверх фото */}
       <V2StarField />
       {/* Бэкдроп мобильной шторки */}
@@ -578,6 +594,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           onClose={() => setSelectedChip(null)}
         />
       )}
+    </div>
     </div>
   );
 }
