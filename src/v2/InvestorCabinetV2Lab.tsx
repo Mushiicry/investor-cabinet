@@ -120,7 +120,7 @@ export type V2LabData = {
 export type V2Page = "overview" | "portfolio" | "scenarios" | "risk" | "reports" | "signals" | "settings" | "health" | "gate" | "dna" | "education";
 
 export default function InvestorCabinetV2Lab() {
-  const { configured, loading: authLoading, user } = useAuth();
+  const { accessToken, configured, loading: authLoading, user } = useAuth();
   const [page, setPage] = useState<V2Page>("overview");
   const [authOpen, setAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState<"signin" | "signup">("signin");
@@ -135,6 +135,7 @@ export default function InvestorCabinetV2Lab() {
     wife ? WIFE_API_URL : INVESTOR_API_URL,
     wife ? "wife" : undefined,
     investorDataReady,
+    accessToken,
   );
   const blockchainTxs = useWifeTransactions(wife);
   const fearGreedLive = useFearGreed();

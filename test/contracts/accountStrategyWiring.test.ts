@@ -10,6 +10,8 @@ describe("account strategy wiring", () => {
 
     expect(lab).toContain("investorDataReady");
     expect(lab).toContain("!configured || (!authLoading && Boolean(user))");
+    expect(lab).toContain("const { accessToken, configured, loading: authLoading, user } = useAuth()");
+    expect(lab).toContain("accessToken,");
     expect(lab).toContain("useInvestorData(");
     expect(shell).toContain("<V2SignalsPage");
     expect(shell).toContain("strategy={data.strategy}");

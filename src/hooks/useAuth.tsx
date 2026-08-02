@@ -17,6 +17,7 @@ type AuthContextValue = {
   configured: boolean;
   loading: boolean;
   user: User | null;
+  accessToken: string | null;
   displayName: string;
   signUp: (name: string, email: string, password: string) => Promise<AuthResult>;
   signIn: (email: string, password: string) => Promise<AuthResult>;
@@ -33,6 +34,7 @@ function nameFromUser(user: User | null): string {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   // Если Supabase не сконфигурирован — грузиться нечему, сразу готово.
   const [loading, setLoading] = useState<boolean>(isSupabaseConfigured);
 
@@ -44,11 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
       if (!mounted) return;
       setUser(data.session?.user ?? null);
+      setAccessToken(data.session?.access_token ?? null);
       setLoading(false);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setAccessToken(session?.access_token ?? null);
       setLoading(false);
     });
 
@@ -62,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     configured: isSupabaseConfigured,
     loading,
     user,
+    accessToken,
     displayName: nameFromUser(user),
     async signUp(name, email, password) {
       if (!supabase) return { error: "Авторизация не настроена" };
@@ -87,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!supabase) return;
       await supabase.auth.signOut();
     },
-  }), [loading, user]);
+  }), [accessToken, loading, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

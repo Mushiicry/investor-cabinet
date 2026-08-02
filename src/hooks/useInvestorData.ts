@@ -56,6 +56,7 @@ export function useInvestorData(
   apiUrl: string = INVESTOR_API_URL,
   cacheSlot?: "wife",
   enabled = true,
+  authToken?: string | null,
 ): InvestorDataResult {
   const [state, setState] = useState<InvestorDataResult>(() =>
     buildInitialInvestorDataState(fallbackData, cacheSlot, enabled)
@@ -82,7 +83,7 @@ export function useInvestorData(
       }));
 
       try {
-        const validation = validateInvestorApiPayload(await fetchInvestorData(apiUrl));
+        const validation = validateInvestorApiPayload(await fetchInvestorData(apiUrl, authToken));
 
         if (!isMounted) return;
 
@@ -173,7 +174,7 @@ export function useInvestorData(
       isMounted = false;
       clearInterval(interval);
     };
-  }, [apiUrl, cacheSlot, enabled, fallbackData]);
+  }, [apiUrl, authToken, cacheSlot, enabled, fallbackData]);
 
   return state;
 }

@@ -9,9 +9,12 @@ import { fetchJsonWithTimeout } from "../services/http";
 const isTransientServerError = (error: unknown) =>
   error instanceof Error && /API request failed: 5\d\d/.test(error.message);
 
-export async function fetchInvestorData(apiUrl: string = INVESTOR_API_URL): Promise<unknown> {
-  const session = supabase ? (await supabase.auth.getSession()).data.session : null;
-  const accessToken = session?.access_token;
+export async function fetchInvestorData(
+  apiUrl: string = INVESTOR_API_URL,
+  authToken?: string | null,
+): Promise<unknown> {
+  const session = authToken ? null : supabase ? (await supabase.auth.getSession()).data.session : null;
+  const accessToken = authToken ?? session?.access_token;
 
   const request = () =>
     fetchJsonWithTimeout(apiUrl, {
