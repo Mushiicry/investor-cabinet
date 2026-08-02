@@ -58,6 +58,8 @@
 1. ❌ **Не возвращать shared-secret guard в Apps Script.** Авторизацию уже держит один слой —
    Vercel serverless proxy (`api/_investorProxy.js`) на Supabase-токене + email владельца.
    Guard дал ноль безопасности и стоил ~2 дней простоя main-аккаунта.
+   Решение подтверждено 2026-08-02: на текущем этапе Apps Script web app может оставаться
+   публичным (`ANYONE_ANONYMOUS`); не добавлять smoke/secret-защиту без нового явного scope.
 2. ❌ **`git revert` ≠ деплой.** Для `.gs` откат кода без `clasp push` + передеплоя оставляет
    сломанный деплой. Web-app `/exec` версионного деплоя не обновляется от push в HEAD.
 3. ❌ **Не «хардить» без модели угроз.** Security ради security ломает рабочее.

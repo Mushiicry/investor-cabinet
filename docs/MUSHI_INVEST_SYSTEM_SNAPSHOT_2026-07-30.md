@@ -229,30 +229,39 @@ Conclusion:
 
 # 6. Главные проблемы
 
-## P0. Direct Apps Script exposure
+## P0. Доступность Apps Script deployment
 
-Direct Apps Script `/exec` URLs return private JSON without Supabase/Vercel auth.
+Решение от 2026-08-02:
 
-Impact:
+на текущем этапе личного инструмента Apps Script `/exec` может оставаться публичным. Не добавлять shared-secret guard, smoke-token guard или второй слой авторизации в Apps Script без отдельного нового security scope.
 
-- portfolio value exposed;
-- allocation exposed;
-- transaction/wallet context exposed;
-- wife portfolio can also be exposed if URL is known;
-- direct write actions become part of attack surface.
+Почему:
 
-Current `appsscript.json` webapp mode:
+- предыдущие попытки усложнить Apps Script auth уже ломали live-доступ;
+- сайт все равно защищается через Vercel/Supabase owner-email gate;
+- Apps Script сейчас нужен как простой upstream data adapter;
+- главный риск момента — не публичность `/exec`, а потеря live-доступа и падение UI в stale cache.
+
+Текущий webapp mode должен оставаться:
 
 ```json
 "executeAs": "USER_DEPLOYING",
 "access": "ANYONE_ANONYMOUS"
 ```
 
-Required fix:
+Факт восстановления 2026-08-02:
 
-- Apps Script must require upstream secret/token from Vercel proxy;
-- direct anonymous `/exec` should return `403`;
-- old public deployment URLs should be rotated/contained where needed.
+- wife Apps Script deployment обновлен и публично отвечает по `/exec`;
+- актуальный wife deployment ID: `AKfycby9bBE9iJjilKgCcEwo93-tT0xQXUSBj92F_xBPsJJOrHDZUMaeGnm5rWZq4cujslZr`;
+- старый wife deployment `AKfycbyLhTunXVbxo1hy8t8qOrQkNfgmM9F9WTFM35ttefl2j7Zkad97lB5ok4FiYDv9pfzo` считать неактуальным для fallback-конфига.
+
+Что нужно исправить:
+
+- держать публичный web app доступ для wife Apps Script восстановленным;
+- не добавлять secret/smoke-защиту;
+- проверить, что прямой wife `/exec` возвращает JSON, а не Google `Нет доступа`;
+- проверить, что `/api/investor-wife` работает через Vercel proxy после Supabase owner-email проверки;
+- зафиксировать рабочий deployment ID.
 
 ## P0. Apps Script deploy drift
 
@@ -603,30 +612,30 @@ Do not redesign visual geometry before P0/P1 data/security fixes.
 
 # 9. Patch roadmap
 
-## Phase 1. P0 security and deployment boundary
+## Фаза 1. P0 — доступность Apps Script и граница deployment
 
-Goal:
+Цель:
 
-protect private data and align live Apps Script with repo.
+восстановить стабильный поток live-данных без усложнения авторизации на стороне Apps Script.
 
-Patch:
+Патч:
 
-1. Add Apps Script access guard.
-2. Pass upstream secret/token only from Vercel proxy.
-3. Direct `/exec` without token returns `403`.
-4. Review local `apps-script/*`.
-5. `clasp push`.
-6. Create new deployment/version.
-7. Update Vercel env only if URL changes.
-8. Verify main and wife proxy routes.
+1. Оставить Apps Script web app публичным: `ANYONE_ANONYMOUS`.
+2. Не добавлять shared-secret/smoke guards.
+3. Восстановить доступ к wife Apps Script deployment.
+4. `clasp push`.
+5. Создать или обновить deployment/version.
+6. Обновлять Vercel env или fallback в proxy только если URL изменится.
+7. Проверить proxy routes основного аккаунта и аккаунта Полины.
+8. Проверить, что UI выходит из stale state после успешного live fetch.
 
-Verification:
+Проверка:
 
-- direct main Apps Script blocked;
-- direct wife Apps Script blocked;
-- `/api/investor` authorized works;
-- `/api/investor-wife` authorized works;
-- unauthenticated proxy remains 401;
+- прямой main Apps Script возвращает JSON;
+- прямой wife Apps Script возвращает JSON;
+- `/api/investor` с авторизацией работает;
+- `/api/investor-wife` с авторизацией работает;
+- proxy без авторизации остается `401`;
 - `clasp status --json` clean.
 
 ## Phase 2. API contract and stale cache
@@ -827,15 +836,15 @@ Do not do in the first fix patch:
 
 # 12. Immediate next action
 
-The next implementation patch should be P0-only:
+Следующий implementation patch должен быть только P0:
 
-1. protect direct Apps Script access;
-2. resolve Apps Script deploy drift;
-3. verify API contract after deployment.
+1. восстановить публичный web app доступ wife Apps Script;
+2. пока оставить Apps Script простым и публичным;
+3. проверить API contract main/wife после deployment.
 
-Reason:
+Причина:
 
-until the data boundary is protected and live Apps Script matches repo code, UI polish and DNA import can hide the real operational risk.
+пока live data path нестабилен, UI polish и DNA import могут скрыть реальный operational risk.
 
 ---
 

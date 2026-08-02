@@ -2,7 +2,7 @@
 
 Status: personal-tool baseline  
 Scope: Investor Cabinet current architecture  
-Last updated: 2026-07-14
+Last updated: 2026-08-02
 
 ---
 
@@ -31,6 +31,11 @@ Auth layer:
 
 Important implication:
 do not add a second Apps Script-side authorization layer for the current personal-tool baseline.
+
+Operational decision 2026-08-02:
+Apps Script web apps may stay public (`ANYONE_ANONYMOUS`) for the current personal-tool phase.
+Do not reintroduce shared-secret guards, smoke-token gates or extra Apps Script auth layers unless there is a new explicit security scope.
+The site-level protection remains Vercel/Supabase owner-email gating.
 
 ---
 
@@ -78,6 +83,7 @@ Rule:
 - `api/_investorProxy.js` checks founder/wife email before proxying Apps Script;
 - server-side route calls Apps Script through `INVESTOR_APPS_SCRIPT_URL` and `WIFE_APPS_SCRIPT_URL`;
 - no additional Apps Script-side authorization layer is part of this baseline.
+- Apps Script web app deployments are expected to be reachable publicly as upstream data adapters.
 
 Current implementation:
 - browser sends Supabase access token to Vercel `/api/investor` and `/api/investor-wife`;
@@ -108,6 +114,7 @@ Rules:
 - no signing permissions;
 - no seed/private-key handling;
 - Apps Script deployments should be versioned;
+- web app access should stay `Anyone` / `ANYONE_ANONYMOUS` in this personal-tool baseline;
 - after adding `UrlFetchApp`, authorization must be completed before production redeploy.
 
 ## Vercel
