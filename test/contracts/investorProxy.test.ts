@@ -67,6 +67,46 @@ describe("investor serverless auth proxy", () => {
     expect(String(vi.mocked(globalThis.fetch).mock.calls[0][0])).toBe("https://apps-script.example/main?accountId=main");
   });
 
+  it("retries transient Apps Script read failures before serving public GET data", async () => {
+    setProxyEnv();
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce(new Response("<!doctype html>", {
+        status: 404,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }))
+      .mockResolvedValueOnce(Response.json({ success: true, overview: { portfolioValue: 588.3 }, portfolio: [] })) as typeof fetch;
+    const res = mockRes();
+
+    await proxyInvestorApi(mockReq(), res, "main");
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body ?? "{}")).toMatchObject({
+      success: true,
+      overview: { portfolioValue: 588.3 },
+    });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns controlled JSON when Apps Script keeps returning HTML for public GET", async () => {
+    setProxyEnv();
+    globalThis.fetch = vi.fn(async () => new Response("<!doctype html>", {
+      status: 404,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    })) as typeof fetch;
+    const res = mockRes();
+
+    await proxyInvestorApi(mockReq(), res, "main");
+
+    expect(res.statusCode).toBe(502);
+    expect(res.headers["content-type"]).toBe("application/json; charset=utf-8");
+    expect(JSON.parse(res.body ?? "{}")).toMatchObject({
+      success: false,
+      upstreamStatus: 404,
+      attempts: 3,
+    });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(3);
+  });
+
   it("rejects write requests without a Supabase bearer token", async () => {
     setProxyEnv();
     const res = mockRes();

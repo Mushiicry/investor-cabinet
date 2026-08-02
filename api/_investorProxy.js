@@ -4,6 +4,8 @@ const MAIN_APPS_SCRIPT_URL =
 const WIFE_APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycby9bBE9iJjilKgCcEwo93-tT0xQXUSBj92F_xBPsJJOrHDZUMaeGnm5rWZq4cujslZr/exec";
 const CAPITAL_LADDER_LEVELS = 7;
+const READ_RETRY_ATTEMPTS = 3;
+const READ_RETRY_DELAY_MS = 700;
 
 const getEnv = (name) => process.env[name]?.trim() ?? "";
 
@@ -18,6 +20,46 @@ const sendJson = (res, status, body) => {
   res.setHeader("cache-control", "no-store");
   res.end(JSON.stringify(body));
 };
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isJsonPayload = (upstream, body) => {
+  const contentType = upstream.headers.get("content-type") ?? "";
+  return contentType.includes("application/json") || /^[\[{]/.test(body.trim());
+};
+
+const isRetryableReadFailure = (upstream, body) =>
+  upstream.status === 404 ||
+  upstream.status >= 500 ||
+  !isJsonPayload(upstream, body);
+
+async function fetchInvestorUpstream(upstreamUrl, req) {
+  const isReadOnly = req.method === "GET";
+  const attempts = isReadOnly ? READ_RETRY_ATTEMPTS : 1;
+  let lastResult = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const upstream = await fetch(upstreamUrl.toString(), {
+      method: req.method,
+      headers: { accept: "application/json" },
+      body: req.method === "POST" ? req : undefined,
+      duplex: req.method === "POST" ? "half" : undefined,
+      redirect: "follow",
+    });
+    const body = await upstream.text();
+    lastResult = { upstream, body, attempt };
+
+    if (!isReadOnly || !isRetryableReadFailure(upstream, body)) {
+      return lastResult;
+    }
+
+    if (attempt < attempts) {
+      await delay(READ_RETRY_DELAY_MS);
+    }
+  }
+
+  return lastResult;
+}
 
 const ownerEmailFor = (kind) => {
   const envName = kind === "wife" ? "WIFE_EMAIL" : "FOUNDER_EMAIL";
@@ -118,14 +160,17 @@ export async function proxyInvestorApi(req, res, kind) {
       upstreamUrl.searchParams.set("action", action);
     }
 
-    const upstream = await fetch(upstreamUrl.toString(), {
-      method: req.method,
-      headers: { accept: "application/json" },
-      body: req.method === "POST" ? req : undefined,
-      duplex: req.method === "POST" ? "half" : undefined,
-      redirect: "follow",
-    });
-    const body = await upstream.text();
+    const { upstream, body, attempt } = await fetchInvestorUpstream(upstreamUrl, req);
+
+    if (!upstream.ok || !isJsonPayload(upstream, body)) {
+      sendJson(res, 502, {
+        success: false,
+        error: "Investor upstream returned invalid response",
+        upstreamStatus: upstream.status,
+        attempts: attempt,
+      });
+      return;
+    }
 
     res.statusCode = upstream.status;
     res.setHeader("content-type", upstream.headers.get("content-type") ?? "application/json; charset=utf-8");
