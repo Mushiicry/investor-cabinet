@@ -1,5 +1,8 @@
 # MUSHI INVEST SYSTEM SNAPSHOT 2026-07-30
 
+> Актуальный рабочий roadmap фиксов на русском языке: `docs/MUSHI_INVEST_FIX_ROADMAP_RU_2026-08-03.md`.
+> Этот файл оставлен как исторический snapshot от 30 июля. Пункты про security/smoke/shared-secret Apps Script больше не являются активным планом.
+
 Status: canonical system snapshot and patch plan  
 Scope: Investor Cabinet / Кабинет инвестора / Mushi Invest platform  
 Mode: consolidation after read-only audits  
