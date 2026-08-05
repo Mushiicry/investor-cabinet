@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchInvestorData } from "../api/investor";
 import { INVESTOR_API_URL, INVESTOR_REFRESH_INTERVAL_MS } from "../config/constants";
 import { validateInvestorApiPayload } from "../services/apiValidation";
@@ -14,8 +14,12 @@ import type { PortfolioState } from "../types/portfolio";
 
 export type InvestorDataSource = "cache" | "fallback" | "live";
 
-export type InvestorDataResult = DataLoadState<PortfolioState> & {
+type InvestorDataState = DataLoadState<PortfolioState> & {
   source: InvestorDataSource;
+};
+
+export type InvestorDataResult = InvestorDataState & {
+  refresh: () => void;
 };
 
 const getErrorMessage = (error: unknown) =>
@@ -25,7 +29,7 @@ const buildInitialInvestorDataState = (
   fallbackData: PortfolioState,
   cacheSlot: "wife" | undefined,
   allowCache: boolean,
-): InvestorDataResult => {
+): InvestorDataState => {
   if (!allowCache) {
     return {
       data: fallbackData,
@@ -58,12 +62,18 @@ export function useInvestorData(
   enabled = true,
   authToken?: string | null,
 ): InvestorDataResult {
-  const [state, setState] = useState<InvestorDataResult>(() =>
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [state, setState] = useState<InvestorDataState>(() =>
     buildInitialInvestorDataState(fallbackData, cacheSlot, enabled)
   );
 
+  const refresh = useCallback(() => {
+    setRefreshToken((token) => token + 1);
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
+    let isLoading = false;
 
     if (!enabled) {
       setState(buildInitialInvestorDataState(fallbackData, cacheSlot, false));
@@ -75,6 +85,8 @@ export function useInvestorData(
     setState(buildInitialInvestorDataState(fallbackData, cacheSlot, true));
 
     const loadInvestorData = async () => {
+      if (isLoading) return;
+      isLoading = true;
       setState((prev) => ({
         ...prev,
         isLoading: prev.source === "fallback" && !prev.lastLoadedAt,
@@ -164,6 +176,8 @@ export function useInvestorData(
           status: prev.source === "fallback" ? "error" : "stale",
           error: getErrorMessage(error),
         }));
+      } finally {
+        isLoading = false;
       }
     };
 
@@ -174,7 +188,7 @@ export function useInvestorData(
       isMounted = false;
       clearInterval(interval);
     };
-  }, [apiUrl, authToken, cacheSlot, enabled, fallbackData]);
+  }, [apiUrl, authToken, cacheSlot, enabled, fallbackData, refreshToken]);
 
-  return state;
+  return { ...state, refresh };
 }

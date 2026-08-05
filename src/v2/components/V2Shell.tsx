@@ -53,6 +53,7 @@ type Props = {
     status: string;
     lastLoadedAt: string | null;
     error: string | null;
+    onRefresh: () => void;
   };
 };
 
@@ -86,23 +87,39 @@ function getDesktopViewport() {
 }
 
 function DataStatusBadge({ dataStatus }: { dataStatus: NonNullable<Props["dataStatus"]> }) {
-  const { source, status, lastLoadedAt, error } = dataStatus;
+  const { source, status, lastLoadedAt, error, onRefresh } = dataStatus;
   let tone = "is-live";
   let label = "ЖИВЫЕ";
   if (error && source === "fallback") { tone = "is-error"; label = "ОШИБКА"; }
   else if (status === "stale" || (error && source !== "fallback")) { tone = "is-stale"; label = "УСТАРЕЛО"; }
+  else if (status === "refreshing") { tone = "is-refreshing"; label = "ОБНОВЛЯЕТСЯ"; }
   else if (source === "cache") { tone = "is-cache"; label = "КЭШ"; }
   else if (source === "fallback") { tone = "is-cache"; label = "ДЕМО"; }
+  const isCompactLive = tone === "is-live";
 
   const time = lastLoadedAt
     ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(lastLoadedAt))
     : null;
 
   return (
-    <div className={`v2-datastatus ${tone}`} title={error ?? `Источник: ${source} · ${status}`}>
+    <div
+      className={`v2-datastatus ${tone}${isCompactLive ? " is-compact" : ""}`}
+      title={error ?? `Источник: ${source} · ${status}`}
+    >
       <span className="v2-datastatus-dot" />
-      <span className="v2-datastatus-label">{label}</span>
+      {!isCompactLive && <span className="v2-datastatus-label">{label}</span>}
       {time && <span className="v2-datastatus-time">{time}</span>}
+      <button
+        className="v2-datastatus-refresh"
+        type="button"
+        onClick={onRefresh}
+        aria-label="Обновить данные"
+        title="Обновить данные"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M12.7 5.2A5 5 0 1 0 13 8h-1.4A3.6 3.6 0 1 1 11.4 6H9.5V4.6h4.2v4.2h-1.4V6.2a4.7 4.7 0 0 0 .4-1Z" />
+        </svg>
+      </button>
     </div>
   );
 }

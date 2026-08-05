@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 
-type KlineRaw = [number, string, string, string, string, ...unknown[]];
 interface Bar { ts: number; open: number; high: number; low: number; close: number }
 
 // ─── Phase definitions ────────────────────────────────────────────────────────
@@ -109,20 +108,26 @@ function priceExtreme(bars: Bar[], targetTs: number, useHigh: boolean): number {
   return useHigh ? best.high : best.low;
 }
 
-async function fetchAllBars(startTime: number, accum: Bar[] = []): Promise<Bar[]> {
-  const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=${startTime}&limit=1000`;
-  const raw: KlineRaw[] = await (await fetch(url)).json();
-  if (raw.length === 0) return accum;
-  const bars = raw.map(k => ({
-    ts: k[0], open: parseFloat(k[1]), high: parseFloat(k[2]),
-    low: parseFloat(k[3]), close: parseFloat(k[4]),
-  }));
-  const all = [...accum, ...bars];
-  const lastTs = bars[bars.length - 1].ts;
-  if (raw.length === 1000 && lastTs < Date.now() - 86_400_000) {
-    return fetchAllBars(lastTs + 86_400_000, all);
+function isBar(value: unknown): value is Bar {
+  if (!value || typeof value !== "object") return false;
+  const bar = value as Partial<Bar>;
+  return Number.isFinite(bar.ts)
+    && Number.isFinite(bar.open)
+    && Number.isFinite(bar.high)
+    && Number.isFinite(bar.low)
+    && Number.isFinite(bar.close);
+}
+
+async function fetchAllBars(): Promise<Bar[]> {
+  const response = await fetch("/api/btc-daily", { cache: "no-store" });
+  if (!response.ok) throw new Error(`BTC daily API failed: ${response.status}`);
+
+  const json = await response.json() as { success?: unknown; bars?: unknown };
+  if (!json.success || !Array.isArray(json.bars)) {
+    throw new Error("BTC daily API returned invalid payload");
   }
-  return all;
+
+  return json.bars.filter(isBar);
 }
 
 function getFearGreedLabel(v: number) {
@@ -138,6 +143,7 @@ function getFearGreedLabel(v: number) {
 export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: number }) {
   const [bars, setBars] = useState<Bar[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   // График на весь экран (на мобиле — с поворотом в горизонталь)
   const [chartFull, setChartFull] = useState(false);
   // Узкий экран: свёрнутый график заполняет контейнер целиком
@@ -153,9 +159,12 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
   }, []);
 
   useEffect(() => {
-    fetchAllBars(CHART_START)
-      .then(data => { setBars(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    fetchAllBars()
+      .then(data => { setBars(data); setLoadError(""); setLoading(false); })
+      .catch((error) => {
+        setLoadError(error instanceof Error ? error.message : "BTC chart load failed");
+        setLoading(false);
+      });
   }, []);
 
   // Date.now() один раз на маунт через ленивый useState — чистый render.
@@ -180,7 +189,14 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
       <div className="v2-btc-loading">Загрузка графика…</div>
     </div>
   );
-  if (bars.length === 0) return null;
+  if (bars.length === 0) return (
+    <div className="v2-btc-card">
+      <div className="v2-btc-header"><span className="v2-btc-title">BTC / USDT · Дневной</span></div>
+      <div className="v2-btc-loading">
+        {loadError ? `График временно недоступен: ${loadError}` : "Нет данных графика"}
+      </div>
+    </div>
+  );
 
   const lastBarTs = bars[bars.length - 1].ts;
   const T_SPAN = T_END_FIXED - CHART_START;

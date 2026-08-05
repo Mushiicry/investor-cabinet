@@ -319,6 +319,92 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .v2-dna-hero-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-dna-score-widget {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    justify-items: start;
+    padding: 20px;
+  }
+
+  .v2-dna-hero-metric {
+    border-top: 1px solid rgba(86,196,240,0.12);
+    border-left: 0;
+    padding: 20px;
+  }
+
+  .v2-dna-hero-metric strong {
+    font-size: 28px;
+  }
+
+  .v2-dna-rec-toggle {
+    min-height: 0;
+    grid-template-columns: 38px minmax(0, 1fr) 34px;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .v2-dna-rec-toggle strong {
+    font-size: 15px;
+  }
+
+  .v2-dna-rec-priority,
+  .v2-dna-rec-action {
+    grid-column: 2 / 4;
+  }
+
+  .v2-dna-rec-chevron {
+    grid-row: 1;
+    grid-column: 3;
+  }
+
+  .v2-dna-rec-details {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 14px 16px 64px;
+  }
+
+  .v2-dna-rec-details div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .v2-dna-audit-stack,
+  .v2-dna-check-grid,
+  .v2-dna-rule-flow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-dna-audit-card-toggle {
+    grid-template-columns: 38px minmax(0, 1fr) 34px;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .v2-dna-audit-progress {
+    grid-column: 2 / 4;
+    justify-self: stretch;
+    min-width: 0;
+  }
+
+  .v2-dna-audit-progress b {
+    text-align: left;
+  }
+
+  .v2-dna-audit-progress i {
+    width: 100%;
+  }
+
+  .v2-dna-rule-step::after {
+    display: none;
+  }
+
+  .v2-dna-profile-grid {
+    padding: 14px;
+  }
+
   .v2-hp-policy-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
@@ -734,12 +820,14 @@
 
 /* (донат: единое правило живёт выше, в блоке «Распределение средств») */
 
-/* LIVE-бейдж из шапки на телефоне убран — на BTC-графике уже есть свой
-   LIVE-индикатор (решение владельца). Проблемные статусы (STALE / ERROR /
-   CACHE / DEMO) остаются видимыми: это сигнал о несвежих данных. */
+/* Статус данных остаётся видимым на каждом экране; live-состояние компактное. */
 @media (max-width: 768px) {
   .v2-datastatus.is-live {
-    display: none;
+    display: inline-flex;
+  }
+
+  .v2-datastatus.is-compact {
+    padding: 4px 6px 4px 8px;
   }
 }
 

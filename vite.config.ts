@@ -2,6 +2,7 @@ import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { proxyInvestorApi } from './api/_investorProxy.js'
+import { handleBtcDailyApi } from './api/_btcDaily.js'
 
 const BINANCE_SYMBOL_LIST_URL =
   'https://www.binance.com/bapi/composite/v1/public/marketing/symbol/list'
@@ -99,6 +100,10 @@ function investorDevApiPlugin(): Plugin {
 
       server.middlewares.use('/api/investor', (req, res) => {
         void proxyInvestorApi(req, res, 'main')
+      })
+
+      server.middlewares.use('/api/btc-daily', (req, res) => {
+        void handleBtcDailyApi(req, res)
       })
     },
   }

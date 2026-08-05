@@ -6,6 +6,8 @@ var IC_SIGNAL_ALERT_DAILY_LIMIT = 3;
 var IC_SIGNAL_ALERT_REPEAT_AFTER_HOURS = 6;
 var IC_SIGNAL_ALERT_DAILY_STATE_KEY = 'SIGNAL_ALERT_DAILY_STATE';
 var IC_SIGNAL_ALERT_DISCIPLINE_PAUSE_KEY = 'SIGNAL_ALERT_DISCIPLINE_PAUSE';
+var IC_SIGNAL_ALERT_CANDLE_INTERVAL = '1m';
+var IC_SIGNAL_ALERT_CANDLE_LOOKBACK_MINUTES = 3;
 
 function setupSignalPriceAlertTelegram(token, chatId) {
   if (!token) throw new Error('Missing Telegram bot token');
@@ -147,6 +149,7 @@ function IC_SIGNAL_ALERT_run_() {
   var sent = [];
   var failed = [];
   var skipped = [];
+  var candleCache = {};
 
   // Копим правки в памяти и пишем их одним setValues на весь диапазон:
   // 23 отдельные записи в минуту съедали дневную квоту времени триггеров.
@@ -203,9 +206,17 @@ function IC_SIGNAL_ALERT_run_() {
       return;
     }
 
-    var conditionMet = direction === 'SELL'
-      ? currentPrice >= triggerPrice
-      : currentPrice <= triggerPrice;
+    var conditionMet = IC_SIGNAL_ALERT_conditionMet_(
+      direction,
+      currentPrice,
+      triggerPrice,
+      id,
+      asset,
+      source,
+      candleCache,
+      now,
+      skipped
+    );
     if (!conditionMet) return;
 
     // Сигнал должен сначала встать на дежурство при невыполненном условии.
@@ -345,14 +356,83 @@ function IC_SIGNAL_ALERT_directionFromAction_(action) {
 }
 
 function IC_SIGNAL_ALERT_priceForSignal_(id, asset, source, primaryMids, xyzMids) {
-  if (source.indexOf('xyz:SPCX') >= 0) return IC_SIGNAL_ALERT_toNumber_(xyzMids['xyz:SPCX']);
-  if (source.indexOf('xyz:GOLD') >= 0) return IC_SIGNAL_ALERT_toNumber_(xyzMids['xyz:GOLD']);
+  var coin = IC_SIGNAL_ALERT_coinForSignal_(id, asset, source);
+  if (coin === 'xyz:SPCX') return IC_SIGNAL_ALERT_toNumber_(xyzMids['xyz:SPCX']);
+  if (coin === 'xyz:GOLD') return IC_SIGNAL_ALERT_toNumber_(xyzMids['xyz:GOLD']);
 
+  return IC_SIGNAL_ALERT_toNumber_(primaryMids[coin]);
+}
+
+function IC_SIGNAL_ALERT_coinForSignal_(id, asset, source) {
+  if (source.indexOf('xyz:SPCX') >= 0) return 'xyz:SPCX';
+  if (source.indexOf('xyz:GOLD') >= 0) return 'xyz:GOLD';
   var normalized = String(asset || '').toUpperCase().replace(' SHORT', '').trim();
   if (String(id).indexOf('BTC-SHORT-') === 0) normalized = 'BTC';
-  if (normalized === 'GOLD') return IC_SIGNAL_ALERT_toNumber_(xyzMids['xyz:GOLD']);
+  if (normalized === 'GOLD') return 'xyz:GOLD';
+  return normalized;
+}
 
-  return IC_SIGNAL_ALERT_toNumber_(primaryMids[normalized]);
+function IC_SIGNAL_ALERT_conditionMet_(
+  direction,
+  currentPrice,
+  triggerPrice,
+  id,
+  asset,
+  source,
+  candleCache,
+  now,
+  skipped
+) {
+  var midTouched = direction === 'SELL'
+    ? currentPrice >= triggerPrice
+    : currentPrice <= triggerPrice;
+  if (midTouched) return true;
+
+  var coin = IC_SIGNAL_ALERT_coinForSignal_(id, asset, source);
+  var candleState = IC_SIGNAL_ALERT_candlesForCoin_(coin, candleCache, now);
+  if (candleState.error) {
+    skipped.push({ id: id, reason: 'candle_error', error: candleState.error });
+    return false;
+  }
+
+  return candleState.candles.some(function(candle) {
+    var high = IC_SIGNAL_ALERT_toNumber_(candle.h);
+    var low = IC_SIGNAL_ALERT_toNumber_(candle.l);
+    if (direction === 'SELL') return high >= triggerPrice;
+    return low > 0 && low <= triggerPrice;
+  });
+}
+
+function IC_SIGNAL_ALERT_candlesForCoin_(coin, candleCache, now) {
+  if (Object.prototype.hasOwnProperty.call(candleCache, coin)) {
+    return candleCache[coin];
+  }
+
+  var endTime = now.getTime();
+  var startTime = endTime - IC_SIGNAL_ALERT_CANDLE_LOOKBACK_MINUTES * 60 * 1000;
+
+  try {
+    var candles = IC_SIGNAL_ALERT_fetchInfo_({
+      type: 'candleSnapshot',
+      req: {
+        coin: coin,
+        interval: IC_SIGNAL_ALERT_CANDLE_INTERVAL,
+        startTime: startTime,
+        endTime: endTime
+      }
+    });
+    candleCache[coin] = {
+      candles: Array.isArray(candles) ? candles : [],
+      error: ''
+    };
+  } catch (error) {
+    candleCache[coin] = {
+      candles: [],
+      error: String(error && error.message ? error.message : error)
+    };
+  }
+
+  return candleCache[coin];
 }
 
 function IC_SIGNAL_ALERT_buildMessage_(id, asset, action, amount, triggerPrice, displayTrigger, comment) {

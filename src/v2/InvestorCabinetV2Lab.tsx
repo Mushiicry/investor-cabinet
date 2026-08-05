@@ -233,6 +233,7 @@ export default function InvestorCabinetV2Lab() {
           status: investorData.status,
           lastLoadedAt: investorData.lastLoadedAt,
           error: investorData.error,
+          onRefresh: investorData.refresh,
         }}
       />
       {authOpen && (
