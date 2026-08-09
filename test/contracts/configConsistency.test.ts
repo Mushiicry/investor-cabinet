@@ -37,8 +37,9 @@ describe("local and production API config consistency", () => {
   it("keeps wife site reads on the fast Google Sheets path", () => {
     const wifeApi = read("apps-script/wifePortfolioApi.gs");
 
-    expect(wifeApi).toContain("WIFE API v2.2 - sheet-fast-read");
-    expect(wifeApi).toContain("site read uses Google Sheets quantities");
+    expect(wifeApi).toContain("WIFE API v2.3 - fast-live-prices");
+    expect(wifeApi).toContain("Hyperliquid цены + Sheets позиции");
+    expect(wifeApi).toContain("fetchFastSiteBalances_()");
     expect(wifeApi).toContain("buildWifePortfolioJson({ useLive: true })");
   });
 });

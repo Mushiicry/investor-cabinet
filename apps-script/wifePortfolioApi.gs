@@ -98,10 +98,8 @@ var IC_WIFE_API = (function() {
   function buildWifePortfolioJson(options) {
     options = options || {};
     var useLive = options.useLive === true;
-    var blockchain = useLive
-      ? fetchAllBlockchainBalances()
-      : { _errors: { mode: 'site read uses Google Sheets quantities; live chain fetch skipped' } };
-    var priceMap = useLive ? getLivePrices() : getSheetPrices_();
+    var blockchain = useLive ? fetchAllBlockchainBalances() : fetchFastSiteBalances_();
+    var priceMap = getLivePrices();
 
     var wifeSS    = SpreadsheetApp.openById(WIFE_SS_ID);
     var wifeSheet = wifeSS.getSheets()[0];
@@ -233,7 +231,7 @@ var IC_WIFE_API = (function() {
 
     return {
       success:   true,
-      patch:     useLive ? 'WIFE API v2.1 - blockchain-first' : 'WIFE API v2.2 - sheet-fast-read',
+      patch:     useLive ? 'WIFE API v2.1 - blockchain-first' : 'WIFE API v2.3 - fast-live-prices',
       updatedAt: new Date().toISOString(),
 
       // Debug: raw balances fetched from blockchain
@@ -251,7 +249,7 @@ var IC_WIFE_API = (function() {
         positionsCount: crypto.length,
         health:         health,
         state:          healthLabel(health),
-        signal:         useLive ? TEXT_LIVE_BLOCKCHAIN : 'Google Sheets данные',
+        signal:         useLive ? TEXT_LIVE_BLOCKCHAIN : 'Hyperliquid цены + Sheets позиции',
         action:         TEXT_FOLLOW_STRATEGY,
         categories:     categories,
         bestPosition:   best  ? { asset: best.asset,  pnl: best.pnl  } : null,
@@ -612,6 +610,32 @@ var IC_WIFE_API = (function() {
     return b;
   }
 
+  function fetchFastSiteBalances_() {
+    var b = {};
+    var errors = {};
+
+    try {
+      b.USDT_ARB = _fetchUsdtArb();
+    } catch(e) {
+      errors.USDT_ARB = e.message;
+    }
+
+    try {
+      b.USDT_TON = _fetchUsdtTon();
+    } catch(e) {
+      errors.USDT_TON = e.message;
+    }
+
+    b.USDT = r2((b.USDT_ARB || 0) + (b.USDT_TON || 0));
+
+    if (!b.USDT) {
+      errors.USDT = 'live stablecoin balance unavailable; sheet quantity fallback is used';
+    }
+
+    b._errors = errors;
+    return b;
+  }
+
   // Arbitrum RPC with fallback.
   function arbRpc(method, params) {
     var payload = JSON.stringify({ jsonrpc: '2.0', id: 1, method: method, params: params });
@@ -708,14 +732,6 @@ var IC_WIFE_API = (function() {
     } catch(e) {
       Logger.log('mergeSheetPrices_ error: ' + e.message);
     }
-  }
-
-  function getSheetPrices_() {
-    var priceMap = {};
-    addPrice_(priceMap, 'USDT', 1);
-    addPrice_(priceMap, 'USDC', 1);
-    mergeSheetPrices_(priceMap);
-    return priceMap;
   }
 
   function syncKoshaPriceSheet() {
