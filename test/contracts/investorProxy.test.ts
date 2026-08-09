@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { proxyInvestorApi } from "../../api/_investorProxy.js";
+import { investorReadUrlFor, proxyInvestorApi } from "../../api/_investorProxy.js";
 
 type MockResponse = ServerResponse & {
   body?: string;
@@ -78,6 +78,12 @@ describe("investor serverless auth proxy", () => {
     expect(JSON.parse(res.body ?? "{}")).toMatchObject({ success: true });
     expect(globalThis.fetch).toHaveBeenCalledOnce();
     expect(String(vi.mocked(globalThis.fetch).mock.calls[0][0])).toBe("https://apps-script.example/main?accountId=wife");
+  });
+
+  it("builds the canonical wife read URL from the main Apps Script endpoint", () => {
+    setProxyEnv();
+
+    expect(investorReadUrlFor("wife")).toBe("https://apps-script.example/main?accountId=wife");
   });
 
   it("ignores the legacy wife Apps Script URL even when it is configured", async () => {

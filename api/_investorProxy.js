@@ -65,9 +65,14 @@ const ownerEmailFor = (kind) => {
   return (getEnv(envName) || getEnv(viteEnvName)).toLowerCase();
 };
 
-const targetUrlFor = (kind) => {
-  void kind;
+const targetUrlFor = () => {
   return getEnv("INVESTOR_APPS_SCRIPT_URL") || MAIN_APPS_SCRIPT_URL;
+};
+
+export const investorReadUrlFor = (kind) => {
+  const upstreamUrl = new URL(targetUrlFor(kind));
+  upstreamUrl.searchParams.set("accountId", kind);
+  return upstreamUrl.toString();
 };
 
 async function verifySupabaseUser(req) {

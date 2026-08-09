@@ -21,6 +21,7 @@ describe("local and production API config consistency", () => {
     expect(wifeRouteIndex).toBeLessThan(mainRouteIndex);
     expect(appsScriptIds(proxyConfig)).toEqual([mainId]);
     expect(proxyConfig).not.toContain("WIFE_APPS_SCRIPT_URL");
+    expect(read("api/investor-wife.js")).toContain("investorReadUrlFor(\"wife\")");
   });
 
   it("does not expose investor Apps Script URLs through production rewrites", () => {
