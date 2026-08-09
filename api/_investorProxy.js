@@ -8,7 +8,11 @@ const WIFE_PRICE_TIMEOUT_MS = 8_000;
 const WIFE_EVM_ADDRESS = "0x06F03b067b34f3d6E569De9aB7839c988Bf6BAEE";
 const WIFE_TON_ADDRESS = "UQCMRrWTgMBqBMr6yUw04ZYz398fyIhDlaJyaqoQTchVNm74";
 const USDT_ARB_CONTRACT = "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9";
-const ARB_RPC_URL = "https://1rpc.io/arb";
+const ARB_RPC_URLS = [
+  "https://arb1.arbitrum.io/rpc",
+  "https://arbitrum-one-rpc.publicnode.com",
+  "https://1rpc.io/arb",
+];
 const TONAPI_JETTONS_URL = `https://tonapi.io/v2/accounts/${WIFE_TON_ADDRESS}/jettons`;
 const HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info";
 
@@ -155,18 +159,29 @@ async function fetchWifePriceMap() {
 async function fetchWifeUsdtArb() {
   const paddedAddress = `000000000000000000000000${WIFE_EVM_ADDRESS.slice(2).toLowerCase()}`;
   const callData = `0x70a08231${paddedAddress}`;
-  const data = await fetchJsonWithTimeout(ARB_RPC_URL, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "eth_call",
-      params: [{ to: USDT_ARB_CONTRACT, data: callData }, "latest"],
-    }),
+  const payload = JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "eth_call",
+    params: [{ to: USDT_ARB_CONTRACT, data: callData }, "latest"],
   });
-  const raw = typeof data.result === "string" ? BigInt(data.result) : 0n;
-  return round(Number(raw) / 1e6, 2);
+  const errors = [];
+
+  for (const rpcUrl of ARB_RPC_URLS) {
+    try {
+      const data = await fetchJsonWithTimeout(rpcUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: payload,
+      });
+      const raw = typeof data.result === "string" ? BigInt(data.result) : 0n;
+      return round(Number(raw) / 1e6, 2);
+    } catch (error) {
+      errors.push(`${rpcUrl}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  throw new Error(errors.join(" | "));
 }
 
 async function fetchWifeUsdtTon() {
@@ -195,6 +210,7 @@ async function fetchWifeStableBalance() {
     USDT_ARB: usdtArb,
     USDT_TON: usdtTon,
     USDT: round(usdtArb + usdtTon, 2),
+    complete: arb.status === "fulfilled" && ton.status === "fulfilled",
     _errors: {
       ...(arb.status === "rejected" ? { USDT_ARB: arb.reason instanceof Error ? arb.reason.message : String(arb.reason) } : {}),
       ...(ton.status === "rejected" ? { USDT_TON: ton.reason instanceof Error ? ton.reason.message : String(ton.reason) } : {}),
@@ -229,7 +245,7 @@ function rebuildWifePayload(payload, priceMap, stableBalance) {
     const asset = String(position.asset || "").trim().toUpperCase();
     const category = String(position.category || "");
     const isStable = category === WIFE_STABLE_CATEGORY || ticker === "USDT" || ticker === "USDC";
-    const liveStableQuantity = ticker === "USDT" ? toNumber(stableBalance.USDT) : 0;
+    const liveStableQuantity = ticker === "USDT" && stableBalance.complete ? toNumber(stableBalance.USDT) : 0;
     const quantity = liveStableQuantity > 0 ? liveStableQuantity : toNumber(position.quantity);
     const invested = isStable && liveStableQuantity > 0 ? round(liveStableQuantity, 2) : toNumber(position.invested);
     const currentPrice = isStable ? 1 : (priceMap[ticker] || priceMap[asset] || toNumber(position.currentPrice));

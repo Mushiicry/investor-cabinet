@@ -79,7 +79,7 @@ describe("investor serverless auth proxy", () => {
     expect(String(vi.mocked(globalThis.fetch).mock.calls[0][0])).toBe("https://apps-script.example/main?accountId=wife");
     expect(vi.mocked(globalThis.fetch).mock.calls.map((call) => String(call[0]))).toEqual(expect.arrayContaining([
       "https://api.hyperliquid.xyz/info",
-      "https://1rpc.io/arb",
+      "https://arb1.arbitrum.io/rpc",
     ]));
   });
 
@@ -126,7 +126,7 @@ describe("investor serverless auth proxy", () => {
         return Response.json({ BTC: "65100.5", ETH: "1920.85", SOL: "77.2375", GRAM: "1.3392" });
       }
 
-      if (url === "https://1rpc.io/arb") {
+      if (url === "https://arb1.arbitrum.io/rpc") {
         return Response.json({ result: "0x1f5e6540" });
       }
 
