@@ -366,15 +366,26 @@
     padding: 0 14px 16px 64px;
   }
 
-  .v2-dna-rec-details div {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 4px;
+  .v2-dna-rec-details p {
+    padding: 11px 12px;
+    font-size: 12px;
   }
 
   .v2-dna-audit-stack,
   .v2-dna-check-grid,
-  .v2-dna-rule-flow {
+  .v2-dna-rule-flow,
+  .v2-dna-priority-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-dna-priority-visual {
+    min-height: 190px;
+    order: -1;
+  }
+
+  .v2-dna-priority-visual img {
+    min-height: 190px;
+    object-position: center 54%;
   }
 
   .v2-dna-audit-card-toggle {
@@ -419,7 +430,6 @@
     gap: 3px;
   }
 
-  .v2-dna-audit-toggle,
   .v2-dna-question-card,
   .v2-dna-audit-footer {
     grid-template-columns: minmax(0, 1fr);

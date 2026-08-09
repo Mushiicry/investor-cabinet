@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
 import { saveInvestorDNAAudit } from "../../api/investorDNA";
+import dnaPriorityOrb from "../../assets/dna/dna-priority-orb.png";
 import { INVESTOR_API_URL, WIFE_API_URL } from "../../config/constants";
 import type { InvestorDNA, InvestorDNAQuestion, InvestorDNARecommendation } from "../lib/investorDNA";
 
@@ -166,14 +167,8 @@ function RecommendationRow({
       </button>
       {isOpen && (
         <div className="v2-dna-rec-details">
-          <div>
-            <span>Почему</span>
-            <em>{item.reason}</em>
-          </div>
-          <div>
-            <span>Эффект</span>
-            <em>{item.expectedEffect}</em>
-          </div>
+          <p>{item.reason}</p>
+          <p>{item.expectedEffect}</p>
         </div>
       )}
     </div>
@@ -408,69 +403,11 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
 
   return (
     <div className="v2-hp-page v2-dna-page" aria-label="ДНК Инвестора">
-      <section className="v2-hp-policy-card v2-dna-hero-card">
-        <div className="v2-hp-policy-head v2-dna-hero-head">
-          <div>
-            <div className="v2-hp-card-title">ДНК Инвестора</div>
-          </div>
-        </div>
-        <div className="v2-dna-hero-summary">
-          <div className="v2-dna-score-widget">
-            <DnaScoreRing value={dna.riskWillingness.value} />
-            <div className="v2-dna-score-copy">
-              <div className="v2-dna-hero-metric-label">{dna.riskWillingness.label}</div>
-              <div className="v2-dna-stars" aria-label="Высокая готовность к риску">★★★★☆</div>
-              <p>{dna.riskWillingness.note}</p>
-              <span>Профиль ДНК</span>
-            </div>
-          </div>
-          <DnaHeroMetric
-            icon="R"
-            label={dna.riskWillingness.label}
-            value={`${dna.riskWillingness.value}/100`}
-            note="Вы готовы принимать волатильность и активную аллокацию."
-          />
-          <DnaHeroMetric
-            icon="C"
-            label={dna.riskCapacity.label}
-            value={`${dna.riskCapacity.value}/100`}
-            note={dna.riskCapacity.note}
-          />
-          <DnaHeroMetric
-            icon="$"
-            label="Ориентир капитала"
-            value={capitalTarget}
-            note={capitalTargetNote}
-          />
-        </div>
-      </section>
-
-      <section className="v2-hp-policy-card v2-dna-rec-card">
-        <div className="v2-hp-policy-head">
-          <div>
-            <div className="v2-hp-card-title">Рекомендации ДНК</div>
-            <h2>Что улучшить после аудита</h2>
-          </div>
-          <span className="v2-hp-policy-badge">{dna.recommendations.length} действия</span>
-        </div>
-        <div className="v2-dna-rec-list">
-          {dna.recommendations.map((item, index) => (
-            <RecommendationRow
-              key={item.id}
-              item={item}
-              number={index + 1}
-              isOpen={openRecommendationId === item.id}
-              onToggle={() => setOpenRecommendationId((current) => (current === item.id ? null : item.id))}
-            />
-          ))}
-        </div>
-      </section>
-
       <section className="v2-hp-policy-card v2-dna-audit-card-section">
         <div className="v2-hp-policy-head">
           <div>
             <div className="v2-hp-card-title">Анкетирование</div>
-            <h2>Аудиты ДНК</h2>
+            <h2>Аудит ДНК</h2>
           </div>
           <span className="v2-hp-policy-badge">Первичный + полный</span>
         </div>
@@ -561,6 +498,70 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
               </div>
             )}
           </DnaAuditCard>
+        </div>
+      </section>
+
+      <section className="v2-hp-policy-card v2-dna-hero-card">
+        <div className="v2-hp-policy-head v2-dna-hero-head">
+          <div>
+            <div className="v2-hp-card-title">ДНК Инвестора</div>
+            <h2>Главные ориентиры</h2>
+          </div>
+        </div>
+        <div className="v2-dna-hero-summary">
+          <div className="v2-dna-score-widget">
+            <DnaScoreRing value={dna.riskWillingness.value} />
+            <div className="v2-dna-score-copy">
+              <div className="v2-dna-hero-metric-label">{dna.riskWillingness.label}</div>
+              <div className="v2-dna-stars" aria-label="Высокая готовность к риску">★★★★☆</div>
+              <p>{dna.riskWillingness.note}</p>
+              <span>Профиль ДНК</span>
+            </div>
+          </div>
+          <DnaHeroMetric
+            icon="R"
+            label={dna.riskWillingness.label}
+            value={`${dna.riskWillingness.value}/100`}
+            note="Вы готовы принимать волатильность и активную аллокацию."
+          />
+          <DnaHeroMetric
+            icon="C"
+            label={dna.riskCapacity.label}
+            value={`${dna.riskCapacity.value}/100`}
+            note={dna.riskCapacity.note}
+          />
+          <DnaHeroMetric
+            icon="$"
+            label="Ориентир капитала"
+            value={capitalTarget}
+            note={capitalTargetNote}
+          />
+        </div>
+      </section>
+
+      <section className="v2-hp-policy-card v2-dna-rec-card" aria-label="Рекомендации ДНК">
+        <div className="v2-hp-policy-head">
+          <div>
+            <div className="v2-hp-card-title">Приоритеты ДНК</div>
+            <h2>Что сделать дальше</h2>
+          </div>
+          <span className="v2-hp-policy-badge">{dna.recommendations.length} действия</span>
+        </div>
+        <div className="v2-dna-priority-layout">
+          <div className="v2-dna-rec-list">
+            {dna.recommendations.map((item, index) => (
+              <RecommendationRow
+                key={item.id}
+                item={item}
+                number={index + 1}
+                isOpen={openRecommendationId === item.id}
+                onToggle={() => setOpenRecommendationId((current) => (current === item.id ? null : item.id))}
+              />
+            ))}
+          </div>
+          <aside className="v2-dna-priority-visual" aria-hidden="true">
+            <img src={dnaPriorityOrb} alt="" />
+          </aside>
         </div>
       </section>
 

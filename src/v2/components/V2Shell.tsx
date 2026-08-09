@@ -168,6 +168,11 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     return () => window.removeEventListener("resize", updateViewport);
   }, []);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    labRef.current?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [page]);
+
   function handleSaveProfile(name: string, avatar: string) {
     setProfileName(name);
     setProfileAvatar(avatar);
