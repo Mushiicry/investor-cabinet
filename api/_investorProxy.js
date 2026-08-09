@@ -1,8 +1,6 @@
 const MAIN_APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA/exec";
 
-const WIFE_APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycby9bBE9iJjilKgCcEwo93-tT0xQXUSBj92F_xBPsJJOrHDZUMaeGnm5rWZq4cujslZr/exec";
 const CAPITAL_LADDER_LEVELS = 7;
 const READ_RETRY_ATTEMPTS = 3;
 const READ_RETRY_DELAY_MS = 700;
@@ -68,10 +66,7 @@ const ownerEmailFor = (kind) => {
 };
 
 const targetUrlFor = (kind) => {
-  if (kind === "wife") {
-    return getEnv("WIFE_APPS_SCRIPT_URL") || WIFE_APPS_SCRIPT_URL;
-  }
-
+  void kind;
   return getEnv("INVESTOR_APPS_SCRIPT_URL") || MAIN_APPS_SCRIPT_URL;
 };
 

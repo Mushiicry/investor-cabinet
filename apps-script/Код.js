@@ -34,16 +34,33 @@ function normalizePortfolioPnlPct(pnlPct, invested, pnl) {
 }
 
 function doGet(e) {
-  const ss = SpreadsheetApp.openById("1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8");
-  const dnaAccountId = e && e.parameter && e.parameter.accountId === "wife" ? "wife" : "main";
+  const accountId = e && e.parameter && e.parameter.accountId === "wife" ? "wife" : "main";
 
   // Запись достигнутого уровня (лестница на сайте): ?action=setMaxLevel&level=N.
   // Авторизацию владельца обеспечивает Vercel-прокси (Supabase), сюда чужие
   // запросы не доходят. Запись монотонная — понизить уровень нельзя.
   if (e && e.parameter && e.parameter.action === "setMaxLevel") {
+    const ss = SpreadsheetApp.openById("1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8");
     return IC_PROGRESS_handleSetMaxLevel_(ss, e.parameter.level);
   }
 
+  if (accountId === "wife") {
+    try {
+      return ContentService
+        .createTextOutput(JSON.stringify(IC_WIFE_API.buildPortfolioJson()))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (error) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          error: error && error.message ? error.message : "Wife portfolio API failed",
+          updatedAt: new Date().toISOString()
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  const ss = SpreadsheetApp.openById("1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8");
   const overview = ss.getSheetByName("Обзор");
   const portfolio = ss.getSheetByName("Портфель");
   const calculations = ss.getSheetByName("Расчеты");
@@ -75,7 +92,7 @@ function doGet(e) {
     history: getHistory(history),
     transactions: getTransactions(transactions),
     assetQuality: getAssetQuality(assetQuality),
-    investorDNA: IC_DNA_getInvestorDNA_(ss, dnaAccountId),
+    investorDNA: IC_DNA_getInvestorDNA_(ss, accountId),
     fearGreedStrategy: getFearGreedStrategyReadOnly(ss, overviewData.invested),
     // Достигнутый уровень лестницы (лист «Прогресс», монотонный) — общий
     // для всех устройств; localStorage на сайте остаётся офлайн-кэшем.

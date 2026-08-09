@@ -9,7 +9,6 @@ describe("local and production API config consistency", () => {
   it("routes local investor APIs through the same proxy as production", () => {
     const viteConfig = read("vite.config.ts");
     const mainId = "AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA";
-    const wifeId = "AKfycby9bBE9iJjilKgCcEwo93-tT0xQXUSBj92F_xBPsJJOrHDZUMaeGnm5rWZq4cujslZr";
     const proxyConfig = read("api/_investorProxy.js");
     const wifeRouteIndex = viteConfig.indexOf("'/api/investor-wife'");
     const mainRouteIndex = viteConfig.indexOf("'/api/investor'");
@@ -20,7 +19,8 @@ describe("local and production API config consistency", () => {
     expect(wifeRouteIndex).toBeGreaterThanOrEqual(0);
     expect(mainRouteIndex).toBeGreaterThanOrEqual(0);
     expect(wifeRouteIndex).toBeLessThan(mainRouteIndex);
-    expect(appsScriptIds(proxyConfig)).toEqual(expect.arrayContaining([mainId, wifeId]));
+    expect(appsScriptIds(proxyConfig)).toEqual([mainId]);
+    expect(proxyConfig).not.toContain("WIFE_APPS_SCRIPT_URL");
   });
 
   it("does not expose investor Apps Script URLs through production rewrites", () => {

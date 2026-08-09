@@ -67,6 +67,29 @@ describe("investor serverless auth proxy", () => {
     expect(String(vi.mocked(globalThis.fetch).mock.calls[0][0])).toBe("https://apps-script.example/main?accountId=main");
   });
 
+  it("routes wife reads through the canonical investor Apps Script endpoint", async () => {
+    setProxyEnv();
+    globalThis.fetch = vi.fn(async () => Response.json({ success: true, overview: {}, portfolio: [] })) as typeof fetch;
+    const res = mockRes();
+
+    await proxyInvestorApi(mockReq(undefined, "/api/investor-wife"), res, "wife");
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body ?? "{}")).toMatchObject({ success: true });
+    expect(globalThis.fetch).toHaveBeenCalledOnce();
+    expect(String(vi.mocked(globalThis.fetch).mock.calls[0][0])).toBe("https://apps-script.example/main?accountId=wife");
+  });
+
+  it("ignores the legacy wife Apps Script URL even when it is configured", async () => {
+    setProxyEnv();
+    globalThis.fetch = vi.fn(async () => Response.json({ success: true, overview: {}, portfolio: [] })) as typeof fetch;
+    const res = mockRes();
+
+    await proxyInvestorApi(mockReq(undefined, "/api/investor-wife"), res, "wife");
+
+    expect(String(vi.mocked(globalThis.fetch).mock.calls[0][0])).not.toContain("apps-script.example/wife");
+  });
+
   it("retries transient Apps Script read failures before serving public GET data", async () => {
     setProxyEnv();
     globalThis.fetch = vi.fn()
