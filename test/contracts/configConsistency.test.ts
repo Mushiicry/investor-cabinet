@@ -33,4 +33,12 @@ describe("local and production API config consistency", () => {
       expect.objectContaining({ source: "/api/investor-wife" }),
     ]));
   });
+
+  it("keeps wife site reads on the fast Google Sheets path", () => {
+    const wifeApi = read("apps-script/wifePortfolioApi.gs");
+
+    expect(wifeApi).toContain("WIFE API v2.2 - sheet-fast-read");
+    expect(wifeApi).toContain("site read uses Google Sheets quantities");
+    expect(wifeApi).toContain("buildWifePortfolioJson({ useLive: true })");
+  });
 });

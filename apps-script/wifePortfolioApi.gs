@@ -95,9 +95,13 @@ var IC_WIFE_API = (function() {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  function buildWifePortfolioJson() {
-    var blockchain = fetchAllBlockchainBalances();
-    var priceMap   = getLivePrices();
+  function buildWifePortfolioJson(options) {
+    options = options || {};
+    var useLive = options.useLive === true;
+    var blockchain = useLive
+      ? fetchAllBlockchainBalances()
+      : { _errors: { mode: 'site read uses Google Sheets quantities; live chain fetch skipped' } };
+    var priceMap = useLive ? getLivePrices() : getSheetPrices_();
 
     var wifeSS    = SpreadsheetApp.openById(WIFE_SS_ID);
     var wifeSheet = wifeSS.getSheets()[0];
@@ -229,7 +233,7 @@ var IC_WIFE_API = (function() {
 
     return {
       success:   true,
-      patch:     'WIFE API v2.1 - blockchain-first',
+      patch:     useLive ? 'WIFE API v2.1 - blockchain-first' : 'WIFE API v2.2 - sheet-fast-read',
       updatedAt: new Date().toISOString(),
 
       // Debug: raw balances fetched from blockchain
@@ -247,7 +251,7 @@ var IC_WIFE_API = (function() {
         positionsCount: crypto.length,
         health:         health,
         state:          healthLabel(health),
-        signal:         TEXT_LIVE_BLOCKCHAIN,
+        signal:         useLive ? TEXT_LIVE_BLOCKCHAIN : 'Google Sheets данные',
         action:         TEXT_FOLLOW_STRATEGY,
         categories:     categories,
         bestPosition:   best  ? { asset: best.asset,  pnl: best.pnl  } : null,
@@ -706,8 +710,16 @@ var IC_WIFE_API = (function() {
     }
   }
 
+  function getSheetPrices_() {
+    var priceMap = {};
+    addPrice_(priceMap, 'USDT', 1);
+    addPrice_(priceMap, 'USDC', 1);
+    mergeSheetPrices_(priceMap);
+    return priceMap;
+  }
+
   function syncKoshaPriceSheet() {
-    var wifeJson = buildWifePortfolioJson();
+    var wifeJson = buildWifePortfolioJson({ useLive: true });
     if (!wifeJson || !wifeJson.success) {
       throw new Error('Wife portfolio JSON is not available');
     }
