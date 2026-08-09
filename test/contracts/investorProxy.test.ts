@@ -76,8 +76,11 @@ describe("investor serverless auth proxy", () => {
 
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body ?? "{}")).toMatchObject({ success: true });
-    expect(globalThis.fetch).toHaveBeenCalledOnce();
     expect(String(vi.mocked(globalThis.fetch).mock.calls[0][0])).toBe("https://apps-script.example/main?accountId=wife");
+    expect(vi.mocked(globalThis.fetch).mock.calls.map((call) => String(call[0]))).toEqual(expect.arrayContaining([
+      "https://api.hyperliquid.xyz/info",
+      "https://1rpc.io/arb",
+    ]));
   });
 
   it("builds the canonical wife read URL from the main Apps Script endpoint", () => {
@@ -94,6 +97,65 @@ describe("investor serverless auth proxy", () => {
     await proxyInvestorApi(mockReq(undefined, "/api/investor-wife"), res, "wife");
 
     expect(String(vi.mocked(globalThis.fetch).mock.calls[0][0])).not.toContain("apps-script.example/wife");
+  });
+
+  it("enriches wife reads with live prices and live USDT balance", async () => {
+    setProxyEnv();
+    globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const body = String(init?.body ?? "");
+
+      if (url === "https://apps-script.example/main?accountId=wife") {
+        return Response.json({
+          success: true,
+          overview: { portfolioValue: 1000, invested: 1000, reserve: 426.28 },
+          risk: {},
+          fearGreedStrategy: { portfolioValue: 1000 },
+          portfolio: [
+            { asset: "ETH", ticker: "ETH", category: "Крипта", quantity: 3, invested: 7465, currentPrice: 2476, currentValue: 7464.89 },
+            { asset: "USDT", ticker: "USDT", category: "Кэш / Стейблы", quantity: 426.28, invested: 426.28, currentPrice: 1, currentValue: 426.28 },
+          ],
+        });
+      }
+
+      if (url === "https://api.hyperliquid.xyz/info" && body.includes('"dex":"xyz"')) {
+        return Response.json({ "xyz:GOLD": "4358.15", "xyz:SPCX": "136.585" });
+      }
+
+      if (url === "https://api.hyperliquid.xyz/info") {
+        return Response.json({ BTC: "65100.5", ETH: "1920.85", SOL: "77.2375", GRAM: "1.3392" });
+      }
+
+      if (url === "https://1rpc.io/arb") {
+        return Response.json({ result: "0x1f5e6540" });
+      }
+
+      if (url.includes("tonapi.io")) {
+        return Response.json({ balances: [] });
+      }
+
+      return Response.json({});
+    }) as typeof fetch;
+    const res = mockRes();
+
+    await proxyInvestorApi(mockReq(undefined, "/api/investor-wife"), res, "wife");
+
+    const body = JSON.parse(res.body ?? "{}");
+    expect(body).toMatchObject({
+      success: true,
+      patch: "WIFE API v2.5 - vercel-live-prices",
+      overview: {
+        reserve: 526.28,
+      },
+      _chain: {
+        USDT: 526.28,
+      },
+    });
+    expect(body.portfolio[0]).toMatchObject({
+      asset: "ETH",
+      currentPrice: 1920.85,
+      currentValue: 5762.55,
+    });
   });
 
   it("retries transient Apps Script read failures before serving public GET data", async () => {

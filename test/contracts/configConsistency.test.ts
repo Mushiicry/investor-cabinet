@@ -21,7 +21,7 @@ describe("local and production API config consistency", () => {
     expect(wifeRouteIndex).toBeLessThan(mainRouteIndex);
     expect(appsScriptIds(proxyConfig)).toEqual([mainId]);
     expect(proxyConfig).not.toContain("WIFE_APPS_SCRIPT_URL");
-    expect(read("api/investor-wife.js")).toContain("investorReadUrlFor(\"wife\")");
+    expect(read("api/investor-wife.js")).toContain("proxyInvestorApi(req, res, \"wife\")");
   });
 
   it("does not expose investor Apps Script URLs through production rewrites", () => {
@@ -37,9 +37,9 @@ describe("local and production API config consistency", () => {
   it("keeps wife site reads on the fast Google Sheets path", () => {
     const wifeApi = read("apps-script/wifePortfolioApi.gs");
 
-    expect(wifeApi).toContain("WIFE API v2.3 - fast-live-prices");
-    expect(wifeApi).toContain("Hyperliquid цены + Sheets позиции");
-    expect(wifeApi).toContain("fetchFastSiteBalances_()");
+    expect(wifeApi).toContain("WIFE API v2.4 - sheet-base");
+    expect(wifeApi).toContain("Vercel adds live prices");
     expect(wifeApi).toContain("buildWifePortfolioJson({ useLive: true })");
+    expect(read("api/_investorProxy.js")).toContain("WIFE API v2.5 - vercel-live-prices");
   });
 });
