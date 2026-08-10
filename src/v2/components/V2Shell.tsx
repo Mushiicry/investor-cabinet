@@ -534,6 +534,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
               <V2DeployableCapital
                 portfolio={behaviorPortfolio}
                 allocation={data.allocation}
+                positions={data.positions}
                 strategy={data.fearGreedStrategy}
                 investorStrategy={data.strategy}
                 futuresShare={data.risk.futuresShare}

@@ -1,12 +1,13 @@
 import type { CSSProperties } from "react";
 import type { FearGreedStrategy } from "../../types/portfolio";
-import type { V2LabData, V2Portfolio } from "../InvestorCabinetV2Lab";
-import { buildCapitalBuckets } from "../lib/capitalBuckets";
+import type { V2LabData, V2Portfolio, V2Position } from "../InvestorCabinetV2Lab";
+import { buildCapitalBuckets, buildFuturesLimitSnapshot } from "../lib/capitalBuckets";
 import { MAIN_INVESTOR_STRATEGY, type InvestorStrategy } from "../lib/investorStrategy";
 
 type Props = {
   portfolio: V2Portfolio;
   allocation: V2LabData["allocation"];
+  positions?: V2Position[];
   strategy: FearGreedStrategy;
   investorStrategy?: InvestorStrategy;
   /** Спекулятивная нагрузка 0..1 (маржа открытых фьючей + свободная маржа HL). */
@@ -23,6 +24,7 @@ const money = new Intl.NumberFormat("ru-RU", {
 export function V2DeployableCapital({
   portfolio,
   allocation,
+  positions = [],
   strategy,
   investorStrategy = MAIN_INVESTOR_STRATEGY,
   futuresShare = 0,
@@ -30,6 +32,20 @@ export function V2DeployableCapital({
   const totalPortfolio = portfolio.totalPortfolioValue || 0;
   const investedCapital = portfolio.totalInvested || totalPortfolio;
   const reserveTarget = investedCapital * investorStrategy.reserveTargetShare;
+  const futuresLimit = buildFuturesLimitSnapshot({
+    positions,
+    futuresDeployableUsd: portfolio.futuresDeployable,
+    investedCapital,
+    investorStrategy,
+  });
+  const futuresUsedFallback = futuresShare * investedCapital;
+  const futuresUsed = futuresLimit.usedUsd || futuresUsedFallback;
+  const futuresRemaining = futuresLimit.usedUsd
+    ? futuresLimit.remainingUsd
+    : Math.max(investorStrategy.futuresMaxShare * investedCapital - futuresUsedFallback, 0);
+  const futuresBreach = futuresLimit.usedUsd
+    ? futuresLimit.breachUsd
+    : Math.max(futuresUsedFallback - investorStrategy.futuresMaxShare * investedCapital, 0);
   const buckets = buildCapitalBuckets({
     totalPortfolioValue: portfolio.totalPortfolioValue,
     investedCapital,
@@ -37,19 +53,15 @@ export function V2DeployableCapital({
     allocation,
     strategyRules: strategy.rules,
     futuresDeployableUsd: portfolio.futuresDeployable,
+    futuresUsedUsd: futuresUsed,
     investorStrategy,
   });
   const deployable = buckets.workCashUsd;
   const pureReserve = buckets.lockedReserveUsd;
   const reserveShort = pureReserve < reserveTarget;
 
-  // Контроль лимита активной торговли. Занято = маржа открытых фьючей +
-  // свободная маржа торгового счёта. Свободный остаток не является задачей.
-  // База — вложенный капитал, как в calculateFuturesMarginShare.
-  const futuresLimit = investorStrategy.futuresMaxShare * investedCapital;
-  const futuresUsed = futuresShare * investedCapital;
-  const futuresRemaining = Math.max(futuresLimit - futuresUsed, 0);
-  const futuresOver = futuresUsed > futuresLimit;
+  const futuresCapUsd = investorStrategy.futuresMaxShare * investedCapital;
+  const futuresOver = futuresBreach > 0;
   const reserveTargetPct = Math.round(investorStrategy.reserveTargetShare * 100);
   const futuresLimitPct = Math.round(investorStrategy.futuresMaxShare * 100);
   const metalsLimitPct = Math.round(investorStrategy.metalsMaxShare * 100);
@@ -73,8 +85,8 @@ export function V2DeployableCapital({
           color: "#8f9ff0",
           hint: investedCapital
             ? futuresOver
-              ? `Лимит ${futuresLimitPct}% превышен на ${money.format(futuresUsed - futuresLimit)} — новый риск не добавлять`
-              : `Занято ${money.format(futuresUsed)} из лимита ${money.format(futuresLimit)}. Осталось ${money.format(futuresRemaining)}`
+              ? `Лимит ${futuresLimitPct}% превышен на ${money.format(futuresBreach)} — новый риск не добавлять`
+              : `Занято ${money.format(futuresUsed)} из лимита ${money.format(futuresCapUsd)}. Осталось ${money.format(futuresRemaining)}`
             : undefined,
           hintDanger: futuresOver,
         }]
@@ -128,6 +140,18 @@ export function V2DeployableCapital({
                 {row.hint && (
                   <div className={`v2-alloc-hint${row.hintDanger ? " is-danger" : ""}`}>
                     {row.hint}
+                  </div>
+                )}
+                {row.label === "Фьючерсы" && investorStrategy.futuresAllowed && (
+                  <div className="v2-futures-breakdown">
+                    <span>Лимит {money.format(futuresCapUsd)}</span>
+                    <span>В позициях {money.format(futuresLimit.positionMarginUsd)}</span>
+                    <span>Маржа HL {money.format(futuresLimit.freeMarginUsd)}</span>
+                    <span className={futuresOver ? "is-danger" : "is-ok"}>
+                      {futuresOver
+                        ? `Убрать ${money.format(futuresBreach)}`
+                        : `Можно добавить ${money.format(futuresRemaining)}`}
+                    </span>
                   </div>
                 )}
               </div>

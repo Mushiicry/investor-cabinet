@@ -14,6 +14,13 @@ type StrategyRule = {
   status?: string;
 };
 
+type CapitalPosition = {
+  asset: string;
+  category: string;
+  invested: number;
+  value: number;
+};
+
 export type CapitalBucketsInput = {
   totalPortfolioValue: number;
   investedCapital?: number;
@@ -21,6 +28,7 @@ export type CapitalBucketsInput = {
   allocation: AllocationItem[];
   strategyRules?: StrategyRule[];
   futuresDeployableUsd?: number;
+  futuresUsedUsd?: number;
   investorStrategy?: InvestorStrategy;
 };
 
@@ -38,6 +46,16 @@ export type CapitalBuckets = {
   plannedCryptoBlockUsd: number;
 };
 
+export type FuturesLimitSnapshot = {
+  limitUsd: number;
+  positionMarginUsd: number;
+  freeMarginUsd: number;
+  usedUsd: number;
+  remainingUsd: number;
+  breachUsd: number;
+  utilization: number;
+};
+
 const clampMin0 = (n: number) => (n > 0 ? n : 0);
 
 function allocationValue(allocation: AllocationItem[], name: string): number {
@@ -47,6 +65,39 @@ function allocationValue(allocation: AllocationItem[], name: string): number {
 function takeBudget(remaining: number, target: number): [number, number] {
   const value = Math.min(clampMin0(target), clampMin0(remaining));
   return [value, clampMin0(remaining - value)];
+}
+
+export function buildFuturesLimitSnapshot({
+  positions,
+  futuresDeployableUsd = 0,
+  investedCapital,
+  investorStrategy = MAIN_INVESTOR_STRATEGY,
+}: {
+  positions: CapitalPosition[];
+  futuresDeployableUsd?: number;
+  investedCapital: number;
+  investorStrategy?: InvestorStrategy;
+}): FuturesLimitSnapshot {
+  const limitUsd = investorStrategy.futuresAllowed
+    ? clampMin0(investedCapital) * investorStrategy.futuresMaxShare
+    : 0;
+  const positionMarginUsd = positions
+    .filter((position) => position.category === "Фьючерсы" && position.value > 0)
+    .reduce((sum, position) => sum + clampMin0(position.invested), 0);
+  const freeMarginUsd = investorStrategy.futuresAllowed ? clampMin0(futuresDeployableUsd) : 0;
+  const usedUsd = positionMarginUsd + freeMarginUsd;
+  const remainingUsd = Math.max(limitUsd - usedUsd, 0);
+  const breachUsd = Math.max(usedUsd - limitUsd, 0);
+
+  return {
+    limitUsd,
+    positionMarginUsd,
+    freeMarginUsd,
+    usedUsd,
+    remainingUsd,
+    breachUsd,
+    utilization: limitUsd ? usedUsd / limitUsd : 0,
+  };
 }
 
 export function buildCapitalBuckets(input: CapitalBucketsInput): CapitalBuckets {
@@ -62,8 +113,13 @@ export function buildCapitalBuckets(input: CapitalBucketsInput): CapitalBuckets 
   const currentMetals = clampMin0(allocationValue(input.allocation, "Металлы"));
   const currentStocks = clampMin0(allocationValue(input.allocation, "Акции"));
 
+  const futuresLimitUsd = reserveBase * investorStrategy.futuresMaxShare;
+  const hasExplicitFuturesUsage = input.futuresUsedUsd != null;
+  const futuresRemainingByLimit = hasExplicitFuturesUsage
+    ? clampMin0(futuresLimitUsd - clampMin0(input.futuresUsedUsd ?? 0))
+    : clampMin0(total * investorStrategy.futuresMaxShare - currentFutures);
   const futuresTarget = investorStrategy.futuresAllowed
-    ? clampMin0(input.futuresDeployableUsd ?? total * investorStrategy.futuresMaxShare - currentFutures)
+    ? Math.min(clampMin0(input.futuresDeployableUsd ?? futuresRemainingByLimit), futuresRemainingByLimit)
     : 0;
   const averagingTarget = clampMin0(
     (input.strategyRules ?? [])

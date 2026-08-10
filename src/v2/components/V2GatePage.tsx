@@ -13,7 +13,7 @@ import {
   type GateCheck,
 } from "../lib/preTradeGate";
 import { evaluateDecision, type DecisionContext } from "../lib/decisionEngine";
-import { buildCapitalBuckets, type CapitalBuckets } from "../lib/capitalBuckets";
+import { buildCapitalBuckets, buildFuturesLimitSnapshot, type CapitalBuckets } from "../lib/capitalBuckets";
 import { BINANCE_MONITORING_ASSET_QUALITY } from "../lib/assetQualitySource";
 import type { DecisionJournalDraft } from "../lib/decisionJournal";
 import { getMarketPsychology } from "../lib/marketPsychology";
@@ -160,17 +160,26 @@ export function V2GatePage({
     : SPOT_RESERVE_FLOOR_SHARE;
 
   const capitalBuckets = useMemo(
-    () =>
-      buildCapitalBuckets({
+    () => {
+      const futuresLimit = buildFuturesLimitSnapshot({
+        positions,
+        futuresDeployableUsd: portfolio.futuresDeployable,
+        investedCapital: portfolio.totalInvested,
+        investorStrategy: strategy,
+      });
+
+      return buildCapitalBuckets({
         totalPortfolioValue: portfolio.totalPortfolioValue,
         investedCapital: portfolio.totalInvested,
         stableReserve: portfolio.stableReserve,
         allocation: allocation.map((a) => ({ name: a.name, value: a.value })),
         strategyRules: fearGreedStrategy.rules,
         futuresDeployableUsd: portfolio.futuresDeployable,
+        futuresUsedUsd: futuresLimit.usedUsd,
         investorStrategy: strategy,
-      }),
-    [portfolio.totalPortfolioValue, portfolio.totalInvested, portfolio.stableReserve, portfolio.futuresDeployable, allocation, fearGreedStrategy.rules, strategy],
+      });
+    },
+    [portfolio.totalPortfolioValue, portfolio.totalInvested, portfolio.stableReserve, portfolio.futuresDeployable, positions, allocation, fearGreedStrategy.rules, strategy],
   );
 
   const activeAssetQuality = assetQuality?.connected ? assetQuality : BINANCE_MONITORING_ASSET_QUALITY;
