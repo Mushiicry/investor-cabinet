@@ -49,6 +49,9 @@
   .v2-sidebar.is-mobile-open {
     transform: translateX(0) !important;
   }
+  .v2-sidebar-data-status {
+    display: grid;
+  }
   /* Открытая шторка лочит скролл страницы под собой */
   html:has(.v2-sidebar.is-mobile-open),
   body:has(.v2-sidebar.is-mobile-open) {
@@ -93,6 +96,35 @@
   .v2-lab *::after {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+  .v2-starfield-canvas {
+    display: none !important;
+  }
+  .v2-lab::before,
+  .v2-lab::after {
+    animation: none !important;
+  }
+  /* Mobile lite rendering: на телефоне важнее холодный CPU и стабильный скролл,
+     чем постоянное декоративное движение. Desktop-слой не затрагивается. */
+  .v2-lab *,
+  .v2-lab *::before,
+  .v2-lab *::after {
+    animation: none !important;
+  }
+  .v2-hc-radar-chart svg *,
+  .v2-health-stage svg *,
+  .v2-pac-svg *,
+  .v2-core-frame *,
+  .v2-electrode-network *,
+  .v2-assistant-fab-mark svg {
+    filter: none !important;
+  }
+  .v2-assistant-fab,
+  .v2-assistant-fab-mark,
+  .v2-sidebar-link.is-active,
+  .v2-bottom-tab.is-active,
+  .v2-notif-panel {
+    box-shadow: 0 0 14px rgba(86, 196, 240, 0.16) !important;
   }
 
   /* ═══ ГОРИЗОНТАЛЬНЫЙ ДРЕЙФ ═══

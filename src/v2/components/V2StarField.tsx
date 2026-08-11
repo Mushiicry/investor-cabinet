@@ -226,6 +226,9 @@ export function V2StarField() {
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
+    const mobileQuery = window.matchMedia("(max-width: 768px)");
+    if (mobileQuery.matches) return;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -271,6 +274,7 @@ export function V2StarField() {
   return (
     <canvas
       ref={ref}
+      className="v2-starfield-canvas"
       style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none" }}
       aria-hidden="true"
     />

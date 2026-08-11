@@ -75,7 +75,7 @@
 .v2-sidebar-data-status {
   width: 100%;
   min-height: 46px;
-  display: grid;
+  display: none;
   grid-template-columns: 10px minmax(0, 1fr) 24px;
   align-items: center;
   gap: 10px;
