@@ -6,6 +6,7 @@ import {
 import {
   calculateDeployableCashBuckets,
   getOpenRiskPositions,
+  getTrackedPortfolioPositions,
 } from "../../src/lib/portfolioSelectors";
 import {
   normalizePortfolio,
@@ -108,6 +109,26 @@ describe("portfolio percent and cash contracts", () => {
     ]);
 
     expect(openRisk.map((item) => item.asset)).toEqual(["BTC"]);
+  });
+
+  it("counts economically present portfolio rows separately from open risk positions", () => {
+    const portfolio = [
+      position({ asset: "SOL", category: "Крипта", currentValue: 20, invested: 20, status: "EXITED" }),
+      position({ asset: "TON", category: "Крипта", currentValue: 80, invested: 105, status: "CLOSED" }),
+      position({ asset: "MNT LONG", category: "Фьючерсы", currentValue: 8, invested: 10, status: "Speculation" }),
+      position({ asset: "BTC SHORT", category: "Фьючерсы", currentValue: 10, invested: 10, status: "Speculation" }),
+      position({ asset: "BTC", category: "Крипта", quantity: 0, invested: 0, currentValue: 0, status: "WAIT_REBUY" }),
+      position({ asset: "GOLD", category: "Металлы", quantity: 0, invested: 0, currentValue: 0, status: "WAIT_REBUY" }),
+      position({ asset: "USDC", category: "Свободные деньги", currentValue: 300, invested: 300, status: "Reserve" }),
+    ];
+
+    expect(getOpenRiskPositions(portfolio).map((item) => item.asset)).toEqual(["MNT LONG", "BTC SHORT"]);
+    expect(getTrackedPortfolioPositions(portfolio).map((item) => item.asset)).toEqual([
+      "SOL",
+      "TON",
+      "MNT LONG",
+      "BTC SHORT",
+    ]);
   });
 
   it("normalizes history percentage strings into decimal fractions", () => {

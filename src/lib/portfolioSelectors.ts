@@ -22,6 +22,16 @@ export const getOpenRiskPositions = (portfolio: PositionCalculated[]) =>
     !isReserveStatus(item.status)
   ));
 
+const hasEconomicPresence = (item: PositionCalculated) =>
+  item.quantity > 0 || item.invested > 0 || item.currentValue > 0;
+
+export const getTrackedPortfolioPositions = (portfolio: PositionCalculated[]) =>
+  portfolio.filter((item) => (
+    item.category !== "Свободные деньги" &&
+    !isReserveStatus(item.status) &&
+    hasEconomicPresence(item)
+  ));
+
 export const pickBestPosition = (positions: PositionCalculated[]) =>
   [...positions].sort((a, b) => (b.pnlPct - a.pnlPct) || (b.pnl - a.pnl) || (b.currentValue - a.currentValue))[0];
 

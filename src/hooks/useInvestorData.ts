@@ -9,7 +9,7 @@ import {
 import { buildInvestorStateFromApi } from "../services/investorState";
 import { maybeRecordSnapshot } from "../services/dailySnapshotService";
 import { mergeServerMaxLevel } from "../v2/lib/levelProgress";
-import { getOpenRiskPositions } from "../lib/portfolioSelectors";
+import { getTrackedPortfolioPositions } from "../lib/portfolioSelectors";
 import type { DataLoadState } from "../types/dataStatus";
 import type { PortfolioState } from "../types/portfolio";
 
@@ -141,7 +141,7 @@ export function useInvestorData(
               portfolioValue: data.overview.portfolioValue,
               invested: data.overview.invested,
               reserve: data.overview.reserve,
-              positionsCount: getOpenRiskPositions(data.portfolio).length,
+              positionsCount: getTrackedPortfolioPositions(data.portfolio).length,
               slot: "main",
             });
           }
