@@ -23,6 +23,7 @@ import type { CosmosStaking } from "../../hooks/useCosmosStaking";
 import { V2HealthPage } from "./V2HealthPage";
 import { V2InvestorDNAPage } from "./V2InvestorDNAPage";
 import { V2EducationPage } from "./V2EducationPage";
+import { V2AssistantWidget } from "./V2AssistantWidget";
 import { V2NotificationsPanel } from "./V2NotificationsPanel";
 import { buildPortfolioAlerts, sortAlerts, type Alert } from "../lib/portfolioAlerts";
 import { V2Sidebar } from "./V2Sidebar";
@@ -617,6 +618,16 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           onClose={() => setSelectedChip(null)}
         />
       )}
+      <V2AssistantWidget
+        accountId={data.strategy.id}
+        disabled={locked}
+        uiContext={{
+          portfolio: behaviorPortfolio,
+          health: behaviorHealth,
+          healthInput: behaviorHealthInput,
+          allocation: data.allocation,
+        }}
+      />
     </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import assistantHandler from './api/assistant.js'
 import { proxyInvestorApi } from './api/_investorProxy.js'
 import { handleBtcDailyApi } from './api/_btcDaily.js'
 
@@ -104,6 +105,10 @@ function investorDevApiPlugin(): Plugin {
 
       server.middlewares.use('/api/btc-daily', (req, res) => {
         void handleBtcDailyApi(req, res)
+      })
+
+      server.middlewares.use('/api/assistant', (req, res) => {
+        void assistantHandler(req, res)
       })
     },
   }

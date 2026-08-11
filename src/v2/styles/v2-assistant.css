@@ -1,0 +1,292 @@
+.v2-assistant {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 260;
+  font-family: "Space Grotesk", Inter, system-ui, sans-serif;
+  color: #dcefff;
+}
+
+.v2-assistant-fab {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 228px;
+  min-height: 76px;
+  padding: 12px 20px 12px 14px;
+  border: 1px solid rgba(74, 221, 255, 0.74);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 22% 50%, rgba(90, 232, 255, 0.22), transparent 32%),
+    linear-gradient(180deg, rgba(8, 36, 57, 0.96), rgba(2, 11, 25, 0.95));
+  color: rgba(235, 249, 255, 0.96);
+  box-shadow:
+    0 0 0 1px rgba(39, 196, 230, 0.18) inset,
+    0 0 24px rgba(27, 206, 246, 0.46),
+    0 0 54px rgba(20, 176, 240, 0.28),
+    0 18px 48px rgba(0, 0, 0, 0.46);
+  cursor: pointer;
+}
+
+.v2-assistant-fab:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.v2-assistant-fab-mark {
+  display: grid;
+  place-items: center;
+  position: relative;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(118, 238, 255, 0.68);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(230, 255, 255, 0.96) 0 4px, transparent 5px),
+    radial-gradient(circle at 52% 46%, rgba(104, 234, 255, 0.52), rgba(6, 30, 58, 0.94) 58%, rgba(1, 10, 23, 1));
+  box-shadow:
+    0 0 18px rgba(84, 228, 255, 0.62),
+    inset 0 0 18px rgba(80, 218, 255, 0.34);
+}
+
+.v2-assistant-fab-mark::before,
+.v2-assistant-fab-mark::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(231, 255, 255, 0.92);
+  box-shadow: 0 0 10px rgba(118, 238, 255, 0.9);
+  transform: translate(-50%, -50%);
+}
+
+.v2-assistant-fab-mark::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.v2-assistant-fab-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  text-align: left;
+}
+
+.v2-assistant-fab-text {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.05;
+  text-shadow: 0 0 10px rgba(122, 225, 255, 0.46);
+}
+
+.v2-assistant-fab-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(116, 244, 172, 0.88);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.v2-assistant-fab-status span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #39f58c;
+  box-shadow: 0 0 9px rgba(57, 245, 140, 0.84);
+}
+
+.v2-assistant-panel {
+  width: min(440px, calc(100vw - 28px));
+  height: min(700px, calc(100dvh - 44px));
+  display: grid;
+  grid-template-rows: auto minmax(130px, 1fr) auto auto;
+  border: 1px solid rgba(86, 196, 240, 0.2);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(4, 12, 27, 0.97), rgba(2, 7, 18, 0.96));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(120, 190, 240, 0.08);
+  overflow: hidden;
+}
+
+.v2-assistant-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid rgba(86, 196, 240, 0.1);
+}
+
+.v2-assistant-head strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.v2-assistant-kicker {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: rgba(141, 220, 244, 0.68);
+}
+
+.v2-assistant-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.v2-assistant-clear {
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid rgba(86, 196, 240, 0.13);
+  border-radius: 7px;
+  background: rgba(86, 196, 240, 0.04);
+  color: rgba(190, 225, 242, 0.72);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.v2-assistant-close {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(86, 196, 240, 0.16);
+  border-radius: 7px;
+  background: rgba(86, 196, 240, 0.06);
+  color: rgba(220, 240, 250, 0.86);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.v2-assistant-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.v2-assistant-msg {
+  max-width: 94%;
+  box-sizing: border-box;
+  padding: 9px 10px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.v2-assistant-msg.is-assistant {
+  align-self: flex-start;
+  width: 100%;
+  background: rgba(86, 196, 240, 0.08);
+  border: 1px solid rgba(86, 196, 240, 0.12);
+  color: rgba(220, 240, 250, 0.9);
+}
+
+.v2-assistant-msg.is-user {
+  align-self: flex-end;
+  background: rgba(210, 175, 92, 0.12);
+  border: 1px solid rgba(210, 175, 92, 0.18);
+  color: rgba(255, 238, 204, 0.92);
+}
+
+.v2-assistant-quick {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 10px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.v2-assistant-quick button {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  border: 1px solid rgba(86, 196, 240, 0.13);
+  border-radius: 7px;
+  background: rgba(86, 196, 240, 0.05);
+  color: rgba(190, 225, 242, 0.82);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.v2-assistant-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid rgba(86, 196, 240, 0.1);
+}
+
+.v2-assistant-form textarea {
+  min-width: 0;
+  resize: none;
+  border: 1px solid rgba(86, 196, 240, 0.16);
+  border-radius: 8px;
+  background: rgba(2, 7, 18, 0.84);
+  color: rgba(230, 244, 250, 0.94);
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  outline: none;
+}
+
+.v2-assistant-form textarea::placeholder {
+  color: rgba(150, 180, 196, 0.62);
+}
+
+.v2-assistant-form button {
+  align-self: stretch;
+  padding: 0 12px;
+  border: 1px solid rgba(86, 196, 240, 0.2);
+  border-radius: 8px;
+  background: rgba(86, 196, 240, 0.1);
+  color: rgba(228, 246, 250, 0.92);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.v2-assistant-form button:disabled,
+.v2-assistant-quick button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+  .v2-assistant {
+    right: 10px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .v2-assistant.is-open {
+    left: 10px;
+  }
+
+  .v2-assistant-panel {
+    width: calc(100vw - 20px);
+    max-height: min(560px, calc(100dvh - 104px - env(safe-area-inset-bottom)));
+  }
+
+  .v2-assistant-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-assistant-form button {
+    min-height: 36px;
+  }
+}

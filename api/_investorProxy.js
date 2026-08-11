@@ -121,6 +121,29 @@ export const investorReadUrlFor = (kind) => {
   return upstreamUrl.toString();
 };
 
+export async function readInvestorPayloadForAssistant(kind) {
+  const accountKind = kind === "wife" ? "wife" : "main";
+  const upstreamUrl = new URL(targetUrlFor(accountKind));
+  upstreamUrl.searchParams.set("accountId", accountKind);
+
+  const { upstream, body, attempt } = await fetchInvestorUpstream(upstreamUrl, { method: "GET" });
+
+  if (!upstream.ok || !isJsonPayload(upstream, body)) {
+    return {
+      success: false,
+      error: "Investor upstream returned invalid response",
+      upstreamStatus: upstream.status,
+      attempts: attempt,
+    };
+  }
+
+  if (accountKind === "wife") {
+    return enrichWifeReadPayload(body);
+  }
+
+  return JSON.parse(body);
+}
+
 async function fetchHyperliquidMids(payload) {
   return fetchJsonWithTimeout(HYPERLIQUID_INFO_URL, {
     method: "POST",
