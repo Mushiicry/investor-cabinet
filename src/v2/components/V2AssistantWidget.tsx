@@ -172,9 +172,17 @@ export function V2AssistantWidget({ accountId, disabled = false, uiContext }: Pr
           aria-label="Открыть AI помощника"
           title={disabled ? "Войдите, чтобы открыть AI помощника" : "AI помощник"}
         >
-          <span className="v2-assistant-fab-mark" aria-hidden="true" />
+          <span className="v2-assistant-fab-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M5 6.8A4.2 4.2 0 0 1 9.2 2.6h5.6A4.2 4.2 0 0 1 19 6.8v3.6a4.2 4.2 0 0 1-4.2 4.2h-3.9L6.5 18v-3.7A4.2 4.2 0 0 1 5 10.4V6.8Z" strokeLinejoin="round" />
+              <path d="M9 7.6h6M9 10.4h4.2" strokeLinecap="round" />
+            </svg>
+          </span>
           <span className="v2-assistant-fab-copy">
-            <span className="v2-assistant-fab-text">AI помощник</span>
+            <span className="v2-assistant-fab-text">
+              <span className="v2-assistant-fab-text-full">AI помощник</span>
+              <span className="v2-assistant-fab-text-short">AI</span>
+            </span>
             <span className="v2-assistant-fab-status">
               <span aria-hidden="true" />
               онлайн

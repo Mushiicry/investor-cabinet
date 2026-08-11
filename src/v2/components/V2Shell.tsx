@@ -422,6 +422,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         profileName={profileName || displayName}
         profileAvatar={profileAvatar}
         onOpenAuth={onOpenAuth}
+        dataStatus={dataStatus}
       />
 
 

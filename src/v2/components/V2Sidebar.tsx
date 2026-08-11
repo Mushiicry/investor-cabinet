@@ -139,6 +139,13 @@ type Props = {
   collapsed?: boolean;
   profileAvatar: string;
   onOpenAuth: (tab: "signin" | "signup") => void;
+  dataStatus?: {
+    source: "cache" | "fallback" | "live";
+    status: string;
+    lastLoadedAt: string | null;
+    error: string | null;
+    onRefresh: () => void;
+  };
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 };
@@ -146,11 +153,46 @@ type Props = {
 const mainNavItems = navItems.filter(i => i.label !== "Настройки");
 const settingsItem  = navItems.find(i => i.label === "Настройки")!;
 
-export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, positions = [], transactions = [], profileName, profileAvatar, onOpenAuth, mobileOpen = false, onCloseMobile, collapsed = false }: Props) {
+function sidebarDataStatus(dataStatus: NonNullable<Props["dataStatus"]>) {
+  const { source, status, lastLoadedAt, error } = dataStatus;
+  let tone = "is-live";
+  let label = "Данные OK";
+
+  if (error && source === "fallback") {
+    tone = "is-error";
+    label = "Ошибка данных";
+  } else if (status === "stale" || (error && source !== "fallback")) {
+    tone = "is-stale";
+    label = "Устарело";
+  } else if (status === "refreshing" || status === "initial-loading") {
+    tone = "is-refreshing";
+    label = "Загрузка";
+  } else if (source === "cache") {
+    tone = "is-cache";
+    label = "Кэш";
+  } else if (source === "fallback") {
+    tone = "is-cache";
+    label = "Демо";
+  }
+
+  const time = lastLoadedAt
+    ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(lastLoadedAt))
+    : null;
+  const meta = time
+    ? `обновлено ${time}`
+    : status === "initial-loading"
+      ? "идёт загрузка"
+      : status;
+
+  return { tone, label, meta };
+}
+
+export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, portfolio, health, positions = [], transactions = [], profileName, profileAvatar, onOpenAuth, dataStatus, mobileOpen = false, onCloseMobile, collapsed = false }: Props) {
   const { configured, user, displayName, signOut } = useAuth();
   const [levelOpen, setLevelOpen] = useState(false);
   const { level } = computeLevel(healthFactor);
   const levelTitle = getLevelTitle(level);
+  const dataStatusView = dataStatus ? sidebarDataStatus(dataStatus) : null;
   const renderItem = (item: typeof navItems[0]) => {
     const isActive = item.page === activePage;
     return (
@@ -198,6 +240,25 @@ export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, 
           <div className="v2-brand-subtitle">РИСК ПЕРВЫЙ / ДОХОД ВТОРОЙ</div>
         </div>
       </div>
+
+      {dataStatus && dataStatusView && (
+        <button
+          className={`v2-sidebar-data-status ${dataStatusView.tone}`}
+          type="button"
+          onClick={dataStatus.onRefresh}
+          title={dataStatus.error ?? `Источник: ${dataStatus.source} · ${dataStatus.status}`}
+          aria-label={`Статус данных: ${dataStatusView.label}. Обновить данные`}
+        >
+          <span className="v2-sidebar-data-dot" aria-hidden="true" />
+          <span className="v2-sidebar-data-copy">
+            <span className="v2-sidebar-data-label">{dataStatusView.label}</span>
+            <span className="v2-sidebar-data-meta">{dataStatusView.meta}</span>
+          </span>
+          <svg className="v2-sidebar-data-refresh" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M12.7 5.2A5 5 0 1 0 13 8h-1.4A3.6 3.6 0 1 1 11.4 6H9.5V4.6h4.2v4.2h-1.4V6.2a4.7 4.7 0 0 0 .4-1Z" />
+          </svg>
+        </button>
+      )}
 
       <nav className="v2-nav" aria-label="V2 Lab navigation">
         {mainNavItems.map(renderItem)}
