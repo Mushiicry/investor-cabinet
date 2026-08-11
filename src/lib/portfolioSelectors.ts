@@ -2,8 +2,11 @@ import { SPOT_RESERVE_FLOOR_SHARE } from "../config/riskRules";
 import type { Category, OverviewPosition, PositionCalculated } from "../types/portfolio";
 import { round } from "./portfolioCalculations";
 
+export const isWaitingRebuyStatus = (status: string) =>
+  ["WAIT_REBUY", "WAIT_REENTRY", "WAIT_ENTRY", "ЖДАТЬ ВХОД", "ЖДАТЬ ПОКУПКУ"].includes(status.trim().toUpperCase());
+
 export const isClosedStatus = (status: string) =>
-  ["CLOSED", "FIXED", "EXITED"].includes(status.toUpperCase());
+  ["CLOSED", "FIXED", "EXITED"].includes(status.trim().toUpperCase()) || isWaitingRebuyStatus(status);
 
 export const isReserveStatus = (status: string) =>
   ["RESERVE", "РЕЗЕРВ"].includes(status.toUpperCase());

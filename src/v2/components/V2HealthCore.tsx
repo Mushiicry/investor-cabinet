@@ -503,6 +503,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
               const labelLines = chipLabelLines(c);
               const cx = rx + CHIP_W / 2 + 1.5;
               const cy = ry + CHIP_H / 2;
+              const labelY = c.key === "futures" ? cy - 19 : cy - 15;
 
               return (
                 <g key={`chip-${c.key}`}
@@ -593,7 +594,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
                   </g>
 
                   {/* Label */}
-                  <text x={cx} y={cy - 15}
+                  <text x={cx} y={labelY}
                     fontSize={chipLabelSize(c)} fontWeight="900"
                     fill="rgba(178,231,247,0.95)"
                     fontFamily="var(--v2-sans,system-ui,sans-serif)"

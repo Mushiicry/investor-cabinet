@@ -9,6 +9,7 @@ import {
 import { buildInvestorStateFromApi } from "../services/investorState";
 import { maybeRecordSnapshot } from "../services/dailySnapshotService";
 import { mergeServerMaxLevel } from "../v2/lib/levelProgress";
+import { getOpenRiskPositions } from "../lib/portfolioSelectors";
 import type { DataLoadState } from "../types/dataStatus";
 import type { PortfolioState } from "../types/portfolio";
 
@@ -136,14 +137,11 @@ export function useInvestorData(
           // Daily auto-snapshot — only main account here; wife snapshot happens
           // in the V2 shell after Apps Script/API has assembled live portfolio data.
           if (cacheSlot !== "wife") {
-            const nonStable = data.portfolio.filter(
-              (p) => p.category !== "Свободные деньги"
-            );
             maybeRecordSnapshot({
               portfolioValue: data.overview.portfolioValue,
               invested: data.overview.invested,
               reserve: data.overview.reserve,
-              positionsCount: nonStable.length,
+              positionsCount: getOpenRiskPositions(data.portfolio).length,
               slot: "main",
             });
           }

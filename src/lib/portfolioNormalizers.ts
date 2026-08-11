@@ -89,5 +89,8 @@ export const normalizePortfolio = (portfolio: unknown, fallback: PositionCalcula
         status: String(item?.status ?? ""),
       };
     })
-    .filter((item) => item.asset && (item.currentValue > 0 || !isClosedStatus(item.status))) as PositionCalculated[];
+    .filter((item) => (
+      item.asset &&
+      (item.currentValue > 0 || item.invested > 0 || item.quantity > 0 || isClosedStatus(item.status))
+    )) as PositionCalculated[];
 };

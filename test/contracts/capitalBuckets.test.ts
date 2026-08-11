@@ -86,7 +86,26 @@ describe("карманы капитала", () => {
     expect(futuresLimit.freeMarginUsd).toBeCloseTo(56.37, 2);
     expect(futuresLimit.usedUsd).toBeCloseTo(76.63, 2);
     expect(futuresLimit.breachUsd).toBeCloseTo(8.58, 2);
+    expect(futuresLimit.withdrawFromHlUsd).toBeCloseTo(8.58, 2);
+    expect(futuresLimit.transferToHlUsd).toBe(0);
+    expect(futuresLimit.balancedFreeMarginUsd).toBeCloseTo(47.79, 2);
     expect(buckets.futuresBudgetUsd).toBe(0);
+  });
+
+  it("показывает сколько докинуть на HL, если капитал вырос, а фьючерсный карман ниже 10%", () => {
+    const futuresLimit = buildFuturesLimitSnapshot({
+      investedCapital: 1000,
+      futuresDeployableUsd: 50,
+      positions: [
+        { asset: "MNT LONG", category: "Фьючерсы", invested: 20, value: 15 },
+      ],
+    });
+
+    expect(futuresLimit.limitUsd).toBe(100);
+    expect(futuresLimit.usedUsd).toBe(70);
+    expect(futuresLimit.transferToHlUsd).toBe(30);
+    expect(futuresLimit.withdrawFromHlUsd).toBe(0);
+    expect(futuresLimit.balancedFreeMarginUsd).toBe(80);
   });
 
   it("металлы и акции не отнимают спот автоматически", () => {

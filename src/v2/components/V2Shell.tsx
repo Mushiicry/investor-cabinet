@@ -262,7 +262,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     const observer = new ResizeObserver(measure);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [page, sidebarCollapsed, capitalOpen, selectedChip]);
+  }, [page, sidebarCollapsed, selectedChip]);
 
   // Health Factor с прошлого захода — чтобы поймать его просадку.
   // Читаем один раз при монтировании, перезаписываем уже после сравнения.

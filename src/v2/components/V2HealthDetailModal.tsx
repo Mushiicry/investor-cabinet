@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useEscapeClose } from "../../hooks/useEscapeClose";
 import type { HealthComponent, HealthComponentKey } from "../../lib/portfolioHealth";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
@@ -300,7 +301,7 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
   const circumference = 2 * Math.PI * 44;
   const dash = (component.score / 100) * circumference;
 
-  return (
+  return createPortal(
     <div className="v2-hdm-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="v2-hdm-card" onClick={e => e.stopPropagation()}>
 
@@ -396,6 +397,7 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

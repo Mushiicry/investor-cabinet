@@ -13,7 +13,11 @@ export type PositionStatus =
   | "Хедж"
   | "Спекуляция"
   | "Держать"
-  | "Резерв";
+  | "Резерв"
+  | "CLOSED"
+  | "FIXED"
+  | "EXITED"
+  | "WAIT_REBUY";
 
 export type Page =
   | "Обзор"

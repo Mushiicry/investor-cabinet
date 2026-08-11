@@ -48,7 +48,7 @@ describe("portfolio percent and cash contracts", () => {
     expect(toRatio(-0.0004)).toBe(-0.0004);
   });
 
-  it("normalizes legacy cash alias and filters closed zero-value rows", () => {
+  it("normalizes legacy cash alias and keeps closed zero-value rows for tracking", () => {
     const fallback = [position({ asset: "FALLBACK" })];
     const normalized = normalizePortfolio([
       {
@@ -79,9 +79,11 @@ describe("portfolio percent and cash contracts", () => {
       },
     ], fallback);
 
-    expect(normalized).toHaveLength(1);
+    expect(normalized).toHaveLength(2);
     expect(normalized[0].asset).toBe("USDT");
     expect(normalized[0].category).toBe("Свободные деньги");
+    expect(normalized[1].asset).toBe("OLD");
+    expect(normalized[1].status).toBe("CLOSED");
   });
 
   it("separates futures cash from spot deployable cash", () => {
@@ -102,6 +104,7 @@ describe("portfolio percent and cash contracts", () => {
       position({ asset: "BTC", category: "Крипта", currentValue: 100, status: "Держать" }),
       position({ asset: "USDT", category: "Свободные деньги", currentValue: 200, status: "Резерв" }),
       position({ asset: "OLD", category: "Крипта", currentValue: 0, status: "CLOSED" }),
+      position({ asset: "ETH", category: "Крипта", currentValue: 0, status: "WAIT_REBUY" }),
     ]);
 
     expect(openRisk.map((item) => item.asset)).toEqual(["BTC"]);

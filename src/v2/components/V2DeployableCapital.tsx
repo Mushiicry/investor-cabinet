@@ -80,13 +80,15 @@ export function V2DeployableCapital({
     ...(investorStrategy.futuresAllowed
       ? [{
           label: "Фьючерсы",
-          value: buckets.futuresBudgetUsd,
+          value: futuresLimit.freeMarginUsd,
           glyph: "↗",
           color: "#8f9ff0",
           hint: investedCapital
             ? futuresOver
-              ? `Лимит ${futuresLimitPct}% превышен на ${money.format(futuresBreach)} — новый риск не добавлять`
-              : `Занято ${money.format(futuresUsed)} из лимита ${money.format(futuresCapUsd)}. Осталось ${money.format(futuresRemaining)}`
+              ? `Карман выше цели на ${money.format(futuresBreach)} — снять с HL или вернуть в общий резерв`
+              : futuresRemaining > 0
+                ? `До цели ${futuresLimitPct}% не хватает ${money.format(futuresRemaining)} — можно докинуть на HL`
+                : `Карман у цели ${futuresLimitPct}%: позиции + свободная HL-маржа сбалансированы`
             : undefined,
           hintDanger: futuresOver,
         }]
@@ -144,14 +146,20 @@ export function V2DeployableCapital({
                 )}
                 {row.label === "Фьючерсы" && investorStrategy.futuresAllowed && (
                   <div className="v2-futures-breakdown">
-                    <span>Лимит {money.format(futuresCapUsd)}</span>
-                    <span>В позициях {money.format(futuresLimit.positionMarginUsd)}</span>
-                    <span>Маржа HL {money.format(futuresLimit.freeMarginUsd)}</span>
-                    <span className={futuresOver ? "is-danger" : "is-ok"}>
-                      {futuresOver
-                        ? `Убрать ${money.format(futuresBreach)}`
-                        : `Можно добавить ${money.format(futuresRemaining)}`}
-                    </span>
+                    <div className="v2-futures-breakdown-col">
+                      <span>В позициях {money.format(futuresLimit.positionMarginUsd)}</span>
+                      <span>Свободная маржа {money.format(futuresLimit.freeMarginUsd)}</span>
+                    </div>
+                    <div className="v2-futures-breakdown-col">
+                      <span>Лимит {money.format(futuresCapUsd)}</span>
+                      <span className={futuresOver ? "is-danger" : futuresRemaining > 0 ? "is-warn" : "is-ok"}>
+                        {futuresOver
+                          ? `Убрать ${money.format(futuresLimit.withdrawFromHlUsd)}`
+                          : futuresRemaining > 0
+                            ? `Добавить ${money.format(futuresLimit.transferToHlUsd)}`
+                            : "Баланс"}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>

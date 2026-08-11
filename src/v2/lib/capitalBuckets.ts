@@ -53,6 +53,9 @@ export type FuturesLimitSnapshot = {
   usedUsd: number;
   remainingUsd: number;
   breachUsd: number;
+  transferToHlUsd: number;
+  withdrawFromHlUsd: number;
+  balancedFreeMarginUsd: number;
   utilization: number;
 };
 
@@ -88,6 +91,8 @@ export function buildFuturesLimitSnapshot({
   const usedUsd = positionMarginUsd + freeMarginUsd;
   const remainingUsd = Math.max(limitUsd - usedUsd, 0);
   const breachUsd = Math.max(usedUsd - limitUsd, 0);
+  const transferToHlUsd = remainingUsd;
+  const withdrawFromHlUsd = Math.min(freeMarginUsd, breachUsd);
 
   return {
     limitUsd,
@@ -96,6 +101,9 @@ export function buildFuturesLimitSnapshot({
     usedUsd,
     remainingUsd,
     breachUsd,
+    transferToHlUsd,
+    withdrawFromHlUsd,
+    balancedFreeMarginUsd: Math.max(freeMarginUsd + transferToHlUsd - withdrawFromHlUsd, 0),
     utilization: limitUsd ? usedUsd / limitUsd : 0,
   };
 }
@@ -116,7 +124,9 @@ export function buildCapitalBuckets(input: CapitalBucketsInput): CapitalBuckets 
   const futuresLimitUsd = reserveBase * investorStrategy.futuresMaxShare;
   const hasExplicitFuturesUsage = input.futuresUsedUsd != null;
   const futuresRemainingByLimit = hasExplicitFuturesUsage
-    ? clampMin0(futuresLimitUsd - clampMin0(input.futuresUsedUsd ?? 0))
+    ? clampMin0(input.futuresUsedUsd ?? 0) > futuresLimitUsd
+      ? 0
+      : clampMin0(input.futuresDeployableUsd ?? 0)
     : clampMin0(total * investorStrategy.futuresMaxShare - currentFutures);
   const futuresTarget = investorStrategy.futuresAllowed
     ? Math.min(clampMin0(input.futuresDeployableUsd ?? futuresRemainingByLimit), futuresRemainingByLimit)

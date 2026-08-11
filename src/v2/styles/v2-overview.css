@@ -2719,7 +2719,7 @@
 .v2-futures-breakdown {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px 10px;
+  gap: 10px;
   margin-top: 6px;
   padding-top: 6px;
   border-top: 1px solid rgba(140, 160, 220, 0.12);
@@ -2730,8 +2730,18 @@
   font-variant-numeric: tabular-nums;
 }
 
+.v2-futures-breakdown-col {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .v2-futures-breakdown .is-danger {
   color: rgba(240, 160, 160, 0.94);
+}
+
+.v2-futures-breakdown .is-warn {
+  color: rgba(232, 179, 90, 0.94);
 }
 
 .v2-futures-breakdown .is-ok {

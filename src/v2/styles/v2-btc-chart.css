@@ -3982,20 +3982,23 @@
   max-height: 0;
   opacity: 0;
   margin-top: -14px; /* гасит flex-gap колонки, пока закрыто */
-  transition: max-height 0.4s ease, opacity 0.3s ease, margin-top 0.3s ease;
+  transition: opacity 0.12s ease;
 }
 .v2-capital-dropdown.is-open {
-  max-height: 760px;
+  max-height: none;
   opacity: 1;
   margin-top: 0;
 }
 .v2-capital-dropdown-inner {
   max-width: var(--v2-overview-metric-pair-width, 574px); /* ширина пары карточек метрик */
   margin: 0 auto;   /* центрируем под карточками */
-  transform: translate(var(--v2-overview-metric-shift-x, -22px), -6px);
-  transition: transform 0.35s ease;
+  opacity: 0;
+  transform: translate(var(--v2-overview-metric-shift-x, -22px), -4px);
+  transition: opacity 0.12s ease, transform 0.14s ease;
+  will-change: opacity, transform;
 }
 .v2-capital-dropdown.is-open .v2-capital-dropdown-inner {
+  opacity: 1;
   transform: translate(var(--v2-overview-metric-shift-x, -22px), 0);
 }
 

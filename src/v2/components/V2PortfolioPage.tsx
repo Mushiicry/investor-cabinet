@@ -10,6 +10,7 @@ import { V2SourceTag } from "./V2SourceTag";
 import { V2StakingCard } from "./V2StakingCard";
 import { V2CosmosStakingCard } from "./V2CosmosStakingCard";
 import type { InvestorStrategy } from "../lib/investorStrategy";
+import { isWaitingRebuyStatus } from "../../lib/portfolioSelectors";
 
 type Props = {
   positions: V2Position[];
@@ -53,7 +54,21 @@ const STATUS_TONE: Record<string, string> = {
   SPECULATION: "is-spec",
   HOLD: "is-hold",
   REDUCE: "is-reduce",
+  CLOSED: "is-watch",
+  FIXED: "is-watch",
+  EXITED: "is-watch",
+  WAIT_REBUY: "is-watch",
 };
+
+const STATUS_LABEL: Record<string, string> = {
+  CLOSED: "Закрыто",
+  FIXED: "Зафиксировано",
+  EXITED: "Вышел",
+  WAIT_REBUY: "Ждать вход",
+};
+
+const statusLabel = (status: string) => STATUS_LABEL[status.trim().toUpperCase()] ?? status;
+const statusTone = (status: string) => STATUS_TONE[status] ?? STATUS_TONE[status.trim().toUpperCase()] ?? "is-hold";
 
 function pnlTone(value: number) {
   if (value > 0) return "is-up";
@@ -185,8 +200,8 @@ function PlaybookModal({
           <CryptoLogo asset={card.asset} className="v2-pb-modal-logo" />
           <div className="v2-pb-modal-title">
             <h2>{fullName(card.asset)}</h2>
-            <span className={`v2-port-status ${STATUS_TONE[card.status] ?? "is-hold"}`}>
-              {card.status}
+            <span className={`v2-port-status ${statusTone(card.status)}`}>
+              {statusLabel(card.status)}
             </span>
             <span className="v2-pb-share">Доля {position.share.toFixed(1)}%</span>
           </div>
@@ -311,6 +326,7 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, r
                 const isStaked = tonStaked || atomStaked;
                 const dailyUsd = tonStaked ? staking!.dailyUsd : atomStaked ? cosmosStaking!.dailyUsd : 0;
                 const isOpen = openStake === position.asset;
+                const isWaitingRebuy = isWaitingRebuyStatus(position.status) && position.value <= 0;
 
                 const row = (
                   <div className="v2-pline">
@@ -324,11 +340,11 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, r
                     />
                     <div className="v2-port-row">
                       <div className="v2-row-block">
-                        <span className="v2-rb-val">{money(position.avgEntry)}</span>
+                        <span className="v2-rb-val">{isWaitingRebuy ? "—" : money(position.avgEntry)}</span>
                         <span className="v2-rb-val">{money(position.currentPrice)}</span>
                       </div>
                       <div className="v2-row-block">
-                        <strong className="v2-rb-val">{money(position.invested)}</strong>
+                        <strong className="v2-rb-val">{isWaitingRebuy ? "—" : money(position.invested)}</strong>
                         <span className={`v2-rb-val v2-port-pnl ${tone}`}>{signedMoney(position.pnl)}</span>
                         <strong className="v2-rb-val">{money(position.value)}</strong>
                       </div>
@@ -391,8 +407,8 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, r
                   <span className="v2-port-purpose">{meta.purpose}</span>
                   <strong>{money(position.value)}</strong>
                   <span className="v2-port-share">{position.share.toFixed(1)}%</span>
-                  <span className={`v2-port-status ${STATUS_TONE[position.status] ?? "is-hold"}`}>
-                    {position.status}
+                  <span className={`v2-port-status ${statusTone(position.status)}`}>
+                    {statusLabel(position.status)}
                   </span>
                 </div>
               </div>
