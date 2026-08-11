@@ -623,6 +623,7 @@ function getTickerByAsset(asset) {
   if (a.includes("TON")) return "TON";
   if (a.includes("SOL")) return "SOL";
   if (a.includes("MNT")) return "MNT";
+  if (a === "GOLD") return "GOLD";
   if (a.includes("GOLD") || a.includes("PAXG")) return "GOLD-PERP";
   if (a.includes("USDC")) return "USDC";
   if (a.includes("USDT")) return "USDT";

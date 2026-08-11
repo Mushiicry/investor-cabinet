@@ -3,7 +3,7 @@ var IC_HL_MAIN_ADDRESS = '0xFEc18D4474826afd65d578ff931F4ff2926ee0c3';
 var IC_HL_CALCULATIONS_SHEET = 'Расчеты';
 var IC_HL_PRICES_SHEET = 'Цены';
 var IC_HL_USDC_HL_ASSET = 'USDC HL';
-var IC_HL_SUPPORTED_POSITION_COINS = ['BTC', 'GOLD', 'MNT'];
+var IC_HL_SUPPORTED_POSITION_COINS = ['BTC', 'MNT'];
 var IC_HL_EXTRA_DEXES = ['xyz'];
 var IC_HL_LEGACY_FUTURES_ASSETS = {
   BTC: ['BTC SHORT'],
@@ -66,7 +66,7 @@ function IC_HL_syncLivePrices_(ss, primaryMids, dexMids) {
   IC_HL_setPriceSource_(sheet, 'ATOM', 'ATOM', 'Hyperliquid', 'Live Hyperliquid ATOM mid');
   IC_HL_ensurePriceRow_(sheet, 'BNB');
   IC_HL_setPriceSource_(sheet, 'BNB', 'BNB', 'Hyperliquid', 'Live Hyperliquid BNB mid (нативный BNB Chain)');
-  IC_HL_setPriceSource_(sheet, 'GOLD LONG', 'xyz:GOLD', 'Hyperliquid xyz', 'Live Hyperliquid xyz:GOLD mid');
+  IC_HL_setPriceSource_(sheet, 'GOLD', 'xyz:GOLD', 'Hyperliquid xyz', 'Live Hyperliquid xyz:GOLD mid');
   IC_HL_ensurePriceRow_(sheet, 'SPCXB');
   IC_HL_setPriceSource_(sheet, 'SPCXB', 'xyz:SPCX', 'Hyperliquid xyz', 'SpaceX tokenized (BNB Chain), live Hyperliquid xyz:SPCX mid');
   IC_HL_disableLegacyPriceRow_(sheet, 'BTC SHORT');
@@ -157,9 +157,9 @@ function IC_HL_refreshPortfolioAccounting_(ss, force) {
   calculations.getRange('X9').setFormula('=IFERROR(X4/SUM(G2:G100);0)');
   calculations.getRange('X10').setFormula('=SUMIF(A2:A100;"USDC HL";G2:G100)');
   calculations.getRange('X11').setFormula('=IF(X9>10%;"OVER LIMIT";"OK")');
-  calculations.getRange('X12').setFormula('=SUMIF(A2:A100;"GOLD LONG";E2:E100)');
-  calculations.getRange('X15').setFormula('=SUMIF(A2:A100;"GOLD LONG";G2:G100)');
-  calculations.getRange('X16').setFormula('=SUMIF(A2:A100;"GOLD LONG";H2:H100)');
+  calculations.getRange('X12').setFormula('=SUMIF(A2:A100;"GOLD";E2:E100)');
+  calculations.getRange('X15').setFormula('=SUMIF(A2:A100;"GOLD";G2:G100)');
+  calculations.getRange('X16').setFormula('=SUMIF(A2:A100;"GOLD";H2:H100)');
   calculations.getRange('X17').setFormula('=MAX(0;X4-X7)');
   calculations.getRange('X18').setFormula('=IF(X17>0;"OVER LIMIT: снизить номинал до 10%";"OK: ниже лимита 10%")');
   calculations.getRange('X19').setFormula('=X8+X15');
@@ -379,8 +379,6 @@ function IC_HL_syncSupportedFuturesPositions_(sheet, positions) {
 
 function IC_HL_ensureHyperliquidFuturesRows_(sheet) {
   [
-    { asset: 'BTC LONG', category: 'Фьючерсы' },
-    { asset: 'GOLD LONG', category: 'Металлы' },
     { asset: 'MNT LONG', category: 'Фьючерсы' }
   ].forEach(function(row) {
     if (!IC_HL_findAssetRowInPrimaryTable_(sheet, row.asset)) {
