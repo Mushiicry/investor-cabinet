@@ -13,14 +13,30 @@ var IC_EVM_ARBITRUM_NATIVE_USDC = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
 // вывод 61.34 USDT с Bybit + свап в USDC прошли мимо отчётов).
 var IC_EVM_ARBITRUM_USDT = '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9';
 var IC_EVM_USDT_CALC_ASSET = 'USDT ARB'; // имя строки в «Расчетах»
+// APEX (ApeX Protocol) — ERC-20 на Arbitrum. Покупки идут через Uniswap за
+// USDT/USDC, поэтому импорт должен видеть не только ETH, но и этот токен.
+var IC_EVM_TRACKED_TOKENS = [
+  {
+    symbol: 'APEX',
+    contract: '0x61A1ff55C5216b636a294A07D77C6F4Df10d3B56',
+    decimals: 18,
+    category: 'Крипта',
+    minQuantity: 0.000001,
+    minPrice: 0.000001,
+    maxPrice: 100000,
+    maxQuantity: 1000000
+  }
+];
 // Порог «заметного» движения актива (ETH). Ниже — газ и пыль, выше — событие,
 // которое обязано попасть в историю, даже если пары в стейблах не нашлось.
 var IC_EVM_UNPAIRED_ASSET_THRESHOLD = 0.0002;
 
 function setupArbitrumWalletImport() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  IC_EVM_getOrCreateWalletSheet_(ss);
+  var walletSheet = IC_EVM_getOrCreateWalletSheet_(ss);
   IC_EVM_getOrCreateBalanceSheet_(ss);
+  IC_EVM_ensureTrackedAssetsAllowed_(walletSheet);
+  IC_EVM_ensureTrackedPortfolioRows_(ss);
 }
 
 function syncArbitrumWalletBalances() {
@@ -29,6 +45,8 @@ function syncArbitrumWalletBalances() {
   var balanceSheet = IC_EVM_getOrCreateBalanceSheet_(ss);
   var calculationsSheet = ss.getSheetByName(IC_EVM_CALCULATIONS_SHEET);
   var importSheet = ss.getSheetByName(IC_EVM_IMPORT_SHEET);
+  IC_EVM_ensureTrackedAssetsAllowed_(walletSheet);
+  IC_EVM_ensureTrackedPortfolioRows_(ss);
   var wallets = IC_EVM_readWalletConfig_(walletSheet);
   var previousBalances = IC_EVM_readBalanceTotals_(balanceSheet);
   var syncStartedAt = new Date();
@@ -46,6 +64,9 @@ function syncArbitrumWalletBalances() {
   var currentBalances = IC_EVM_readBalanceTotals_(balanceSheet);
   IC_EVM_assertSaneWalletBalance_('ETH', currentBalances.ETH || 0);
   IC_EVM_assertSaneWalletBalance_('USDC', currentBalances.USDC || 0);
+  IC_EVM_TRACKED_TOKENS.forEach(function(token) {
+    IC_EVM_assertSaneWalletBalance_(token.symbol, currentBalances[token.symbol] || 0);
+  });
 
   if (calculationsSheet) {
     IC_EVM_syncArbitrumSnapshotToCalculations_(calculationsSheet, importSheet, previousBalances, currentBalances, syncStartedAt);
@@ -86,6 +107,76 @@ function IC_EVM_getOrCreateWalletSheet_(ss) {
 
 function IC_EVM_getOrCreateBalanceSheet_(ss) {
   return ss.getSheetByName(IC_EVM_BALANCES_SHEET) || ss.insertSheet(IC_EVM_BALANCES_SHEET);
+}
+
+function IC_EVM_ensureTrackedAssetsAllowed_(sheet) {
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) return;
+
+  var headers = values[0].map(function(header) {
+    return String(header || '').trim();
+  });
+  var allowedIndex = headers.indexOf('Allowed Assets');
+  var chainIndex = headers.indexOf('Chain');
+  var statusIndex = headers.indexOf('Status');
+  if (allowedIndex < 0) return;
+
+  for (var rowIndex = 1; rowIndex < values.length; rowIndex += 1) {
+    var chain = chainIndex >= 0 ? String(values[rowIndex][chainIndex] || '').trim() : '';
+    var status = statusIndex >= 0 ? String(values[rowIndex][statusIndex] || '').trim() : '';
+    if (chain !== IC_EVM_DEFAULT_CHAIN || status !== 'ACTIVE') continue;
+
+    var current = String(values[rowIndex][allowedIndex] || '').trim();
+    var allowed = current ? current.split(',').map(function(item) { return item.trim(); }).filter(Boolean) : [];
+    var indexByAsset = allowed.reduce(function(index, asset) {
+      index[String(asset).toUpperCase()] = true;
+      return index;
+    }, {});
+    var changed = false;
+
+    IC_EVM_TRACKED_TOKENS.forEach(function(token) {
+      if (indexByAsset[token.symbol]) return;
+      allowed.push(token.symbol);
+      indexByAsset[token.symbol] = true;
+      changed = true;
+    });
+
+    if (changed) sheet.getRange(rowIndex + 1, allowedIndex + 1).setValue(allowed.join(','));
+  }
+}
+
+function IC_EVM_ensureTrackedPortfolioRows_(ss) {
+  var sheet = ss.getSheetByName(IC_EVM_CALCULATIONS_SHEET);
+  if (!sheet) return;
+
+  IC_EVM_TRACKED_TOKENS.forEach(function(token) {
+    IC_EVM_ensurePortfolioRow_(sheet, token.symbol, token.category);
+  });
+}
+
+function IC_EVM_ensurePortfolioRow_(sheet, asset, category) {
+  if (IC_EVM_findAssetRow_(sheet, asset)) return;
+
+  var templateRow = IC_EVM_findAssetRow_(sheet, 'ETH');
+  if (!templateRow) throw new Error('Нет спотовой строки-образца ETH в Расчетах');
+
+  var lastRow = sheet.getLastRow();
+  var values = sheet.getRange(2, 1, Math.max(1, lastRow - 1), 1).getValues();
+  var blankRow = 0;
+  for (var index = 0; index < values.length; index += 1) {
+    if (String(values[index][0]).trim() === '') {
+      blankRow = index + 2;
+      break;
+    }
+  }
+  if (!blankRow) throw new Error('Нет пустой строки в Расчетах для ' + asset);
+
+  sheet.getRange(blankRow, 1).setValue(asset);
+  sheet.getRange(blankRow, 2).setValue(category || 'Крипта');
+  sheet.getRange(blankRow, 3).setValue(0);
+  sheet.getRange(blankRow, 4).setValue(0);
+  sheet.getRange(blankRow, 5).setFormula('=C' + blankRow + '*D' + blankRow);
+  sheet.getRange(templateRow, 6, 1, 6).copyTo(sheet.getRange(blankRow, 6, 1, 6));
 }
 
 function IC_EVM_readWalletConfig_(sheet) {
@@ -129,6 +220,12 @@ function IC_EVM_fetchWalletBalanceRows_(wallet, syncStartedAt, blockTag) {
   // пополнений и обменов стейбл-в-стейбл.
   var usdtQuantity = IC_EVM_fetchErc20Balance_(wallet.address, IC_EVM_ARBITRUM_USDT, 6, blockTag);
   if (usdtQuantity) rows.push(IC_EVM_balanceRow_(wallet, 'USDT', 'ERC20', usdtQuantity, syncAt, IC_EVM_ARBITRUM_USDT, 6, 'Arbitrum USDT balanceOf'));
+
+  IC_EVM_TRACKED_TOKENS.forEach(function(token) {
+    if (!IC_EVM_isAllowedWalletAsset_(wallet, token.symbol)) return;
+    var quantity = IC_EVM_fetchErc20Balance_(wallet.address, token.contract, token.decimals, blockTag);
+    if (quantity) rows.push(IC_EVM_balanceRow_(wallet, token.symbol, 'ERC20', quantity, syncAt, token.contract, token.decimals, 'Arbitrum ' + token.symbol + ' balanceOf'));
+  });
 
   return rows;
 }
@@ -177,11 +274,18 @@ function IC_EVM_syncArbitrumSnapshotToCalculations_(calculationsSheet, importShe
   }
 
   IC_EVM_setCalculationQuantity_(calculationsSheet, 'ETH', currentBalances.ETH || 0);
+  IC_EVM_TRACKED_TOKENS.forEach(function(token) {
+    IC_EVM_setCalculationQuantity_(calculationsSheet, token.symbol, currentBalances[token.symbol] || 0);
+  });
 }
 
 function IC_EVM_applyBalanceDeltas_(calculationsSheet, importSheet, previousBalances, currentBalances, syncStartedAt) {
   var usdcDelta = (currentBalances.USDC || 0) - (previousBalances.USDC || 0);
+  var usdtDelta = (currentBalances.USDT || 0) - (previousBalances.USDT || 0);
   var ethDelta = (currentBalances.ETH || 0) - (previousBalances.ETH || 0);
+  var trackedHandled = IC_EVM_applyTrackedTokenDeltas_(calculationsSheet, importSheet, previousBalances, currentBalances, syncStartedAt, usdcDelta, usdtDelta);
+  if (trackedHandled) return;
+
   var usdcSpent = -usdcDelta;
   var usdcReceived = usdcDelta;
   var ethReceived = ethDelta;
@@ -216,7 +320,6 @@ function IC_EVM_applyBalanceDeltas_(calculationsSheet, importSheet, previousBala
 
   // ── Обмен стейбл-в-стейбл (USDT <-> USDC): дельты противоположны и почти
   // равны (допуск — комиссия/слиппедж до 2% или 1$). Нейтрально для PnL. ──
-  var usdtDelta = (currentBalances.USDT || 0) - (previousBalances.USDT || 0);
   var swapTolerance = Math.max(1, Math.abs(usdcDelta) * 0.02);
   if (
     Math.abs(usdtDelta) > 0.5 && Math.abs(usdcDelta) > 0.5 &&
@@ -262,6 +365,77 @@ function IC_EVM_applyBalanceDeltas_(calculationsSheet, importSheet, previousBala
   }
 }
 
+function IC_EVM_applyTrackedTokenDeltas_(calculationsSheet, importSheet, previousBalances, currentBalances, syncStartedAt, usdcDelta, usdtDelta) {
+  for (var index = 0; index < IC_EVM_TRACKED_TOKENS.length; index += 1) {
+    var token = IC_EVM_TRACKED_TOKENS[index];
+    var tokenDelta = (currentBalances[token.symbol] || 0) - (previousBalances[token.symbol] || 0);
+    if (Math.abs(tokenDelta) <= token.minQuantity) continue;
+
+    var stable = IC_EVM_pickSpentStable_(usdcDelta, usdtDelta);
+    var stableSpent = stable ? -stable.delta : 0;
+    var impliedBuyPrice = tokenDelta > 0 && stableSpent ? stableSpent / tokenDelta : 0;
+    if (
+      stable &&
+      stableSpent > 0.5 &&
+      tokenDelta > token.minQuantity &&
+      impliedBuyPrice >= token.minPrice &&
+      impliedBuyPrice <= token.maxPrice
+    ) {
+      IC_EVM_applyAssetPurchase_(calculationsSheet, token.symbol, tokenDelta, stableSpent);
+      IC_EVM_applyStableDelta_(calculationsSheet, stable.calcAsset, stable.delta);
+      if (importSheet) IC_EVM_appendBalanceDeltaBuyAuditRow_(importSheet, token.symbol, tokenDelta, impliedBuyPrice, stableSpent, syncStartedAt, stable.asset);
+      return true;
+    }
+
+    stable = IC_EVM_pickReceivedStable_(usdcDelta, usdtDelta);
+    var stableReceived = stable ? stable.delta : 0;
+    var tokenSold = -tokenDelta;
+    var impliedSellPrice = tokenSold ? stableReceived / tokenSold : 0;
+    if (
+      stable &&
+      stableReceived > 0.5 &&
+      tokenSold > token.minQuantity &&
+      impliedSellPrice >= token.minPrice &&
+      impliedSellPrice <= token.maxPrice
+    ) {
+      var sale = IC_EVM_applyAssetSale_(calculationsSheet, token.symbol, tokenSold, stableReceived);
+      IC_EVM_applyStableDelta_(calculationsSheet, stable.calcAsset, stable.delta);
+      if (importSheet) IC_EVM_appendBalanceDeltaSellAuditRow_(importSheet, token.symbol, tokenSold, impliedSellPrice, stableReceived, sale, syncStartedAt, stable.asset);
+      return true;
+    }
+
+    Logger.log('Unpaired ' + token.symbol + ' wallet delta skipped: ' +
+      IC_EVM_round_(tokenDelta, 12) + '. Portfolio quantity will be synced; trade history stays clean.');
+    return true;
+  }
+
+  return false;
+}
+
+function IC_EVM_pickSpentStable_(usdcDelta, usdtDelta) {
+  var candidates = [
+    { asset: 'USDC', calcAsset: 'USDC', delta: usdcDelta },
+    { asset: 'USDT', calcAsset: IC_EVM_USDT_CALC_ASSET, delta: usdtDelta }
+  ].filter(function(stable) {
+    return stable.delta < -0.5;
+  });
+  if (!candidates.length) return null;
+  candidates.sort(function(a, b) { return Math.abs(b.delta) - Math.abs(a.delta); });
+  return candidates[0];
+}
+
+function IC_EVM_pickReceivedStable_(usdcDelta, usdtDelta) {
+  var candidates = [
+    { asset: 'USDC', calcAsset: 'USDC', delta: usdcDelta },
+    { asset: 'USDT', calcAsset: IC_EVM_USDT_CALC_ASSET, delta: usdtDelta }
+  ].filter(function(stable) {
+    return stable.delta > 0.5;
+  });
+  if (!candidates.length) return null;
+  candidates.sort(function(a, b) { return Math.abs(b.delta) - Math.abs(a.delta); });
+  return candidates[0];
+}
+
 // Колонки листа импорта защищены списками значений (наследие TON-импорта:
 // «Действие» без Пополнения/Вывода, «Chain» только TON). Дописываем нужное
 // значение в правило всей колонки, не ломая существующий список.
@@ -279,14 +453,15 @@ function IC_EVM_appendStableFlowAuditRow_(sheet, action, asset, quantity, usdAmo
   });
 }
 
-function IC_EVM_appendBalanceDeltaBuyAuditRow_(sheet, asset, assetReceived, impliedPrice, usdcSpent, syncStartedAt) {
+function IC_EVM_appendBalanceDeltaBuyAuditRow_(sheet, asset, assetReceived, impliedPrice, stableSpent, syncStartedAt, stableAsset) {
+  var fromAsset = stableAsset || 'USDC';
   var syncId = Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyyMMdd'T'HHmmss");
   var importId = [
     'EVM_BALANCE_DELTA',
     'ARBITRUM',
     syncId,
-    'USDC_TO_' + asset,
-    IC_EVM_round_(usdcSpent, 6),
+    fromAsset + '_TO_' + asset,
+    IC_EVM_round_(stableSpent, 6),
     IC_EVM_round_(assetReceived, 12)
   ].join(':');
 
@@ -301,7 +476,7 @@ function IC_EVM_appendBalanceDeltaBuyAuditRow_(sheet, asset, assetReceived, impl
     'Покупка',
     assetReceived,
     impliedPrice,
-    usdcSpent,
+    stableSpent,
     'Arbitrum wallet balance delta; already applied to Расчеты',
     IC_EVM_DEFAULT_WALLET_ID,
     'ARBITRUM',
@@ -309,21 +484,22 @@ function IC_EVM_appendBalanceDeltaBuyAuditRow_(sheet, asset, assetReceived, impl
     '',
     'SWAP',
     '',
-    'USDC -> ' + asset,
-    IC_EVM_round_(usdcSpent, 6) + ' -> ' + IC_EVM_round_(assetReceived, 12),
+    fromAsset + ' -> ' + asset,
+    IC_EVM_round_(stableSpent, 6) + ' -> ' + IC_EVM_round_(assetReceived, 12),
     'BALANCE_APPLIED audit row at ' + Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss") + '. Do not approve again; cost basis was applied from Arbitrum wallet balance delta.'
   ]]);
 }
 
-function IC_EVM_appendBalanceDeltaSellAuditRow_(sheet, asset, assetSold, impliedPrice, usdcReceived, sale, syncStartedAt) {
+function IC_EVM_appendBalanceDeltaSellAuditRow_(sheet, asset, assetSold, impliedPrice, stableReceived, sale, syncStartedAt, stableAsset) {
+  var toAsset = stableAsset || 'USDC';
   var syncId = Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyyMMdd'T'HHmmss");
   var importId = [
     'EVM_BALANCE_DELTA',
     'ARBITRUM',
     syncId,
-    asset + '_TO_USDC',
+    asset + '_TO_' + toAsset,
     IC_EVM_round_(assetSold, 12),
-    IC_EVM_round_(usdcReceived, 6)
+    IC_EVM_round_(stableReceived, 6)
   ].join(':');
 
   if (IC_EVM_readExistingImportIds_(sheet)[importId]) return;
@@ -337,7 +513,7 @@ function IC_EVM_appendBalanceDeltaSellAuditRow_(sheet, asset, assetSold, implied
     'Продажа',
     assetSold,
     impliedPrice,
-    usdcReceived,
+    stableReceived,
     'Arbitrum wallet balance delta; already applied to Расчеты',
     IC_EVM_DEFAULT_WALLET_ID,
     'ARBITRUM',
@@ -345,8 +521,8 @@ function IC_EVM_appendBalanceDeltaSellAuditRow_(sheet, asset, assetSold, implied
     '',
     'SWAP',
     '',
-    asset + ' -> USDC',
-    IC_EVM_round_(assetSold, 12) + ' -> ' + IC_EVM_round_(usdcReceived, 6),
+    asset + ' -> ' + toAsset,
+    IC_EVM_round_(assetSold, 12) + ' -> ' + IC_EVM_round_(stableReceived, 6),
     'BALANCE_APPLIED audit row at ' + Utilities.formatDate(syncStartedAt, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss") +
       '. Do not approve again; cost basis was reduced at avgEntry ' + IC_EVM_round_(sale.avgEntry, 12) +
       '; costBasisSold=' + IC_EVM_round_(sale.costBasisSold, 6) +
@@ -602,6 +778,93 @@ function IC_EVM_toNumber_(value) {
 
 function IC_EVM_round_(value, digits) {
   return IC_LEDGER_round_(value, digits);
+}
+
+// Одноразово: если APEX был куплен до появления APEX в Arbitrum importer,
+// первый старый синк мог увидеть только USDT-расход и не связать его с APEX.
+// Эта функция фиксирует текущий APEX-баланс как покупку по фактической сумме.
+// Запускать только вручную после проверки суммы покупки.
+function initApexPositionFromChain() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  setupArbitrumWalletImport();
+
+  var calc = ss.getSheetByName(IC_EVM_CALCULATIONS_SHEET);
+  if (!calc) throw new Error('Missing sheet: ' + IC_EVM_CALCULATIONS_SHEET);
+  var token = IC_EVM_TRACKED_TOKENS.filter(function(item) { return item.symbol === 'APEX'; })[0];
+  if (!token) throw new Error('APEX token config missing');
+
+  var row = IC_EVM_findAssetRow_(calc, token.symbol);
+  if (!row) throw new Error('Нет строки APEX в «Расчетах»');
+
+  var avg = IC_EVM_toNumber_(calc.getRange(row, 4).getValue());
+  if (avg > 0) {
+    Logger.log('APEX: средний вход уже задан (' + avg + ') — ничего не делаю');
+    return;
+  }
+
+  var blockTag = IC_EVM_fetchBlockTag_();
+  var quantity = IC_EVM_fetchErc20Balance_(IC_EVM_DEFAULT_ADDRESS, token.contract, token.decimals, blockTag);
+  var amount = 6.80;
+  if (quantity <= token.minQuantity) {
+    Logger.log('APEX: баланс на кошельке 0 — нечего инициализировать');
+    return;
+  }
+
+  var price = amount / quantity;
+  calc.getRange(row, 3).setValue(quantity);
+  calc.getRange(row, 4).setValue(IC_LEDGER_round_(price, 4));
+  calc.getRange(row, 5).setFormula('=C' + row + '*D' + row);
+
+  var importSheet = ss.getSheetByName(IC_EVM_IMPORT_SHEET);
+  if (importSheet) IC_LEDGER_appendTradeRow_(importSheet, {
+    action: 'Покупка',
+    asset: token.symbol,
+    category: token.category,
+    quantity: quantity,
+    price: price,
+    amount: amount,
+    pairLabel: 'Инициализация APEX: USDT -> APEX',
+    syncStartedAt: new Date(),
+    chain: 'ARBITRUM',
+    walletId: IC_EVM_DEFAULT_WALLET_ID
+  });
+
+  Logger.log('APEX инициализирован: qty=' + quantity + ', вход=' + price + ', сумма=' + amount +
+             '$. Строка «Покупка APEX» записана — кулдаун запустится.');
+}
+
+// Одноразово: чистит ошибочную audit-строку APEX/Пополнение, которая могла
+// появиться после первичной инициализации APEX без встречной USDT/USDC-дельты.
+function cleanupApexUnpairedFlow20260813() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(IC_EVM_IMPORT_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return 'нет строк для проверки';
+
+  var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 18).getValues();
+  var removed = [];
+  for (var index = values.length - 1; index >= 0; index -= 1) {
+    var row = values[index];
+    var importId = String(row[0] || '');
+    var asset = String(row[3] || '').trim().toUpperCase();
+    var action = String(row[5] || '').trim();
+    var source = String(row[12] || '').trim();
+    var pairLabel = String(row[16] || '').trim();
+    var targetRow = index + 2;
+
+    if (
+      importId.indexOf('EVM_STABLE_FLOW:ARBITRUM:') === 0 &&
+      asset === 'APEX' &&
+      (action === 'Пополнение' || action === 'Вывод') &&
+      source === 'BALANCE_DELTA' &&
+      pairLabel.indexOf('Движение APEX без встречного стейбла') === 0
+    ) {
+      sheet.deleteRow(targetRow);
+      removed.push(targetRow);
+    }
+  }
+
+  return 'удалено ошибочных APEX flow-строк: ' + removed.length +
+    (removed.length ? ' (' + removed.join(', ') + ')' : '');
 }
 
 

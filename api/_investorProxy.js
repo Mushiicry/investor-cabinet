@@ -163,7 +163,7 @@ async function fetchWifePriceMap() {
     if (ticker && price > 0) priceMap[String(ticker).toUpperCase()] = price;
   };
 
-  ["BTC", "ETH", "SOL", "ATOM", "BNB", "MNT"].forEach((ticker) => addPrice(ticker, primary[ticker]));
+  ["BTC", "ETH", "SOL", "ATOM", "BNB", "MNT", "APEX"].forEach((ticker) => addPrice(ticker, primary[ticker]));
   addPrice("GRAM", primary.GRAM);
   addPrice("TON", primary.GRAM);
   addPrice("GOLD", xyz["xyz:GOLD"]);

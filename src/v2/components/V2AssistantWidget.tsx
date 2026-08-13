@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { InvestorStrategyId } from "../lib/investorStrategy";
 import type { HealthInput, PortfolioHealth } from "../../lib/portfolioHealth";
-import type { V2Portfolio } from "../InvestorCabinetV2Lab";
+import type { V2Page, V2Portfolio } from "../InvestorCabinetV2Lab";
 
 type ChatMessage = {
   id: string;
@@ -14,11 +14,20 @@ type Props = {
   accountId: InvestorStrategyId;
   disabled?: boolean;
   uiContext?: {
+    currentPage: AssistantPageContext;
     portfolio: V2Portfolio;
     health: PortfolioHealth;
     healthInput: HealthInput;
     allocation: Array<{ name: string; share: number; value: number }>;
   };
+};
+
+export type AssistantPageContext = {
+  id: V2Page;
+  label: string;
+  purpose: string;
+  visibleBlocks: string[];
+  facts: Record<string, unknown>;
 };
 
 const starterByAccount: Record<InvestorStrategyId, string> = {
@@ -127,6 +136,7 @@ export function V2AssistantWidget({ accountId, disabled = false, uiContext }: Pr
             ? {
                 accountId,
                 renderedAt: new Date().toISOString(),
+                currentPage: uiContext.currentPage,
                 portfolio: uiContext.portfolio,
                 health: uiContext.health,
                 healthInput: uiContext.healthInput,
@@ -248,6 +258,11 @@ export function V2AssistantWidget({ accountId, disabled = false, uiContext }: Pr
             <textarea
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" || event.shiftKey) return;
+                event.preventDefault();
+                if (canSend) void askAssistant(trimmedQuestion);
+              }}
               placeholder="Спроси про риск, резерв, лимиты..."
               disabled={loading || disabled}
               rows={2}

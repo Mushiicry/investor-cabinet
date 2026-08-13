@@ -57,6 +57,7 @@ export function V2DeployableCapital({
     investorStrategy,
   });
   const deployable = buckets.workCashUsd;
+  const spotDoborBudget = Math.max(0, Math.min(buckets.spotBudgetUsd, portfolio.spotDeployable));
   const pureReserve = buckets.lockedReserveUsd;
   const reserveShort = pureReserve < reserveTarget;
 
@@ -76,7 +77,13 @@ export function V2DeployableCapital({
     hintDanger?: boolean;
   }> = [
     { label: "ДСА добор", value: buckets.averagingBudgetUsd, glyph: "◇", color: "#5fe0cf" },
-    { label: "Спот", value: buckets.spotBudgetUsd, glyph: "○", color: "#56d8f5" },
+    {
+      label: "Спот",
+      value: spotDoborBudget,
+      glyph: "○",
+      color: "#56d8f5",
+      hint: "Спот-добор: без отдельного ДСА и без свободной HL-маржи",
+    },
     ...(investorStrategy.futuresAllowed
       ? [{
           label: "Фьючерсы",

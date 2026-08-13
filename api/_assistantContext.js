@@ -3,6 +3,7 @@ import { readInvestorPayloadForAssistant } from "./_investorProxy.js";
 
 const MAX_CONTEXT_POSITIONS = 12;
 const MAX_TEXT_FIELD_LENGTH = 280;
+const MAX_PAGE_CONTEXT_TEXT_LENGTH = 420;
 
 const isRecord = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const toNumber = (value) => {
@@ -182,7 +183,6 @@ function compactPositions(payload) {
       pnl: round(position.pnl, 2),
       pnlPct: round(position.pnlPct, 4),
       share: round(position.share, 4),
-      status: position.status ?? "",
     }))
     .sort((a, b) => Math.abs(b.currentValue) - Math.abs(a.currentValue))
     .slice(0, MAX_CONTEXT_POSITIONS);
@@ -212,7 +212,6 @@ function deriveConcentrationGuards(payload, accountId) {
       return {
         asset: compactText(position.asset ?? position.ticker),
         ticker: compactText(position.ticker ?? position.asset),
-        status: compactText(position.status),
         currentValue,
         portfolioShare: round(position.share, 4),
         shareOfCryptoBlock: round(shareOfCrypto, 4),
@@ -281,8 +280,83 @@ function compactText(value) {
   return text.length > MAX_TEXT_FIELD_LENGTH ? `${text.slice(0, MAX_TEXT_FIELD_LENGTH)}...` : text;
 }
 
+function compactPageText(value) {
+  const text = String(value ?? "").trim();
+  return text.length > MAX_PAGE_CONTEXT_TEXT_LENGTH ? `${text.slice(0, MAX_PAGE_CONTEXT_TEXT_LENGTH)}...` : text;
+}
+
 function cleanRecord(record) {
   return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
+}
+
+function compactAny(value, depth = 0) {
+  if (depth > 4) return "[compact]";
+  if (Array.isArray(value)) return value.slice(0, 12).map((item) => compactAny(item, depth + 1));
+  if (isRecord(value)) {
+    return cleanRecord(Object.fromEntries(
+      Object.entries(value)
+        .slice(0, 40)
+        .map(([key, item]) => [key, compactAny(item, depth + 1)]),
+    ));
+  }
+  if (typeof value === "number") return roundOptional(value, 6);
+  if (typeof value === "boolean") return value;
+  return compactPageText(value);
+}
+
+function compactPageContext(pageContext) {
+  if (!isRecord(pageContext)) return null;
+  return {
+    id: compactText(pageContext.id),
+    label: compactText(pageContext.label),
+    purpose: compactText(pageContext.purpose),
+    visibleBlocks: Array.isArray(pageContext.visibleBlocks)
+      ? pageContext.visibleBlocks.map(compactText).slice(0, 12)
+      : [],
+    facts: compactAny(isRecord(pageContext.facts) ? pageContext.facts : {}),
+  };
+}
+
+function buildFuturesRiskBudgetBreakdown({ riskControl, healthInput, portfolio }) {
+  const futuresUsedUsd = roundOptional(riskControl?.meta?.futuresUsedUsd, 2);
+  const futuresCapUsd = roundOptional(riskControl?.meta?.futuresCapUsd, 2);
+  if (futuresUsedUsd === undefined && futuresCapUsd === undefined) return {};
+
+  const futuresDeployableUsd = roundOptional(healthInput.futuresDeployableUsd ?? portfolio.futuresDeployable, 2);
+  const investedCapital = roundOptional(healthInput.investedCapital ?? portfolio.totalInvested, 2);
+  const futuresShare = roundOptional(healthInput.futuresShare, 4);
+  const futuresBreachUsd = roundOptional(riskControl?.meta?.futuresBreachUsd, 2);
+  const futuresRemainingUsd = roundOptional(riskControl?.meta?.futuresRemainingUsd, 2);
+  const futuresCapUtilization = roundOptional(riskControl?.meta?.futuresCapUtilization, 4);
+  const estimatedOpenFuturesMarginUsd =
+    futuresUsedUsd !== undefined && futuresDeployableUsd !== undefined
+      ? roundOptional(Math.max(0, futuresUsedUsd - futuresDeployableUsd), 2)
+      : undefined;
+
+  return cleanRecord({
+    source: "frontend health-formula read-only расшифровка",
+    plainMeaning: "Это не биржевая маржа. Это занято в лимите активной торговли по health-formula.",
+    formula: "futuresUsedUsd = open futures invested margin + USDC HL/free futures margin",
+    components: cleanRecord({
+      estimatedOpenFuturesMarginUsd,
+      freeFuturesMarginUsd: futuresDeployableUsd,
+    }),
+    totals: cleanRecord({
+      investedCapital,
+      futuresShare,
+      futuresUsedUsd,
+      futuresCapUsd,
+      futuresRemainingUsd,
+      futuresBreachUsd,
+      futuresCapUtilization,
+    }),
+    wordingRules: [
+      "Говори 'по health-formula занято в лимите активной торговли'.",
+      "Не называй futuresUsedUsd биржевой маржей.",
+      "Не пересчитывай эти числа заново; просто объясняй готовую расшифровку.",
+      "Не используй слово breakdown в русском ответе; говори 'расшифровка' или 'разбивка'.",
+    ],
+  });
 }
 
 function compactHealthComponent(component) {
@@ -369,6 +443,7 @@ function compactClientContext(clientContext) {
     renderedAt: compactText(clientContext.renderedAt),
     source: "V2 frontend read-only rendered snapshot",
     canonicalForVisibleNumbers: true,
+    currentPage: compactPageContext(clientContext.currentPage),
     portfolio: {
       totalPortfolioValue: round(portfolio.totalPortfolioValue, 2),
       totalInvested: round(portfolio.totalInvested, 2),
@@ -378,7 +453,6 @@ function compactClientContext(clientContext) {
       reserveShare: round(portfolio.reserveShare, 4),
       positionsCount: round(portfolio.positionsCount, 0),
       healthFactor: round(portfolio.healthFactor, 0),
-      healthStatus: compactText(portfolio.healthStatus),
       riskLevel: compactText(portfolio.riskLevel),
       deployableCapital: round(portfolio.deployableCapital, 2),
       spotDeployable: round(portfolio.spotDeployable, 2),
@@ -415,7 +489,7 @@ function compactClientContext(clientContext) {
     }),
     futuresFacts: cleanRecord({
       source: "read-only UI health formula fields only",
-      caution: "Do not invent futures margin math. Use only these fields; if a field is absent, say the exact breakdown must be checked in the Capital Ladder/Risk screen.",
+      caution: "Do not invent futures margin math. Use only these fields; if a field is absent, say the exact futures limit details must be checked in the Capital Ladder/Risk screen.",
       futuresShare: roundOptional(healthInput.futuresShare, 4),
       futuresDeployableUsd: roundOptional(healthInput.futuresDeployableUsd ?? portfolio.futuresDeployable, 2),
       futuresCapUsd: roundOptional(riskControl?.meta?.futuresCapUsd, 2),
@@ -423,6 +497,7 @@ function compactClientContext(clientContext) {
       futuresRemainingUsd: roundOptional(riskControl?.meta?.futuresRemainingUsd, 2),
       futuresBreachUsd: roundOptional(riskControl?.meta?.futuresBreachUsd, 2),
       futuresCapUtilization: roundOptional(riskControl?.meta?.futuresCapUtilization, 4),
+      riskBudgetBreakdown: buildFuturesRiskBudgetBreakdown({ riskControl, healthInput, portfolio }),
     }),
     allocation: allocation.map((category) => ({
       name: compactText(category.name),
@@ -463,17 +538,23 @@ export async function buildAssistantContext(accountId, clientContext = null, que
       uiSnapshot: compactClientContext(clientContext),
       sourcePriority: [
         "1. uiSnapshot.health.healthFactor / uiSnapshot.portfolio.healthFactor — главное число здоровья, если передано.",
-        "2. uiSnapshot allocation/portfolio — главные видимые цифры overview, если переданы.",
-        "3. /api/investor overview/risk/portfolio — source of truth для raw фактов портфеля.",
-        "4. overview.health и risk.health могут быть legacy и не должны перебивать uiSnapshot Health Factor.",
-        "5. По фьючерсам не смешивать health-formula, свободную маржу и биржевую маржу. Называть только явно переданные поля, иначе просить сверку в Лестнице капитала/Risk.",
+        "2. uiSnapshot.currentPage — главный источник текущей открытой вкладки, видимых блоков, названий и page-specific фактов.",
+        "3. uiSnapshot allocation/portfolio — главные видимые цифры overview, если переданы.",
+        "4. /api/investor overview/risk/portfolio — source of truth для raw фактов портфеля.",
+        "5. overview.health и risk.health могут быть legacy и не должны перебивать uiSnapshot Health Factor.",
+        "6. По фьючерсам сначала читать uiSnapshot.futuresFacts.riskBudgetBreakdown, если он есть. Не смешивать health-formula, свободную маржу и биржевую маржу.",
+        "7. На вкладке Портфель сначала читать uiSnapshot.currentPage.facts.visibleInvestmentPositions; cashAndReserveRows объяснять отдельно как кэш/резерв, а не как инвестиционные активы.",
       ],
       answerGuards: [
+        "Отвечать строго по теме вопроса. Не добавлять соседние темы только потому, что они есть в контексте.",
+        "Для понятийных вопросов давать объяснение понятия и максимум 1-2 релевантные цифры, без пересказа всего портфеля.",
+        "Для вопросов про DCA читать uiSnapshot.currentPage.facts.dcaStrategy, если он есть: зоны индекса, проценты покупки, текущий индекс и текущую зону.",
         "Если актив выше лимита или компонент concentration содержит blocker/overLimitAssets, нельзя говорить, что актив можно докупать или накапливать.",
         "При over-limit нельзя писать 'рекомендация положительная', 'есть накопление', 'можно купить' или 'можно добрать'. Разрешенная формулировка: увеличение заблокировано до возврата в лимит.",
         "Запреты, blockers и фраза 'Не докупать' всегда сильнее recommendations/scenarios/желания пользователя.",
         "Если recommendation выглядит положительной, но тот же актив выше лимита, объясни конфликт и держи risk-first запрет на увеличение позиции.",
-        "Не используй status CLOSED/EXITED как доказательство нулевой позиции, если currentValue/share по активу больше нуля.",
+        "Не упоминать статусы позиций, если пользователь прямо не спрашивает про статусы.",
+        "USDC, USDT и USDC HL в категории 'Свободные деньги' — это кэш/резерв/маржа, а не обычные инвестиционные активы портфеля.",
       ],
       concentrationGuards,
       knowledgePack: selectAssistantKnowledge(question),
@@ -499,16 +580,29 @@ export const ASSISTANT_SYSTEM_PROMPT = [
   "Ты объясняешь, что разрешено стратегией, что запрещено, где риск, и какие проверки нужно сделать перед действием.",
   "Главный приоритет: Risk first. Discipline first. PnL second.",
   "Отвечай на русском, кратко и строго.",
+  "Отвечай строго на заданный вопрос. Не добавляй соседние темы только потому, что они есть в контексте.",
+  "Если вопрос понятийный ('что такое DCA', 'что значит резерв', 'что значит лимит'), дай объяснение понятия и максимум 1-2 релевантные цифры. Не пересказывай весь портфель, стейблы, Health Factor, фьючерсы или blockers, если пользователь прямо не спрашивал.",
+  "Для вопроса про стратегию DCA обязательно объясни зоны индекса: 30-100 наблюдаем; 20-29 покупка на 1%; 15-19 покупка на 1.5%; 0-14 покупка на 2%. Укажи текущий индекс и текущую зону, если они есть в контексте.",
+  "Для вопроса 'что такое стратегия DCA' объясни: плановый поэтапный добор, когда используется, чем отличается от ручного спот-добора, и что это не разрешение нарушать проверку риска. Не перечисляй резерв, стейблы, HL-маржу и все блокировки.",
+  "Не используй английские служебные слова в русском ответе: cautious, Balanced, risk-gate, blockers, breakdown, status, mode. Замени на русские слова: осторожная зона, баланс, проверка риска, блокировки, расшифровка, статус, режим.",
+  "Не упоминай статусы позиций в ответе, если пользователь прямо не спрашивает про статусы.",
   "Если данных недостаточно, прямо скажи, каких read-only данных не хватает.",
   "Не придумывай портфельные числа за пределами переданного контекста.",
   "Если в контексте есть uiSnapshot, используй его как главный источник текущих экранных чисел: Health Factor, компоненты здоровья, распределение и свободные деньги.",
+  "Если пользователь спрашивает про текущую страницу, вкладку, боковое меню, видимые блоки, таблицу или 'что здесь значит', используй uiSnapshot.currentPage как главный контекст.",
+  "Не говори, что названия вкладок или цифры не переданы, если они есть в uiSnapshot.currentPage.",
+  "На вкладке Портфель при вопросе 'какие активы есть' сначала перечисляй visibleInvestmentPositions из uiSnapshot.currentPage.facts. cashAndReserveRows называй отдельно как кэш/резерв/маржу, не как активы.",
+  "USDC, USDT и USDC HL в 'Свободные деньги' не называй инвестиционными активами; это резерв, кэш или HL-маржа.",
   "Не называй overview.health или risk.health главным здоровьем, если они расходятся с uiSnapshot.health.healthFactor.",
   "Объясняй цифру здоровья через веса, компоненты, formulas, blockers и warnings из uiSnapshot.health.components.",
   "Не делай собственные расчеты по фьючерсам, марже, лимитам и превышениям, если в контексте нет всех исходных полей.",
-  "Если число по фьючерсам взято из health-formula, явно называй его расчетом health-formula, а не биржевым фактом.",
+  "Если есть uiSnapshot.futuresFacts.riskBudgetBreakdown, просто читай его: не пересчитывай и не добавляй новые числа.",
+  "Если число по фьючерсам взято из health-formula, явно называй его 'занято в лимите активной торговли по health-formula', а не биржевой маржей.",
+  "Не используй английское слово breakdown в русском ответе; говори 'расшифровка' или 'разбивка'.",
   "Если данных по фьючерсам недостаточно или они конфликтуют, скажи, что нужна сверка с Лестницей капитала или экраном Risk.",
   "Если актив выше лимита, нельзя говорить, что его можно докупать или накапливать. Запреты и blockers сильнее рекомендаций.",
   "При over-limit не называй рекомендации положительными. Говори: увеличение позиции заблокировано до возврата в лимит.",
   "Пиши без markdown-разметки: не используй **жирный**, markdown-таблицы или заголовки.",
   "Заканчивай ответ полным предложением; не обрывай мысль на середине.",
+  "Не ищи информацию в интернете и не ссылайся на внешние источники для вопросов о кабинете, если пользователь явно не просит внешний факт.",
 ].join("\n");

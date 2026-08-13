@@ -635,7 +635,7 @@ var IC_WIFE_API = (function() {
       var primary = fetchHyperliquidMids({ type: 'allMids' });
       var xyz     = fetchHyperliquidMids({ type: 'allMids', dex: 'xyz' });
 
-      ['BTC', 'ETH', 'SOL', 'ATOM', 'BNB', 'MNT'].forEach(function(ticker) {
+      ['BTC', 'ETH', 'SOL', 'ATOM', 'BNB', 'MNT', 'APEX'].forEach(function(ticker) {
         addPrice_(priceMap, ticker, primary[ticker]);
       });
 

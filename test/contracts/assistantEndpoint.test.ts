@@ -44,6 +44,23 @@ const setEnv = () => {
 const clientContext = {
   accountId: "main",
   renderedAt: "2026-08-11T14:51:42.000Z",
+  currentPage: {
+    id: "reports",
+    label: "Отчёты",
+    purpose: "История портфеля, журнал решений, история сделок и поведенческая дисциплина.",
+    visibleBlocks: ["Сводка периода", "История портфеля", "Журнал решений", "История сделок", "Поведение"],
+    facts: {
+      historySummary: {
+        points: 47,
+        latest: { date: "2026-08-12T23:48:00.000Z", portfolioValue: 795.3, reserve: 620.34 },
+      },
+      behavior: {
+        score: 100,
+        status: "НОРМА",
+        stats: { decisions24h: 0, blocked24h: 0 },
+      },
+    },
+  },
   portfolio: {
     totalPortfolioValue: 640,
     totalInvested: 677,
@@ -86,6 +103,22 @@ const clientContext = {
           diversificationWarnings: ["Крупнейший класс выше 80% рисковой части"],
         },
       },
+      {
+        key: "futures",
+        v2Key: "riskControl",
+        label: "Контроль риска",
+        score: 59,
+        weight: 0.15,
+        desc: "Активная торговля",
+        meta: {
+          futuresCapUsd: 67.7,
+          futuresUsedUsd: 91.67,
+          futuresRemainingUsd: 0,
+          futuresBreachUsd: 23.97,
+          futuresCapUtilization: 1.354,
+          riskControlBlockers: ["Превышен лимит 10% активной торговли"],
+        },
+      },
     ],
   },
   healthInput: {
@@ -95,6 +128,7 @@ const clientContext = {
     reserveShare: 0.731,
     portfolioValue: 640,
     investedCapital: 677,
+    futuresDeployableUsd: 71.42,
   },
   allocation: [{ name: "Свободные деньги", value: 468, share: 0.731 }],
 };
@@ -198,6 +232,10 @@ describe("assistant serverless endpoint", () => {
     expect(inputText).toContain('"readOnly": true');
     expect(inputText).toContain('"source": "/api/investor"');
     expect(inputText).toContain('"uiSnapshot"');
+    expect(inputText).toContain('"currentPage"');
+    expect(inputText).toContain('"label": "Отчёты"');
+    expect(inputText).toContain("История портфеля");
+    expect(inputText).toContain("uiSnapshot.currentPage");
     expect(inputText).toContain('"healthFactor": 66');
     expect(inputText).toContain('"canonicalForVisibleNumbers": true');
     expect(inputText).not.toContain('"spotDeployableCash": 0');
@@ -207,6 +245,19 @@ describe("assistant serverless endpoint", () => {
     expect(inputText).toContain("Запреты, blockers");
     expect(inputText).toContain("рекомендация положительная");
     expect(inputText).toContain("futuresFacts");
+    expect(inputText).toContain("riskBudgetBreakdown");
+    expect(inputText).toContain("Это не биржевая маржа");
+    expect(inputText).toContain("estimatedOpenFuturesMarginUsd");
+    expect(inputText).toContain("Не используй английское слово breakdown");
+    expect(inputText).toContain("visibleInvestmentPositions");
+    expect(inputText).toContain("cashAndReserveRows");
+    expect(inputText).toContain("не как инвестиционные активы");
+    expect(inputText).toContain("Отвечай строго на заданный вопрос");
+    expect(inputText).toContain("Не добавляй соседние темы");
+    expect(inputText).toContain("Для вопроса 'что такое стратегия DCA'");
+    expect(inputText).toContain("20-29 покупка на 1%");
+    expect(inputText).toContain("15-19 покупка на 1.5%");
+    expect(inputText).toContain("Не используй английские служебные слова");
     expect(inputText).toContain('"knowledgePack"');
     expect(inputText).toContain('"source": "docs/ASSISTANT_KNOWLEDGE_MAIN.md"');
     expect(inputText).toContain("Health Formula");

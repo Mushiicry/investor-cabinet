@@ -10,6 +10,7 @@ import { stakingApy } from "../../config/stakingRules";
 import type { DecisionJournalEntry } from "../lib/decisionJournal";
 import type { BehaviorEngineResult } from "../lib/behaviorEngine";
 import type { InvestorStrategy } from "../lib/investorStrategy";
+import { calculateTransactionRealizedPnl } from "../lib/transactionRealizedPnl";
 
 type Props = {
   history: PortfolioHistoryPoint[];
@@ -94,6 +95,14 @@ function isEmptyRow(t: InvestorTransaction) {
 
 function isStaking(action: string) {
   return /стейк|stak/i.test(action || "");
+}
+
+function tradeResultTitle(result: ReturnType<typeof calculateTransactionRealizedPnl>[number]) {
+  if (!result) return "Для этой строки нет достаточной базы входа, поэтому результат не показывается.";
+  const source = result.source === "api-note"
+    ? "Точное число из audit note учетного слоя."
+    : "Расчет по журналу сделок: сумма продажи минус списанная себестоимость по старой средней входа.";
+  return `${source} Средняя входа: ${fmtUSD(result.avgEntry)}; себестоимость проданной части: ${fmtUSD(result.costBasisSold)}.`;
 }
 
 // Одна покупка/продажа приходит из двух источников: запись BALANCE_DELT
@@ -362,11 +371,13 @@ export function V2ReportsPage({
                   const tradeTransactions = dedupeTrades(
                     transactions.filter((t) => !isEmptyRow(t))
                   );
+                  const tradeResults = calculateTransactionRealizedPnl(tradeTransactions);
                   return tradeTransactions.length === 0 ? (
                   <div className="v2-rep-empty">API пока не вернул историю сделок</div>
                 ) : tradeTransactions.map((transaction, index) => {
                   const transactionId = transaction.hash || transaction.id;
                   const details = transaction.comment || transaction.note || transaction.counterparty || transactionId;
+                  const tradeResult = tradeResults[index];
 
                   return (
                     <div
@@ -397,11 +408,11 @@ export function V2ReportsPage({
                       </span>
                       <span className="v2-rep-cell-amount" data-label="Сумма">{transaction.amount ? fmtUSD(transaction.amount) : "—"}</span>
                       <span
-                        className="v2-rep-cell-price"
+                        className={`v2-rep-cell-pnl ${tradeResult ? tradeResult.realizedPnl >= 0 ? "is-pos" : "is-neg" : ""}`}
                         data-label="Результат сделки"
-                        title="Точного результата по этой строке нет в учетном слое"
+                        title={tradeResultTitle(tradeResult)}
                       >
-                        —
+                        {tradeResult ? signedMoney(tradeResult.realizedPnl) : "—"}
                       </span>
                       <span className="v2-rep-cell-fg" data-label="Сеть">{transaction.chain || transaction.walletId || "—"}</span>
                       <span className={`v2-rep-tag ${transaction.status === "APPROVED" ? "is-strategy" : "is-manual"}`} data-label="Статус">

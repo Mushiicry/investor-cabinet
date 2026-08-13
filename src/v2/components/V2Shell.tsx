@@ -23,7 +23,7 @@ import type { CosmosStaking } from "../../hooks/useCosmosStaking";
 import { V2HealthPage } from "./V2HealthPage";
 import { V2InvestorDNAPage } from "./V2InvestorDNAPage";
 import { V2EducationPage } from "./V2EducationPage";
-import { V2AssistantWidget } from "./V2AssistantWidget";
+import { V2AssistantWidget, type AssistantPageContext } from "./V2AssistantWidget";
 import { V2NotificationsPanel } from "./V2NotificationsPanel";
 import { buildPortfolioAlerts, sortAlerts, type Alert } from "../lib/portfolioAlerts";
 import { V2Sidebar } from "./V2Sidebar";
@@ -40,6 +40,7 @@ import {
 import { evaluateBehavior } from "../lib/behaviorEngine";
 import { getMarketPsychology } from "../lib/marketPsychology";
 import { buildTradeCandidateFromSignal, type TradeCandidate } from "../lib/tradeCandidate";
+import { buildCapitalBuckets } from "../lib/capitalBuckets";
 
 type Props = {
   data: V2LabData;
@@ -66,6 +67,77 @@ const SCENE_PADDING = 18;
 const SCENE_GAP = 18;
 const SIDEBAR_WIDTH = 260;
 const SIDEBAR_COLLAPSED_WIDTH = 64;
+
+const PAGE_META: Record<V2Page, { label: string; purpose: string; visibleBlocks: string[] }> = {
+  overview: {
+    label: "Обзор",
+    purpose: "Главный экран состояния портфеля: капитал, резерв, здоровье, распределение, DCA и ключевые рекомендации.",
+    visibleBlocks: ["Верхние метрики", "Здоровье портфеля", "Лестница капитала", "Распределение средств", "Стратегия DCA", "Рекомендации"],
+  },
+  portfolio: {
+    label: "Портфель",
+    purpose: "Текущие позиции, доли, PnL, статусы активов и соответствие лимитам стратегии.",
+    visibleBlocks: ["Позиции", "Активы", "PnL", "Статусы", "Стейкинг"],
+  },
+  scenarios: {
+    label: "Сценарии",
+    purpose: "Плейбук активов: базовый, бычий, медвежий сценарий, зона действия и условия пересмотра.",
+    visibleBlocks: ["Сценарии активов", "Action zone", "Invalidation", "Позиции"],
+  },
+  risk: {
+    label: "Risk",
+    purpose: "Экран лимитов и запретов: что портфелю разрешено, что заблокировано и где главный риск.",
+    visibleBlocks: ["Risk engine", "Лимиты", "Health", "Распределение", "Концентрация"],
+  },
+  reports: {
+    label: "Отчёты",
+    purpose: "История портфеля, журнал решений, история сделок и поведенческая дисциплина.",
+    visibleBlocks: ["Сводка периода", "История портфеля", "Журнал решений", "История сделок", "Поведение"],
+  },
+  signals: {
+    label: "Сигналы",
+    purpose: "Сигналы, алерты и проверки перед возможным действием, без автоматического исполнения.",
+    visibleBlocks: ["Сигналы", "Алерты", "Risk checks", "Кандидаты сделок"],
+  },
+  settings: {
+    label: "Настройки",
+    purpose: "Локальные настройки профиля и отображения кабинета.",
+    visibleBlocks: ["Профиль", "Имя", "Аватар"],
+  },
+  health: {
+    label: "Здоровье",
+    purpose: "Подробная расшифровка Health Factor, компонентов, весов, blockers, warnings и формул.",
+    visibleBlocks: ["Health Factor", "Компоненты здоровья", "Формулы", "Blockers", "Warnings"],
+  },
+  gate: {
+    label: "Проверка",
+    purpose: "Pre-trade risk gate: проверка идеи, лимитов, резерва, профиля и дисциплины до действия.",
+    visibleBlocks: ["Проверка сделки", "Risk gate", "Журнал решения", "Блокировки"],
+  },
+  dna: {
+    label: "ДНК",
+    purpose: "Портрет инвестора: что подходит человеку, его профиль риска, горизонт и ограничения.",
+    visibleBlocks: ["Портрет инвестора", "Ответы ДНК", "Профиль риска", "Рекомендации"],
+  },
+  education: {
+    label: "Обучение",
+    purpose: "Учебная структура Investor Cabinet и темы для развития инвестиционной дисциплины.",
+    visibleBlocks: ["Учебные главы", "Темы", "Материалы"],
+  },
+};
+
+const DCA_MODE_LABELS: Record<string, string> = {
+  observation: "Наблюдаем",
+  cautious: "Покупка на 1%",
+  strong: "Покупка на 1.5%",
+  aggressive: "Покупка на 2%",
+};
+
+const DCA_STATE_LABELS: Record<string, string> = {
+  active: "активная зона",
+  passive: "ожидание",
+  cooldown: "пауза после покупки",
+};
 
 function getDesktopViewport() {
   if (window.innerWidth <= MOBILE_BREAKPOINT) {
@@ -123,6 +195,243 @@ function DataStatusBadge({ dataStatus }: { dataStatus: NonNullable<Props["dataSt
       </button>
     </div>
   );
+}
+
+function buildAssistantPageContext({
+  page,
+  data,
+  portfolio,
+  health,
+  healthInput,
+  behavior,
+  decisionJournal,
+  alerts,
+  marketPsychology,
+}: {
+  page: V2Page;
+  data: V2LabData;
+  portfolio: V2LabData["portfolio"];
+  health: PortfolioHealth;
+  healthInput: V2LabData["healthInput"];
+  behavior: ReturnType<typeof evaluateBehavior>;
+  decisionJournal: DecisionJournalEntry[];
+  alerts: Alert[];
+  marketPsychology: ReturnType<typeof getMarketPsychology>;
+}): AssistantPageContext {
+  const meta = PAGE_META[page];
+  const baseFacts = {
+    accountStrategy: data.strategy.id,
+    healthFactor: Math.round(health.healthFactor),
+    healthState: health.riskLevel,
+    portfolioValue: portfolio.totalPortfolioValue,
+    invested: portfolio.totalInvested,
+    pnlUsd: portfolio.pnlUsd,
+    pnlPct: portfolio.pnlPct,
+    reserveUsd: portfolio.stableReserve,
+    reserveShare: portfolio.reserveShare,
+    positionsCount: portfolio.positionsCount,
+  };
+  const topPositions = data.positions
+    .filter((position) => position.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 8)
+    .map((position) => ({
+      asset: position.asset,
+      category: position.category,
+      value: position.value,
+      share: position.share,
+      pnl: position.pnl,
+      pnlPct: position.pnlPct,
+    }));
+  const portfolioPagePositions = data.positions
+    .filter((position) => position.category !== "Свободные деньги" && position.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 12)
+    .map((position) => ({
+      asset: position.asset,
+      category: position.category,
+      value: position.value,
+      invested: position.invested,
+      share: position.share,
+      pnl: position.pnl,
+      pnlPct: position.pnlPct,
+    }));
+  const portfolioPageCash = data.positions
+    .filter((position) => position.category === "Свободные деньги" && position.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .map((position) => ({
+      asset: position.asset,
+      value: position.value,
+      share: position.share,
+      role: position.asset.includes("HL")
+        ? "свободная HL-маржа для фьючерсов; не считать обычным спот-активом"
+        : "резерв/стейбл для спота или общего резерва; не считать инвестиционным активом",
+    }));
+  const capitalBuckets = buildCapitalBuckets({
+    totalPortfolioValue: portfolio.totalPortfolioValue,
+    investedCapital: portfolio.totalInvested,
+    stableReserve: portfolio.stableReserve,
+    allocation: data.allocation,
+    strategyRules: data.fearGreedStrategy.rules,
+    futuresDeployableUsd: portfolio.futuresDeployable,
+    futuresUsedUsd: healthInput.futuresShare * portfolio.totalInvested,
+  });
+  const spotDoborBudgetUsd = Math.max(0, Math.min(capitalBuckets.spotBudgetUsd, portfolio.spotDeployable));
+  const deployableCapitalBreakdown = {
+    source: "V2DeployableCapital visible formula",
+    meaning: "Спот в ручном доборе считается отдельно от ДСА и отдельно от свободной HL-маржи.",
+    freeCashUsd: capitalBuckets.freeCashUsd,
+    lockedReserveUsd: capitalBuckets.lockedReserveUsd,
+    workCashUsd: capitalBuckets.workCashUsd,
+    dcaAveragingBudgetUsd: capitalBuckets.averagingBudgetUsd,
+    spotDeployableCashUsd: portfolio.spotDeployable,
+    spotDoborBudgetUsd,
+    futuresFreeMarginUsd: portfolio.futuresDeployable,
+    rule: "Для вопроса 'сколько можно в спот добор сейчас' используй spotDoborBudgetUsd, а не spotBudgetUsd.",
+  };
+  const dcaStrategyFacts = {
+    source: "V2DCAStrategy / fearGreedStrategy",
+    name: "Стратегия по индексу страха и жадности",
+    currentIndex: data.fearGreedStrategy.currentIndex,
+    currentZone: DCA_MODE_LABELS[data.fearGreedStrategy.currentMode] ?? data.fearGreedStrategy.currentMode,
+    principle: "Покупаем только в зоне страха, раз в неделю, фиксированным процентом от вложенного капитала. Никакой жадной торговли.",
+    rules: data.fearGreedStrategy.rules.map((rule) => ({
+      zone: DCA_MODE_LABELS[rule.mode] ?? rule.label,
+      indexRange: rule.range,
+      buyPercentOfInvestedCapital: rule.buyPct,
+      buyPercentLabel: `${Number((rule.buyPct * 100).toFixed(2))}%`,
+      buyAmountUsd: rule.buyAmount,
+      cooldownDays: rule.cooldownDays,
+      isCurrent: rule.isCurrent,
+      state: DCA_STATE_LABELS[rule.status] ?? "",
+    })),
+    wordingRule: "Объясняй DCA по-русски: индекс 20-29 = покупка на 1%, 15-19 = 1.5%, 0-14 = 2%, 30-100 = наблюдаем. Не используй слова cautious, balanced, risk-gate, blockers.",
+  };
+  const factsByPage: Partial<Record<V2Page, Record<string, unknown>>> = {
+    overview: {
+      ...baseFacts,
+      deployableCapitalBreakdown,
+      dcaStrategy: dcaStrategyFacts,
+      allocation: data.allocation,
+      recommendations: alerts.slice(0, 5).map((alert) => ({
+        level: alert.level,
+        title: alert.title,
+        detail: alert.detail,
+        action: alert.action,
+      })),
+      fearGreed: {
+        currentIndex: data.fearGreedStrategy.currentIndex,
+        mode: data.fearGreedStrategy.currentMode,
+        marketMood: data.market.marketMood,
+      },
+    },
+    portfolio: {
+      ...baseFacts,
+      visibleInvestmentPositions: portfolioPagePositions,
+      cashAndReserveRows: portfolioPageCash,
+      visiblePositionsCount: portfolioPagePositions.length,
+      cashRowsAreNotInvestmentAssets: true,
+      realizedPnlUsd: portfolio.realizedPnlUsd,
+      realizedPnlPct: portfolio.realizedPnlPct,
+      answerRule: "Если пользователь спрашивает 'какие активы в портфеле', сначала перечисляй visibleInvestmentPositions. Стейблы из cashAndReserveRows называй резервом/кэшем отдельно, а не активами портфеля.",
+    },
+    health: {
+      ...baseFacts,
+      components: health.components.map((component) => ({
+        key: component.v2Key ?? component.key,
+        label: component.label,
+        score: component.score,
+        weight: component.weight,
+        desc: component.desc,
+        blockers: component.meta?.reserveBlockers
+          ?? component.meta?.survivalBlockers
+          ?? component.meta?.riskControlBlockers
+          ?? component.meta?.concentrationBlockers
+          ?? component.meta?.diversificationBlockers
+          ?? component.meta?.disciplineBlockers
+          ?? [],
+        warnings: component.meta?.reserveWarnings
+          ?? component.meta?.survivalWarnings
+          ?? component.meta?.riskControlWarnings
+          ?? component.meta?.concentrationWarnings
+          ?? component.meta?.diversificationWarnings
+          ?? component.meta?.disciplineWarnings
+          ?? [],
+      })),
+      healthInput,
+    },
+    risk: {
+      ...baseFacts,
+      risk: data.risk,
+      allocation: data.allocation,
+      healthInput,
+      alerts: alerts.slice(0, 8).map((alert) => ({
+        level: alert.level,
+        title: alert.title,
+        detail: alert.detail,
+        action: alert.action,
+      })),
+    },
+    reports: {
+      ...baseFacts,
+      historySummary: {
+        points: data.history.length,
+        latest: data.history[0],
+        recent: data.history.slice(0, 8),
+      },
+      behavior: {
+        score: behavior.score,
+        status: behavior.status,
+        stats: behavior.stats,
+        blockers: behavior.blockers,
+        warnings: behavior.warnings,
+        signals: behavior.signals.slice(0, 4),
+      },
+      decisionJournal: decisionJournal.slice(0, 8),
+      transactions: data.transactions.slice(0, 10),
+      realizedPnlUsd: portfolio.realizedPnlUsd,
+    },
+    scenarios: {
+      positions: topPositions,
+      playbook: data.playbook.slice(0, 8),
+      scenarios: data.scenarios.slice(0, 8),
+      decisions: data.decisions.slice(0, 8),
+    },
+    signals: {
+      alerts: alerts.slice(0, 10),
+      interestSignals: data.signals?.interestList?.slice(0, 12) ?? [],
+      marketPsychology,
+      fearGreed: data.fearGreedStrategy,
+    },
+    gate: {
+      ...baseFacts,
+      healthInput,
+      strategy: data.strategy,
+      profile: data.profile,
+      behaviorBlockers: behavior.blockers,
+      behaviorWarnings: behavior.warnings,
+    },
+    dna: {
+      profile: data.profile,
+      dna: data.dna,
+      strategy: data.strategy,
+    },
+    education: {
+      sections: PAGE_META.education.visibleBlocks,
+      note: "Учебная вкладка пока является структурой для будущего наполнения.",
+    },
+    settings: {
+      note: "Настройки профиля являются локальными UI-настройками и не меняют портфельные данные.",
+    },
+  };
+
+  return {
+    id: page,
+    label: meta.label,
+    purpose: meta.purpose,
+    visibleBlocks: meta.visibleBlocks,
+    facts: factsByPage[page] ?? baseFacts,
+  };
 }
 
 export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, staking, cosmosStaking, dataStatus }: Props) {
@@ -305,6 +614,20 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
   );
 
   const criticalCount = alerts.filter((alert) => alert.level === "critical").length;
+  const assistantPageContext = useMemo(
+    () => buildAssistantPageContext({
+      page,
+      data,
+      portfolio: behaviorPortfolio,
+      health: behaviorHealth,
+      healthInput: behaviorHealthInput,
+      behavior,
+      decisionJournal,
+      alerts,
+      marketPsychology,
+    }),
+    [page, data, behaviorPortfolio, behaviorHealth, behaviorHealthInput, behavior, decisionJournal, alerts, marketPsychology],
+  );
 
   function signalFromAlert(alert: Alert) {
     const signals = data.signals?.interestList ?? [];
@@ -623,6 +946,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
         accountId={data.strategy.id}
         disabled={locked}
         uiContext={{
+          currentPage: assistantPageContext,
           portfolio: behaviorPortfolio,
           health: behaviorHealth,
           healthInput: behaviorHealthInput,

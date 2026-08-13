@@ -66,6 +66,8 @@ function IC_HL_syncLivePrices_(ss, primaryMids, dexMids) {
   IC_HL_setPriceSource_(sheet, 'ATOM', 'ATOM', 'Hyperliquid', 'Live Hyperliquid ATOM mid');
   IC_HL_ensurePriceRow_(sheet, 'BNB');
   IC_HL_setPriceSource_(sheet, 'BNB', 'BNB', 'Hyperliquid', 'Live Hyperliquid BNB mid (нативный BNB Chain)');
+  IC_HL_ensurePriceRow_(sheet, 'APEX');
+  IC_HL_setPriceSource_(sheet, 'APEX', 'APEX', 'Hyperliquid', 'Live Hyperliquid APEX mid (Arbitrum spot position)');
   IC_HL_setPriceSource_(sheet, 'GOLD', 'xyz:GOLD', 'Hyperliquid xyz', 'Live Hyperliquid xyz:GOLD mid');
   IC_HL_ensurePriceRow_(sheet, 'SPCXB');
   IC_HL_setPriceSource_(sheet, 'SPCXB', 'xyz:SPCX', 'Hyperliquid xyz', 'SpaceX tokenized (BNB Chain), live Hyperliquid xyz:SPCX mid');

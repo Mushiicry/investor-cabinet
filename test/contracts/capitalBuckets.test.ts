@@ -45,6 +45,30 @@ describe("карманы капитала", () => {
     expect(buckets.plannedCryptoBlockUsd).toBe(400);
   });
 
+  it("разделяет спот-добор и ДСА: строка спота не должна включать ДСА или HL-маржу", () => {
+    const buckets = buildCapitalBuckets({
+      totalPortfolioValue: 645.7,
+      investedCapital: 680.2,
+      stableReserve: 471.34,
+      futuresDeployableUsd: 71.42,
+      futuresUsedUsd: 91.69,
+      allocation: [
+        { name: "Крипта", value: 144.57 },
+        { name: "Фьючерсы", value: 18.67 },
+        { name: "Акции", value: 11.08 },
+        { name: "Свободные деньги", value: 471.34 },
+      ],
+      strategyRules: [{ buyPct: 0.01, buyAmount: 30.6, status: "active" }],
+    });
+    const spotDeployableCash = 206.21;
+    const spotDoborBudget = Math.max(0, Math.min(buckets.spotBudgetUsd, spotDeployableCash));
+
+    expect(buckets.workCashUsd).toBeCloseTo(267.28, 2);
+    expect(buckets.averagingBudgetUsd).toBeCloseTo(30.6, 2);
+    expect(buckets.spotBudgetUsd).toBeCloseTo(236.68, 2);
+    expect(spotDoborBudget).toBeCloseTo(206.21, 2);
+  });
+
   it("не закладывает карман фьючерсов выше переданной суммы", () => {
     const buckets = buildCapitalBuckets({
       totalPortfolioValue: 1000,
