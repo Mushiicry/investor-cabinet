@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { saveInvestorDNAAudit } from "../../api/investorDNA";
 import dnaPriorityOrb from "../../assets/dna/dna-priority-orb.png";
 import dnaRiskReadiness from "../../assets/dna/dna-risk-readiness.webp";
+import dnaRiskReadinessWife from "../../assets/dna/dna-risk-readiness-wife.webp";
 import { INVESTOR_API_URL, WIFE_API_URL } from "../../config/constants";
 import type { InvestorDNA, InvestorDNAQuestion, InvestorDNARecommendation } from "../lib/investorDNA";
 
@@ -100,12 +101,13 @@ function answerOptionsFor(question: InvestorDNAQuestion): string[] {
   return defaultAnswerOptions;
 }
 
-function DnaScoreRing({ value }: { value: number }) {
+function DnaScoreRing({ value, accountId }: { value: number; accountId: InvestorDNA["accountId"] }) {
   const clampedValue = Math.max(0, Math.min(100, value));
+  const readinessImage = accountId === "wife" ? dnaRiskReadinessWife : dnaRiskReadiness;
 
   return (
     <div className="v2-dna-risk-readiness" aria-label={`Готовность к риску ${clampedValue} из 100`}>
-      <img src={dnaRiskReadiness} alt="" />
+      <img src={readinessImage} alt="" />
     </div>
   );
 }
@@ -625,7 +627,7 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
         </div>
         <div className="v2-dna-hero-summary">
           <div className="v2-dna-score-widget">
-            <DnaScoreRing value={dna.riskWillingness.value} />
+            <DnaScoreRing value={dna.riskWillingness.value} accountId={dna.accountId} />
             <div className="v2-dna-score-copy">
               <div className="v2-dna-hero-metric-label">{dna.riskWillingness.label}</div>
               <div className="v2-dna-readiness-score" aria-label={`Оценка ${dna.riskWillingness.value} из 100`}>
