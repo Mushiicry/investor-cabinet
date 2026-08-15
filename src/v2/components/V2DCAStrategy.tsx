@@ -90,13 +90,15 @@ function indexLabel(v: number) {
 
 function statusKind(row: FearGreedStrategyRule) {
   if (row.cooldownRemainingHours > 0) return "cooldown";
-  if (row.isAvailable) return "available";
+  if (row.isCurrent && row.isAvailable) return "available";
+  if (row.buyPct > 0) return "locked";
   return "passive";
 }
 
 function statusLabel(row: FearGreedStrategyRule) {
   if (row.cooldownRemainingHours > 0) return formatCooldown(row.cooldownRemainingHours);
-  if (row.isAvailable) return "Доступно";
+  if (row.isCurrent && row.isAvailable) return "Доступно";
+  if (row.buyPct > 0) return "Недоступно";
   return "—";
 }
 
@@ -238,6 +240,7 @@ export function V2DCAStrategy({ portfolio, strategy, onNavigate }: Props) {
               row.isCurrent ? "is-current" : "",
               kind === "available" ? "is-available" : "",
               kind === "cooldown" ? "is-cooldown" : "",
+              kind === "locked" ? "is-locked" : "",
             ].filter(Boolean).join(" ")}>
 
               <span className="v2-dca-zone-bar" style={{ background: color }} />
@@ -267,6 +270,18 @@ export function V2DCAStrategy({ portfolio, strategy, onNavigate }: Props) {
                     <svg className="v2-cd-spin" viewBox="0 0 12 12" fill="none">
                       <circle cx="6" cy="6" r="4.2" stroke="currentColor" strokeWidth="1.6"
                         strokeDasharray="16 10" strokeLinecap="round" />
+                    </svg>
+                    {statusLabel(row)}
+                  </span>
+                ) : kind === "locked" ? (
+                  <span
+                    className="v2-dca-zone-status is-locked"
+                    aria-disabled="true"
+                    title="Блок: индекс еще не вошел в диапазон этой покупки"
+                  >
+                    <svg className="v2-dca-lock-icon" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                      <rect x="3" y="6" width="8" height="6" rx="1.4" stroke="currentColor" strokeWidth="1.4" />
+                      <path d="M4.6 6V4.5A2.4 2.4 0 0 1 7 2.1v0a2.4 2.4 0 0 1 2.4 2.4V6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                     </svg>
                     {statusLabel(row)}
                   </span>

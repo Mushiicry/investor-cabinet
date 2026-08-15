@@ -5,4 +5,4 @@ export type AssistantKnowledgePack = {
   text: string
 }
 
-export function selectAssistantKnowledge(question: string): AssistantKnowledgePack
+export function selectAssistantKnowledge(question: string, options?: { excludeSections?: string[] }): AssistantKnowledgePack

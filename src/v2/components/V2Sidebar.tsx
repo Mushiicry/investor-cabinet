@@ -236,8 +236,14 @@ export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, 
           }
         </div>
         <div>
-          <div className="v2-brand-title">Mushii Invest</div>
-          <div className="v2-brand-subtitle">РИСК ПЕРВЫЙ / ДОХОД ВТОРОЙ</div>
+          <div className="v2-brand-title">
+            <span>MUSHII</span>
+            <span>INVEST</span>
+          </div>
+          <div className="v2-brand-subtitle">
+            <span>RISK FIRST/</span>
+            <span>PNL SECOND</span>
+          </div>
         </div>
       </div>
 

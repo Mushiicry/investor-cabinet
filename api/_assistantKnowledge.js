@@ -73,10 +73,12 @@ function scoreSections(question) {
     .map((item) => item.section);
 }
 
-export function selectAssistantKnowledge(question) {
+export function selectAssistantKnowledge(question, options = {}) {
   const markdown = readKnowledgeFile();
   const sections = parseSections(markdown);
-  const selectedNames = [...new Set([...ALWAYS_SECTIONS, ...scoreSections(question)])];
+  const excludeSections = new Set(Array.isArray(options.excludeSections) ? options.excludeSections : []);
+  const selectedNames = [...new Set([...ALWAYS_SECTIONS, ...scoreSections(question)])]
+    .filter((name) => !excludeSections.has(name));
   const selectedSections = selectedNames
     .map((name) => sections.get(name))
     .filter(Boolean);

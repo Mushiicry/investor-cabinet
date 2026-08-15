@@ -133,6 +133,122 @@ const clientContext = {
   allocation: [{ name: "Свободные деньги", value: 468, share: 0.731 }],
 };
 
+const overviewClientContext = {
+  ...clientContext,
+  currentPage: {
+    id: "overview",
+    label: "Обзор",
+    purpose: "Главный экран состояния портфеля: капитал, резерв, здоровье, распределение, DCA и ключевые рекомендации.",
+    visibleBlocks: ["Верхние метрики", "Здоровье портфеля", "Лестница капитала", "Распределение средств", "Стратегия DCA", "Рекомендации"],
+    facts: {
+      visibleHealthComponents: [
+        {
+          key: "reserve",
+          label: "Резерв",
+          score: 79,
+          weight: 0.2,
+          desc: "Резерв выше целевого коридора",
+          blockers: [],
+          warnings: ["Часть капитала простаивает"],
+        },
+        {
+          key: "riskControl",
+          label: "Контроль риска",
+          score: 60,
+          weight: 0.15,
+          desc: "Превышен лимит 10% активной торговли",
+          blockers: ["Превышен лимит 10% активной торговли"],
+          warnings: [],
+        },
+      ],
+      recommendations: [
+        {
+          level: 6,
+          title: "Не добавлять новый риск",
+          detail: "превышен лимит 10% активной торговли",
+          action: "Сначала устранить блокировку контроля риска",
+        },
+      ],
+    },
+  },
+};
+
+const portfolioStakingClientContext = {
+  ...clientContext,
+  currentPage: {
+    id: "portfolio",
+    label: "Портфель",
+    purpose: "Текущие позиции, доли, PnL, статусы активов и соответствие лимитам стратегии.",
+    visibleBlocks: ["Позиции", "Активы", "PnL", "Стейкинг"],
+    facts: {
+      visibleInvestmentPositions: [
+        {
+          asset: "TON",
+          category: "Крипта",
+          value: 81.8,
+          share: 0.1268,
+          staking: {
+            isStaked: true,
+            label: "в стейке",
+            source: "Tonstakers / tsTON",
+            stakedAsset: "TON",
+            stakedValueUsd: 81.8,
+            dailyIncomeUsd: 0.01,
+          },
+        },
+        {
+          asset: "ATOM",
+          category: "Крипта",
+          value: 30.5,
+          share: 0.047,
+          staking: {
+            isStaked: true,
+            label: "в стейке",
+            source: "Cosmos Hub / Keplr",
+            stakedAsset: "ATOM",
+            stakedValueUsd: 30.5,
+            dailyIncomeUsd: 0.01,
+          },
+        },
+        {
+          asset: "BNB",
+          category: "Крипта",
+          value: 13.2,
+          share: 0.0206,
+          staking: { isStaked: false },
+        },
+      ],
+    },
+  },
+};
+
+const healthPageClientContext = {
+  ...clientContext,
+  currentPage: {
+    id: "health",
+    label: "Здоровье",
+    purpose: "Подробная расшифровка здоровья портфеля: общий показатель, компоненты, веса, блокировки, предупреждения и правила стратегии.",
+    visibleBlocks: ["Показатель здоровья", "Компоненты здоровья", "Формулы", "Блокировки", "Предупреждения"],
+    facts: {
+      pageGuide: {
+        source: "V2HealthPage visible structure",
+        purpose: "Вкладка «Здоровье» объясняет, почему портфель находится в текущем состоянии, какие правила стратегии действуют и что нужно проверить перед любым новым риском.",
+        answerRule: "Если пользователь спрашивает про вкладку/страницу «Здоровье», сначала объясняй назначение страницы и видимые разделы.",
+        visibleSections: [
+          { title: "Оценка здоровья инвестора", meaning: "общий показатель здоровья портфеля и текущий диагноз" },
+          { title: "Инвестиционная стратегия", meaning: "базовая структура 60/10/10/10/10, лимиты классов и лимиты внутри крипто-блока" },
+          { title: "ДНК инвестора", meaning: "что подходит пользователю как типу инвестора, отдельно от стратегии портфеля" },
+          { title: "Симулятор здоровья", meaning: "гипотетическая проверка сценария, сделки не выполняет" },
+        ],
+      },
+      visibleHealthComponents: [
+        { key: "reserve", label: "Резерв", score: 79, weight: 0.2, desc: "Резерв выше целевого коридора" },
+        { key: "riskControl", label: "Контроль риска", score: 60, weight: 0.15, desc: "Превышен лимит 10% активной торговли" },
+      ],
+    },
+  },
+};
+
 describe("assistant serverless endpoint", () => {
   afterEach(() => {
     process.env = { ...originalEnv };
@@ -264,5 +380,207 @@ describe("assistant serverless endpoint", () => {
     expect(serializedOpenAiBody).not.toContain("setMaxLevel");
     expect(serializedOpenAiBody).not.toContain("saveInvestorDNAAnswers");
     expect(openAiBody.tools).toBeUndefined();
+  });
+
+  it("focuses visible overview recommendation questions on visible cards only", async () => {
+    setEnv();
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, init });
+
+      if (url === "https://apps-script.example/main?accountId=main") {
+        return Response.json({
+          success: true,
+          overview: { portfolioValue: 1000, invested: 900, health: 67 },
+          risk: {},
+          portfolio: [
+            { asset: "TON", category: "Крипта", currentValue: 120, share: 0.12 },
+          ],
+          decisions: [],
+          scenarios: [{ asset: "ATOM", actionZone: "Точка сработала" }],
+          signals: { interest: { action: "Проверить ценовую точку" } },
+        });
+      }
+
+      if (url === "https://api.openai.com/v1/responses") {
+        return Response.json({ id: "resp_test", output_text: "Это видимые risk-first рекомендации." });
+      }
+
+      return Response.json({}, { status: 404 });
+    }) as typeof fetch;
+
+    const res = mockRes();
+    await assistantHandler(mockReq({
+      question: "что означают рекомендации справа от радара здоровье портфеля?",
+      accountId: "main",
+      clientContext: overviewClientContext,
+    }), res);
+
+    expect(res.statusCode).toBe(200);
+    const openAiBody = JSON.parse(String(calls[1].init?.body ?? "{}"));
+    const inputText = openAiBody.input[0].content[0].text as string;
+
+    expect(inputText).toContain('"type": "visible_overview_recommendations"');
+    expect(inputText).toContain("Отвечай только по uiSnapshot.currentPage.facts.recommendations");
+    expect(inputText).toContain("Не подтягивай ценовые точки");
+    expect(inputText).toContain("Не объясняй 'точка сработала' как ценовой сигнал");
+    expect(inputText).toContain("title = что сделать/не делать");
+    expect(inputText).toContain("Это не приказ и не автоматическое действие");
+  });
+
+  it("focuses staking questions on visible staked positions", async () => {
+    setEnv();
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, init });
+
+      if (url === "https://apps-script.example/main?accountId=main") {
+        return Response.json({
+          success: true,
+          overview: { portfolioValue: 1000, invested: 900, health: 67 },
+          risk: {},
+          portfolio: [
+            { asset: "TON", category: "Крипта", currentValue: 120, share: 0.12, status: "CLOSED" },
+            { asset: "ATOM", category: "Крипта", currentValue: 40, share: 0.04, status: "EXITED" },
+            { asset: "BNB", category: "Крипта", currentValue: 20, share: 0.02, status: "HOLD" },
+          ],
+          decisions: [],
+          scenarios: [],
+          signals: {},
+        });
+      }
+
+      if (url === "https://api.openai.com/v1/responses") {
+        return Response.json({ id: "resp_test", output_text: "В стейкинге вижу TON и ATOM." });
+      }
+
+      return Response.json({}, { status: 404 });
+    }) as typeof fetch;
+
+    const res = mockRes();
+    await assistantHandler(mockReq({
+      question: "какие монеты я держу в стейкинге?",
+      accountId: "main",
+      clientContext: portfolioStakingClientContext,
+    }), res);
+
+    expect(res.statusCode).toBe(200);
+    const openAiBody = JSON.parse(String(calls[1].init?.body ?? "{}"));
+    const inputText = openAiBody.input[0].content[0].text as string;
+
+    expect(inputText).toContain('"type": "visible_portfolio_staking"');
+    expect(inputText).toContain("visibleInvestmentPositions[].staking");
+    expect(inputText).toContain('"isStaked": true');
+    expect(inputText).toContain('"asset": "TON"');
+    expect(inputText).toContain('"asset": "ATOM"');
+    expect(inputText).toContain("Не отвечай, что данных нет");
+    expect(inputText).toContain("не писать, что данных нет");
+    expect(inputText).toContain("Не приплетай статусы позиций");
+    expect(inputText).not.toContain('"status": "CLOSED"');
+    expect(inputText).not.toContain('"status": "EXITED"');
+  });
+
+  it("focuses detailed health questions on visible health components", async () => {
+    setEnv();
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, init });
+
+      if (url === "https://apps-script.example/main?accountId=main") {
+        return Response.json({
+          success: true,
+          overview: { portfolioValue: 1000, invested: 900, health: 67 },
+          risk: {},
+          portfolio: [],
+          decisions: [{ asset: "TON", nextAction: "старый план" }],
+          scenarios: [{ asset: "ATOM", actionZone: "Точка сработала" }],
+          signals: { interest: { action: "Проверить ценовую точку" } },
+        });
+      }
+
+      if (url === "https://api.openai.com/v1/responses") {
+        return Response.json({ id: "resp_test", output_text: "Разбор здоровья построен по видимым компонентам." });
+      }
+
+      return Response.json({}, { status: 404 });
+    }) as typeof fetch;
+
+    const res = mockRes();
+    await assistantHandler(mockReq({
+      question: "Дай подробный разбор здоровья портфеля по всем компонентам",
+      accountId: "main",
+      clientContext: overviewClientContext,
+    }), res);
+
+    expect(res.statusCode).toBe(200);
+    const openAiBody = JSON.parse(String(calls[1].init?.body ?? "{}"));
+    const inputText = openAiBody.input[0].content[0].text as string;
+
+    expect(inputText).toContain('"type": "detailed_health_components"');
+    expect(inputText).toContain("visibleHealthComponents");
+    expect(inputText).toContain('"label": "Резерв"');
+    expect(inputText).toContain('"score": 79');
+    expect(inputText).toContain('"label": "Контроль риска"');
+    expect(inputText).toContain('"score": 60');
+    expect(inputText).toContain("Не пересчитывай баллы");
+    expect(inputText).toContain("видимые компоненты здоровья");
+    expect(inputText).toContain("Формулы — только как переданная расшифровка");
+    expect(inputText).not.toContain("Проверить ценовую точку");
+    expect(inputText).not.toContain("Точка сработала");
+    expect(inputText).not.toContain("старый план");
+  });
+
+  it("explains the Health tab as a page when the question asks about the sidebar tab", async () => {
+    setEnv();
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, init });
+
+      if (url === "https://apps-script.example/main?accountId=main") {
+        return Response.json({
+          success: true,
+          overview: { portfolioValue: 1000, invested: 900, health: 67 },
+          risk: {},
+          portfolio: [],
+          decisions: [{ asset: "TON", nextAction: "старый план" }],
+          scenarios: [{ asset: "ATOM", actionZone: "Точка сработала" }],
+          signals: { interest: { action: "Проверить ценовую точку" } },
+        });
+      }
+
+      if (url === "https://api.openai.com/v1/responses") {
+        return Response.json({ id: "resp_test", output_text: "Вкладка Здоровье объясняет состояние портфеля и правила риска." });
+      }
+
+      return Response.json({}, { status: 404 });
+    }) as typeof fetch;
+
+    const res = mockRes();
+    await assistantHandler(mockReq({
+      question: "что расскажешь по страницу здоровье 3 вкладка в сайдбаре?",
+      accountId: "main",
+      clientContext: healthPageClientContext,
+    }), res);
+
+    expect(res.statusCode).toBe(200);
+    const openAiBody = JSON.parse(String(calls[1].init?.body ?? "{}"));
+    const inputText = openAiBody.input[0].content[0].text as string;
+
+    expect(inputText).toContain('"type": "health_page_overview"');
+    expect(inputText).toContain("Вопрос про назначение вкладки/страницы Здоровье");
+    expect(inputText).toContain('"pageGuide"');
+    expect(inputText).toContain("Инвестиционная стратегия");
+    expect(inputText).toContain("ДНК инвестора");
+    expect(inputText).toContain("Симулятор здоровья");
+    expect(inputText).toContain("Не делай подробный расчет Health Factor");
+    expect(inputText).toContain("Не уходи в подробный расчет всех компонентов");
+    expect(inputText).not.toContain('"Health Formula"');
+    expect(inputText).not.toContain("Проверить ценовую точку");
+    expect(inputText).not.toContain("Точка сработала");
+    expect(inputText).not.toContain("старый план");
   });
 });

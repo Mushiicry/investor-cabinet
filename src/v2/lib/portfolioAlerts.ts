@@ -53,6 +53,11 @@ export type AlertContext = {
 };
 
 const toPercent = (share: number) => share * 100;
+const fmtAlertUsd = (value: number) =>
+  `$${value.toLocaleString("en-US", {
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
 
 /**
  * Единый источник тревог портфеля: и страница «Сигналы», и панель уведомлений
@@ -76,7 +81,9 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
   const reservePct = reserveBaseUsd > 0 ? (portfolio.stableReserve / reserveBaseUsd) * 100 : 0;
   const reserveFloorUsd = reserveBaseUsd * strategy.reserveFloorShare;
   const reserveTargetUsd = reserveBaseUsd * strategy.reserveTargetShare;
+  const reserveBandMaxUsd = reserveBaseUsd * strategy.reserveBandMaxShare;
   const reserveTargetPct = toPercent(strategy.reserveTargetShare);
+  const reserveBandMaxPct = toPercent(strategy.reserveBandMaxShare);
   if (portfolio.stableReserve < reserveFloorUsd) {
     alerts.push({
       id: "reserve-critical",
@@ -91,6 +98,15 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
       level: "warning",
       title: "Резерв низкий",
       detail: `${reservePct.toFixed(0)}% вложенного капитала · цель ${reserveTargetPct.toFixed(0)}%`,
+    });
+  } else if (reserveBaseUsd > 0 && portfolio.stableReserve / reserveBaseUsd > strategy.reserveBandMaxShare) {
+    alerts.push({
+      id: "reserve-idle",
+      level: "warning",
+      title: `Резерв выше ${reserveBandMaxPct.toFixed(0)}%`,
+      detail: `${fmtAlertUsd(portfolio.stableReserve - reserveBandMaxUsd)} сверх ${fmtAlertUsd(reserveBandMaxUsd)} простаивает`,
+      action: "Открыть разбор здоровья",
+      priority: 12,
     });
   }
 

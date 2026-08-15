@@ -532,21 +532,30 @@
   border-bottom: 1px solid rgba(86,196,240,0.10);
 }
 
+.v2-dca-title-block {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .v2-dca-kicker {
   display: flex;
+  justify-content: center;
   align-items: baseline;
   gap: 5px;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  color: rgba(86,196,240,0.65);
-  margin-bottom: 5px;
+  width: 100%;
+  text-align: center;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(140,190,240,0.72);
+  margin-bottom: 10px;
 }
 .v2-dca-kicker .v2-dca-abbr-label {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  color: #56c4f0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(140,190,240,0.82);
   border-bottom-color: rgba(86,196,240,0.35);
 }
 
@@ -581,6 +590,7 @@
   align-items: flex-end;
   flex-shrink: 0;
   gap: 2px;
+  padding-top: 62px;
 }
 
 /* База шкалы рядом с числом: «26» само по себе не отвечает «из чего». */
@@ -609,7 +619,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 5px;
-  margin-top: 3px;
+  margin-top: 22px;
 }
 
 .v2-dca-index-label {
@@ -650,6 +660,7 @@
 .v2-dca-zone.is-current.mode-aggressive { border-color: rgba(255,93,108,0.22); background: rgba(255,93,108,0.06); }
 
 .v2-dca-zone.is-cooldown { opacity: 0.92; }
+.v2-dca-zone.is-locked { opacity: 0.88; }
 
 /* левый акцентный бар */
 .v2-dca-zone-bar {
@@ -740,6 +751,31 @@
 }
 .v2-dca-zone-status.is-passive  { color: rgba(140,170,190,0.45); }
 .v2-dca-zone-status.is-cooldown  { background: rgba(230,179,58,0.10); color: #E6B33A; font-variant-numeric: tabular-nums; }
+.v2-dca-zone-status.is-locked {
+  color: rgba(160, 190, 210, 0.58);
+  background: rgba(120, 155, 175, 0.08);
+  border: 1px solid rgba(120, 155, 175, 0.22);
+  cursor: not-allowed;
+  user-select: none;
+  transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+.v2-dca-zone-status.is-locked:hover {
+  color: rgba(225, 238, 245, 0.82);
+  background: rgba(120, 155, 175, 0.12);
+  border-color: rgba(160, 190, 210, 0.38);
+}
+
+.v2-dca-lock-icon {
+  width: 13px;
+  height: 13px;
+  opacity: 0;
+  transform: translateX(3px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.v2-dca-zone-status.is-locked:hover .v2-dca-lock-icon {
+  opacity: 1;
+  transform: translateX(0);
+}
 
 /* "Доступно" — shimmer + pulse + кликабельная ссылка */
 @keyframes v2DcaAvailPulse {
@@ -932,9 +968,12 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 12px;
   line-height: 1.55;
-  color: rgba(195,225,245,0.82);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: rgba(215,238,250,0.86);
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
@@ -942,8 +981,8 @@
 }
 .v2-dca-abbr-card strong {
   font-size: 13px;
-  color: rgba(220,245,255,0.98);
-  font-weight: 800;
+  color: rgba(232,248,255,0.95);
+  font-weight: 600;
 }
 .v2-dca-abbr-wrap:hover .v2-dca-abbr-card,
 .v2-dca-abbr-wrap.is-open .v2-dca-abbr-card {

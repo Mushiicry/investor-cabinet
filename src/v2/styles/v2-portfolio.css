@@ -6,32 +6,201 @@
 
 .v2-port-page {
   display: grid;
-  gap: 14px;
+  gap: 18px;
   align-content: start;
+  width: 100%;
 }
 
-.v2-port-header {
-  padding: 22px 26px;
+.v2-port-shell {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 8px 24px;
+  box-sizing: border-box;
 }
 
-.v2-port-header h1 {
-  margin: 6px 0 0;
+.v2-port-hero {
+  display: grid;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.v2-port-metric-card span {
   font-family: "Black Ops One", system-ui, sans-serif;
-  font-size: 30px;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #00d9ff;
+}
+
+.v2-port-hero-title h1 {
+  margin: 0;
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 28px;
   line-height: 1.05;
   color: #eaf5ff;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.v2-port-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.v2-port-metric-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 118px;
+  padding: 16px 20px;
+  box-sizing: border-box;
+  border-radius: 14px;
+  border: 1px solid rgba(86, 196, 240, 0.16);
+  background: linear-gradient(135deg, rgba(18, 40, 78, 0.34) 0%, rgba(6, 16, 38, 0.42) 100%);
+  box-shadow: inset 0 0 26px rgba(86, 196, 240, 0.05), 0 0 24px rgba(0, 0, 0, 0.18);
+  text-align: center;
+  overflow: hidden;
+  backdrop-filter: blur(14px) saturate(125%);
+  -webkit-backdrop-filter: blur(14px) saturate(125%);
+}
+
+.v2-port-metric-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(#57d9ff, #57d9ff) left 10px top / 64px 1px no-repeat,
+    linear-gradient(#57d9ff, #57d9ff) left top 10px / 1px 52px no-repeat,
+    linear-gradient(#57d9ff, #57d9ff) right 10px top / 64px 1px no-repeat,
+    linear-gradient(#57d9ff, #57d9ff) right top 10px / 1px 52px no-repeat,
+    linear-gradient(#57d9ff, #57d9ff) left 10px bottom / 64px 1px no-repeat,
+    linear-gradient(#57d9ff, #57d9ff) left bottom 10px / 1px 52px no-repeat,
+    linear-gradient(#57d9ff, #57d9ff) right 10px bottom / 64px 1px no-repeat,
+    linear-gradient(#57d9ff, #57d9ff) right bottom 10px / 1px 52px no-repeat;
+  opacity: 0.54;
+  filter: drop-shadow(0 0 8px rgba(86, 196, 240, 0.35));
+}
+
+.v2-port-metric-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 0%, rgba(85, 243, 255, 0.72) 50%, transparent 100%);
+  box-shadow: 0 0 12px rgba(85, 243, 255, 0.22);
+  opacity: 0.34;
+}
+
+.v2-port-metric-card > div {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.v2-port-metric-card strong {
+  display: block;
+  margin-top: 11px;
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 900;
+  color: #f4f8ff;
+  font-family: "Libre Baskerville", Georgia, serif !important;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.v2-port-metric-card strong.is-up {
+  color: #5af08d;
+}
+
+.v2-port-metric-card strong.is-down {
+  color: #ff5d6c;
+}
+
+.v2-port-metric-card em {
+  display: block;
+  margin-top: 9px;
+  font-family: "Libre Baskerville", Georgia, serif !important;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 800;
+  color: rgba(170, 190, 210, 0.76);
+  text-align: center;
+}
+
+.v2-port-metric-orb {
+  position: relative;
+  z-index: 1;
+  width: 62px;
+  height: 62px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(242, 250, 255, 0.08) 0 22%, transparent 23%),
+    radial-gradient(circle at 50% 50%, rgba(5, 18, 36, 0.96) 0 48%, transparent 49%),
+    conic-gradient(from -22deg, rgba(81, 218, 255, 0.14), #4ed8ff 0deg 56deg, transparent 58deg 300deg, rgba(81, 218, 255, 0.34) 304deg 360deg);
+  box-shadow: 0 0 18px rgba(66, 200, 255, 0.22), inset 0 0 18px rgba(66, 200, 255, 0.16);
+  opacity: 0.92;
+}
+
+.v2-port-metric-orb::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(81, 218, 255, 0.28);
+  border-radius: inherit;
+}
+
+.v2-port-metric-orb::after {
+  content: "⌁";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #f3fbff;
+  font-family: var(--v2-font-display);
+  font-size: 34px;
+  font-weight: 900;
+  text-shadow: 0 0 14px rgba(81, 218, 255, 0.9);
+}
+
+.v2-port-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  align-items: start;
 }
 
 .v2-port-table {
-  padding: 8px 12px;
-  max-width: 1460px;
+  padding: 16px 18px;
+  max-width: none;
 }
 
-/* Убираем рамку/фон/свечение панели — таблица сливается с фоном страницы.
-   Специфичность .v2-panel.v2-port-table (0,2,0) перебивает оба .v2-panel. */
 .v2-panel.v2-port-table {
-  background: none;
-  border: none;
+  border: 0;
+  background: transparent;
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -45,25 +214,34 @@
 .v2-pline {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
-  gap: 16px;
+  gap: 14px;
   align-items: stretch;
 }
 
+.v2-port-group > .v2-pline:first-child {
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-items: center;
+  gap: 42px;
+}
+
 .v2-pline + .v2-pline {
-  margin-top: 6px;
+  margin-top: 7px;
 }
 
 /* Идентификатор-карта в начале строки — по умолчанию «зажжённая» подсветка */
 .v2-pid {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  padding: 0 14px;
-  min-height: 64px;
-  border-radius: 12px;
+  gap: 16px;
+  padding: 0 16px;
+  min-height: 66px;
+  border-radius: 14px;
   border: 1px solid rgba(86, 196, 240, 0.34);
-  background: linear-gradient(180deg, rgba(16, 32, 54, 0.6), rgba(8, 17, 30, 0.5));
+  background:
+    radial-gradient(circle at 10% 30%, rgba(86, 196, 240, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(16, 32, 54, 0.62), rgba(8, 17, 30, 0.52));
   box-shadow: 0 0 14px rgba(86, 196, 240, 0.07);
   text-align: left;
 }
@@ -102,10 +280,10 @@
 
 /* Контейнер GRAM-группы (строка + стейкинг) — спейсинг как у обычных строк */
 .v2-stake-wrap {
-  margin-top: 6px;
+  margin-top: 7px;
 }
 .v2-stake-wrap + .v2-pline {
-  margin-top: 6px;
+  margin-top: 7px;
 }
 
 .v2-pid.is-clickable:hover {
@@ -116,16 +294,22 @@
 }
 
 .v2-pid-head {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 210px;
   border: 0;
-  background: none;
-  min-height: 38px;
-  margin: 16px 0 6px;
+  background: transparent;
+  box-shadow: none;
+  min-height: 37px;
+  margin: 11px 0 7px;
+  padding: 0 12px;
 }
 
 /* Логотип: все активы в портфеле читаются как круглые знаки. */
 .v2-pid-logo {
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
 }
 
 .v2-pid-logo.crypto-logo-image,
@@ -152,15 +336,23 @@
 }
 
 .v2-pid-name {
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 900;
   color: #eaf5ff;
   min-width: 0;
 }
 
+.v2-pid-name-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+}
+
 .v2-pid-pnl {
   justify-self: end;
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 950;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -182,8 +374,8 @@
   display: flex;
   align-items: stretch;
   min-height: 64px;
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 14px;
+  font-size: 18px;
   font-weight: 800;
   color: #d6e4ee;
   font-variant-numeric: tabular-nums;
@@ -191,11 +383,11 @@
 }
 
 .v2-port-group + .v2-port-group {
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .v2-port-group .v2-port-row + .v2-port-row {
-  margin-top: 6px;
+  margin-top: 7px;
 }
 
 /* ── Блок внутри строки ── */
@@ -204,8 +396,8 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   justify-items: center;
-  gap: 10px;
-  padding: 8px 22px;
+  gap: 12px;
+  padding: 9px 16px;
   flex: 2;
   border-right: 1px solid rgba(86, 196, 240, 0.1);
 }
@@ -230,13 +422,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
   flex: 1.2;
   border-right: none;
 }
 
 .v2-rb-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -244,7 +436,7 @@
 }
 
 .v2-rb-val {
-  font-size: 21px;
+  font-size: 24px;
   font-weight: 800;
   color: #d6e4ee;
   font-variant-numeric: tabular-nums;
@@ -258,27 +450,91 @@ strong.v2-rb-val {
 
 /* Заголовок группы */
 .v2-port-group-head {
-  min-height: 38px;
-  margin: 16px 0 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+  min-width: 360px;
+  min-height: 37px;
+  margin: 11px 0 7px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+}
+
+.v2-port-columns-line {
+  margin-top: 0;
+  margin-bottom: 6px;
+}
+
+.v2-port-column-asset,
+.v2-port-column-head {
+  min-height: 30px;
+}
+
+.v2-port-column-asset {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid rgba(45, 120, 255, 0.1);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(13, 26, 46, 0.5), rgba(8, 17, 30, 0.46));
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(141, 167, 181, 0.7);
+}
+
+.v2-port-column-head {
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.v2-port-column-head .v2-row-block {
+  padding-top: 0;
+  padding-bottom: 0;
+  border-right-color: rgba(86, 196, 240, 0.08);
+}
+
+.v2-port-column-head span {
+  font-family: "Black Ops One", system-ui, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(141, 167, 181, 0.7);
 }
 
 .v2-port-group:first-child .v2-port-group-head {
-  margin-top: 4px;
+  margin-top: 5px;
 }
 
-.v2-port-group-head .v2-row-block span {
-  font-size: 11.5px;
+.v2-port-group-head > span {
+  font-size: 15px;
   font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(141, 167, 181, 0.72);
+  text-align: center;
+  color: rgba(190, 213, 230, 0.78);
+}
+
+.v2-port-group-head strong {
+  margin-left: 6px;
+  color: #f1f7ff;
+}
+
+.v2-port-group-head strong.is-up {
+  color: #5af08d;
+}
+
+.v2-port-group-head strong.is-down {
+  color: #ff5d6c;
 }
 
 .v2-port-cat-name {
-  grid-column: 1 / -1;
   justify-self: center;
   text-align: center;
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 950;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -370,10 +626,14 @@ strong.v2-rb-val {
 
 .v2-port-srow.v2-port-stables-head,
 .v2-port-srow.v2-port-stables-head:hover {
-  margin: 16px 0 6px;
-  min-height: 42px;
+  margin: 10px 0 6px;
+  min-height: 34px;
   border: 0;
   background: none;
+}
+
+.v2-port-srow.v2-port-stables-head {
+  color: rgba(190, 213, 230, 0.78);
 }
 
 .v2-port-stables-total {
@@ -385,7 +645,7 @@ strong.v2-rb-val {
 
 .v2-port-srow {
   display: grid;
-  grid-template-columns: 1.9fr 0.9fr 0.65fr 1fr;
+  grid-template-columns: 1.9fr 0.9fr 0.65fr;
   align-items: center;
   text-align: center;
   gap: 8px;
@@ -544,9 +804,8 @@ strong.v2-rb-val {
   align-items: center;
   gap: 10px;
   width: 850px;
-  max-width: calc(100% - 336px);
-  /* Левый край ровно к колонке «СР. ВХОД»: 320px карточка + 16px gap */
-  margin: 6px 0 0 336px;
+  max-width: calc(100% - 334px);
+  margin: 7px 0 0 334px;
   padding: 11px 18px;
   border-radius: 12px;
   border: 1px solid rgba(90, 240, 141, 0.26);
@@ -600,9 +859,8 @@ strong.v2-rb-val {
 
 .v2-stake-card {
   width: 850px;
-  max-width: calc(100% - 336px);
-  /* Левый край ровно к колонке «СР. ВХОД»: 320px карточка + 16px gap */
-  margin: 8px 0 0 336px;
+  max-width: calc(100% - 334px);
+  margin: 9px 0 0 334px;
   box-sizing: border-box;
   animation: v2-stake-in 0.25s ease;
   padding: 18px 20px;
@@ -815,8 +1073,10 @@ strong.v2-rb-val {
 
 /* Бейдж «в стейке» на строке актива */
 .v2-pid-staked {
-  display: inline-block;
-  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-left: 0;
   padding: 2px 7px;
   border-radius: 6px;
   border: 1px solid rgba(90, 240, 141, 0.3);

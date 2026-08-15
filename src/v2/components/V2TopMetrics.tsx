@@ -65,9 +65,6 @@ export function V2TopMetrics({ portfolio, capitalOpen = false, onToggleCapital }
     <header className="v2-topbar">
       {/* Две карточки, отцентрованы над радаром (живут в колонке радара) */}
       <div className="v2-metrics-left">
-        {/* ── Hero portfolio card ── */}
-        <V2PortfolioHeroCard portfolio={portfolio} />
-
         {/* ── Вложено + Позиции — объединённая карточка ── */}
         <div className="v2-metric metric-card-beam v2-metric-split">
           <HudCornerTL /><HudCornerTR /><HudCornerBL /><HudCornerBR />
@@ -99,6 +96,9 @@ export function V2TopMetrics({ portfolio, capitalOpen = false, onToggleCapital }
             </button>
           </div>
         </div>
+
+        {/* ── Hero portfolio card ── */}
+        <V2PortfolioHeroCard portfolio={portfolio} />
       </div>
     </header>
   );

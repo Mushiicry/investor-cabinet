@@ -112,6 +112,11 @@ export function healthInterpretation(score: number): { text: string; color: stri
 
 export const fmt$ = (v: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
+const fmtExactUsd = (v: number) =>
+  `$${v.toLocaleString("en-US", {
+    minimumFractionDigits: Number.isInteger(v) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
 
 export function diagWhy(c: HealthComponent, portfolio: V2Portfolio): string {
   const reservePct = Math.round((c.meta?.reserveShare ?? portfolio.reserveShare) * 100);
@@ -198,9 +203,7 @@ export function isActionableHealthComponent(c: HealthComponent): boolean {
   switch (c.key) {
     case "reserve": {
       const blockers = c.meta?.reserveBlockers ?? [];
-      const warnings = (c.meta?.reserveWarnings ?? []).filter(
-        (warning) => warning !== "Резерв выше 60% — капитал простаивает",
-      );
+      const warnings = c.meta?.reserveWarnings ?? [];
       return c.score < 75 || blockers.length > 0 || warnings.length > 0;
     }
     case "crypto":
@@ -273,6 +276,95 @@ function componentGain(kind: CoreRecKind | undefined, all: HealthComponent[]): n
   return Math.max(0, Math.round((100 - component.score) * component.weight));
 }
 
+function coreRecKindForComponent(component: HealthComponent): CoreRecKind {
+  switch (component.key) {
+    case "reserve":
+      return "reserve";
+    case "diversification":
+      return "diversification";
+    case "concentration":
+      return "concentration";
+    case "futures":
+      return "risk";
+    case "crypto":
+      return "survival";
+    case "flexibility":
+      return "discipline";
+  }
+}
+
+function componentAlerts(component: HealthComponent): string[] {
+  switch (component.key) {
+    case "reserve":
+      return [...(component.meta?.reserveBlockers ?? []), ...(component.meta?.reserveWarnings ?? [])];
+    case "diversification":
+      return [...(component.meta?.diversificationBlockers ?? []), ...(component.meta?.diversificationWarnings ?? [])];
+    case "concentration":
+      return [...(component.meta?.concentrationBlockers ?? []), ...(component.meta?.concentrationWarnings ?? [])];
+    case "futures":
+      return [...(component.meta?.riskControlBlockers ?? []), ...(component.meta?.riskControlWarnings ?? [])];
+    case "crypto":
+      return [...(component.meta?.survivalBlockers ?? []), ...(component.meta?.survivalWarnings ?? [])];
+    case "flexibility":
+      return [...(component.meta?.disciplineBlockers ?? []), ...(component.meta?.disciplineWarnings ?? [])];
+  }
+}
+
+function recommendationFromAlert(component: HealthComponent, alert: string): string {
+  const lower = alert.toLowerCase();
+  const meta = component.meta;
+
+  switch (component.key) {
+    case "reserve": {
+      const idleUsd = meta?.reserveIdleUsd ?? 0;
+      if (lower.includes("капитал простаивает") && idleUsd > 0) return `${fmtExactUsd(idleUsd)} нужно пустить в работу`;
+      if (lower.includes("неприкосновенной")) return "Отключить сделки и восстановить неприкосновенную часть";
+      if (lower.includes("необходимого остатка")) return "Не добавлять риск до восстановления необходимого остатка";
+      return "Вернуть резерв в правила стратегии";
+    }
+    case "crypto":
+      if (lower.includes("покупатель")) return "Не добавлять риск до восстановления покупательской способности";
+      return "Подготовить стресс-план до нового риска";
+    case "futures":
+      if (lower.includes("ликвидац")) return "Снять риск ликвидации: сократить позицию или добавить маржу";
+      if (lower.includes("плеч")) return "Снизить плечо до лимита стратегии";
+      if (lower.includes("лимит")) return "Сократить активную торговлю до лимита";
+      return "Снизить фьючерсный риск перед новыми сделками";
+    case "concentration":
+      if (lower.includes("мест")) return "Не добавлять новый актив, пока место не освободится";
+      if (meta?.worstConcentrationAsset && meta.worstConcentrationAsset !== "-") {
+        return `Не докупать ${meta.worstConcentrationAsset}: вернуть актив в лимит`;
+      }
+      return "Вернуть активы в лимиты стратегии";
+    case "diversification":
+      if (meta?.missingClassNames?.length) return `Добавить отсутствующий класс: ${meta.missingClassNames.join(" / ").toLowerCase()}`;
+      return "Сбалансировать спотовые классы риска";
+    case "flexibility":
+      if (lower.includes("журнал")) return "Заполнить журнал решений до новых сделок";
+      return "Поставить сделки на паузу и закрыть нарушение дисциплины";
+  }
+}
+
+function buildAlertRecs(all: HealthComponent[]): CoreRec[] {
+  const seenKinds = new Set<CoreRecKind>();
+
+  return all.flatMap((component) => {
+    const kind = coreRecKindForComponent(component);
+    const alert = componentAlerts(component)[0];
+    if (!alert || seenKinds.has(kind)) return [];
+    seenKinds.add(kind);
+    const gain = Math.max(1, componentGain(kind, all));
+
+    return [{
+      action: recommendationFromAlert(component, alert),
+      gain,
+      source: `${component.label}: ${alert} → здоровье +${gain}`,
+      critical: true,
+      kind,
+    }];
+  });
+}
+
 function finalizeCoreRecs(recs: CoreRec[], healthInput: HealthInput | undefined, all: HealthComponent[]): CoreRec[] {
   const currentHealth = healthInput ? computePortfolioHealth(healthInput).healthFactor : undefined;
   const seen = new Set<string>();
@@ -303,6 +395,29 @@ function finalizeCoreRecs(recs: CoreRec[], healthInput: HealthInput | undefined,
     .slice(0, 5);
 }
 
+export function buildHealthBoardRecs(
+  weak: HealthComponent[],
+  portfolio: V2Portfolio,
+  all: HealthComponent[] = [],
+  healthInput?: HealthInput,
+): CoreRec[] {
+  const alertRecs = buildAlertRecs(all);
+  const usedKinds = new Set(alertRecs.map((rec) => rec.kind));
+  const generalRecs = buildCoreRecs(weak, portfolio, all, healthInput)
+    .filter((rec) => !rec.kind || !usedKinds.has(rec.kind))
+    .map((rec) => ({ ...rec, critical: false }));
+
+  const seen = new Set<string>();
+  return [...alertRecs, ...generalRecs]
+    .filter((rec) => {
+      const key = `${rec.kind ?? ""}:${rec.action}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 7);
+}
+
 function isExpansionRecommendation(rec: CoreRec): boolean {
   return (
     rec.action.startsWith("Добавить") ||
@@ -328,6 +443,11 @@ export function buildCoreRecs(
   const deficit = Math.max(0, reserveTargetUsd - portfolio.stableReserve);
   const reserveBlockers = rm?.reserveBlockers ?? [];
   const reserveTargetShortfallUsd = rm?.reserveTargetShortfallUsd ?? deficit;
+  const reserveIdleUsd = rm?.reserveIdleUsd ?? 0;
+  const reserveBandMaxUsd = rm?.reserveBandMaxUsd ?? reserveBaseUsd * 0.60;
+  const reserveBandMaxPct = reserveBaseUsd > 0
+    ? Math.round((reserveBandMaxUsd / reserveBaseUsd) * 100)
+    : 60;
   const reserveShare = rm?.reserveShare ?? portfolio.reserveShare ?? 0;
   const hasHardReserveGate = reserveBlockers.length > 0 || reserveShare < 0.10 || portfolio.deployableCapital < 50;
   if (reserveBlockers.length) {
@@ -336,6 +456,14 @@ export function buildCoreRecs(
       gain: 7,
       source: "Сначала восстановить резерв",
       critical: true,
+      kind: "reserve",
+    });
+  }
+  if (reserveIdleUsd > 0) {
+    result.push({
+      action: `${fmtExactUsd(reserveIdleUsd)} нужно пустить в работу`,
+      gain: 4,
+      source: `Резерв выше ${reserveBandMaxPct}% — капитал простаивает`,
       kind: "reserve",
     });
   }

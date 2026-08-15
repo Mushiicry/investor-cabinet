@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { HealthComponent, HealthComponentMeta, HealthInput } from "../../src/lib/portfolioHealth";
-import { buildCoreRecs } from "../../src/v2/lib/healthCoreHelpers";
+import { buildCoreRecs, buildHealthBoardRecs } from "../../src/v2/lib/healthCoreHelpers";
 import type { V2Portfolio } from "../../src/v2/InvestorCabinetV2Lab";
 
 const portfolio: V2Portfolio = {
@@ -76,7 +76,7 @@ describe("рекомендации здоровья портфеля", () => {
   it("жёсткие блокировки идут раньше обычных рекомендаций", () => {
     const recs = buildCoreRecs([], portfolio, [
       component("reserve", "Резерв", {
-        reserveWarnings: ["Резерв ниже цели 30%"],
+        reserveWarnings: ["Резерв ниже необходимого остатка 30%"],
       }),
       component("flexibility", "Дисциплина", {
         disciplineBlockers: ["Обнаружена сделка-месть"],
@@ -87,6 +87,30 @@ describe("рекомендации здоровья портфеля", () => {
       expect.objectContaining({
         action: "Пауза на новые сделки: обнаружена сделка-месть",
         critical: true,
+      }),
+    );
+  });
+
+  it("показывает рекомендацию по простою капитала, если резерв выше 60%", () => {
+    const recs = buildCoreRecs([], {
+      ...portfolio,
+      totalInvested: 680.2,
+      stableReserve: 464.62,
+      reserveShare: 0.68,
+    }, [
+      component("reserve", "Резерв", {
+        reserveWarnings: ["Резерв выше 60% — капитал простаивает!"],
+        reserveIdleUsd: 56.5,
+        reserveBaseUsd: 680.2,
+        reserveBandMaxUsd: 408.12,
+        reserveShare: 0.68,
+      }, 79),
+    ]);
+
+    expect(recs).toContainEqual(
+      expect.objectContaining({
+        action: "$56.50 нужно пустить в работу",
+        source: expect.stringContaining("Резерв выше 60% — капитал простаивает"),
       }),
     );
   });
@@ -126,7 +150,7 @@ describe("рекомендации здоровья портфеля", () => {
 
     const recs = buildCoreRecs(
       [
-        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже пола 10%"] }, 20),
+        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже неприкосновенной части 10%"] }, 20),
         component("diversification", "Диверсификация", {
           diversificationBlockers: ["Рисковый капитал в одном спотовом классе"],
         }, 0),
@@ -155,7 +179,7 @@ describe("рекомендации здоровья портфеля", () => {
       ],
       portfolio,
       [
-        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже пола 10%"] }, 20),
+        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже неприкосновенной части 10%"] }, 20),
         component("diversification", "Диверсификация", {
           diversificationBlockers: ["Рисковый капитал в одном спотовом классе"],
         }, 0),
@@ -242,7 +266,7 @@ describe("рекомендации здоровья портфеля", () => {
   it("не показывает рекомендации на докупку классов, если резерв ниже пола", () => {
     const recs = buildCoreRecs(
       [
-        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже пола 10%"] }, 20),
+        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже неприкосновенной части 10%"] }, 20),
         component("diversification", "Диверсификация", {
           missingClassNames: ["Металлы", "Акции"],
         }, 10),
@@ -254,7 +278,7 @@ describe("рекомендации здоровья портфеля", () => {
         deployableCapital: 20,
       },
       [
-        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже пола 10%"] }, 20),
+        component("reserve", "Резерв", { reserveBlockers: ["Резерв ниже неприкосновенной части 10%"] }, 20),
         component("diversification", "Диверсификация", {
           missingClassNames: ["Металлы", "Акции"],
         }, 10),
@@ -263,5 +287,42 @@ describe("рекомендации здоровья портфеля", () => {
 
     expect(recs.map((rec) => rec.action).some((action) => action.startsWith("Добавить"))).toBe(false);
     expect(recs.map((rec) => rec.action).some((action) => action.startsWith("Не открывать новые позиции"))).toBe(true);
+  });
+
+  it("строит правую доску из предупреждений карточек и общих рекомендаций", () => {
+    const recs = buildHealthBoardRecs(
+      [],
+      {
+        ...portfolio,
+        totalInvested: 680.2,
+        stableReserve: 464.62,
+        reserveShare: 0.68,
+      },
+      [
+        component("reserve", "Резерв", {
+          reserveWarnings: ["Резерв выше 60% — капитал простаивает!"],
+          reserveIdleUsd: 56.5,
+          reserveBaseUsd: 680.2,
+          reserveBandMaxUsd: 408.12,
+          reserveShare: 0.68,
+        }, 79),
+        component("concentration", "Концентрация", {
+          concentrationWarnings: ["Все 3 альткоин-места заняты"],
+        }, 82),
+      ],
+    );
+
+    expect(recs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: "$56.50 нужно пустить в работу",
+          source: expect.stringContaining("Резерв: Резерв выше 60%"),
+        }),
+        expect.objectContaining({
+          action: "Не добавлять новый актив, пока место не освободится",
+          source: expect.stringContaining("Концентрация: Все 3 альткоин-места заняты"),
+        }),
+      ]),
+    );
   });
 });

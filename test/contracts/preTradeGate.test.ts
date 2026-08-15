@@ -367,6 +367,29 @@ describe("pre-trade gate", () => {
     }
   });
 
+  it("альткоин-места: новый 3-й альт помечается как последнее свободное место", () => {
+    const ctx: GateContext = {
+      ...baseCtx,
+      positions: [
+        ...baseCtx.positions,
+        { asset: "ATOM", category: "Крипта", value: 5 },
+        { asset: "APEX", category: "Крипта", value: 5 },
+      ],
+      allocation: baseCtx.allocation.map((item) =>
+        item.name === "Крипта" ? { ...item, value: 410 } : item,
+      ),
+    };
+    const v = evaluateTrade(buy({ asset: "SEI", amountUsd: 1, category: "Крипта" }), ctx);
+    expect(v.status).not.toBe("block");
+    const slotCheck = v.checks.find((check) => check.key === "assetSlots");
+    expect(slotCheck?.ok).toBe(true);
+    expect(slotCheck?.before).toBe(2);
+    expect(slotCheck?.after).toBe(3);
+    expect(slotCheck?.limit).toBe(3);
+    expect(slotCheck?.note).toContain("Это последнее свободное место под новый альт");
+    expect(slotCheck?.note).toContain("ATOM, APEX");
+  });
+
   it("акции: новая 3-я акция блокируется", () => {
     const ctx: GateContext = {
       ...baseCtx,

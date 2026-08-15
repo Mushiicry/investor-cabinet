@@ -56,6 +56,7 @@ body:has(.v2-lab) {
 .v2-canvas {
   position: relative;
   width: var(--v2-canvas-width, 1920px);
+  height: var(--v2-canvas-height, 100vh);
   min-height: var(--v2-canvas-height, 100vh);
   margin-left: var(--v2-canvas-offset-x, 0);
   margin-right: auto;
@@ -63,6 +64,8 @@ body:has(.v2-lab) {
 }
 
 .v2-lab {
+  position: absolute;
+  inset: 0 auto auto 0;
   width: 1920px;
   min-height: var(--v2-logical-height, 100vh);
   box-sizing: border-box;
@@ -81,11 +84,14 @@ body:has(.v2-lab) {
 @media (max-width: 768px) {
   .v2-canvas {
     width: 100%;
+    height: auto;
     min-height: 100dvh;
     margin: 0;
   }
 
   .v2-lab {
+    position: relative;
+    inset: auto;
     width: 100%;
     transform: none;
   }
@@ -662,10 +668,15 @@ body:has(.v2-lab) {
 
 .v2-brand-title {
   color: #8ff8ff;
-  font-size: 21px;
   font-weight: 900;
-  line-height: 0.95;
+  line-height: 0.88;
   text-transform: uppercase;
+}
+
+.v2-brand-title span,
+.v2-brand-subtitle span {
+  display: block;
+  white-space: nowrap;
 }
 
 .v2-brand-subtitle,
@@ -678,6 +689,27 @@ body:has(.v2-lab) {
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.v2-brand-subtitle {
+  margin-top: 5px;
+  line-height: 1.04;
+}
+
+.v2-brand-title span:first-child {
+  font-size: 24px;
+}
+
+.v2-brand-title span:nth-child(2) {
+  font-size: 20px;
+}
+
+.v2-brand-subtitle span:first-child {
+  font-size: 12px;
+}
+
+.v2-brand-subtitle span:nth-child(2) {
+  font-size: 10px;
 }
 
 .v2-nav {

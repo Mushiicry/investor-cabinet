@@ -106,8 +106,8 @@ const PAGE_META: Record<V2Page, { label: string; purpose: string; visibleBlocks:
   },
   health: {
     label: "Здоровье",
-    purpose: "Подробная расшифровка Health Factor, компонентов, весов, blockers, warnings и формул.",
-    visibleBlocks: ["Health Factor", "Компоненты здоровья", "Формулы", "Blockers", "Warnings"],
+    purpose: "Подробная расшифровка здоровья портфеля: общий показатель, компоненты, веса, блокировки, предупреждения и правила стратегии.",
+    visibleBlocks: ["Показатель здоровья", "Компоненты здоровья", "Формулы", "Блокировки", "Предупреждения"],
   },
   gate: {
     label: "Проверка",
@@ -124,6 +124,54 @@ const PAGE_META: Record<V2Page, { label: string; purpose: string; visibleBlocks:
     purpose: "Учебная структура Investor Cabinet и темы для развития инвестиционной дисциплины.",
     visibleBlocks: ["Учебные главы", "Темы", "Материалы"],
   },
+};
+
+const HEALTH_PAGE_GUIDE = {
+  source: "V2HealthPage visible structure",
+  purpose: "Вкладка «Здоровье» объясняет, почему портфель находится в текущем состоянии, какие правила стратегии действуют и что нужно проверить перед любым новым риском.",
+  answerRule: "Если пользователь спрашивает про вкладку/страницу «Здоровье», сначала объясняй назначение страницы и видимые разделы. Не делай полный расчет здоровья, если пользователь прямо не спрашивает почему здоровье такое или просит подробный разбор компонентов.",
+  visibleSections: [
+    {
+      title: "Оценка здоровья инвестора",
+      meaning: "общий показатель здоровья портфеля и текущий диагноз",
+    },
+    {
+      title: "Диагноз",
+      meaning: "короткий вывод, сильные и слабые стороны портфеля",
+    },
+    {
+      title: "Рекомендации",
+      meaning: "что может улучшить здоровье, без автоматического исполнения действий",
+    },
+    {
+      title: "Цель капитала",
+      meaning: "лестница капитала и прогресс до следующей ступени",
+    },
+    {
+      title: "Инвестиционная стратегия",
+      meaning: "базовая структура 60/10/10/10/10, лимиты классов и лимиты внутри крипто-блока",
+    },
+    {
+      title: "Жёсткие ограничения",
+      meaning: "что портфелю запрещено по стратегии",
+    },
+    {
+      title: "Лучи здоровья",
+      meaning: "какие компоненты формируют общий показатель здоровья",
+    },
+    {
+      title: "ДНК инвестора",
+      meaning: "что подходит пользователю как типу инвестора, отдельно от стратегии портфеля",
+    },
+    {
+      title: "Разбор здоровья",
+      meaning: "строки компонентов здоровья; подробности нужны только если пользователь просит разбор",
+    },
+    {
+      title: "Симулятор здоровья",
+      meaning: "гипотетическая проверка сценария, сделки не выполняет",
+    },
+  ],
 };
 
 const DCA_MODE_LABELS: Record<string, string> = {
@@ -207,6 +255,8 @@ function buildAssistantPageContext({
   decisionJournal,
   alerts,
   marketPsychology,
+  staking,
+  cosmosStaking,
 }: {
   page: V2Page;
   data: V2LabData;
@@ -217,6 +267,8 @@ function buildAssistantPageContext({
   decisionJournal: DecisionJournalEntry[];
   alerts: Alert[];
   marketPsychology: ReturnType<typeof getMarketPsychology>;
+  staking?: TonStaking | null;
+  cosmosStaking?: CosmosStaking | null;
 }): AssistantPageContext {
   const meta = PAGE_META[page];
   const baseFacts = {
@@ -247,15 +299,47 @@ function buildAssistantPageContext({
     .filter((position) => position.category !== "Свободные деньги" && position.value > 0)
     .sort((a, b) => b.value - a.value)
     .slice(0, 12)
-    .map((position) => ({
-      asset: position.asset,
-      category: position.category,
-      value: position.value,
-      invested: position.invested,
-      share: position.share,
-      pnl: position.pnl,
-      pnlPct: position.pnlPct,
-    }));
+    .map((position) => {
+      const isTonStaked = Boolean(staking && position.asset === "TON");
+      const isAtomStaked = Boolean(cosmosStaking && position.asset === "ATOM");
+
+      return {
+        asset: position.asset,
+        category: position.category,
+        value: position.value,
+        invested: position.invested,
+        share: position.share,
+        pnl: position.pnl,
+        pnlPct: position.pnlPct,
+        staking: isTonStaked
+          ? {
+              isStaked: true,
+              label: "в стейке",
+              source: "Tonstakers / tsTON",
+              stakedAsset: "TON",
+              stakedAmount: staking!.stakedTon,
+              stakedValueUsd: staking!.stakedUsd,
+              dailyIncomeAsset: staking!.dailyTon,
+              dailyIncomeUsd: staking!.dailyUsd,
+              apy: staking!.apy,
+            }
+          : isAtomStaked
+            ? {
+                isStaked: true,
+                label: "в стейке",
+                source: `Cosmos Hub / ${cosmosStaking!.validatorName}`,
+                stakedAsset: "ATOM",
+                stakedAmount: cosmosStaking!.staked,
+                stakedValueUsd: cosmosStaking!.stakedUsd,
+                dailyIncomeAsset: cosmosStaking!.dailyAtom,
+                dailyIncomeUsd: cosmosStaking!.dailyUsd,
+                apr: cosmosStaking!.apr,
+                claimableAsset: cosmosStaking!.claimable,
+                claimableUsd: cosmosStaking!.claimableUsd,
+              }
+            : { isStaked: false },
+      };
+    });
   const portfolioPageCash = data.positions
     .filter((position) => position.category === "Свободные деньги" && position.value > 0)
     .sort((a, b) => b.value - a.value)
@@ -307,9 +391,31 @@ function buildAssistantPageContext({
     })),
     wordingRule: "Объясняй DCA по-русски: индекс 20-29 = покупка на 1%, 15-19 = 1.5%, 0-14 = 2%, 30-100 = наблюдаем. Не используй слова cautious, balanced, risk-gate, blockers.",
   };
+  const visibleHealthComponents = health.components.map((component) => ({
+    key: component.v2Key ?? component.key,
+    label: component.label,
+    score: component.score,
+    weight: component.weight,
+    desc: component.desc,
+    blockers: component.meta?.reserveBlockers
+      ?? component.meta?.survivalBlockers
+      ?? component.meta?.riskControlBlockers
+      ?? component.meta?.concentrationBlockers
+      ?? component.meta?.diversificationBlockers
+      ?? component.meta?.disciplineBlockers
+      ?? [],
+    warnings: component.meta?.reserveWarnings
+      ?? component.meta?.survivalWarnings
+      ?? component.meta?.riskControlWarnings
+      ?? component.meta?.concentrationWarnings
+      ?? component.meta?.diversificationWarnings
+      ?? component.meta?.disciplineWarnings
+      ?? [],
+  }));
   const factsByPage: Partial<Record<V2Page, Record<string, unknown>>> = {
     overview: {
       ...baseFacts,
+      visibleHealthComponents,
       deployableCapitalBreakdown,
       dcaStrategy: dcaStrategyFacts,
       allocation: data.allocation,
@@ -333,31 +439,13 @@ function buildAssistantPageContext({
       cashRowsAreNotInvestmentAssets: true,
       realizedPnlUsd: portfolio.realizedPnlUsd,
       realizedPnlPct: portfolio.realizedPnlPct,
-      answerRule: "Если пользователь спрашивает 'какие активы в портфеле', сначала перечисляй visibleInvestmentPositions. Стейблы из cashAndReserveRows называй резервом/кэшем отдельно, а не активами портфеля.",
+      answerRule: "Если пользователь спрашивает 'какие активы в портфеле', сначала перечисляй visibleInvestmentPositions. Если спрашивает про стейкинг, используй visibleInvestmentPositions[].staking и называй только активы с staking.isStaked=true. Стейблы из cashAndReserveRows называй резервом/кэшем отдельно, а не активами портфеля.",
     },
     health: {
       ...baseFacts,
-      components: health.components.map((component) => ({
-        key: component.v2Key ?? component.key,
-        label: component.label,
-        score: component.score,
-        weight: component.weight,
-        desc: component.desc,
-        blockers: component.meta?.reserveBlockers
-          ?? component.meta?.survivalBlockers
-          ?? component.meta?.riskControlBlockers
-          ?? component.meta?.concentrationBlockers
-          ?? component.meta?.diversificationBlockers
-          ?? component.meta?.disciplineBlockers
-          ?? [],
-        warnings: component.meta?.reserveWarnings
-          ?? component.meta?.survivalWarnings
-          ?? component.meta?.riskControlWarnings
-          ?? component.meta?.concentrationWarnings
-          ?? component.meta?.diversificationWarnings
-          ?? component.meta?.disciplineWarnings
-          ?? [],
-      })),
+      pageGuide: HEALTH_PAGE_GUIDE,
+      visibleHealthComponents,
+      components: visibleHealthComponents,
       healthInput,
     },
     risk: {
@@ -625,8 +713,10 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
       decisionJournal,
       alerts,
       marketPsychology,
+      staking,
+      cosmosStaking,
     }),
-    [page, data, behaviorPortfolio, behaviorHealth, behaviorHealthInput, behavior, decisionJournal, alerts, marketPsychology],
+    [page, data, behaviorPortfolio, behaviorHealth, behaviorHealthInput, behavior, decisionJournal, alerts, marketPsychology, staking, cosmosStaking],
   );
 
   function signalFromAlert(alert: Alert) {
@@ -812,8 +902,10 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
           />
         ) : page === "portfolio" ? (
           <V2PortfolioPage
+            portfolio={data.portfolio}
             positions={data.positions}
             playbook={data.playbook}
+            history={data.history}
             staking={staking}
             cosmosStaking={cosmosStaking}
             realizedPnlUsd={data.portfolio.realizedPnlUsd}

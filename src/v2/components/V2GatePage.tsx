@@ -520,7 +520,7 @@ export function V2GatePage({
                       {v.before} <span className="v2-gate-arrow">→</span> {v.after}
                       <span className="v2-gate-check-limit"> · лимит {v.limit}</span>
                     </span>
-                    {!c.ok && c.note && <span className="v2-gate-check-note">{c.note}</span>}
+                    {c.note && (!c.ok || c.key === "assetSlots") && <span className="v2-gate-check-note">{c.note}</span>}
                   </div>
                 );
               })}

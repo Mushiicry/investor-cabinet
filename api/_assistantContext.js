@@ -275,6 +275,145 @@ function compactRecommendations(payload, concentrationGuards = []) {
   return [...new Set(recommendations.filter(Boolean))].slice(0, 12);
 }
 
+function detectAnswerFocus(question) {
+  const normalized = String(question || "").toLowerCase();
+  const asksRecommendationPanel = (
+    /(рекомендац|совет|карточк)/i.test(normalized)
+    && /(справа|прав[оы]й|радар|overview|обзор|главн|экран|панел)/i.test(normalized)
+  );
+  const asksStaking = /(стейк|staking|stake|доход со стейкинга|в стейке)/i.test(normalized);
+  const asksPageOrTab = /(страниц|вкладк|сайдбар|меню|раздел|экран|что тут|что здесь|что расскаж|что покаж|что означает вклад)/i.test(normalized);
+  const asksDetailedHealth = (
+    /(здоров|health|хелс)/i.test(normalized)
+    && /(подроб|разбор|компонент|почему|всем|всех|фактор|оценк)/i.test(normalized)
+  );
+  const asksHealthPageOverview = (
+    /(здоров|health|хелс)/i.test(normalized)
+    && asksPageOrTab
+    && !asksDetailedHealth
+  );
+
+  if (asksRecommendationPanel) {
+    return {
+      type: "visible_overview_recommendations",
+      instruction: [
+        "Вопрос про видимый блок рекомендаций справа от радара здоровья на Overview.",
+        "Отвечай только по uiSnapshot.currentPage.facts.recommendations, если они есть.",
+        "Объясни смысл карточек: это risk-first подсказки проверки и улучшения здоровья, не торговые команды.",
+        "Для каждой карточки можно назвать только переданные поля level/title/detail/action.",
+        "Не подтягивай ценовые точки, сигналы, сценарии, positions, concentrationGuards, strategy limits или health formula, если пользователь прямо не просит конкретный актив/лимит/формулу.",
+        "Не объясняй 'точка сработала' как ценовой сигнал, если этого нет в visible recommendations.",
+        "Не называй точные лимиты активов и цены из других слоёв контекста.",
+      ],
+      allowedContext: [
+        "uiSnapshot.currentPage.facts.recommendations",
+        "uiSnapshot.portfolio.healthFactor",
+        "uiSnapshot.health.healthFactor",
+      ],
+      forbiddenContextForThisQuestion: [
+        "signals.interest",
+        "scenarios",
+        "positions",
+        "concentrationGuards",
+        "strategy.cryptoAssetLimits",
+        "healthInput.worstConcentration*",
+        "uiSnapshot.health.components formulas/meta",
+      ],
+    };
+  }
+
+  if (asksStaking) {
+    return {
+      type: "visible_portfolio_staking",
+      instruction: [
+        "Вопрос про активы в стейкинге на вкладке Портфель.",
+        "Отвечай по uiSnapshot.currentPage.facts.visibleInvestmentPositions[].staking, если этот список есть.",
+        "Если хотя бы одна позиция имеет staking.isStaked=true, назови только эти активы и их переданные поля staking.",
+        "Не отвечай, что данных нет, если в visibleInvestmentPositions есть staking.isStaked=true.",
+        "Не приплетай статусы позиций, closed/exited, cash rows, лимиты, рекомендации или health formula.",
+        "Если staking.isStaked=true нет ни у одной позиции, скажи: на текущей вкладке не вижу активов с бейджем 'в стейке'.",
+      ],
+      allowedContext: [
+        "uiSnapshot.currentPage.facts.visibleInvestmentPositions[].asset",
+        "uiSnapshot.currentPage.facts.visibleInvestmentPositions[].staking",
+      ],
+      forbiddenContextForThisQuestion: [
+        "positions.status",
+        "cashAndReserveRows",
+        "recommendations",
+        "scenarios",
+        "signals",
+        "health formula",
+        "concentrationGuards",
+      ],
+    };
+  }
+
+  if (asksHealthPageOverview) {
+    return {
+      type: "health_page_overview",
+      instruction: [
+        "Вопрос про назначение вкладки/страницы Здоровье, а не про полный расчет Health Factor.",
+        "Отвечай по uiSnapshot.currentPage.label, uiSnapshot.currentPage.purpose, uiSnapshot.currentPage.visibleBlocks и uiSnapshot.currentPage.facts.pageGuide.",
+        "Кратко объясни основные секции страницы: показатель здоровья, диагноз, рекомендации, цель капитала, инвестиционная стратегия, жесткие ограничения, лучи здоровья, ДНК инвестора, разбор здоровья и симулятор.",
+        "Можно назвать текущий Health Factor одной строкой как контекст, если он есть.",
+        "Не уходи в подробный расчет всех компонентов, если пользователь не спросил почему здоровье такое или не попросил подробный разбор.",
+        "Не подтягивай healthInput, futuresFacts, positions, scenarios, signals, global recommendations или формулы здоровья для этого вопроса.",
+      ],
+      allowedContext: [
+        "uiSnapshot.currentPage.label",
+        "uiSnapshot.currentPage.purpose",
+        "uiSnapshot.currentPage.visibleBlocks",
+        "uiSnapshot.currentPage.facts.pageGuide",
+        "uiSnapshot.health.healthFactor",
+        "uiSnapshot.portfolio.healthFactor",
+      ],
+      forbiddenContextForThisQuestion: [
+        "healthInput",
+        "uiSnapshot.futuresFacts",
+        "positions",
+        "scenarios",
+        "signals",
+        "global recommendations",
+        "full health formulas",
+      ],
+    };
+  }
+
+  if (asksDetailedHealth) {
+    return {
+      type: "detailed_health_components",
+      instruction: [
+        "Вопрос про подробный разбор здоровья портфеля.",
+        "Сначала используй видимые компоненты: uiSnapshot.currentPage.facts.visibleHealthComponents, если они есть; иначе uiSnapshot.health.components.",
+        "Главное число здоровья бери из uiSnapshot.health.healthFactor или uiSnapshot.portfolio.healthFactor.",
+        "Для каждого компонента называй видимый score, смысл desc, blockers и warnings.",
+        "Не пересчитывай баллы, проценты, лимиты и веса заново. Если нужны формулы, читай только уже переданные formulas/meta и называй это 'по переданной формуле'.",
+        "Не смешивай разные уровни: видимый score компонента отдельно, техническая расшифровка формулы отдельно.",
+        "Не называй оценочные поля точной биржевой маржей или точным разрешением на действие.",
+      ],
+      allowedContext: [
+        "uiSnapshot.health.healthFactor",
+        "uiSnapshot.portfolio.healthFactor",
+        "uiSnapshot.currentPage.facts.visibleHealthComponents",
+        "uiSnapshot.health.components",
+        "uiSnapshot.futuresFacts",
+      ],
+      forbiddenContextForThisQuestion: [
+        "signals",
+        "scenarios",
+        "positions.status",
+        "decision plans",
+      ],
+    };
+  }
+
+  return {
+    type: "general",
+    instruction: "Отвечай по общим sourcePriority и answerGuards.",
+  };
+}
+
 function compactText(value) {
   const text = String(value ?? "").trim();
   return text.length > MAX_TEXT_FIELD_LENGTH ? `${text.slice(0, MAX_TEXT_FIELD_LENGTH)}...` : text;
@@ -524,6 +663,11 @@ export async function buildAssistantContext(accountId, clientContext = null, que
   }
 
   const concentrationGuards = deriveConcentrationGuards(payload, normalizedAccountId);
+  const answerFocus = detectAnswerFocus(question);
+  const includeGlobalRecommendations = answerFocus.type === "general";
+  const knowledgeOptions = answerFocus.type === "health_page_overview"
+    ? { excludeSections: ["Health Formula"] }
+    : {};
 
   return {
     ok: true,
@@ -536,6 +680,7 @@ export async function buildAssistantContext(accountId, clientContext = null, que
       positions: compactPositions(payload),
       risk: compactRisk(payload),
       uiSnapshot: compactClientContext(clientContext),
+      answerFocus,
       sourcePriority: [
         "1. uiSnapshot.health.healthFactor / uiSnapshot.portfolio.healthFactor — главное число здоровья, если передано.",
         "2. uiSnapshot.currentPage — главный источник текущей открытой вкладки, видимых блоков, названий и page-specific фактов.",
@@ -544,12 +689,18 @@ export async function buildAssistantContext(accountId, clientContext = null, que
         "5. overview.health и risk.health могут быть legacy и не должны перебивать uiSnapshot Health Factor.",
         "6. По фьючерсам сначала читать uiSnapshot.futuresFacts.riskBudgetBreakdown, если он есть. Не смешивать health-formula, свободную маржу и биржевую маржу.",
         "7. На вкладке Портфель сначала читать uiSnapshot.currentPage.facts.visibleInvestmentPositions; cashAndReserveRows объяснять отдельно как кэш/резерв, а не как инвестиционные активы.",
+        "8. По стейкингу на вкладке Портфель читать только uiSnapshot.currentPage.facts.visibleInvestmentPositions[].staking.",
       ],
       answerGuards: [
         "Отвечать строго по теме вопроса. Не добавлять соседние темы только потому, что они есть в контексте.",
         "Для понятийных вопросов давать объяснение понятия и максимум 1-2 релевантные цифры, без пересказа всего портфеля.",
         "Для вопросов про DCA читать uiSnapshot.currentPage.facts.dcaStrategy, если он есть: зоны индекса, проценты покупки, текущий индекс и текущую зону.",
         "Если актив выше лимита или компонент concentration содержит blocker/overLimitAssets, нельзя говорить, что актив можно докупать или накапливать.",
+        "Если answerFocus.type = visible_overview_recommendations, отвечать только по answerFocus.allowedContext и не использовать forbiddenContextForThisQuestion.",
+        "Для видимых рекомендаций справа от радара объясняй карточки как подсказки проверки риска/дисциплины: title = что сделать/не делать, detail = почему, action = первый проверочный шаг, level/gain = ожидаемый вклад в здоровье. Это не приказ и не автоматическое действие.",
+        "Если answerFocus.type = visible_portfolio_staking, отвечать только по visibleInvestmentPositions[].staking. Если есть staking.isStaked=true, перечислить эти активы и не писать, что данных нет.",
+        "Если answerFocus.type = health_page_overview, объяснять вкладку Здоровье как страницу: назначение и видимые разделы. Не делать подробный расчет Health Factor.",
+        "Если answerFocus.type = detailed_health_components, сначала разбирать видимые компоненты здоровья и их score; формулы использовать только как пояснение, без собственной математики.",
         "При over-limit нельзя писать 'рекомендация положительная', 'есть накопление', 'можно купить' или 'можно добрать'. Разрешенная формулировка: увеличение заблокировано до возврата в лимит.",
         "Запреты, blockers и фраза 'Не докупать' всегда сильнее recommendations/scenarios/желания пользователя.",
         "Если recommendation выглядит положительной, но тот же актив выше лимита, объясни конфликт и держи risk-first запрет на увеличение позиции.",
@@ -557,8 +708,8 @@ export async function buildAssistantContext(accountId, clientContext = null, que
         "USDC, USDT и USDC HL в категории 'Свободные деньги' — это кэш/резерв/маржа, а не обычные инвестиционные активы портфеля.",
       ],
       concentrationGuards,
-      knowledgePack: selectAssistantKnowledge(question),
-      recommendations: compactRecommendations(payload, concentrationGuards),
+      knowledgePack: selectAssistantKnowledge(question, knowledgeOptions),
+      recommendations: includeGlobalRecommendations ? compactRecommendations(payload, concentrationGuards) : [],
       strategy: STRATEGY_RULES[normalizedAccountId],
       profile: PROFILE_RULES[normalizedAccountId],
       boundaries: [
@@ -591,7 +742,12 @@ export const ASSISTANT_SYSTEM_PROMPT = [
   "Если в контексте есть uiSnapshot, используй его как главный источник текущих экранных чисел: Health Factor, компоненты здоровья, распределение и свободные деньги.",
   "Если пользователь спрашивает про текущую страницу, вкладку, боковое меню, видимые блоки, таблицу или 'что здесь значит', используй uiSnapshot.currentPage как главный контекст.",
   "Не говори, что названия вкладок или цифры не переданы, если они есть в uiSnapshot.currentPage.",
+  "Если context.answerFocus.type = visible_overview_recommendations, отвечай только по context.answerFocus.allowedContext. Не используй ценовые точки, scenarios, signals, positions, concentrationGuards, strategy limits или health formula для этого вопроса.",
+  "Для вопроса про рекомендации справа от радара: объясни, что это карточки risk-first контроля здоровья; title/action показывают направление проверки, detail объясняет причину, level/gain показывает ожидаемый вклад в здоровье. Не называй это разрешением на сделку.",
+  "Если context.answerFocus.type = health_page_overview, объясняй вкладку Здоровье как страницу: для чего она нужна, какие разделы видны и что пользователь может проверить. Не уходи в полный расчет Health Factor.",
+  "Если context.answerFocus.type = detailed_health_components, сначала дай Health Factor и видимые компоненты: Резерв, Выживаемость, Контроль риска, Концентрация, Диверсификация, Дисциплина. Используй score/desc/blockers/warnings из uiSnapshot. Формулы упоминай только как переданную расшифровку, не пересчитывай сам.",
   "На вкладке Портфель при вопросе 'какие активы есть' сначала перечисляй visibleInvestmentPositions из uiSnapshot.currentPage.facts. cashAndReserveRows называй отдельно как кэш/резерв/маржу, не как активы.",
+  "На вкладке Портфель при вопросе про стейкинг используй только visibleInvestmentPositions[].staking. Если есть staking.isStaked=true, назови эти активы. Не говори, что данных нет.",
   "USDC, USDT и USDC HL в 'Свободные деньги' не называй инвестиционными активами; это резерв, кэш или HL-маржа.",
   "Не называй overview.health или risk.health главным здоровьем, если они расходятся с uiSnapshot.health.healthFactor.",
   "Объясняй цифру здоровья через веса, компоненты, formulas, blockers и warnings из uiSnapshot.health.components.",

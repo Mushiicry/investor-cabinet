@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { saveInvestorDNAAudit } from "../../api/investorDNA";
 import dnaPriorityOrb from "../../assets/dna/dna-priority-orb.png";
+import dnaRiskReadiness from "../../assets/dna/dna-risk-readiness.webp";
 import { INVESTOR_API_URL, WIFE_API_URL } from "../../config/constants";
 import type { InvestorDNA, InvestorDNAQuestion, InvestorDNARecommendation } from "../lib/investorDNA";
 
@@ -101,34 +102,52 @@ function answerOptionsFor(question: InvestorDNAQuestion): string[] {
 
 function DnaScoreRing({ value }: { value: number }) {
   const clampedValue = Math.max(0, Math.min(100, value));
-  const ringStyle = {
-    "--v2-dna-score": `${clampedValue}%`,
-  } as CSSProperties;
 
   return (
-    <div className="v2-dna-score-ring" style={ringStyle} aria-label={`Оценка ${clampedValue} из 100`}>
-      <strong>{clampedValue}</strong>
-      <span>/ 100</span>
+    <div className="v2-dna-risk-readiness" aria-label={`Готовность к риску ${clampedValue} из 100`}>
+      <img src={dnaRiskReadiness} alt="" />
     </div>
   );
 }
 
+function DnaMetricValue({ value }: { value: string }) {
+  const scoreMatch = value.match(/^(\d+)\/100$/);
+
+  if (scoreMatch) {
+    return (
+      <div className="v2-dna-readiness-score">
+        <strong>{scoreMatch[1]}</strong>
+        <span>/ 100</span>
+      </div>
+    );
+  }
+
+  return <div className="v2-dna-readiness-score"><strong>{value}</strong></div>;
+}
+
+function DnaStars({ value, label }: { value: number; label: string }) {
+  const filledStars = Math.max(0, Math.min(5, Math.round(value / 20)));
+  const stars = "★".repeat(filledStars) + "☆".repeat(5 - filledStars);
+
+  return <div className="v2-dna-stars" aria-label={label}>{stars}</div>;
+}
+
 function DnaHeroMetric({
-  icon,
   label,
   value,
   note,
+  stars,
 }: {
-  icon: string;
   label: string;
   value: string;
   note: string;
+  stars?: number;
 }) {
   return (
     <div className="v2-dna-hero-metric">
-      <div className="v2-dna-hero-icon" aria-hidden="true">{icon}</div>
       <div className="v2-dna-hero-metric-label">{label}</div>
-      <strong>{value}</strong>
+      <DnaMetricValue value={value} />
+      {typeof stars === "number" && <DnaStars value={stars} label={`Оценка ${label.toLowerCase()}`} />}
       <p>{note}</p>
     </div>
   );
@@ -146,6 +165,14 @@ function RecommendationRow({
   onToggle: () => void;
 }) {
   const priorityText = item.priority === "critical" ? "обязательно" : priorityLabel[item.priority].toLowerCase();
+  const iconPath =
+    number === 1
+      ? "M7 14.5h9a4 4 0 0 0-.5-7.96A5.5 5.5 0 0 0 5.3 8.2 3.4 3.4 0 0 0 7 14.5Zm3-3 2-2 2 2M12 9.5v7"
+      : number === 2
+        ? "M12 5v2M12 17v2M5 12h2M17 12h2M8.5 8.5l-1.4-1.4M15.5 15.5l1.4 1.4M15.5 8.5l1.4-1.4M8.5 15.5l-1.4 1.4M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"
+        : number === 3
+          ? "M12 3 18 5.7v4.4c0 4.2-2.4 7.2-6 8.9-3.6-1.7-6-4.7-6-8.9V5.7L12 3Z"
+          : "M6 17V9h3v8M11 17V5h3v12M16 17v-6h3v6";
 
   return (
     <div className={`v2-dna-rec-row${isOpen ? " is-open" : ""}`}>
@@ -156,12 +183,19 @@ function RecommendationRow({
         onClick={onToggle}
       >
         <span className="v2-dna-rec-number">{number}</span>
-        <strong>{item.title}</strong>
+        <span className="v2-dna-rec-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d={iconPath} />
+          </svg>
+        </span>
+        <span className="v2-dna-rec-copy">
+          <strong>{item.title}</strong>
+          <span className="v2-dna-rec-action">{item.action}</span>
+        </span>
         <span className={`v2-dna-rec-priority ${priorityClass[item.priority]}`}>{priorityText}</span>
-        <span className="v2-dna-rec-action">{item.action}</span>
         <span className="v2-dna-rec-chevron" aria-hidden="true">
           <svg viewBox="0 0 16 16">
-            <path d="M4.2 6.1 8 9.9l3.8-3.8" />
+            <path d="M6.1 4.2 9.9 8l-3.8 3.8" />
           </svg>
         </span>
       </button>
@@ -187,6 +221,70 @@ function DnaAuditCard({
 }: DnaAuditCardProps) {
   const progress = total > 0 ? Math.round((answered / total) * 100) : 0;
 
+  if (kind === "lite" || kind === "full") {
+    const index = kind === "lite" ? "01" : "02";
+    const description =
+      kind === "lite"
+        ? `${total} вопросов, чтобы определить ваш риск-профиль и ключевые ограничения.`
+        : subtitle;
+    const duration = kind === "lite" ? "~ 3 минуты" : "~ 10 минут";
+
+    return (
+      <div className={`v2-dna-audit-shell v2-dna-audit-card v2-dna-audit-primary ${isOpen ? "is-open" : ""}`}>
+        <div className="v2-dna-audit-primary-layout">
+          <div className="v2-dna-audit-primary-left">
+            <span className="v2-dna-audit-primary-kind">{index}</span>
+            <div className="v2-dna-audit-primary-copy">
+              <h3>{title}</h3>
+              <p>{description}</p>
+              <div className="v2-dna-audit-primary-meta">
+                <span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="8" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                  <strong>{duration}</strong>
+                  <em>на прохождение</em>
+                </span>
+                <span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 3 19 6v5c0 4.8-2.9 8.2-7 10-4.1-1.8-7-5.2-7-10V6l7-3Z" />
+                  </svg>
+                  <strong>100% конфиденциально</strong>
+                  <em>ваши данные защищены</em>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="v2-dna-audit-primary-action">
+            <div className="v2-dna-audit-primary-progress" aria-label={`Заполнено ${answered} из ${total}`}>
+              <span>Прогресс</span>
+              <strong>{answered} / {total}</strong>
+              <i>
+                <span style={{ width: `${progress}%` }} />
+              </i>
+            </div>
+            <button className="v2-dna-audit-primary-cta" type="button" onClick={onToggle}>
+              <span className="v2-dna-audit-primary-dna" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 3c0 4 10 4 10 8s-10 4-10 10" />
+                  <path d="M17 3c0 4-10 4-10 8s10 4 10 10" />
+                  <path d="M8.5 7h7" />
+                  <path d="M8.5 17h7" />
+                </svg>
+              </span>
+              <span>{isOpen ? "Свернуть аудит" : kind === "lite" ? "Пройти аудит" : "Пройти анкету"}</span>
+            </button>
+            <div className="v2-dna-audit-primary-hint">
+              {total} вопросов <span>•</span> {duration}
+            </div>
+          </div>
+        </div>
+        {isOpen && children}
+      </div>
+    );
+  }
+
   return (
     <div className={`v2-dna-audit-shell v2-dna-audit-card ${isOpen ? "is-open" : ""}`}>
       <button
@@ -195,7 +293,7 @@ function DnaAuditCard({
         aria-expanded={isOpen}
         onClick={onToggle}
       >
-        <span className="v2-dna-audit-kind">{kind === "lite" ? "01" : kind === "full" ? "02" : "03"}</span>
+        <span className="v2-dna-audit-kind">03</span>
         <span className="v2-dna-audit-copy">
           <em>{title}</em>
           <strong>{subtitle}</strong>
@@ -294,7 +392,7 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
     { label: "Активное управление", value: dna.tradingBudgetRule },
     { label: "Кредитное плечо", value: dna.leverageRule },
   ];
-  const capitalTarget = dna.capitalGoal.match(/\$[\d\s]+/)?.[0] ?? dna.capitalGoal;
+  const capitalTarget = "$20 000";
   const capitalTargetNote = "Амбициозный ориентир без требования форсировать риск.";
   const dnaCheckModules = [
     { label: "Цель и горизонт", value: "7 вопросов", note: "Зачем нужен капитал и когда он может понадобиться." },
@@ -409,7 +507,6 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
             <div className="v2-hp-card-title">Анкетирование</div>
             <h2>Аудит ДНК</h2>
           </div>
-          <span className="v2-hp-policy-badge">Первичный + полный</span>
         </div>
 
         <div className="v2-dna-audit-stack">
@@ -499,9 +596,27 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
             )}
           </DnaAuditCard>
         </div>
+
+        <div className="v2-dna-check-card v2-dna-check-card-inline">
+          <div className="v2-hp-policy-head">
+            <div>
+              <div className="v2-hp-card-title">Состав анкет</div>
+              <h2>Что проверяет ДНК</h2>
+            </div>
+          </div>
+          <div className="v2-dna-check-grid">
+            {dnaCheckModules.map((module) => (
+              <div key={module.label} className="v2-dna-check-tile">
+                <strong>{module.label}</strong>
+                <span>{module.value}</span>
+                <p>{module.note}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
-      <section className="v2-hp-policy-card v2-dna-hero-card">
+      <section className="v2-dna-hero-card">
         <div className="v2-hp-policy-head v2-dna-hero-head">
           <div>
             <div className="v2-hp-card-title">ДНК Инвестора</div>
@@ -513,25 +628,22 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
             <DnaScoreRing value={dna.riskWillingness.value} />
             <div className="v2-dna-score-copy">
               <div className="v2-dna-hero-metric-label">{dna.riskWillingness.label}</div>
-              <div className="v2-dna-stars" aria-label="Высокая готовность к риску">★★★★☆</div>
+              <div className="v2-dna-readiness-score" aria-label={`Оценка ${dna.riskWillingness.value} из 100`}>
+                <strong>{dna.riskWillingness.value}</strong>
+                <span>/ 100</span>
+              </div>
+              <DnaStars value={dna.riskWillingness.value} label="Оценка готовности к риску" />
               <p>{dna.riskWillingness.note}</p>
               <span>Профиль ДНК</span>
             </div>
           </div>
           <DnaHeroMetric
-            icon="R"
-            label={dna.riskWillingness.label}
-            value={`${dna.riskWillingness.value}/100`}
-            note="Вы готовы принимать волатильность и активную аллокацию."
-          />
-          <DnaHeroMetric
-            icon="C"
             label={dna.riskCapacity.label}
             value={`${dna.riskCapacity.value}/100`}
             note={dna.riskCapacity.note}
+            stars={dna.riskCapacity.value}
           />
           <DnaHeroMetric
-            icon="$"
             label="Ориентир капитала"
             value={capitalTarget}
             note={capitalTargetNote}
@@ -540,48 +652,54 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
       </section>
 
       <section className="v2-hp-policy-card v2-dna-rec-card" aria-label="Рекомендации ДНК">
-        <div className="v2-hp-policy-head">
-          <div>
+        <div className="v2-dna-priority-head">
+          <div className="v2-dna-priority-copy">
             <div className="v2-hp-card-title">Приоритеты ДНК</div>
             <h2>Что сделать дальше</h2>
-          </div>
-          <span className="v2-hp-policy-badge">{dna.recommendations.length} действия</span>
-        </div>
-        <div className="v2-dna-priority-layout">
-          <div className="v2-dna-rec-list">
-            {dna.recommendations.map((item, index) => (
-              <RecommendationRow
-                key={item.id}
-                item={item}
-                number={index + 1}
-                isOpen={openRecommendationId === item.id}
-                onToggle={() => setOpenRecommendationId((current) => (current === item.id ? null : item.id))}
-              />
-            ))}
+            <p>{dna.recommendations.length} ключевых действия для усиления портфеля и достижения ваших целей.</p>
+            <div className="v2-dna-priority-stats">
+              <span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.9L12 3Z" />
+                </svg>
+                <strong>{dna.recommendations.length} действия</strong>
+                <em>по приоритету</em>
+              </span>
+            </div>
           </div>
           <aside className="v2-dna-priority-visual" aria-hidden="true">
             <img src={dnaPriorityOrb} alt="" />
           </aside>
         </div>
-      </section>
-
-      <section className="v2-hp-policy-card v2-dna-check-card">
-        <div className="v2-hp-policy-head">
-          <div>
-            <div className="v2-hp-card-title">Состав анкет</div>
-            <h2>Что проверяет ДНК</h2>
-          </div>
-          <span className="v2-hp-policy-badge">{dna.fullAuditQuestionCount} вопросов</span>
-        </div>
-        <div className="v2-dna-check-grid">
-          {dnaCheckModules.map((module) => (
-            <div key={module.label} className="v2-dna-check-tile">
-              <strong>{module.label}</strong>
-              <span>{module.value}</span>
-              <p>{module.note}</p>
-            </div>
+        <div className="v2-dna-rec-list">
+          {dna.recommendations.map((item, index) => (
+            <RecommendationRow
+              key={item.id}
+              item={item}
+              number={index + 1}
+              isOpen={openRecommendationId === item.id}
+              onToggle={() => setOpenRecommendationId((current) => (current === item.id ? null : item.id))}
+            />
           ))}
         </div>
+        <button className="v2-dna-priority-cta" type="button">
+          <span className="v2-dna-priority-cta-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M13 4c3.5.4 6.2 3.1 6.6 6.6l-5.1 5.1-4.8-4.8L13 4Z" />
+              <path d="M9.7 10.9 5 12l3.2 3.2L9.7 10.9Z" />
+              <path d="M14.5 15.7 13.4 20l-3.2-3.2 4.3-1.1Z" />
+              <path d="M5 19l2.2-2.2" />
+            </svg>
+          </span>
+          <span>
+            <strong>Перейти к плану действий</strong>
+            <em>Детальный план и инструменты</em>
+          </span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 12h14" />
+            <path d="m13 6 6 6-6 6" />
+          </svg>
+        </button>
       </section>
 
       <section className="v2-hp-policy-card v2-dna-rules-card">

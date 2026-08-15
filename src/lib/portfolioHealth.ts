@@ -12,6 +12,14 @@ import { calculateSurvival, type SurvivalStatus } from "./survivalEngine";
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
 const score = (value: number) => Math.round(clamp01(value) * 100);
+const fmtHealthUsd = (value: number | undefined) => {
+  if (value === undefined || !Number.isFinite(value)) return "$0";
+  const rounded = Math.round(value * 100) / 100;
+  return `$${rounded.toLocaleString("en-US", {
+    minimumFractionDigits: Number.isInteger(rounded) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+};
 
 // Пороги мягкой деградации
 const CONCENTRATION_SAFE = 0.2; // «Концентрация» (legacy, largestShare): 100 при ≤20%
@@ -429,19 +437,19 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   if (reserveShare <= 0) {
     reserveBlockers.push("Резерв отсутствует");
   } else if (reserveShare < reserveFloorShare) {
-    reserveBlockers.push(`Резерв ниже пола ${Math.round(reserveFloorShare * 100)}%`);
+    reserveBlockers.push(`Резерв ниже неприкосновенной части ${Math.round(reserveFloorShare * 100)}%`);
   }
   if (reserveShare >= reserveFloorShare && reserveShare < reserveTargetShare) {
-    reserveWarnings.push(`Резерв ниже цели ${Math.round(reserveTargetShare * 100)}%`);
+    reserveWarnings.push(`Резерв ниже необходимого остатка ${Math.round(reserveTargetShare * 100)}%`);
   }
   if (reserveShare > reserveBandMaxShare) {
-    reserveWarnings.push(`Резерв выше ${Math.round(reserveBandMaxShare * 100)}% — капитал простаивает`);
+    reserveWarnings.push(`Резерв выше ${Math.round(reserveBandMaxShare * 100)}% — капитал простаивает!`);
   }
   const reserveFormula = [
-    `Текущий резерв: ${Math.round(reserveShare * 100)}%`,
-    `Пол: ${Math.round(reserveFloorShare * 100)}%`,
-    `Цель: ${Math.round(reserveTargetShare * 100)}%`,
-    `Норма: ${Math.round(reserveTargetShare * 100)}–${Math.round(reserveBandMaxShare * 100)}%`,
+    `Текущий резерв: ${Math.round(reserveShare * 100)}% (${fmtHealthUsd(reserveUsd)}) от вложено ${fmtHealthUsd(reserveBaseUsd)}`,
+    `Неприкосновенная часть ${Math.round(reserveFloorShare * 100)}%: ${fmtHealthUsd(reserveFloorUsd)}`,
+    `Необходимый остаток ${Math.round(reserveTargetShare * 100)}%: ${fmtHealthUsd(reserveTargetUsd)}`,
+    `Разрешенный диапазон стейблов ${Math.round(reserveTargetShare * 100)}–${Math.round(reserveBandMaxShare * 100)}%: ${fmtHealthUsd(reserveTargetUsd)}–${fmtHealthUsd(reserveBandMaxUsd)}`,
   ];
 
   // ── Контроль риска: 10% — верхняя граница, а не цель пополнения ──
@@ -807,7 +815,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
       v2Key: "reserve",
       label: "Резерв",
       color: "#56d8f5",
-      desc: `Выделенный резерв. Пол ${Math.round(reserveFloorShare * 100)}%, цель ${Math.round(reserveTargetShare * 100)}%, коридор нормы ${Math.round(reserveTargetShare * 100)}–${Math.round(reserveBandMaxShare * 100)}%. Ниже пола новые рисковые действия запрещены; выше верхней границы начинается штраф за простой капитала.`,
+      desc: `Резерв — главный защитный параметр стратегии MUSHII Invest: на нем строятся мани-менеджмент, риск-менеджмент и право портфеля совершать сделки.\n\nВыше ${Math.round(reserveBandMaxShare * 100)}% капитал простаивает и получает штраф.\nНиже ${Math.round(reserveTargetShare * 100)}% включается жёсткая проверка перед любой покупкой, а фьючерсы отключаются,\nниже ${Math.round(reserveFloorShare * 100)}% отключаются полностью все сделки.`,
       weight: 0.2,
       score: reserveScore,
       meta: {

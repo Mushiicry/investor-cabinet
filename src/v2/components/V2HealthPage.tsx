@@ -16,6 +16,7 @@ import {
   buildHealthSimulatorInput,
   type HealthSimulatorLevers,
 } from "../lib/healthSimulator";
+import portfolioHealthScoreOrb from "../../assets/dna/portfolio-health-score-orb.png";
 import { V2CapitalLadder } from "./V2CapitalLadder";
 import { MAIN_INVESTOR_STRATEGY, type InvestorStrategy } from "../lib/investorStrategy";
 import { MAIN_INVESTOR_DNA, type InvestorDNA } from "../lib/investorDNA";
@@ -71,6 +72,16 @@ function rayDescription(c: HealthComponent) {
 function StrategyPolicyCard({ strategy, health }: { strategy: InvestorStrategy; health: PortfolioHealth }) {
   const goldOnly = strategy.allowedMetalAssets?.every((asset) => ["GOLD", "XAU", "XAUUSD"].includes(asset)) ?? false;
   const metalLabel = goldOnly ? "Золото" : "Металлы";
+  const concentrationMeta = health.components.find((component) => component.key === "concentration")?.meta;
+  const altcoinSlotsUsed = concentrationMeta?.altcoinSlotsUsed;
+  const altcoinSlotsTotal = concentrationMeta?.altcoinSlotsTotal;
+  const altcoinSlotsFree = concentrationMeta?.altcoinSlotsFree;
+  const altcoins = concentrationMeta?.altcoins ?? [];
+  const hasAltcoinSlots =
+    altcoinSlotsUsed !== undefined &&
+    altcoinSlotsTotal !== undefined &&
+    altcoinSlotsFree !== undefined &&
+    strategy.maxAltcoinSlots > 0;
   const classRows = [
     { label: "Крипта", value: `максимум ${pct(strategy.cryptoMaxShare)}` },
     {
@@ -135,6 +146,15 @@ function StrategyPolicyCard({ strategy, health }: { strategy: InvestorStrategy; 
                 <strong>до {pct(row.value)} внутри крипты</strong>
               </div>
             ))}
+            {hasAltcoinSlots && (
+              <div className={`v2-hp-policy-row v2-hp-alt-slots ${altcoinSlotsFree === 0 ? "is-full" : ""}`}>
+                <span>Альткоин-места</span>
+                <strong>
+                  занято {altcoinSlotsUsed}/{altcoinSlotsTotal} · свободно {altcoinSlotsFree}
+                </strong>
+                <em>{altcoins.length > 0 ? altcoins.join(", ") : "альты не заняты"}</em>
+              </div>
+            )}
           </div>
         </div>
 
@@ -318,26 +338,14 @@ function scoreColor(s: number) {
 }
 
 // ── Кольцо-gauge ─────────────────────────────────────────────
-function ScoreRing({ value, color }: { value: number; color: string }) {
-  const R = 88, circ = 2 * Math.PI * R;
-  const dash = (value / 100) * circ;
+function ScoreRing({ value }: { value: number }) {
   return (
-    <svg viewBox="0 0 220 220" className="v2-hp-ring-svg" aria-hidden="true">
-      <circle cx="110" cy="110" r={R} fill="none" stroke="rgba(86,196,240,0.10)" strokeWidth="10" />
-      <circle cx="110" cy="110" r={R} fill="none" stroke={color} strokeWidth="10"
-        strokeLinecap="round" strokeDasharray={`${dash} ${circ - dash}`}
-        transform="rotate(-90 110 110)"
-        style={{ transition: "stroke-dasharray 1s ease, stroke 0.5s" }} />
-      <circle cx="110" cy="110" r={R} fill="none" stroke={color} strokeWidth="3"
-        strokeOpacity="0.22" strokeDasharray={`${dash} ${circ - dash}`}
-        transform="rotate(-90 110 110)" />
-      <text x="110" y="100" textAnchor="middle" fontSize="54" fontWeight="900" fill="white"
-        fontFamily="'Libre Baskerville', Georgia, serif">{value}</text>
-      <text x="110" y="128" textAnchor="middle" fontSize="13"
-        fill="rgba(200,230,245,0.55)" fontFamily="'Bodoni Moda', Georgia, serif" letterSpacing="2">
-        ИЗ 100
-      </text>
-    </svg>
+    <div className="v2-hp-ring-orb" aria-label={`Оценка здоровья инвестора ${value} из 100`}>
+      <img src={portfolioHealthScoreOrb} alt="" />
+      <span className="v2-hp-ring-orb-mask" aria-hidden="true" />
+      <strong>{value}</strong>
+      <span>из 100</span>
+    </div>
   );
 }
 
@@ -428,7 +436,7 @@ export function V2HealthPage({
         {/* Score */}
         <div className="v2-hp-score-card">
           <div className="v2-hp-score-label">ОЦЕНКА ЗДОРОВЬЯ ИНВЕСТОРА</div>
-          <ScoreRing value={hf} color={interp.color} />
+          <ScoreRing value={hf} />
           <div className="v2-hp-score-interp" style={{ color: interp.color }}>{interp.text}</div>
           <div className="v2-hp-score-sub">{interp.sub}</div>
           {/* Health Simulator — открывается только при наличии данных */}

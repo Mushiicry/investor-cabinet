@@ -5,7 +5,7 @@ import {
   CX, CY, RADAR_R, OUTER_R, VB_OFF, VB_SIZE, CHIP_W, CHIP_H, CHIP_R,
   scoreAlpha, chipColor,
   hexPts, hexPtsAt, chipLayout, scaleValuePts,
-  healthInterpretation, diagWhy, buildCoreRecs, isActionableHealthComponent,
+  healthInterpretation, diagWhy, buildHealthBoardRecs, isActionableHealthComponent,
 } from "../lib/healthCoreHelpers";
 import type { InvestorStrategy } from "../lib/investorStrategy";
 
@@ -17,6 +17,60 @@ type Props = {
   onChipSelect?: (c: HealthComponent) => void;
   onNavigate?: (page: V2Page) => void;
 };
+
+const DIAGNOSIS_ORDER: HealthComponent["key"][] = [
+  "reserve",
+  "crypto",
+  "futures",
+  "concentration",
+  "diversification",
+  "flexibility",
+];
+
+function diagnosisRank(component: HealthComponent): number {
+  const index = DIAGNOSIS_ORDER.indexOf(component.key);
+  return index >= 0 ? index : DIAGNOSIS_ORDER.length;
+}
+
+function componentBlockers(component: HealthComponent): string[] {
+  switch (component.key) {
+    case "reserve":
+      return component.meta?.reserveBlockers ?? [];
+    case "crypto":
+      return component.meta?.survivalBlockers ?? [];
+    case "futures":
+      return component.meta?.riskControlBlockers ?? [];
+    case "concentration":
+      return component.meta?.concentrationBlockers ?? [];
+    case "diversification":
+      return component.meta?.diversificationBlockers ?? [];
+    case "flexibility":
+      return component.meta?.disciplineBlockers ?? [];
+  }
+}
+
+function componentWarnings(component: HealthComponent): string[] {
+  switch (component.key) {
+    case "reserve":
+      return component.meta?.reserveWarnings ?? [];
+    case "crypto":
+      return component.meta?.survivalWarnings ?? [];
+    case "futures":
+      return component.meta?.riskControlWarnings ?? [];
+    case "concentration":
+      return component.meta?.concentrationWarnings ?? [];
+    case "diversification":
+      return component.meta?.diversificationWarnings ?? [];
+    case "flexibility":
+      return component.meta?.disciplineWarnings ?? [];
+  }
+}
+
+function diagnosisTone(component: HealthComponent): "ok" | "warn" | "critical" {
+  if (componentBlockers(component).length > 0) return "critical";
+  if (componentWarnings(component).length > 0 || component.score < 75) return "warn";
+  return "ok";
+}
 
 export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onNavigate }: Props) {
   const components = health.components;
@@ -36,13 +90,11 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
   const valueInnerPts = scaleValuePts(valuePts, 0.88);
 
   // ── Диагноз (слабые места) и рекомендации (что делать) ──
-  const sorted = [...components].sort((a, b) => a.score - b.score);
-  const weak = sorted.filter(c => c.score < 65).slice(0, 5);
-  const strong = sorted.filter(c => c.score >= 75).slice(-2);
-  const actionable = sorted.filter(isActionableHealthComponent);
-  // Рекомендации считаем один раз на всех компонентах (перевес актива даёт
-  // рекомендацию даже при «умеренном» балле, не попав в weak).
-  const recs = isEmpty ? [] : buildCoreRecs(actionable, portfolio, components, healthInput);
+  const diagnosisComponents = [...components].sort((a, b) => diagnosisRank(a) - diagnosisRank(b));
+  const actionable = diagnosisComponents.filter(isActionableHealthComponent);
+  // Правая доска: сначала предупреждения/блокировки из карточек компонентов,
+  // затем общие рекомендации по портфелю без дублей.
+  const recs = isEmpty ? [] : buildHealthBoardRecs(actionable, portfolio, diagnosisComponents, healthInput);
   const interp = isEmpty
     ? { text: "Подключите кошельки, чтобы увидеть анализ портфеля", color: "#55C7FF" }
     : healthInterpretation(health.healthFactor);
@@ -91,6 +143,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
 
         <div className="v2-hc-side-title">Диагноз</div>
         <div className="v2-hc-side-verdict" style={{ color: interp.color }}>{interp.text}</div>
+        {!isEmpty && <div className="v2-hc-side-subtitle">Состояние факторов</div>}
         <div className="v2-hc-side-list">
           {isEmpty && (
             <div className="v2-hc-diag-row">
@@ -110,26 +163,25 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
               </div>
             </div>
           )}
-          {!isEmpty && strong.map(c => (
-            <div key={c.key} className="v2-hc-diag-row v2-hc-diag-row--ok">
-              <span className="v2-hc-diag-icon">✓</span>
-              <div className="v2-hc-diag-body">
-                <span className="v2-hc-diag-name">{c.label}</span>
-                <span className="v2-hc-diag-why">{diagWhy(c, portfolio)}</span>
-              </div>
-              <span className="v2-hc-diag-val">{c.score}</span>
-            </div>
-          ))}
-          {!isEmpty && weak.map(c => (
-            <div key={c.key} className="v2-hc-diag-row v2-hc-diag-row--warn">
-              <span className="v2-hc-diag-icon">⚠</span>
-              <div className="v2-hc-diag-body">
-                <span className="v2-hc-diag-name">{c.label}</span>
-                <span className="v2-hc-diag-why">{diagWhy(c, portfolio)}</span>
-              </div>
-              <span className="v2-hc-diag-val">{c.score}</span>
-            </div>
-          ))}
+          {!isEmpty && diagnosisComponents.map((component) => {
+            const tone = diagnosisTone(component);
+            const icon = tone === "ok" ? "✓" : tone === "critical" ? "!" : "⚠";
+            return (
+              <button
+                key={component.key}
+                type="button"
+                className={`v2-hc-diag-row v2-hc-diag-row--${tone}`}
+                onClick={() => onChipSelect?.(component)}
+              >
+                <span className="v2-hc-diag-icon">{icon}</span>
+                <span className="v2-hc-diag-body">
+                  <span className="v2-hc-diag-name">{component.label}</span>
+                  <span className="v2-hc-diag-why">{diagWhy(component, portfolio)}</span>
+                </span>
+                <span className="v2-hc-diag-val">{component.score}</span>
+              </button>
+            );
+          })}
         </div>
       </aside>
 
@@ -487,7 +539,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
 
             {/* Label — white, bright */}
             <text x={CX} y={CY + 18} textAnchor="middle"
-              fontSize="4.4" fontWeight="700"
+              fontSize="8.8" fontWeight="700"
               fontFamily="var(--v2-sans,system-ui,sans-serif)"
               fill="rgba(255,255,255,0.90)"
               letterSpacing="0.8">
@@ -503,7 +555,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
               const labelLines = chipLabelLines(c);
               const cx = rx + CHIP_W / 2 + 1.5;
               const cy = ry + CHIP_H / 2;
-              const labelY = c.key === "futures" ? cy - 19 : cy - 15;
+              const labelY = c.key === "futures" ? cy - 9 : cy - 5;
 
               return (
                 <g key={`chip-${c.key}`}
@@ -607,7 +659,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
                   </text>
 
                   {/* Score number — всегда чисто-белый, как центральный */}
-                  <text x={cx} y={cy + 9}
+                  <text x={cx} y={cy + 19}
                     fontSize="22" fontWeight="900"
                     fill="#ffffff"
                     fontFamily="var(--v2-mono,'Courier New',monospace)"

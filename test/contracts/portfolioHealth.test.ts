@@ -66,7 +66,7 @@ describe("health concentration — per-asset score passthrough", () => {
     const r = reserve(h);
     expect(r.label).toBe("Резерв");
     expect(r.score).toBe(15);
-    expect(r.meta?.reserveBlockers).toEqual(["Резерв ниже пола 10%"]);
+    expect(r.meta?.reserveBlockers).toEqual(["Резерв ниже неприкосновенной части 10%"]);
     expect(r.meta?.reserveFloorShortfallUsd).toBeCloseTo(50, 2);
     expect(r.meta?.reserveTargetShortfallUsd).toBeCloseTo(250, 2);
   });
@@ -83,10 +83,10 @@ describe("health concentration — per-asset score passthrough", () => {
     expect(r.meta?.reserveBlockers).toEqual([]);
     expect(r.meta?.reserveWarnings).toEqual([]);
     expect(r.meta?.reserveFormula).toEqual([
-      "Текущий резерв: 30%",
-      "Пол: 10%",
-      "Цель: 30%",
-      "Норма: 30–60%",
+      "Текущий резерв: 30% ($300) от вложено $1,000",
+      "Неприкосновенная часть 10%: $100",
+      "Необходимый остаток 30%: $300",
+      "Разрешенный диапазон стейблов 30–60%: $300–$600",
     ]);
   });
 
@@ -100,7 +100,7 @@ describe("health concentration — per-asset score passthrough", () => {
     const r = reserve(h);
     expect(r.score).toBe(75);
     expect(r.meta?.reserveBlockers).toEqual([]);
-    expect(r.meta?.reserveWarnings).toEqual(["Резерв выше 60% — капитал простаивает"]);
+    expect(r.meta?.reserveWarnings).toEqual(["Резерв выше 60% — капитал простаивает!"]);
     expect(r.meta?.reserveIdleUsd).toBeCloseTo(100, 2);
   });
 
@@ -125,7 +125,7 @@ describe("health concentration — per-asset score passthrough", () => {
     });
 
     expect(reserve(clean).score).toBe(100);
-    expect(reserve(clean).meta?.reserveFormula).toContain("Цель: 10%");
+    expect(reserve(clean).meta?.reserveFormula).toContain("Необходимый остаток 10%: $60");
     expect(findHealthComponentByKey(clean.components, "riskControl")?.label).toBe("Качество активов");
     expect(findHealthComponentByKey(clean.components, "riskControl")?.score).toBe(100);
     expect(findHealthComponentByKey(withFutures.components, "riskControl")?.score).toBe(0);

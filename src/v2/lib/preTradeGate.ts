@@ -637,6 +637,15 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
 
   if (isNewAltcoin && altSlots) {
     const afterSlots = altSlots.used + 1;
+    const occupiedSlots = altSlots.altcoins.length > 0 ? altSlots.altcoins.join(", ") : "пока нет";
+    const baseAltSlotNote = `Занято ${altSlots.used}/${altSlots.total}: ${occupiedSlots}. После покупки будет ${afterSlots}/${altSlots.total}.`;
+    const altSlotNote = strategy.maxAltcoinSlots > 0
+      ? altSlots.free === 1
+        ? `${baseAltSlotNote} Это последнее свободное место под новый альт: покупка возможна только после отдельного обдумывания и проверки, что этот актив действительно нужен стратегии.`
+        : afterSlots > altSlots.total
+          ? `${baseAltSlotNote} Свободных мест под новые альты нет. Новый альт возможен только вместо старого.`
+          : `${baseAltSlotNote} В крипто-блоке есть только ${strategy.maxAltcoinSlots} места под альткоины по ${Math.round(strategy.defaultCryptoAssetLimit * 100)}%.`
+      : "Альты вне списка стратегии запрещены.";
     checks.push({
       key: "assetSlots",
       label: strategy.maxAltcoinSlots > 0
@@ -648,9 +657,7 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
       after: afterSlots,
       limit: altSlots.total,
       isShare: false,
-      note: strategy.maxAltcoinSlots > 0
-        ? `В крипто-блоке есть только ${strategy.maxAltcoinSlots} места под альткоины по ${Math.round(strategy.defaultCryptoAssetLimit * 100)}%.`
-        : "Альты вне списка стратегии запрещены.",
+      note: altSlotNote,
     });
   }
   if (isNewStock && stockSlots) {

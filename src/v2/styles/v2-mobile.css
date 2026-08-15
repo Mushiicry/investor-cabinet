@@ -353,13 +353,42 @@
 
   .v2-dna-hero-summary {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+  }
+
+  .v2-dna-hero-summary > .v2-dna-hero-metric:not(:last-child),
+  .v2-dna-hero-summary > .v2-dna-hero-metric:last-child {
+    grid-area: auto;
+    grid-column: auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
 
   .v2-dna-score-widget {
+    display: grid;
+    grid-area: auto;
     grid-template-columns: minmax(0, 1fr);
     gap: 18px;
     justify-items: start;
     padding: 20px;
+  }
+
+  .v2-dna-risk-readiness {
+    grid-area: auto;
+    width: min(230px, 72vw);
+    height: min(345px, 108vw);
+  }
+
+  .v2-dna-score-copy {
+    grid-area: auto;
+  }
+
+  .v2-dna-readiness-score strong {
+    font-size: 42px;
+  }
+
+  .v2-dna-readiness-score span {
+    font-size: 16px;
   }
 
   .v2-dna-hero-metric {
@@ -368,34 +397,103 @@
     padding: 20px;
   }
 
-  .v2-dna-hero-metric strong {
+  .v2-dna-rec-card {
+    padding: 18px 14px;
+  }
+
+  .v2-dna-priority-head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .v2-dna-priority-copy h2 {
     font-size: 28px;
+  }
+
+  .v2-dna-priority-copy p {
+    font-size: 16px;
+  }
+
+  .v2-dna-priority-stats {
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .v2-dna-priority-stats span {
+    grid-template-columns: 44px auto;
+  }
+
+  .v2-dna-priority-stats span + span {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .v2-dna-priority-stats svg {
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+  }
+
+  .v2-dna-priority-stats strong {
+    font-size: 17px;
+  }
+
+  .v2-dna-priority-stats em {
+    font-size: 15px;
   }
 
   .v2-dna-rec-toggle {
     min-height: 0;
-    grid-template-columns: 38px minmax(0, 1fr) 34px;
-    gap: 12px;
+    grid-template-columns: 38px 50px minmax(0, 1fr) 34px;
+    gap: 10px;
     padding: 14px;
   }
 
-  .v2-dna-rec-toggle strong {
+  .v2-dna-rec-number {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .v2-dna-rec-icon {
+    width: 46px;
+    height: 46px;
+  }
+
+  .v2-dna-rec-icon svg {
+    width: 25px;
+    height: 25px;
+  }
+
+  .v2-dna-rec-copy strong {
     font-size: 15px;
   }
 
-  .v2-dna-rec-priority,
   .v2-dna-rec-action {
-    grid-column: 2 / 4;
+    font-size: 12px;
+  }
+
+  .v2-dna-rec-priority {
+    grid-column: 3 / 5;
+    padding: 6px 10px;
+    font-size: 11px;
   }
 
   .v2-dna-rec-chevron {
     grid-row: 1;
-    grid-column: 3;
+    grid-column: 4;
+    width: 32px;
+    height: 32px;
+  }
+
+  .v2-dna-rec-chevron svg {
+    width: 18px;
+    height: 18px;
   }
 
   .v2-dna-rec-details {
     grid-template-columns: minmax(0, 1fr);
-    padding: 0 14px 16px 64px;
+    padding: 0 14px 16px 16px;
   }
 
   .v2-dna-rec-details p {
@@ -411,19 +509,150 @@
   }
 
   .v2-dna-priority-visual {
-    min-height: 190px;
+    width: min(200px, 68vw);
+    min-height: 140px;
     order: -1;
   }
 
   .v2-dna-priority-visual img {
-    min-height: 190px;
-    object-position: center 54%;
+    min-height: 0;
+    object-position: center;
+  }
+
+  .v2-dna-priority-cta {
+    grid-template-columns: 42px minmax(0, 1fr) 30px;
+    gap: 12px;
+    min-height: 66px;
+    padding: 12px 14px;
+  }
+
+  .v2-dna-priority-cta-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .v2-dna-priority-cta-icon svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .v2-dna-priority-cta > svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .v2-dna-priority-cta strong {
+    font-size: 16px;
+  }
+
+  .v2-dna-priority-cta em {
+    font-size: 13px;
   }
 
   .v2-dna-audit-card-toggle {
     grid-template-columns: 38px minmax(0, 1fr) 34px;
     gap: 12px;
     padding: 14px;
+  }
+
+  .v2-dna-audit-primary-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    min-height: 0;
+    padding: 22px 16px;
+  }
+
+  .v2-dna-audit-primary-left {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 16px;
+    padding-right: 50px;
+  }
+
+  .v2-dna-audit-primary-kind {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    font-size: 25px;
+  }
+
+  .v2-dna-audit-primary-copy {
+    gap: 14px;
+  }
+
+  .v2-dna-audit-primary-copy h3 {
+    font-size: 30px;
+  }
+
+  .v2-dna-audit-primary-copy p {
+    font-size: 18px;
+  }
+
+  .v2-dna-audit-primary-meta {
+    gap: 14px;
+  }
+
+  .v2-dna-audit-primary-meta span {
+    grid-template-columns: 42px auto;
+    column-gap: 12px;
+  }
+
+  .v2-dna-audit-primary-meta svg {
+    width: 42px;
+    height: 42px;
+    padding: 10px;
+  }
+
+  .v2-dna-audit-primary-action {
+    gap: 18px;
+  }
+
+  .v2-dna-audit-primary-progress > span {
+    font-size: 14px;
+  }
+
+  .v2-dna-audit-primary-progress strong {
+    font-size: 20px;
+  }
+
+  .v2-dna-audit-primary-cta {
+    grid-template-columns: 50px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 82px;
+    padding: 14px 16px;
+    border-radius: 18px;
+  }
+
+  .v2-dna-audit-primary-cta span:not(.v2-dna-audit-primary-dna) {
+    font-size: 20px;
+    white-space: normal;
+  }
+
+  .v2-dna-audit-primary-dna {
+    width: 50px;
+    height: 50px;
+  }
+
+  .v2-dna-audit-primary-dna svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .v2-dna-audit-primary-toggle {
+    position: absolute;
+    top: 18px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .v2-dna-audit-primary-toggle svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .v2-dna-audit-primary > .v2-dna-audit-body {
+    margin: 0 16px 22px;
+    padding-top: 16px;
   }
 
   .v2-dna-audit-progress {
@@ -578,6 +807,27 @@
      На десктопе колонки объясняет шапка группы (.v2-port-group-head),
      на мобиле она скрыта — без подписей цифры нечитаемы, а 2 блока
      по 3 значения в ряд клипались. Каждое значение — колонка с лейблом. */
+  .v2-port-shell {
+    padding: 0;
+  }
+  .v2-port-hero {
+    padding: 16px;
+  }
+  .v2-port-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .v2-port-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .v2-port-table {
+    padding: 12px;
+  }
+  .v2-pid-head {
+    margin-top: 8px;
+  }
+  .v2-port-columns-line {
+    display: none;
+  }
   .v2-port-row {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto;
@@ -613,6 +863,16 @@
 
 /* Стейкинг-тогл: длинная метка выпирала за экран (scrollWidth +47px) */
 @media (max-width: 480px) {
+  .v2-port-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .v2-port-hero-title h1 {
+    font-size: 24px;
+  }
+  .v2-port-metric-card {
+    min-height: auto;
+  }
+
   /* На десктопе тогл прижат к колонке «Ср. вход» через margin-left: 336px —
      на мобиле это выталкивало его за экран (right 663 при вьюпорте 375). */
   .v2-stake-toggle {
@@ -708,7 +968,7 @@
   .v2-port-srow:not(.v2-port-stables-head) {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "purpose status"
+      "purpose share"
       "value share";
     row-gap: 2px;
     padding: 10px 12px;
@@ -718,7 +978,6 @@
   .v2-port-srow .v2-port-purpose { grid-area: purpose; align-self: center; }
   .v2-port-srow > strong { grid-area: value; justify-self: start; }
   .v2-port-srow .v2-port-share { grid-area: share; justify-self: end; align-self: center; }
-  .v2-port-srow .v2-port-status { grid-area: status; justify-self: end; }
 
   /* Заголовок секции: «Свободные деньги …… 206 $» в одну строку */
   .v2-port-srow.v2-port-stables-head {
@@ -933,6 +1192,108 @@
   .v2-hdm-close {
     width: 32px;
     height: 32px;
+  }
+
+  .v2-hdm-card--reserve {
+    max-width: none;
+    border-radius: 18px;
+  }
+
+  .v2-hdm-card--reserve .v2-hdm-header {
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 18px 50px 16px 16px;
+  }
+
+  .v2-hdm-card--reserve .v2-hdm-score-ring {
+    width: 126px;
+    height: 126px;
+  }
+
+  .v2-hdm-card--reserve .v2-hdm-score-orb {
+    width: 136px;
+    height: 124px;
+  }
+
+  .v2-hdm-card--reserve .v2-hdm-score-orb img {
+    width: 154px;
+  }
+
+  .v2-hdm-card--reserve .v2-hdm-score-orb-mask {
+    width: 52px;
+    height: 46px;
+  }
+
+  .v2-hdm-card--reserve .v2-hdm-score-orb-value {
+    margin-top: -6px;
+    font-size: 24px;
+  }
+
+  .v2-hdm-card--reserve .v2-hdm-score-orb-total {
+    top: 69px;
+    font-size: 9px;
+  }
+
+  .v2-hdm-card--reserve .v2-hdm-title {
+    font-size: 22px;
+  }
+
+  .v2-hdm-card--reserve .v2-hdm-subtitle {
+    font-size: 10px;
+  }
+
+  .v2-hdm-card--reserve .v2-hdm-close {
+    top: 14px;
+    right: 14px;
+  }
+
+  .v2-hdm-body--reserve {
+    padding: 0 16px 22px;
+  }
+
+  .v2-hdm-section--intro .v2-hdm-text {
+    max-width: none;
+    font-size: 15px;
+  }
+
+  .v2-hdm-section--why,
+  .v2-hdm-section--warning,
+  .v2-hdm-section--how {
+    grid-template-columns: 1fr;
+  }
+
+  .v2-hdm-section--how .v2-hdm-section-heading,
+  .v2-hdm-section--how .v2-hdm-list,
+  .v2-hdm-section--how .v2-hdm-data-widget {
+    grid-column: 1;
+  }
+
+  .v2-hdm-section--how .v2-hdm-data-widget {
+    grid-row: auto;
+  }
+
+  .v2-hdm-data-widget {
+    min-height: 220px;
+    justify-self: center;
+  }
+
+  .v2-hdm-data-widget img {
+    width: min(300px, 92vw);
+    min-height: 0;
+  }
+
+  .v2-hdm-metric-row {
+    grid-template-columns: 28px 1fr;
+  }
+
+  .v2-hdm-metric-value {
+    grid-column: 2;
+  }
+
+  .v2-hdm-reserve-scale {
+    padding-left: 8px;
+    padding-right: 8px;
   }
 }
 

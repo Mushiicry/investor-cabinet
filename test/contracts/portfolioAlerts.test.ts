@@ -90,6 +90,27 @@ describe("единый движок тревог портфеля", () => {
     );
   });
 
+  it("переносит простой резерва выше верхней границы в сигналы и общие рекомендации", () => {
+    const alerts = buildPortfolioAlerts({
+      portfolio: portfolio({ stableReserve: 700, reserveShare: 0.7 }),
+      positions: [],
+      allocation: [],
+      currentFG: 50,
+      health,
+      marketPsychology: getMarketPsychology(50),
+    });
+
+    expect(alerts).toContainEqual(
+      expect.objectContaining({
+        id: "reserve-idle",
+        level: "warning",
+        title: "Резерв выше 60%",
+        detail: "$100 сверх $600 простаивает",
+        action: "Открыть разбор здоровья",
+      }),
+    );
+  });
+
   it("для стратегии Полины не ругается на резерв выше 10% и крипту ниже 75%", () => {
     const alerts = buildPortfolioAlerts({
       portfolio: portfolio({ stableReserve: 150, reserveShare: 0.15 }),
