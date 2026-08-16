@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { saveInvestorDNAAudit } from "../../api/investorDNA";
 import dnaPriorityOrb from "../../assets/dna/dna-priority-orb.png";
@@ -41,64 +42,19 @@ type DnaAuditCardProps = {
   total: number;
   isOpen: boolean;
   onToggle: () => void;
+  ctaLabel?: string;
+  onPrimaryAction?: () => void;
   children: ReactNode;
 };
 
 const defaultAnswerOptions = ["Не подходит", "Скорее нет", "Скорее да", "Полностью да"];
 
-const liteAnswerOptions: Record<string, string[]> = {
-  "lite-1": ["Защита", "Пассивный доход", "Рост", "Агрессивный рост"],
-  "lite-2": ["До 3 лет", "3-5 лет", "5-10 лет", "Не планирую выводить"],
-  "lite-3": ["Нет", "1 месяц", "3 месяца", "6+ месяцев"],
-  "lite-4": ["0-1 месяц", "1-3 месяца", "3-6 месяцев", "6+ месяцев"],
-  "lite-5": ["-10%", "-20%", "-30%", "-40% и ниже"],
-  "lite-6": ["Продаю", "Держу", "Докупаю по плану", "Увеличиваю риск"],
-  "lite-7": ["Потерять капитал", "Отстать от индекса", "Пропустить рост", "Не знаю"],
-  "lite-8": ["До 10%", "10-30%", "30-50%", "50%+"],
-  "lite-9": ["Нет", "Только учебно", "Отдельным бюджетом", "Да, активно"],
-  "lite-10": ["0%", "До 5%", "До 10%", "Больше 10%"],
-  "lite-11": ["Нет", "Только хедж", "Только с лимитом убытка", "Допустимо"],
-  "lite-12": ["Акции/макро", "Риск-менеджмент", "Психология", "Анализ активов"],
-};
-
 function answerOptionsFor(question: InvestorDNAQuestion): string[] {
-  if (liteAnswerOptions[question.id]) {
-    return liteAnswerOptions[question.id];
+  if (question.answerKind === "open") {
+    return [];
   }
 
-  if (question.id === "full-15" || question.id === "full-16" || question.id === "full-17" || question.id === "full-20") {
-    return ["Продаю", "Снижаю риск", "Держу", "Докупаю по плану"];
-  }
-
-  if (question.id === "full-4" || question.id === "full-46" || question.id === "full-47") {
-    return ["Нет резерва", "1-3 месяца", "3-6 месяцев", "6+ месяцев"];
-  }
-
-  if (question.id === "full-19") {
-    return ["До -10%", "До -20%", "До -30-40%", "-50% и ниже"];
-  }
-
-  if (question.id === "full-22") {
-    return ["Низкая просадка", "Умеренный рост", "Сильный рост", "Максимум капитала"];
-  }
-
-  if (question.id === "full-29") {
-    return ["Не подходит", "Только хедж", "Только с бюджетом риска", "Допустимо активно"];
-  }
-
-  if (question.id === "full-32" || question.id === "full-34" || question.id === "full-35") {
-    return ["До 10%", "10-30%", "30-50%", "50%+"];
-  }
-
-  if (question.id === "full-36") {
-    return ["Пассивный", "70/30", "50/50", "Активное управление"];
-  }
-
-  if (question.id === "full-37") {
-    return ["Нет", "Только обучение", "Отдельный бюджет", "Да"];
-  }
-
-  return defaultAnswerOptions;
+  return question.options?.length ? question.options : defaultAnswerOptions;
 }
 
 function DnaScoreRing({ value, accountId }: { value: number; accountId: InvestorDNA["accountId"] }) {
@@ -219,6 +175,8 @@ function DnaAuditCard({
   total,
   isOpen,
   onToggle,
+  ctaLabel,
+  onPrimaryAction,
   children,
 }: DnaAuditCardProps) {
   const progress = total > 0 ? Math.round((answered / total) * 100) : 0;
@@ -266,7 +224,7 @@ function DnaAuditCard({
                 <span style={{ width: `${progress}%` }} />
               </i>
             </div>
-            <button className="v2-dna-audit-primary-cta" type="button" onClick={onToggle}>
+            <button className="v2-dna-audit-primary-cta" type="button" onClick={onPrimaryAction ?? onToggle}>
               <span className="v2-dna-audit-primary-dna" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M7 3c0 4 10 4 10 8s-10 4-10 10" />
@@ -275,7 +233,7 @@ function DnaAuditCard({
                   <path d="M8.5 17h7" />
                 </svg>
               </span>
-              <span>{isOpen ? "Свернуть аудит" : kind === "lite" ? "Пройти аудит" : "Пройти анкету"}</span>
+              <span>{ctaLabel ?? (isOpen ? "Свернуть аудит" : kind === "lite" ? "Пройти аудит" : "Пройти анкету")}</span>
             </button>
             <div className="v2-dna-audit-primary-hint">
               {total} вопросов <span>•</span> {duration}
@@ -333,6 +291,7 @@ function AuditQuestion({
   onNote: (questionId: string, note: string) => void;
 }) {
   const options = answerOptionsFor(question);
+  const isOpenAnswer = question.answerKind === "open";
 
   return (
     <div className="v2-dna-question-card">
@@ -343,33 +302,110 @@ function AuditQuestion({
         </div>
         <p>{question.text}</p>
       </div>
-      <div className="v2-dna-options" role="group" aria-label={`Варианты ответа на вопрос ${number}`}>
-        {options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={`v2-dna-option${answer?.option === option ? " is-selected" : ""}`}
-            aria-pressed={answer?.option === option}
-            onClick={() => onChoice(question.id, option)}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
+      {options.length > 0 && (
+        <div className="v2-dna-options" role="group" aria-label={`Варианты ответа на вопрос ${number}`}>
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={`v2-dna-option${answer?.option === option ? " is-selected" : ""}`}
+              aria-pressed={answer?.option === option}
+              onClick={() => onChoice(question.id, option)}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
       <textarea
         className="v2-dna-note"
-        rows={2}
+        rows={isOpenAnswer ? 3 : 2}
         value={answer?.note ?? ""}
         onChange={(event) => onNote(question.id, event.target.value)}
-        placeholder="Свободное поле: суммы, исключения, контекст, что важно учесть"
+        placeholder={question.placeholder ?? (isOpenAnswer ? "Ответ" : "Свободное поле: суммы, исключения, контекст, что важно учесть")}
       />
     </div>
+  );
+}
+
+function DnaAuditResultPanel({
+  kind,
+  dna,
+  answered,
+  total,
+  onClose,
+}: {
+  kind: AuditKind;
+  dna: InvestorDNA;
+  answered: number;
+  total: number;
+  onClose: () => void;
+}) {
+  const title = kind === "lite" ? "Предварительное амплуа инвестора" : "Итоговое амплуа инвестора";
+  const scope = kind === "lite"
+    ? "На базе первичного аудита результат показывает быстрый риск-портрет и главные ограничения."
+    : "На базе полной анкеты результат должен лечь в инвестдекларацию, лимиты и рекомендации.";
+  const primaryRecommendation = dna.recommendations[0];
+
+  return createPortal(
+    <div className="v2-dna-result-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
+      <div className="v2-dna-result-modal" onClick={(event) => event.stopPropagation()}>
+        <button className="v2-dna-result-modal-close" type="button" onClick={onClose} aria-label="Закрыть">
+          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <path d="M4 4l10 10M14 4L4 14" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        <div className="v2-dna-audit-result-panel">
+          <div className="v2-dna-audit-result-head">
+            <div>
+              <div className="v2-hp-card-title">Результат ДНК</div>
+              <h3>{title}</h3>
+            </div>
+            <span>{answered} / {total}</span>
+          </div>
+
+          <div className="v2-dna-audit-result-grid">
+            <div className="v2-dna-audit-result-main">
+              <em>Архетип</em>
+              <strong>{dna.investorType}</strong>
+              <p>{dna.thesis}</p>
+            </div>
+            <div className="v2-dna-audit-result-main">
+              <em>Главный вывод</em>
+              <strong>{dna.keyVerdict}</strong>
+              <p>{scope}</p>
+            </div>
+          </div>
+
+          <div className="v2-dna-audit-result-facts">
+            <div>
+              <span>{dna.riskWillingness.label}</span>
+              <strong>{dna.riskWillingness.value}/100</strong>
+              <p>{dna.riskWillingness.note}</p>
+            </div>
+            <div>
+              <span>{dna.riskCapacity.label}</span>
+              <strong>{dna.riskCapacity.value}/100</strong>
+              <p>{dna.riskCapacity.note}</p>
+            </div>
+            <div>
+              <span>Первое действие</span>
+              <strong>{primaryRecommendation?.title ?? "Проверить риск-лимиты"}</strong>
+              <p>{primaryRecommendation?.action ?? "Сверить ответы с лимитами портфеля перед новой сделкой."}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
 export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
   const [openAudit, setOpenAudit] = useState<DnaPanelKind | null>(null);
   const [openRecommendationId, setOpenRecommendationId] = useState<string | null>(null);
+  const [openResult, setOpenResult] = useState<AuditKind | null>(null);
   const [answers, setAnswers] = useState<Record<string, AuditAnswer>>({});
   const [auditResult, setAuditResult] = useState<Partial<Record<AuditKind, string>>>({});
   const [savingAudit, setSavingAudit] = useState<AuditKind | null>(null);
@@ -397,12 +433,13 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
   const capitalTarget = "$20 000";
   const capitalTargetNote = "Амбициозный ориентир без требования форсировать риск.";
   const dnaCheckModules = [
-    { label: "Цель и горизонт", value: "7 вопросов", note: "Зачем нужен капитал и когда он может понадобиться." },
-    { label: "Финансовая база", value: "7 вопросов", note: "Подушка, обязательные платежи и устойчивость дохода." },
+    { label: "Цель капитала", value: "8 вопросов", note: "Зачем нужен капитал и насколько жёсткая цель." },
     { label: "Риск и просадка", value: "8 вопросов", note: "Какая волатильность допустима без срыва плана." },
-    { label: "Поведение", value: "8 вопросов", note: "Что вы делаете при падении рынка и давлении эмоций." },
-    { label: "Структура портфеля", value: "10 вопросов", note: "Активы, концентрация, ребалансировка и лимиты." },
-    { label: "Способность к риску", value: "10 вопросов", note: "Можно ли масштабировать риск сейчас, а не в теории." },
+    { label: "Поведение", value: "8 вопросов", note: "Что происходит под давлением ошибок, FOMO и ожидания." },
+    { label: "Стиль", value: "8 вопросов", note: "Какой режим принятия решений реально соблюдать." },
+    { label: "Структура", value: "8 вопросов", note: "Активы, концентрация, спекулятивный блок и плечо." },
+    { label: "Способность к риску", value: "6 вопросов", note: "Можно ли масштабировать риск сейчас, а не в теории." },
+    { label: "Ограничения", value: "4 вопроса", note: "Слабые зоны, характер и желаемый итог теста." },
   ];
   const ruleFlowSteps = [
     { label: "Анкета", value: `${dna.liteQuestionCount} + ${dna.fullAuditQuestionCount}`, note: "Собирает ограничения и поведенческие реакции." },
@@ -433,6 +470,21 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
     const answer = answers[question.id];
     return Boolean(answer?.option || answer?.note.trim());
   }).length;
+  const liteComplete = liteAnswered >= dna.liteQuestionCount;
+  const fullComplete = fullAnswered >= dna.fullAuditQuestionCount;
+
+  function handleAuditPrimaryAction(kind: AuditKind) {
+    const complete = kind === "lite" ? liteComplete : fullComplete;
+
+    if (complete) {
+      setOpenAudit(null);
+      setOpenResult(openResult === kind ? null : kind);
+      return;
+    }
+
+    setOpenResult(null);
+    setOpenAudit(openAudit === kind ? null : kind);
+  }
 
   function updateChoice(questionId: string, option: string) {
     setAnswers((current) => ({
@@ -490,12 +542,16 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
         ...current,
         [kind]: `Ответы сохранены в Google Sheets: заполнено ${answered} из ${total}. История аудита обновится после следующей загрузки данных.`,
       }));
+      setOpenAudit(null);
+      setOpenResult(kind);
     } catch (error) {
       const reason = error instanceof Error ? error.message : "неизвестная ошибка";
       setAuditResult((current) => ({
         ...current,
         [kind]: `Ответы приняты локально: заполнено ${answered} из ${total}. Сохранение в Google Sheets пока не прошло: ${reason}.`,
       }));
+      setOpenAudit(null);
+      setOpenResult(kind);
     } finally {
       setSavingAudit(null);
     }
@@ -520,9 +576,22 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
             total={dna.liteQuestionCount}
             isOpen={openAudit === "lite"}
             onToggle={() => setOpenAudit(openAudit === "lite" ? null : "lite")}
+            ctaLabel={openAudit === "lite" ? "Свернуть аудит" : liteComplete ? (openResult === "lite" ? "Скрыть итог" : "Итог аудита") : "Пройти аудит"}
+            onPrimaryAction={() => handleAuditPrimaryAction("lite")}
           >
             {openAudit === "lite" && (
               <div className="v2-dna-audit-body">
+                <div className="v2-dna-audit-actionbar">
+                  <span>Заполнено {liteAnswered} из {dna.liteQuestionCount}</span>
+                  <button
+                    className="v2-hp-sim-btn"
+                    type="button"
+                    disabled={savingAudit === "lite"}
+                    onClick={() => void submitAudit("lite")}
+                  >
+                    {savingAudit === "lite" ? "Сохраняю ответы" : "Сохранить ответы"}
+                  </button>
+                </div>
                 <div className="v2-dna-question-list">
                   {dna.liteQuestions.map((question, index) => (
                     <AuditQuestion
@@ -558,9 +627,22 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
             total={dna.fullAuditQuestionCount}
             isOpen={openAudit === "full"}
             onToggle={() => setOpenAudit(openAudit === "full" ? null : "full")}
+            ctaLabel={openAudit === "full" ? "Свернуть анкету" : fullComplete ? (openResult === "full" ? "Скрыть итог" : "Итог анкеты") : "Пройти анкету"}
+            onPrimaryAction={() => handleAuditPrimaryAction("full")}
           >
             {openAudit === "full" && (
               <div className="v2-dna-audit-body">
+                <div className="v2-dna-audit-actionbar">
+                  <span>Заполнено {fullAnswered} из {dna.fullAuditQuestionCount}</span>
+                  <button
+                    className="v2-hp-sim-btn"
+                    type="button"
+                    disabled={savingAudit === "full"}
+                    onClick={() => void submitAudit("full")}
+                  >
+                    {savingAudit === "full" ? "Сохраняю ответы" : "Сохранить полную анкету"}
+                  </button>
+                </div>
                 <div className="v2-dna-question-list">
                   {dna.fullQuestionGroups.map((group) => (
                     <div key={group.title} className="v2-dna-question-group">
@@ -598,6 +680,26 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
             )}
           </DnaAuditCard>
         </div>
+
+        {openResult === "lite" && (
+          <DnaAuditResultPanel
+            kind="lite"
+            dna={dna}
+            answered={liteAnswered}
+            total={dna.liteQuestionCount}
+            onClose={() => setOpenResult(null)}
+          />
+        )}
+
+        {openResult === "full" && (
+          <DnaAuditResultPanel
+            kind="full"
+            dna={dna}
+            answered={fullAnswered}
+            total={dna.fullAuditQuestionCount}
+            onClose={() => setOpenResult(null)}
+          />
+        )}
 
         <div className="v2-dna-check-card v2-dna-check-card-inline">
           <div className="v2-hp-policy-head">

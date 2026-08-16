@@ -6,9 +6,24 @@ import {
   WIFE_INVESTOR_DNA,
   dnaForSlot,
   normalizeInvestorDNAFromApi,
+  type InvestorDNAQuestion,
 } from "../../src/v2/lib/investorDNA";
 import { MAIN_INVESTOR_PROFILE, WIFE_INVESTOR_PROFILE } from "../../src/v2/lib/investorProfile";
 import { buildLiveV2Data, buildZeroedV2Data } from "../../src/v2/lib/v2LabData";
+
+const normalizeQuestionText = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[?.,:;$%]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const allFullQuestions = () => MAIN_INVESTOR_DNA.fullQuestionGroups.flatMap((group) => group.questions);
+
+function expectChoiceQuestion(question: InvestorDNAQuestion) {
+  expect(question.answerKind).toBe("choice");
+  expect(question.options?.length).toBeGreaterThanOrEqual(2);
+}
 
 describe("investor DNA policy", () => {
   it("keeps investor DNA as a layer above profile, not as portfolio facts", () => {
@@ -20,7 +35,7 @@ describe("investor DNA policy", () => {
   });
 
   it("captures current main account audit recommendations", () => {
-    expect(MAIN_INVESTOR_DNA.investorType).toBe("Агрессивный рост / Активный распределитель капитала");
+    expect(MAIN_INVESTOR_DNA.investorType).toBe("Долгосрочный риск-ориентированный инвестор");
     expect(MAIN_INVESTOR_DNA.riskWillingness.value).toBeGreaterThan(MAIN_INVESTOR_DNA.riskCapacity.value);
     expect(MAIN_INVESTOR_DNA.recommendations.map((item) => item.id)).toEqual([
       "main-emergency-reserve",
@@ -32,6 +47,41 @@ describe("investor DNA policy", () => {
     expect(MAIN_INVESTOR_DNA.liquidityRule).toContain("3 месяца");
     expect(MAIN_INVESTOR_DNA.liteQuestions).toHaveLength(12);
     expect(MAIN_INVESTOR_DNA.fullQuestionGroups.flatMap((group) => group.questions)).toHaveLength(50);
+  });
+
+  it("keeps the lite questionnaire as closed screening questions", () => {
+    MAIN_INVESTOR_DNA.liteQuestions.forEach(expectChoiceQuestion);
+  });
+
+  it("keeps the full questionnaire deeper than the lite screening", () => {
+    const liteTexts = new Set(MAIN_INVESTOR_DNA.liteQuestions.map((question) => normalizeQuestionText(question.text)));
+    const fullQuestions = allFullQuestions();
+    const fullTexts = fullQuestions.map((question) => normalizeQuestionText(question.text));
+
+    expect(fullTexts.filter((text) => liteTexts.has(text))).toEqual([]);
+    expect(fullQuestions.filter((question) => question.answerKind === "open")).toHaveLength(11);
+    expect(fullQuestions.filter((question) => question.answerKind === "choice")).toHaveLength(39);
+  });
+
+  it("uses answer controls that match each full DNA question", () => {
+    allFullQuestions().forEach((question) => {
+      if (question.answerKind === "choice") {
+        expect(question.options?.length).toBeGreaterThanOrEqual(2);
+        return;
+      }
+
+      expect(question.options).toBeUndefined();
+      expect(question.placeholder?.trim()).toBeTruthy();
+    });
+  });
+
+  it("keeps risk and recommendation questions diagnostically separated", () => {
+    const questionsById = new Map(allFullQuestions().map((question) => [question.id, question]));
+
+    expect(questionsById.get("full-9")?.text).toContain("эмоционально");
+    expect(questionsById.get("full-10")?.text).toContain("запретить новые покупки");
+    expect(questionsById.get("full-47")?.text).toContain("Какая одна тема");
+    expect(questionsById.get("full-50")?.text).toContain("реально будешь соблюдать");
   });
 
   it("keeps wife DNA separate from main DNA", () => {

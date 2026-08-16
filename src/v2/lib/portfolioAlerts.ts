@@ -137,27 +137,38 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
     if (!portfolio.totalPortfolioValue) return;
     // Резерв в стейблах — это подушка, а не перевес: чем его больше, тем спокойнее.
     if (CASH_CATEGORIES.has(position.category)) return;
+    const isCrypto = position.category === "Крипта";
+    const cryptoBase = cryptoAlloc?.value ?? 0;
+    const limitBase = isCrypto ? cryptoBase : portfolio.totalPortfolioValue;
+    if (limitBase <= 0) return;
     const limitShare =
-      position.category === "Крипта"
-        ? assetLimitForStrategy(position.category, position.asset, strategy) * (cryptoAlloc?.share ?? strategy.cryptoMaxShare)
+      isCrypto
+        ? assetLimitForStrategy(position.category, position.asset, strategy)
         : assetLimitForStrategy(position.category, position.asset, strategy);
     const normalizedLimitShare = limitShare > 0 ? limitShare : MAX_SINGLE_RISK_ASSET_SHARE;
     const positionLimitPct = toPercent(normalizedLimitShare);
-    const share = (position.value / portfolio.totalPortfolioValue) * 100;
-    if (share > positionLimitPct) {
+    const portfolioShare = (position.value / portfolio.totalPortfolioValue) * 100;
+    const limitBaseShare = (position.value / limitBase) * 100;
+    const detail = isCrypto
+      ? `${limitBaseShare.toFixed(1)}% крипто-блока при лимите ${positionLimitPct.toFixed(0)}% · в портфеле ${portfolioShare.toFixed(1)}%`
+      : `${portfolioShare.toFixed(1)}% портфеля при лимите ${positionLimitPct.toFixed(0)}%`;
+    const warningDetail = isCrypto
+      ? `${limitBaseShare.toFixed(1)}% из ${positionLimitPct.toFixed(0)}% крипто-блока · в портфеле ${portfolioShare.toFixed(1)}%`
+      : `${portfolioShare.toFixed(1)}% из ${positionLimitPct.toFixed(0)}% допустимых`;
+    if (limitBaseShare > positionLimitPct) {
       alerts.push({
         id: `position-over-${position.asset}`,
         level: "critical",
         title: `${position.asset} выше лимита позиции`,
-        detail: `${share.toFixed(1)}% портфеля при лимите ${positionLimitPct.toFixed(0)}%`,
+        detail,
         action: "Сократить позицию",
       });
-    } else if (share > positionLimitPct - 1) {
+    } else if (limitBaseShare > positionLimitPct - 1) {
       alerts.push({
         id: `position-limit-${position.asset}`,
         level: "warning",
         title: `${position.asset} на лимите позиции`,
-        detail: `${share.toFixed(1)}% из ${positionLimitPct.toFixed(0)}% допустимых`,
+        detail: warningDetail,
       });
     }
   });

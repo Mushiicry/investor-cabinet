@@ -105,6 +105,104 @@ function rearmSignalPriceAlert(signalId) {
   return { ok: rearmed > 0, rearmed: rearmed };
 }
 
+function IC_SIGNAL_ALERT_handleCreateLimitLevel_(ss, e) {
+  var payload = IC_SIGNAL_ALERT_parsePostPayload_(e);
+  if (!payload) {
+    return IC_SIGNAL_ALERT_json_({ success: false, error: 'Invalid JSON payload' });
+  }
+
+  var sheet = ss.getSheetByName(IC_SIGNAL_ALERT_SHEET);
+  if (!sheet) {
+    return IC_SIGNAL_ALERT_json_({ success: false, error: 'Missing sheet: ' + IC_SIGNAL_ALERT_SHEET });
+  }
+
+  var asset = IC_SIGNAL_ALERT_normalizeAsset_(payload.asset);
+  var action = IC_SIGNAL_ALERT_text_(payload.action);
+  var amount = IC_SIGNAL_ALERT_toNumber_(payload.amountUsd);
+  var triggerPrice = IC_SIGNAL_ALERT_toNumber_(payload.triggerPrice);
+  var direction = IC_SIGNAL_ALERT_direction_('', action);
+
+  if (!asset) return IC_SIGNAL_ALERT_json_({ success: false, error: 'Missing asset' });
+  if (!direction) return IC_SIGNAL_ALERT_json_({ success: false, error: 'Signal action must be buy or sell' });
+  if (!amount || amount <= 0) return IC_SIGNAL_ALERT_json_({ success: false, error: 'Amount must be greater than zero' });
+  if (!triggerPrice || triggerPrice <= 0) return IC_SIGNAL_ALERT_json_({ success: false, error: 'Trigger price must be greater than zero' });
+
+  var normalizedAction = direction === 'SELL' ? 'Продать' : 'Купить';
+  var source = IC_SIGNAL_ALERT_text_(payload.source) || IC_SIGNAL_ALERT_defaultSource_(asset);
+  var comment = IC_SIGNAL_ALERT_text_(payload.comment) || (
+    'Цена коснулась — время взглянуть на график; ' +
+    (direction === 'SELL' ? 'продажа' : 'покупка') + ' $' + amount + ' ' + asset + ' по плану'
+  );
+  var id = IC_SIGNAL_ALERT_buildManualId_(asset, direction, triggerPrice);
+  var row = [
+    id,
+    asset,
+    normalizedAction,
+    amount,
+    triggerPrice,
+    source,
+    '',
+    '',
+    '',
+    '',
+    'PENDING',
+    comment
+  ];
+
+  sheet.getRange(sheet.getLastRow() + 1, 1, 1, 12).setValues([row]);
+
+  return IC_SIGNAL_ALERT_json_({
+    success: true,
+    id: id,
+    asset: asset,
+    action: normalizedAction,
+    amountUsd: amount,
+    triggerPrice: triggerPrice,
+    telegram: 'PENDING'
+  });
+}
+
+function IC_SIGNAL_ALERT_handleDeleteLimitLevel_(ss, e) {
+  var payload = IC_SIGNAL_ALERT_parsePostPayload_(e);
+  if (!payload) {
+    return IC_SIGNAL_ALERT_json_({ success: false, error: 'Invalid JSON payload' });
+  }
+
+  var signalId = IC_SIGNAL_ALERT_text_(payload.signalId);
+  if (!signalId) return IC_SIGNAL_ALERT_json_({ success: false, error: 'Missing signalId' });
+
+  var sheet = ss.getSheetByName(IC_SIGNAL_ALERT_SHEET);
+  if (!sheet) {
+    return IC_SIGNAL_ALERT_json_({ success: false, error: 'Missing sheet: ' + IC_SIGNAL_ALERT_SHEET });
+  }
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return IC_SIGNAL_ALERT_json_({ success: false, error: 'Signal not found' });
+
+  var ids = sheet.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+  for (var index = 0; index < ids.length; index += 1) {
+    if (String(ids[index][0]).trim() === signalId) {
+      var rowNumber = index + 2;
+      var timestamp = IC_SIGNAL_ALERT_timestamp_();
+      var existingComment = sheet.getRange(rowNumber, 12).getDisplayValue();
+      var archiveComment = String(existingComment || '').trim();
+      archiveComment = archiveComment
+        ? archiveComment + ' | Уровень удалён с сайта ' + timestamp
+        : 'Уровень удалён с сайта ' + timestamp;
+      sheet.getRange(rowNumber, 8, 1, 5).setValues([[
+        'CANCELLED',
+        timestamp,
+        '',
+        'CANCELLED',
+        archiveComment
+      ]]);
+      return IC_SIGNAL_ALERT_json_({ success: true, id: signalId, deleted: true, archived: true });
+    }
+  }
+
+  return IC_SIGNAL_ALERT_json_({ success: false, error: 'Signal not found' });
+}
+
 function syncSignalPriceAlerts() {
   // Минутный триггер может наложиться сам на себя, если Sheets или Telegram
   // отвечают медленно — это дало бы дубли алертов. Пропускаем прогон молча.
@@ -217,7 +315,28 @@ function IC_SIGNAL_ALERT_run_() {
       now,
       skipped
     );
-    if (!conditionMet) return;
+    if (!conditionMet) {
+      if (!lastCheck && telegramStatusUpper === 'PENDING') {
+        try {
+          IC_SIGNAL_ALERT_sendTelegram_(
+            token,
+            chatId,
+            IC_SIGNAL_ALERT_buildArmedMessage_(
+              id,
+              asset,
+              action,
+              amount,
+              triggerPrice,
+              displayRow[4],
+              source
+            )
+          );
+        } catch (error) {
+          failed.push({ id: id, error: 'Armed Telegram confirmation failed: ' + String(error && error.message ? error.message : error) });
+        }
+      }
+      return;
+    }
 
     // Сигнал должен сначала встать на дежурство при невыполненном условии.
     // Если при первом же знакомстве со строкой условие уже выполнено — это не
@@ -289,6 +408,45 @@ function IC_SIGNAL_ALERT_run_() {
     failed: failed,
     timestamp: timestamp
   };
+}
+
+function IC_SIGNAL_ALERT_parsePostPayload_(e) {
+  try {
+    return JSON.parse(e && e.postData && e.postData.contents ? e.postData.contents : '{}');
+  } catch (error) {
+    return null;
+  }
+}
+
+function IC_SIGNAL_ALERT_json_(body) {
+  return ContentService
+    .createTextOutput(JSON.stringify(body))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function IC_SIGNAL_ALERT_text_(value) {
+  return String(value === null || value === undefined ? '' : value).trim();
+}
+
+function IC_SIGNAL_ALERT_normalizeAsset_(value) {
+  return IC_SIGNAL_ALERT_text_(value).toUpperCase().replace(/\s+/g, ' ');
+}
+
+function IC_SIGNAL_ALERT_defaultSource_(asset) {
+  if (asset === 'GOLD') return 'Hyperliquid allMids dex=xyz / xyz:GOLD';
+  if (asset === 'SPCXB') return 'Hyperliquid allMids dex=xyz / xyz:SPCX';
+  if (asset === 'BTC SHORT') return 'Hyperliquid allMids / BTC';
+  return 'Hyperliquid allMids / ' + asset;
+}
+
+function IC_SIGNAL_ALERT_buildManualId_(asset, direction, triggerPrice) {
+  var assetId = String(asset || '').toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
+  var priceId = String(triggerPrice)
+    .replace(',', '.')
+    .replace(/[^0-9.]/g, '')
+    .replace(/\.$/, '');
+  var stamp = Utilities.formatDate(new Date(), 'Europe/Moscow', 'yyyy-MM-dd-HHmmss');
+  return assetId + '-' + direction + '-' + priceId + '-' + stamp;
 }
 
 // Корни, а не точные слова: «Продать», «Продажа», «Продай», «Фиксация»,
@@ -444,6 +602,21 @@ function IC_SIGNAL_ALERT_buildMessage_(id, asset, action, amount, triggerPrice, 
     tail = 'время взглянуть на график; ' + actionWord + ' $' + amount + ' ' + asset + ' по плану';
   }
   return 'Цена ' + priceAsset + ' коснулась ' + priceText + ' — ' + tail + '.';
+}
+
+function IC_SIGNAL_ALERT_buildArmedMessage_(id, asset, action, amount, triggerPrice, displayTrigger, source) {
+  var priceAsset = String(id).indexOf('BTC-SHORT-') === 0 ? 'BTC' : String(asset || '').trim();
+  var priceText = IC_SIGNAL_ALERT_formatPrice_(triggerPrice, displayTrigger);
+  var normalizedAction = String(action || '').toLowerCase();
+  var actionText = normalizedAction.indexOf('прод') >= 0 || normalizedAction.indexOf('сократ') >= 0
+    ? 'продать'
+    : 'купить';
+  var sourceText = String(source || '').trim() || 'Hyperliquid';
+
+  return '✅ COMPLETE: сигнал ' + priceAsset + ' установлен.\n\n' +
+    'Цена ' + priceText + ' — ' + actionText + ' ' + priceAsset + ' на $' + amount + '.\n\n' +
+    'Источник: ' + sourceText + '. Проверка: каждую минуту. ' +
+    'При касании уровня придёт отдельное сообщение. Сделка выполняется вручную.';
 }
 
 function IC_SIGNAL_ALERT_formatPrice_(value, displayValue) {

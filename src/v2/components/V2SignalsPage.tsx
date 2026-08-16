@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
 import type { PortfolioHealth } from "../../lib/portfolioHealth";
+import { createSignalLimitLevel, deleteSignalLimitLevel } from "../../api/signalLimitLevels";
 import { isEmptyAccount } from "../lib/accountState";
 import { getMarketPsychology } from "../lib/marketPsychology";
 import type { InterestSignal } from "../../types/portfolio";
@@ -35,6 +37,7 @@ type Props = {
   disciplineCooldownActive?: boolean;
   onOpenTradeCandidate?: (candidate: TradeCandidate) => void;
   onNavigate?: (page: V2Page) => void;
+  onRefreshData?: () => void;
 };
 
 const LEVEL_LABEL: Record<AlertLevel, string> = {
@@ -80,6 +83,160 @@ const NEAR_TRIGGER_PCT = 3;
 // В сигналах актив зовётся GOLD, а логотип заведён под позицию GOLD LONG.
 const LOGO_ASSET_ALIAS: Record<string, string> = { GOLD: "GOLD LONG" };
 const logoAssetFor = (asset: string) => LOGO_ASSET_ALIAS[asset] ?? asset;
+const DEFAULT_LIMIT_ASSETS = ["BTC", "ETH", "SOL", "APEX", "ATOM", "BNB", "MNT", "GRAM", "GOLD", "SPCXB", "BTC SHORT"];
+const ACKNOWLEDGED_SIGNAL_STORAGE_KEY = "v2-signals-acknowledged";
+
+type LimitLevelDraft = {
+  asset: string;
+  action: "Купить" | "Продать";
+  triggerPrice: string;
+  amountUsd: string;
+  comment: string;
+};
+
+type CreateSignalResponse = {
+  success?: boolean;
+  id?: string;
+  error?: string;
+};
+
+const toPositiveNumber = (value: string) => {
+  const parsed = Number(value.replace(/\s/g, "").replace(",", ".").replace(/[^\d.+-]/g, ""));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const normalizeLimitAsset = (value: string) => value.trim().toUpperCase().replace(/\s+/g, " ");
+
+const readAcknowledgedSignalIds = () => {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const raw = window.localStorage.getItem(ACKNOWLEDGED_SIGNAL_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+  } catch {
+    return new Set<string>();
+  }
+};
+
+const writeAcknowledgedSignalIds = (ids: Set<string>) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(ACKNOWLEDGED_SIGNAL_STORAGE_KEY, JSON.stringify([...ids]));
+};
+
+const signalIdFromAlert = (alert: Alert) => {
+  const prefixes = ["signal-triggered-", "signal-near-", "signal-сломано-", "signal-устарел-"];
+  const prefix = prefixes.find((item) => alert.id.startsWith(item));
+  return prefix ? alert.id.slice(prefix.length) : null;
+};
+
+function LimitLevelModal({
+  draft,
+  assetOptions,
+  saving,
+  message,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  draft: LimitLevelDraft;
+  assetOptions: string[];
+  saving: boolean;
+  message: string | null;
+  onChange: (patch: Partial<LimitLevelDraft>) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  const triggerPrice = toPositiveNumber(draft.triggerPrice);
+  const amountUsd = toPositiveNumber(draft.amountUsd);
+  const canSubmit = Boolean(draft.asset.trim()) && triggerPrice > 0 && amountUsd > 0 && !saving;
+
+  return createPortal(
+    <div className="v2-sig-limit-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Выставить лимитный уровень">
+      <div className="v2-sig-limit-modal" onClick={(event) => event.stopPropagation()}>
+        <button className="v2-sig-limit-close" type="button" onClick={onClose} aria-label="Закрыть">
+          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <path d="M4 4l10 10M14 4L4 14" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        <div className="v2-sig-limit-head">
+          <span>Лимитный уровень</span>
+          <h2>Выставить напоминание</h2>
+          <p>Строка попадёт в «Сигналы», Telegram подтвердит постановку и отдельно сообщит при касании цены.</p>
+        </div>
+
+        <div className="v2-sig-limit-form">
+          <label>
+            <span>Монета</span>
+            <select value={draft.asset} onChange={(event) => onChange({ asset: event.target.value })}>
+              {assetOptions.map((asset) => (
+                <option key={asset} value={asset}>{asset}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Действие</span>
+            <select value={draft.action} onChange={(event) => onChange({ action: event.target.value === "Продать" ? "Продать" : "Купить" })}>
+              <option value="Купить">Купить</option>
+              <option value="Продать">Продать</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Цена</span>
+            <input
+              inputMode="decimal"
+              value={draft.triggerPrice}
+              onChange={(event) => onChange({ triggerPrice: event.target.value })}
+              placeholder="0.147"
+            />
+          </label>
+
+          <label>
+            <span>Сумма, $</span>
+            <input
+              inputMode="decimal"
+              value={draft.amountUsd}
+              onChange={(event) => onChange({ amountUsd: event.target.value })}
+              placeholder="25"
+            />
+          </label>
+
+          <label className="v2-sig-limit-comment">
+            <span>Комментарий</span>
+            <textarea
+              rows={3}
+              value={draft.comment}
+              onChange={(event) => onChange({ comment: event.target.value })}
+              placeholder="Что проверить перед действием"
+            />
+          </label>
+        </div>
+
+        <div className="v2-sig-limit-summary">
+          <span>Будет создано</span>
+          <strong>
+            {draft.asset || "Актив"} · {draft.action} {amountUsd ? formatSignalMoney(amountUsd) : "$0"} при{" "}
+            {triggerPrice ? formatSignalMoney(triggerPrice) : "$0"}
+          </strong>
+          <p>Это не сделка и не приказ бирже. Это Telegram-напоминание для ручной проверки риска.</p>
+        </div>
+
+        {message && <div className="v2-sig-limit-message">{message}</div>}
+
+        <div className="v2-sig-limit-actions">
+          <button type="button" onClick={onClose}>Отмена</button>
+          <button type="button" disabled={!canSubmit} onClick={onSubmit}>
+            {saving ? "Сохраняю" : "Выставить уровень"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
 
 export function V2SignalsPage({
   portfolio,
@@ -93,24 +250,64 @@ export function V2SignalsPage({
   disciplineCooldownActive = false,
   onOpenTradeCandidate,
   onNavigate,
+  onRefreshData,
 }: Props) {
   const [openAsset, setOpenAsset] = useState<string | null>(null);
+  const assetOptions = useMemo(() => {
+    const assets = new Set<string>(DEFAULT_LIMIT_ASSETS);
+    positions.forEach((position) => {
+      const asset = normalizeLimitAsset(position.asset);
+      if (asset && asset !== "USDT" && asset !== "USDC") assets.add(asset);
+    });
+    interestSignals.forEach((signal) => {
+      const asset = normalizeLimitAsset(signal.asset);
+      if (asset) assets.add(asset);
+    });
+    return [...assets].sort((a, b) => a.localeCompare(b));
+  }, [positions, interestSignals]);
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [limitDraft, setLimitDraft] = useState<LimitLevelDraft>(() => ({
+    asset: assetOptions[0] ?? "APEX",
+    action: "Купить",
+    triggerPrice: "",
+    amountUsd: "",
+    comment: "",
+  }));
+  const [savingLimit, setSavingLimit] = useState(false);
+  const [limitMessage, setLimitMessage] = useState<string | null>(null);
+  const [deletingSignalId, setDeletingSignalId] = useState<string | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
+  const [acknowledgedSignalIds, setAcknowledgedSignalIds] = useState<Set<string>>(() => readAcknowledgedSignalIds());
   const assetGroups = useMemo(() => groupByAsset(interestSignals), [interestSignals]);
   const openGroup = assetGroups.find((group) => group.asset === openAsset) ?? null;
   const nearestSignals = useMemo(() => sortByProximity(interestSignals).slice(0, 3), [interestSignals]);
+  const alertSignals = useMemo(
+    () => interestSignals.filter((signal) => !acknowledgedSignalIds.has(signal.id)),
+    [interestSignals, acknowledgedSignalIds],
+  );
   const triggeredSignals = useMemo(
     () =>
-      sortBySignalPriority(interestSignals)
+      sortBySignalPriority(alertSignals)
         .filter((signal) => assessSignal(signal).priority === "сработал")
         .slice(0, 3),
-    [interestSignals],
+    [alertSignals],
   );
   const primaryTriggered = triggeredSignals[0] ?? null;
   const limitOrders = useMemo(() => plannedLimitOrdersSummary(interestSignals), [interestSignals]);
   const currentFG = fearGreedStrategy.currentIndex;
   // Поведенческий гид: живой F&G + тренд по истории → эмоция рынка и дисциплина.
   const psychology = getMarketPsychology(currentFG, fearGreedStrategy.history);
-  const openCandidate = (signal: InterestSignal) => {
+  const acknowledgeSignal = (signalId: string) => {
+    setAcknowledgedSignalIds((current) => {
+      if (current.has(signalId)) return current;
+      const next = new Set(current);
+      next.add(signalId);
+      writeAcknowledgedSignalIds(next);
+      return next;
+    });
+  };
+  const openCandidate = (signal: InterestSignal, acknowledge = false) => {
+    if (acknowledge) acknowledgeSignal(signal.id);
     const candidate = buildTradeCandidateFromSignal(signal, positions);
     if (candidate) onOpenTradeCandidate?.(candidate);
   };
@@ -120,17 +317,15 @@ export function V2SignalsPage({
     return candidate.action === "sell" ? "Проверить продажу" : "Проверить покупку";
   };
   const signalFromAlert = (alert: Alert) => {
-    const prefixes = ["signal-triggered-", "signal-near-"];
-    const prefix = prefixes.find((item) => alert.id.startsWith(item));
-    if (!prefix) return null;
-    const id = alert.id.slice(prefix.length);
+    const id = signalIdFromAlert(alert);
+    if (!id) return null;
     return interestSignals.find((signal) => signal.id === id) ?? null;
   };
   const handleAlertAction = (alert: Alert) => {
     if (alert.action === "Открыть проверку риска") {
       const signal = signalFromAlert(alert) ?? primaryTriggered;
       if (signal) {
-        openCandidate(signal);
+        openCandidate(signal, true);
       } else {
         onNavigate?.("gate");
       }
@@ -164,6 +359,84 @@ export function V2SignalsPage({
     alert.action === "Срочно пополнить" ||
     alert.action === "Новый альт — только вместо старого";
 
+  const openLimitModal = () => {
+    const fallbackAsset = openAsset ?? primaryTriggered?.asset ?? nearestSignals[0]?.asset ?? assetOptions[0] ?? "APEX";
+    setLimitDraft((current) => ({
+      ...current,
+      asset: normalizeLimitAsset(current.asset || fallbackAsset),
+    }));
+    setLimitMessage(null);
+    setDeleteMessage(null);
+    setLimitModalOpen(true);
+  };
+
+  const updateLimitDraft = (patch: Partial<LimitLevelDraft>) => {
+    setLimitDraft((current) => ({
+      ...current,
+      ...patch,
+      asset: patch.asset ? normalizeLimitAsset(patch.asset) : current.asset,
+    }));
+    setLimitMessage(null);
+  };
+
+  const submitLimitLevel = async () => {
+    const asset = normalizeLimitAsset(limitDraft.asset);
+    const triggerPrice = toPositiveNumber(limitDraft.triggerPrice);
+    const amountUsd = toPositiveNumber(limitDraft.amountUsd);
+
+    if (!asset || !triggerPrice || !amountUsd) {
+      setLimitMessage("Заполни монету, цену и сумму больше нуля.");
+      return;
+    }
+
+    setSavingLimit(true);
+    setLimitMessage(null);
+
+    try {
+      const response = await createSignalLimitLevel({
+        asset,
+        action: limitDraft.action,
+        triggerPrice,
+        amountUsd,
+        comment: limitDraft.comment.trim(),
+      }) as CreateSignalResponse;
+
+      if (response.success === false) {
+        throw new Error(response.error || "уровень не создан");
+      }
+
+      setLimitMessage(`Уровень создан: ${response.id ?? asset}. Ждём Telegram-подтверждение после ближайшей проверки.`);
+      onRefreshData?.();
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "неизвестная ошибка";
+      setLimitMessage(`Не удалось создать уровень: ${reason}`);
+    } finally {
+      setSavingLimit(false);
+    }
+  };
+
+  const deleteLimitLevel = async (signal: InterestSignal) => {
+    if (!signal.id || deletingSignalId) return;
+    const confirmed = window.confirm(`Удалить лимитный уровень ${signal.asset} при ${formatSignalMoney(signal.triggerPrice)}?`);
+    if (!confirmed) return;
+
+    setDeletingSignalId(signal.id);
+    setDeleteMessage(null);
+    try {
+      const response = await deleteSignalLimitLevel({ signalId: signal.id }) as CreateSignalResponse;
+      if (response.success === false) {
+        throw new Error(response.error || "уровень не удалён");
+      }
+      setDeleteMessage(`Уровень удалён: ${signal.asset} при ${formatSignalMoney(signal.triggerPrice)}.`);
+      onRefreshData?.();
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "неизвестная ошибка";
+      setDeleteMessage(`Не удалось удалить уровень: ${reason}`);
+    } finally {
+      setDeletingSignalId(null);
+    }
+  };
+
   const alerts = topAlerts(
     buildPortfolioAlerts({
       portfolio,
@@ -171,7 +444,7 @@ export function V2SignalsPage({
       allocation,
       currentFG,
       health,
-      interestSignals,
+      interestSignals: alertSignals,
       marketPsychology: psychology,
       signalNotification: { disciplineCooldownActive },
       strategy,
@@ -256,13 +529,17 @@ export function V2SignalsPage({
             Цена коснулась уровня. Сначала изучить график, затем открыть проверку риска.
           </div>
           <div className="v2-sig-trigger-actions">
-            <button type="button" onClick={() => setOpenAsset(primaryTriggered.asset)}>
-              Показать уровни
+            <button
+              type="button"
+              className="v2-sig-trigger-ack"
+              onClick={() => acknowledgeSignal(primaryTriggered.id)}
+            >
+              ✓ Принято
             </button>
             <button
               type="button"
               disabled={!buildTradeCandidateFromSignal(primaryTriggered, positions)}
-              onClick={() => openCandidate(primaryTriggered)}
+              onClick={() => openCandidate(primaryTriggered, true)}
             >
               Открыть проверку риска
             </button>
@@ -287,6 +564,9 @@ export function V2SignalsPage({
             ) : (
               <span className="v2-sig-int-bot-badge">НЕТ ДАННЫХ</span>
             )}
+            <button className="v2-sig-add-level" type="button" onClick={openLimitModal}>
+              + Выставить уровень
+            </button>
           </div>
           {assetGroups.length ? (
             <>
@@ -355,14 +635,24 @@ export function V2SignalsPage({
                             {assessment.text}
                           </span>
                         </span>
-                        <button
-                          type="button"
-                          className={`v2-sig-int-action${isDone ? " is-triggered" : ""}`}
-                          disabled={!buildTradeCandidateFromSignal(signal, positions)}
-                          onClick={() => openCandidate(signal)}
-                        >
-                          {candidateButtonLabel(signal)}
-                        </button>
+                        <span className="v2-sig-int-actions">
+                          <button
+                            type="button"
+                            className={`v2-sig-int-action${isDone ? " is-triggered" : ""}`}
+                            disabled={!buildTradeCandidateFromSignal(signal, positions)}
+                            onClick={() => openCandidate(signal)}
+                          >
+                            {candidateButtonLabel(signal)}
+                          </button>
+                          <button
+                            type="button"
+                            className="v2-sig-int-action v2-sig-int-delete"
+                            disabled={deletingSignalId === signal.id}
+                            onClick={() => deleteLimitLevel(signal)}
+                          >
+                            {deletingSignalId === signal.id ? "Удаляю" : "Удалить"}
+                          </button>
+                        </span>
                       </div>
                     );
                   })
@@ -391,14 +681,24 @@ export function V2SignalsPage({
                                     </span>
                                   </span>
                                 ) : null}
-                                <button
-                                  type="button"
-                                  className="v2-sig-int-action"
-                                  disabled={!buildTradeCandidateFromSignal(signal, positions)}
-                                  onClick={() => openCandidate(signal)}
-                                >
-                                  {candidateButtonLabel(signal)}
-                                </button>
+                                <span className="v2-sig-int-actions">
+                                  <button
+                                    type="button"
+                                    className="v2-sig-int-action"
+                                    disabled={!buildTradeCandidateFromSignal(signal, positions)}
+                                    onClick={() => openCandidate(signal)}
+                                  >
+                                    {candidateButtonLabel(signal)}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="v2-sig-int-action v2-sig-int-delete"
+                                    disabled={deletingSignalId === signal.id}
+                                    onClick={() => deleteLimitLevel(signal)}
+                                  >
+                                    {deletingSignalId === signal.id ? "Удаляю" : "Удалить"}
+                                  </button>
+                                </span>
                               </div>
                             );
                           })}
@@ -411,6 +711,9 @@ export function V2SignalsPage({
                   </div>
                 )}
               </div>
+              {deleteMessage ? (
+                <div className="v2-sig-delete-message">{deleteMessage}</div>
+              ) : null}
             </>
           ) : (
             <div className="v2-sig-int-list">
@@ -512,6 +815,18 @@ export function V2SignalsPage({
           );
         })}
       </div>
+
+      {limitModalOpen && (
+        <LimitLevelModal
+          draft={limitDraft}
+          assetOptions={assetOptions}
+          saving={savingLimit}
+          message={limitMessage}
+          onChange={updateLimitDraft}
+          onClose={() => setLimitModalOpen(false)}
+          onSubmit={() => void submitLimitLevel()}
+        />
+      )}
 
     </div>
   );

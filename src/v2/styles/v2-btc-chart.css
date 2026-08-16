@@ -1563,13 +1563,15 @@
   background: rgba(130, 34, 40, 0.66);
 }
 
-.v2-sig-trigger-actions button:first-child {
+.v2-sig-trigger-actions button:first-child,
+.v2-sig-trigger-actions button.v2-sig-trigger-ack {
   border-color: rgba(77, 200, 255, 0.32);
   background: rgba(18, 54, 72, 0.58);
   color: rgba(206, 244, 255, 0.95);
 }
 
-.v2-sig-trigger-actions button:first-child:hover {
+.v2-sig-trigger-actions button:first-child:hover,
+.v2-sig-trigger-actions button.v2-sig-trigger-ack:hover {
   border-color: rgba(77, 200, 255, 0.65);
   background: rgba(22, 68, 92, 0.76);
 }
@@ -1974,6 +1976,231 @@
   text-transform: none;
 }
 
+.v2-sig-add-level {
+  margin-left: 8px;
+  min-height: 36px;
+  cursor: pointer;
+  border: 1px solid rgba(77, 220, 255, 0.72);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 16% 50%, rgba(77, 220, 255, 0.22), transparent 38%),
+    linear-gradient(105deg, rgba(8, 72, 102, 0.86), rgba(6, 28, 48, 0.92));
+  color: rgba(238, 250, 255, 0.98);
+  padding: 9px 13px;
+  box-shadow:
+    0 0 24px rgba(0, 205, 255, 0.22),
+    inset 0 0 18px rgba(66, 225, 255, 0.09);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.v2-sig-add-level:hover {
+  border-color: rgba(119, 235, 255, 0.95);
+  background:
+    radial-gradient(circle at 16% 50%, rgba(77, 220, 255, 0.3), transparent 38%),
+    linear-gradient(105deg, rgba(10, 88, 120, 0.95), rgba(8, 40, 62, 0.96));
+  color: white;
+}
+
+.v2-sig-limit-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 3, 14, 0.72);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+}
+
+.v2-sig-limit-modal {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  border: 1px solid rgba(85, 199, 255, 0.58);
+  border-radius: 18px;
+  background: linear-gradient(150deg, rgba(3, 10, 28, 0.99) 0%, rgba(1, 5, 17, 1) 100%);
+  box-shadow:
+    0 34px 95px rgba(0, 0, 0, 0.82),
+    0 0 0 1px rgba(85, 199, 255, 0.14) inset,
+    0 0 36px rgba(0, 190, 255, 0.09);
+  padding: 22px;
+}
+
+.v2-sig-limit-modal::-webkit-scrollbar {
+  display: none;
+}
+
+.v2-sig-limit-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(86,196,240,0.24);
+  border-radius: 10px;
+  background: rgba(8, 26, 52, 0.78);
+  color: rgba(167,205,230,0.92);
+  cursor: pointer;
+}
+
+.v2-sig-limit-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.v2-sig-limit-head {
+  display: grid;
+  gap: 7px;
+  padding-right: 48px;
+}
+
+.v2-sig-limit-head span {
+  color: rgba(0,200,255,0.78);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.v2-sig-limit-head h2 {
+  margin: 0;
+  color: rgba(238,248,255,0.96);
+  font-size: 24px;
+  line-height: 1.08;
+}
+
+.v2-sig-limit-head p,
+.v2-sig-limit-summary p {
+  margin: 0;
+  color: rgba(167,205,230,0.76);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.v2-sig-limit-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.v2-sig-limit-form label {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.v2-sig-limit-form label > span,
+.v2-sig-limit-summary > span {
+  color: rgba(120, 165, 195, 0.68);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.v2-sig-limit-form select,
+.v2-sig-limit-form input,
+.v2-sig-limit-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(77, 200, 255, 0.18);
+  border-radius: 9px;
+  background: rgba(5, 16, 30, 0.72);
+  color: rgba(232,244,252,0.95);
+  padding: 10px 11px;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.v2-sig-limit-form textarea {
+  resize: vertical;
+}
+
+.v2-sig-limit-form select:focus,
+.v2-sig-limit-form input:focus,
+.v2-sig-limit-form textarea:focus {
+  border-color: rgba(77, 200, 255, 0.5);
+  box-shadow: 0 0 0 2px rgba(77, 200, 255, 0.08);
+}
+
+.v2-sig-limit-comment,
+.v2-sig-limit-summary,
+.v2-sig-limit-message,
+.v2-sig-limit-actions {
+  grid-column: 1 / -1;
+}
+
+.v2-sig-limit-summary,
+.v2-sig-limit-message {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  border: 1px solid rgba(77, 200, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(5, 16, 30, 0.52);
+  padding: 12px;
+}
+
+.v2-sig-limit-summary strong {
+  color: rgba(238,248,255,0.96);
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.v2-sig-limit-message {
+  color: rgba(120, 245, 165, 0.92);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.v2-sig-limit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.v2-sig-limit-actions button {
+  cursor: pointer;
+  border: 1px solid rgba(77, 200, 255, 0.22);
+  border-radius: 9px;
+  background: rgba(18, 44, 68, 0.5);
+  color: rgba(190, 230, 248, 0.88);
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.v2-sig-limit-actions button:last-child {
+  border-color: rgba(77, 200, 255, 0.58);
+  background: rgba(12, 70, 96, 0.72);
+  color: rgba(238,248,255,0.98);
+}
+
+.v2-sig-limit-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 /* Сетка монет: 23 строки списком читаются тяжело, 10 кнопок — сразу. */
 .v2-sig-coin-grid {
   display: grid;
@@ -2101,6 +2328,18 @@
 .v2-sig-int-list::-webkit-scrollbar { width: 3px; }
 .v2-sig-int-list::-webkit-scrollbar-thumb { background: rgba(77, 200, 255, 0.15); border-radius: 99px; }
 
+.v2-sig-delete-message {
+  margin: 0 16px 12px;
+  border: 1px solid rgba(77, 200, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(5, 16, 30, 0.5);
+  color: rgba(120, 245, 165, 0.88);
+  padding: 9px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .v2-sig-int-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -2165,6 +2404,14 @@
   color: rgba(120, 165, 195, 0.45);
 }
 
+.v2-sig-int-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+}
+
 .v2-sig-int-action {
   cursor: pointer;
   border: 1px solid rgba(77, 200, 255, 0.22);
@@ -2195,6 +2442,18 @@
 .v2-sig-int-action.is-triggered:hover:not(:disabled) {
   border-color: rgba(255, 150, 125, 0.8);
   background: rgba(130, 34, 42, 0.75);
+}
+
+.v2-sig-int-delete {
+  border-color: rgba(255, 104, 112, 0.22);
+  background: rgba(74, 18, 30, 0.4);
+  color: rgba(255, 182, 188, 0.86);
+}
+
+.v2-sig-int-delete:hover:not(:disabled) {
+  border-color: rgba(255, 120, 130, 0.62);
+  background: rgba(100, 26, 40, 0.66);
+  color: rgba(255, 230, 232, 0.98);
 }
 
 .v2-sig-int-action:disabled {
@@ -5563,9 +5822,10 @@
 
 .v2-dna-audit-primary-cta {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 10px;
   align-items: center;
+  width: 100%;
   min-height: 64px;
   border: 1px solid rgba(22, 223, 255, 0.84);
   border-radius: 14px;
@@ -5573,7 +5833,7 @@
     radial-gradient(circle at 15% 50%, rgba(42, 222, 255, 0.16), transparent 34%),
     linear-gradient(105deg, rgba(5, 45, 68, 0.74), rgba(4, 17, 34, 0.92));
   color: rgba(244, 250, 255, 0.98);
-  padding: 11px 16px;
+  padding: 10px 12px;
   box-shadow:
     inset 0 0 24px rgba(66, 225, 255, 0.1),
     0 0 32px rgba(0, 206, 255, 0.24);
@@ -5590,12 +5850,13 @@
 .v2-dna-audit-primary-cta span:not(.v2-dna-audit-primary-dna) {
   min-width: 0;
   color: rgba(244, 250, 255, 0.98);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 900;
-  line-height: 1;
-  letter-spacing: 0.05em;
+  line-height: 1.12;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .v2-dna-audit-primary-dna {
@@ -5794,6 +6055,30 @@
   padding: 14px;
 }
 
+.v2-dna-audit-actionbar {
+  position: sticky;
+  top: 10px;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(80,205,255,0.2);
+  border-radius: 10px;
+  background: rgba(3, 13, 29, 0.92);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34), 0 0 22px rgba(0, 209, 255, 0.1);
+  padding: 10px 12px;
+  backdrop-filter: blur(14px);
+}
+
+.v2-dna-audit-actionbar span {
+  color: rgba(188,218,238,0.86);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .v2-dna-question-list,
 .v2-dna-question-group {
   display: flex;
@@ -5921,6 +6206,149 @@
   color: rgba(150,195,225,0.72);
   font-size: 12px;
   line-height: 1.35;
+}
+
+.v2-dna-result-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 3, 14, 0.72);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
+
+.v2-dna-result-modal {
+  position: relative;
+  width: min(860px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  border: 1px solid rgba(85, 199, 255, 0.64);
+  border-radius: 22px;
+  background: linear-gradient(150deg, rgba(3, 10, 28, 0.99) 0%, rgba(1, 5, 17, 1) 100%);
+  box-shadow:
+    0 38px 110px rgba(0, 0, 0, 0.82),
+    0 0 0 1px rgba(85, 199, 255, 0.16) inset,
+    0 0 42px rgba(0, 190, 255, 0.1);
+  padding: 28px;
+}
+
+.v2-dna-result-modal::-webkit-scrollbar {
+  display: none;
+}
+
+.v2-dna-result-modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(86,196,240,0.24);
+  border-radius: 10px;
+  background: rgba(8, 26, 52, 0.78);
+  color: rgba(167,205,230,0.92);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.v2-dna-result-modal-close:hover {
+  color: rgba(238,248,255,0.98);
+  border-color: rgba(86,196,240,0.42);
+  background: rgba(20, 60, 94, 0.86);
+}
+
+.v2-dna-result-modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.v2-dna-audit-result-panel {
+  display: grid;
+  gap: 14px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.v2-dna-audit-result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: start;
+}
+
+.v2-dna-audit-result-head h3 {
+  margin: 4px 0 0;
+  color: rgba(238,248,255,0.96);
+  font-size: 22px;
+  line-height: 1.05;
+}
+
+.v2-dna-audit-result-head > span {
+  border: 1px solid rgba(90,239,141,0.28);
+  border-radius: 999px;
+  background: rgba(90,239,141,0.08);
+  color: rgba(120,245,165,0.92);
+  font-size: 12px;
+  font-weight: 900;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.v2-dna-audit-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.v2-dna-audit-result-main,
+.v2-dna-audit-result-facts > div {
+  min-width: 0;
+  border: 1px solid rgba(80,205,255,0.14);
+  border-radius: 10px;
+  background: rgba(4, 16, 32, 0.56);
+  padding: 13px;
+}
+
+.v2-dna-audit-result-main em,
+.v2-dna-audit-result-facts span {
+  display: block;
+  color: rgba(0,200,255,0.74);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.v2-dna-audit-result-main strong,
+.v2-dna-audit-result-facts strong {
+  display: block;
+  margin-top: 7px;
+  color: rgba(238,248,255,0.96);
+  font-size: 16px;
+  line-height: 1.22;
+}
+
+.v2-dna-audit-result-main p,
+.v2-dna-audit-result-facts p {
+  margin: 8px 0 0;
+  color: rgba(167,205,230,0.78);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.v2-dna-audit-result-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .v2-dna-check-grid,

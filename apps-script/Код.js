@@ -112,6 +112,14 @@ function doPost(e) {
     return IC_DNA_handleSaveAnswers_(ss, e);
   }
 
+  if (action === "createSignalLimitLevel") {
+    return IC_SIGNAL_ALERT_handleCreateLimitLevel_(ss, e);
+  }
+
+  if (action === "deleteSignalLimitLevel") {
+    return IC_SIGNAL_ALERT_handleDeleteLimitLevel_(ss, e);
+  }
+
   return ContentService
     .createTextOutput(JSON.stringify({ success: false, error: "Unsupported action" }))
     .setMimeType(ContentService.MimeType.JSON);
@@ -381,7 +389,11 @@ function getSignals(sheet) {
 
   const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).getDisplayValues();
   const interestList = rows
-    .filter(row => row[0] || row[1])
+    .filter(row => {
+      const status = String(row[7] || "").trim().toUpperCase();
+      const telegram = String(row[10] || "").trim().toUpperCase();
+      return (row[0] || row[1]) && status !== "CANCELLED" && telegram !== "CANCELLED";
+    })
     .map(row => ({
       id: row[0],
       asset: row[1],

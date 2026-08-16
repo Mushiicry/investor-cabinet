@@ -122,11 +122,17 @@ export function buildInvestorStateFromApi(json: InvestorApiResponse, prev: Portf
   const decisions = normalizeDecisions(json?.decisions, prev.decisions);
   const scenarios = normalizeScenarios(json?.scenarios, prev.scenarios);
   const assetQuality = normalizeAssetQuality(json?.assetQuality, prev.assetQuality);
+  const dnaAccountId = json?.investorDNA && typeof json.investorDNA === "object"
+    ? (json.investorDNA as { accountId?: unknown }).accountId as string | undefined
+    : prev.investorDNA?.accountId;
+  const currentDnaSeed = dnaForSlot(dnaAccountId);
   const investorDNA = normalizeInvestorDNAFromApi(
     json?.investorDNA,
-    prev.investorDNA ?? dnaForSlot(json?.investorDNA && typeof json.investorDNA === "object"
-      ? (json.investorDNA as { accountId?: unknown }).accountId as string | undefined
-      : undefined),
+    {
+      ...currentDnaSeed,
+      answers: prev.investorDNA?.answers ?? currentDnaSeed.answers,
+      auditHistory: prev.investorDNA?.auditHistory ?? currentDnaSeed.auditHistory,
+    },
   );
   const openRiskPositions = getOpenRiskPositions(portfolio);
 

@@ -77,7 +77,48 @@ const isRetryableReadFailure = (upstream, body) =>
   upstream.status >= 500 ||
   !isJsonPayload(upstream, body);
 
+async function readRequestBody(req) {
+  if (req.method !== "POST") return undefined;
+
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
+async function fetchInvestorPostUpstream(upstreamUrl, req, body) {
+  const headers = {
+    accept: "application/json",
+    "content-type": getHeader(req, "content-type") || "application/json",
+  };
+  const first = await fetch(upstreamUrl.toString(), {
+    method: "POST",
+    headers,
+    body,
+    redirect: "manual",
+  });
+
+  if (first.status >= 300 && first.status < 400) {
+    const location = first.headers.get("location");
+    if (location) {
+      const redirected = await fetch(location, {
+        method: "GET",
+        headers: { accept: "application/json" },
+        redirect: "follow",
+      });
+      return { upstream: redirected, body: await redirected.text(), attempt: 1 };
+    }
+  }
+
+  return { upstream: first, body: await first.text(), attempt: 1 };
+}
+
 async function fetchInvestorUpstream(upstreamUrl, req) {
+  if (req.method === "POST") {
+    return fetchInvestorPostUpstream(upstreamUrl, req, await readRequestBody(req));
+  }
+
   const isReadOnly = req.method === "GET";
   const attempts = isReadOnly ? READ_RETRY_ATTEMPTS : 1;
   let lastResult = null;
@@ -444,7 +485,8 @@ export async function proxyInvestorApi(req, res, kind) {
     const upstreamUrl = new URL(targetUrlFor(kind));
     upstreamUrl.searchParams.set("accountId", kind);
 
-    if (req.method === "POST" && action !== "saveInvestorDNAAnswers") {
+    const allowedPostActions = new Set(["saveInvestorDNAAnswers", "createSignalLimitLevel", "deleteSignalLimitLevel"]);
+    if (req.method === "POST" && !allowedPostActions.has(action)) {
       sendJson(res, 405, { success: false, error: "Method not allowed" });
       return;
     }
@@ -457,7 +499,7 @@ export async function proxyInvestorApi(req, res, kind) {
       }
     }
 
-    if (action === "saveInvestorDNAAnswers") {
+    if (allowedPostActions.has(action)) {
       upstreamUrl.searchParams.set("action", action);
     }
 

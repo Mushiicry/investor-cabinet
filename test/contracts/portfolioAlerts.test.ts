@@ -145,4 +145,28 @@ describe("единый движок тревог портфеля", () => {
       }),
     );
   });
+
+  it("считает лимит крипто-позиции внутри крипто-блока, а не как маленький процент портфеля", () => {
+    const alerts = buildPortfolioAlerts({
+      portfolio: portfolio(),
+      positions: [
+        { asset: "SOL", category: "Крипта", value: 30 },
+        { asset: "BNB", category: "Крипта", value: 17 },
+        { asset: "ETH", category: "Крипта", value: 153 },
+      ],
+      allocation: [{ name: "Крипта", share: 0.2, value: 200 }],
+      currentFG: 50,
+      health,
+      marketPsychology: getMarketPsychology(50),
+    });
+
+    expect(alerts).toContainEqual(
+      expect.objectContaining({
+        id: "position-over-SOL",
+        detail: "15.0% крипто-блока при лимите 10% · в портфеле 3.0%",
+      }),
+    );
+    expect(alerts.find((alert) => alert.id === "position-limit-BNB")).toBeUndefined();
+    expect(alerts.find((alert) => alert.id === "position-over-BNB")).toBeUndefined();
+  });
 });

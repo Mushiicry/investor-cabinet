@@ -1,5 +1,6 @@
 import type { PortfolioState } from "../types/portfolio";
 import { buildFearGreedStrategy } from "../lib/fearGreedStrategy";
+import { dnaForSlot, normalizeInvestorDNAFromApi } from "../v2/lib/investorDNA";
 
 const INVESTOR_DATA_CACHE_KEY = "investor-cabinet:last-live-investor-state:v2";
 const WIFE_DATA_CACHE_KEY    = "investor-cabinet:last-live-investor-state:wife:v1";
@@ -40,6 +41,8 @@ const normalizeCachedPortfolioState = (value: unknown): PortfolioState | null =>
       ? pnl / invested
       : cachedState.overview.pnlPct;
     const cachedSignals = isRecord(value.signals) ? value.signals : null;
+    const cachedDna = isRecord(value.investorDNA) ? cachedState.investorDNA : undefined;
+    const currentDnaSeed = dnaForSlot(cachedDna?.accountId);
 
     return {
       ...cachedState,
@@ -60,6 +63,9 @@ const normalizeCachedPortfolioState = (value: unknown): PortfolioState | null =>
       },
       fearGreedStrategy: cachedState.fearGreedStrategy ?? buildFearGreedStrategy(50, cachedState.overview.invested),
       assetQuality: cachedState.assetQuality ?? emptyAssetQuality,
+      investorDNA: cachedDna
+        ? normalizeInvestorDNAFromApi(cachedDna, currentDnaSeed)
+        : cachedState.investorDNA,
     };
   }
 

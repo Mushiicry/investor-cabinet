@@ -870,6 +870,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             disciplineCooldownActive={behavior.healthInputs.disciplineCooldownActive}
             onOpenTradeCandidate={handleOpenTradeCandidate}
             onNavigate={handleNavigate}
+            onRefreshData={dataStatus?.onRefresh}
           />
         ) : page === "gate" ? (
           <V2GatePage
