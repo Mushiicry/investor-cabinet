@@ -922,6 +922,11 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             healthInput={behaviorHealthInput}
             strategy={data.strategy}
             dna={data.dna}
+            interestSignals={data.signals?.interestList?.length
+              ? data.signals.interestList
+              : data.signals?.interest
+                ? [data.signals.interest]
+                : []}
             onOpenDNA={() => handleNavigate("dna")}
           />
         ) : page === "dna" ? (

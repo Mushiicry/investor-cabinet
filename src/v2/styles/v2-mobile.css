@@ -342,6 +342,13 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .v2-hp-command-grid,
+  .v2-hp-section-grid,
+  .v2-hp-section-grid--three,
+  .v2-hp-command-recs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .v2-hp-policy-head {
     flex-direction: column;
     gap: 10px;
@@ -689,6 +696,30 @@
   .v2-hp-policy-ray {
     grid-template-columns: minmax(0, 1fr);
     gap: 3px;
+  }
+
+  .v2-hp-intel-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-hp-ops-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-hp-passport-row,
+  .v2-hp-permission-row,
+  .v2-hp-stress-row,
+  .v2-hp-issue-row,
+  .v2-hp-signal-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-hp-passport-row strong,
+  .v2-hp-permission-row strong,
+  .v2-hp-signal-row strong {
+    justify-self: start;
+    max-width: none;
+    text-align: left;
   }
 
   .v2-dna-question-card,

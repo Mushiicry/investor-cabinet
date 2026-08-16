@@ -1,9 +1,4 @@
-import {
-  computePortfolioHealth,
-  FUTURES_LEVERAGE_LIMIT_ALT,
-  FUTURES_LEVERAGE_LIMIT_MAJOR,
-  MAX_FUTURES_POSITIONS,
-} from "../../lib/portfolioHealth";
+import { computePortfolioHealth } from "../../lib/portfolioHealth";
 import type { HealthInput, PortfolioHealth, HealthComponent } from "../../lib/portfolioHealth";
 import type { V2Portfolio } from "../InvestorCabinetV2Lab";
 import { useMemo, useState } from "react";
@@ -20,6 +15,12 @@ import portfolioHealthScoreOrb from "../../assets/dna/portfolio-health-score-orb
 import { V2CapitalLadder } from "./V2CapitalLadder";
 import { MAIN_INVESTOR_STRATEGY, type InvestorStrategy } from "../lib/investorStrategy";
 import { MAIN_INVESTOR_DNA, type InvestorDNA } from "../lib/investorDNA";
+import type { InterestSignal } from "../../types/portfolio";
+import {
+  assessSignal,
+  isPlannedLimitOrder,
+  sortBySignalPriority,
+} from "../lib/interestSignals";
 
 type Props = {
   portfolio: V2Portfolio;
@@ -27,6 +28,7 @@ type Props = {
   healthInput: HealthInput; // входы расчёта — для точной симуляции
   strategy?: InvestorStrategy;
   dna?: InvestorDNA;
+  interestSignals?: InterestSignal[];
   onOpenDNA?: () => void;
 };
 
@@ -36,6 +38,13 @@ const fmt$ = (v: number) =>
 const pct = (v: number) => {
   const value = Math.round(v * 1000) / 10;
   return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}%`;
+};
+
+const signedScore = (value: number) => (value > 0 ? `-${value}` : "0");
+
+const signedPctText = (value: number) => {
+  const rounded = Math.round(value * 10) / 10;
+  return `${rounded > 0 ? "+" : ""}${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}%`;
 };
 
 const strategyAssetLimit = (strategy: InvestorStrategy, asset: string) => strategy.cryptoAssetLimits[asset] ?? 0;
@@ -56,202 +65,6 @@ function strategyCryptoRows(strategy: InvestorStrategy) {
   }
 
   return rows.filter((row) => row.value > 0);
-}
-
-function rayDescription(c: HealthComponent) {
-  if (c.key === "reserve") return "пол резерва и покупательная способность";
-  if (c.key === "diversification") return "доли классов и число рабочих направлений";
-  if (c.key === "concentration") return "перегруз отдельных активов сверх лимита";
-  if (c.key === "crypto") return "выживание портфеля при стресс-сценарии";
-  if (c.key === "flexibility") return "журнал решений, паузы и отсутствие импульсных сделок";
-  return c.label === "Качество активов"
-    ? "чистота портфеля: только разрешённые активы"
-    : "фьючерсный лимит, плечо, позиции и ликвидация";
-}
-
-function StrategyPolicyCard({ strategy, health }: { strategy: InvestorStrategy; health: PortfolioHealth }) {
-  const goldOnly = strategy.allowedMetalAssets?.every((asset) => ["GOLD", "XAU", "XAUUSD"].includes(asset)) ?? false;
-  const metalLabel = goldOnly ? "Золото" : "Металлы";
-  const concentrationMeta = health.components.find((component) => component.key === "concentration")?.meta;
-  const altcoinSlotsUsed = concentrationMeta?.altcoinSlotsUsed;
-  const altcoinSlotsTotal = concentrationMeta?.altcoinSlotsTotal;
-  const altcoinSlotsFree = concentrationMeta?.altcoinSlotsFree;
-  const altcoins = concentrationMeta?.altcoins ?? [];
-  const hasAltcoinSlots =
-    altcoinSlotsUsed !== undefined &&
-    altcoinSlotsTotal !== undefined &&
-    altcoinSlotsFree !== undefined &&
-    strategy.maxAltcoinSlots > 0;
-  const classRows = [
-    { label: "Крипта", value: `максимум ${pct(strategy.cryptoMaxShare)}` },
-    {
-      label: "Резерв",
-      value:
-        strategy.reserveTargetShare === strategy.reserveFloorShare
-          ? `минимум ${pct(strategy.reserveFloorShare)}`
-          : `минимум ${pct(strategy.reserveFloorShare)} · рабочая цель ${pct(strategy.reserveTargetShare)}`,
-    },
-    { label: metalLabel, value: `максимум ${pct(strategy.metalsMaxShare)}` },
-    { label: "Акции", value: `максимум ${pct(strategy.stocksMaxShare)}` },
-    {
-      label: "Фьючерсы",
-      value: strategy.futuresAllowed ? `максимум ${pct(strategy.futuresMaxShare)}` : "запрещены",
-      tone: strategy.futuresAllowed ? "neutral" : "block",
-    },
-  ];
-  const hardRules = [
-    strategy.futuresAllowed
-      ? `Фьючерсы: до ${pct(strategy.futuresMaxShare)}, максимум ${MAX_FUTURES_POSITIONS} позиции, плечо до ${FUTURES_LEVERAGE_LIMIT_ALT}x на альтах и до ${FUTURES_LEVERAGE_LIMIT_MAJOR}x на BTC/золоте.`
-      : "Фьючерсы запрещены полностью.",
-    strategy.allowedCryptoAssets
-      ? `Крипта вне списка ${strategyCryptoRows(strategy).map((row) => row.label).join(" / ")} запрещена.`
-      : `Новые альты: максимум ${strategy.maxAltcoinSlots} места по ${pct(strategy.defaultCryptoAssetLimit)} внутри крипто-блока.`,
-    `${metalLabel}: максимум ${pct(strategy.metalsMaxShare)} портфеля, позиций не больше ${strategy.maxMetalSlots}.`,
-    `Акции: максимум ${pct(strategy.stocksMaxShare)} портфеля, позиций не больше ${strategy.maxStockSlots}.`,
-  ];
-
-  if (!strategy.futuresAllowed && strategy.defaultCryptoAssetLimit === 0) {
-    hardRules.push("Спекулятивные активы и случайные альты вне стратегии запрещены.");
-  }
-
-  return (
-    <section className="v2-hp-policy-card" aria-label="Инвестиционная стратегия аккаунта">
-      <div className="v2-hp-policy-head">
-        <div>
-          <div className="v2-hp-card-title">Инвестиционная стратегия</div>
-          <h2>{strategy.title}</h2>
-        </div>
-        <span className="v2-hp-policy-badge">{strategy.allocationLabel}</span>
-      </div>
-
-      <div className="v2-hp-policy-grid">
-        <div className="v2-hp-policy-panel">
-          <div className="v2-hp-policy-kicker">Базовая структура</div>
-          <div className="v2-hp-policy-rows">
-            {classRows.map((row) => (
-              <div key={row.label} className={`v2-hp-policy-row ${row.tone === "block" ? "is-block" : ""}`}>
-                <span>{row.label}</span>
-                <strong>{row.value}</strong>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="v2-hp-policy-panel">
-          <div className="v2-hp-policy-kicker">Крипто-блок</div>
-          <div className="v2-hp-policy-rows">
-            {strategyCryptoRows(strategy).map((row) => (
-              <div key={row.label} className="v2-hp-policy-row">
-                <span>{row.label}</span>
-                <strong>до {pct(row.value)} внутри крипты</strong>
-              </div>
-            ))}
-            {hasAltcoinSlots && (
-              <div className={`v2-hp-policy-row v2-hp-alt-slots ${altcoinSlotsFree === 0 ? "is-full" : ""}`}>
-                <span>Альткоин-места</span>
-                <strong>
-                  занято {altcoinSlotsUsed}/{altcoinSlotsTotal} · свободно {altcoinSlotsFree}
-                </strong>
-                <em>{altcoins.length > 0 ? altcoins.join(", ") : "альты не заняты"}</em>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="v2-hp-policy-panel">
-          <div className="v2-hp-policy-kicker">Жёсткие ограничения</div>
-          <ul className="v2-hp-policy-list">
-            {hardRules.map((rule) => (
-              <li key={rule}>{rule}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="v2-hp-policy-panel">
-          <div className="v2-hp-policy-kicker">Лучи здоровья</div>
-          <div className="v2-hp-policy-rays">
-            {health.components.map((component) => (
-              <div key={component.key} className="v2-hp-policy-ray">
-                <span>{component.label}</span>
-                <em>{rayDescription(component)}</em>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function InvestorDNAVerdictCard({ dna, onOpenDNA }: { dna: InvestorDNA; onOpenDNA?: () => void }) {
-  const rows = [
-    { label: "Тип", value: dna.investorType },
-    { label: "Готовность к риску", value: `${dna.riskWillingness.value}/100` },
-    { label: "Способность принимать риск", value: `${dna.riskCapacity.value}/100`, tone: dna.riskCapacity.value < 50 ? "block" : "neutral" },
-    { label: "Главный риск", value: dna.liquidityRule },
-  ];
-
-  return (
-    <section className="v2-hp-policy-card" aria-label="Вердикт ДНК Инвестора">
-      <div className="v2-hp-policy-head">
-        <div>
-          <div className="v2-hp-card-title">ДНК Инвестора</div>
-          <h2>{dna.investorType}</h2>
-        </div>
-        <span className="v2-hp-policy-badge">Вердикт</span>
-      </div>
-
-      <div className="v2-hp-policy-grid">
-        <div className="v2-hp-policy-panel">
-          <div className="v2-hp-policy-kicker">Короткий вывод</div>
-          <div className="v2-hp-policy-ray">
-            <span>Правило</span>
-            <em>{dna.keyVerdict}</em>
-          </div>
-          {onOpenDNA && (
-            <button className="v2-hp-sim-btn" type="button" onClick={onOpenDNA}>
-              Открыть ДНК Инвестора
-            </button>
-          )}
-        </div>
-
-        <div className="v2-hp-policy-panel">
-          <div className="v2-hp-policy-kicker">Профиль</div>
-          <div className="v2-hp-policy-rows">
-            {rows.map((row) => (
-              <div key={row.label} className={`v2-hp-policy-row ${row.tone === "block" ? "is-block" : ""}`}>
-                <span>{row.label}</span>
-                <strong>{row.value}</strong>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="v2-hp-policy-panel">
-          <div className="v2-hp-policy-kicker">Ближайшие действия</div>
-          <ul className="v2-hp-policy-list">
-            {dna.recommendations.slice(0, 3).map((item) => (
-              <li key={item.id}>{item.title}: {item.action}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="v2-hp-policy-panel">
-          <div className="v2-hp-policy-kicker">Связь с риском</div>
-          <div className="v2-hp-policy-rays">
-            <div className="v2-hp-policy-ray">
-              <span>Просадка</span>
-              <em>{dna.maxDrawdownRule}</em>
-            </div>
-            <div className="v2-hp-policy-ray">
-              <span>Кредитное плечо</span>
-              <em>{dna.leverageRule}</em>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
 }
 
 // ── Уровни здоровья ────────────────────────────────────────────
@@ -329,6 +142,286 @@ function richDiagnosis(components: HealthComponent[], portfolio: V2Portfolio) {
   return { weak, strong };
 }
 
+function getHealthComponent(health: PortfolioHealth, key: HealthComponent["key"]) {
+  return health.components.find((component) => component.key === key);
+}
+
+function buildScoreLossRows(health: PortfolioHealth) {
+  return [...health.components]
+    .map((component) => {
+      const loss = Math.round((100 - component.score) * component.weight);
+      return {
+        key: component.key,
+        label: component.label,
+        score: component.score,
+        weight: component.weight,
+        loss: Math.max(0, loss),
+      };
+    })
+    .sort((a, b) => b.loss - a.loss);
+}
+
+function healthTone(score: number): "ok" | "warn" | "bad" {
+  if (score >= 75) return "ok";
+  if (score >= 55) return "warn";
+  return "bad";
+}
+
+function verdictTone(ok: boolean, warn = false): "ok" | "warn" | "bad" {
+  if (ok) return "ok";
+  return warn ? "warn" : "bad";
+}
+
+function signalTone(priority: ReturnType<typeof assessSignal>["priority"]): "bad" | "warn" | "info" {
+  if (priority === "сработал" || priority === "сломано") return "bad";
+  if (priority === "близко") return "warn";
+  return "info";
+}
+
+function buildStrategyPassportRows(strategy: InvestorStrategy, health: PortfolioHealth, healthInput: HealthInput, portfolio: V2Portfolio) {
+  const reserveShare = healthInput.reserveShare ?? healthInput.cashShare;
+  const concentration = getHealthComponent(health, "concentration");
+  const worstAsset = concentration?.meta?.worstConcentrationAsset;
+  const worstShare = concentration?.meta?.worstConcentrationShare;
+  const worstLimit = concentration?.meta?.worstConcentrationLimit;
+  const maxUtil = concentration?.meta?.maxAssetLimitUtilization;
+  const activeTradingOverLimit = strategy.futuresAllowed
+    ? healthInput.futuresShare > strategy.futuresMaxShare
+    : healthInput.futuresShare > 0;
+
+  return [
+    {
+      label: "Резерв",
+      fact: pct(reserveShare),
+      rule: `${pct(strategy.reserveTargetShare)}-${pct(strategy.reserveBandMaxShare)} рабочий коридор`,
+      tone: verdictTone(reserveShare >= strategy.reserveFloorShare, reserveShare < strategy.reserveTargetShare),
+    },
+    {
+      label: "Крипта",
+      fact: pct(healthInput.cryptoShare),
+      rule: `до ${pct(strategy.cryptoMaxShare)} портфеля`,
+      tone: verdictTone(healthInput.cryptoShare <= strategy.cryptoMaxShare, healthInput.cryptoShare <= strategy.cryptoMaxShare * 1.08),
+    },
+    {
+      label: "Активная торговля",
+      fact: pct(healthInput.futuresShare),
+      rule: strategy.futuresAllowed ? `до ${pct(strategy.futuresMaxShare)} вложенного капитала` : "запрещена стратегией",
+      tone: verdictTone(!activeTradingOverLimit),
+    },
+    {
+      label: worstAsset ? `Худший актив: ${worstAsset}` : "Худший актив",
+      fact: worstShare !== undefined ? pct(worstShare) : "нет перегруза",
+      rule: worstLimit !== undefined ? `лимит ${pct(worstLimit)}` : "по лимитам стратегии",
+      tone: verdictTone((maxUtil ?? 0) <= 1, (maxUtil ?? 0) <= 1.15),
+    },
+    {
+      label: "Альткоин-места",
+      fact:
+        concentration?.meta?.altcoinSlotsUsed !== undefined && concentration?.meta?.altcoinSlotsTotal !== undefined
+          ? `${concentration.meta.altcoinSlotsUsed}/${concentration.meta.altcoinSlotsTotal}`
+          : strategy.maxAltcoinSlots > 0 ? "нет данных" : "не используются",
+      rule: strategy.maxAltcoinSlots > 0 ? `свободно ${concentration?.meta?.altcoinSlotsFree ?? "?"}` : "альты вне списка запрещены",
+      tone: verdictTone((concentration?.meta?.altcoinSlotsFree ?? 1) > 0, true),
+    },
+    {
+      label: "Покупательная сила",
+      fact: fmt$(healthInput.spotDeployableUsd ?? portfolio.spotDeployable ?? portfolio.deployableCapital),
+      rule: "доступно для новых уровней без разрушения резерва",
+      tone: verdictTone((healthInput.spotDeployableUsd ?? portfolio.spotDeployable ?? 0) > 0, true),
+    },
+  ];
+}
+
+function buildPermissionRows(strategy: InvestorStrategy, health: PortfolioHealth, healthInput: HealthInput, portfolio: V2Portfolio) {
+  const reserve = getHealthComponent(health, "reserve");
+  const concentration = getHealthComponent(health, "concentration");
+  const survival = getHealthComponent(health, "crypto");
+  const riskControl = getHealthComponent(health, "futures");
+  const discipline = getHealthComponent(health, "flexibility");
+  const reserveShare = healthInput.reserveShare ?? healthInput.cashShare;
+  const hasReserveBlock = (reserve?.meta?.reserveBlockers?.length ?? 0) > 0 || reserveShare < strategy.reserveFloorShare;
+  const hasConcentrationBlock = (concentration?.meta?.overLimitAssets?.length ?? 0) > 0;
+  const hasSurvivalBlock = (survival?.meta?.survivalBlockers?.length ?? 0) > 0;
+  const hasDisciplineBlock = (discipline?.meta?.disciplineBlockers?.length ?? 0) > 0;
+  const plannedUsd = survival?.meta?.plannedLimitOrdersUsd ?? healthInput.plannedLimitOrdersUsd;
+  const spotPower = healthInput.spotDeployableUsd ?? portfolio.spotDeployable ?? portfolio.deployableCapital;
+
+  const purchaseBlocked = hasReserveBlock || hasConcentrationBlock || hasSurvivalBlock || hasDisciplineBlock;
+  const futuresBlocked = !strategy.futuresAllowed || hasReserveBlock || (riskControl?.score ?? 100) < 55;
+
+  return [
+    {
+      label: "Покупки",
+      value: purchaseBlocked ? "Только через проверку риска" : "Разрешены по лимитам",
+      note: purchaseBlocked ? "Сначала устранить блокеры здоровья" : "Каждая покупка всё равно проходит pre-trade проверку",
+      tone: purchaseBlocked ? "warn" : "ok",
+    },
+    {
+      label: "Фьючерсы",
+      value: futuresBlocked ? "Пауза / сокращение" : "Разрешены внутри лимита",
+      note: strategy.futuresAllowed ? `Лимит активной торговли ${pct(strategy.futuresMaxShare)}` : "Стратегия запрещает фьючерсы полностью",
+      tone: futuresBlocked ? "bad" : "ok",
+    },
+    {
+      label: "Новый риск",
+      value: health.healthFactor >= 75 && !purchaseBlocked ? "Можно дозировано" : "Не добавлять",
+      note: health.healthFactor >= 75 ? "Только если не ухудшает худший луч" : "Health ниже зоны контроля",
+      tone: health.healthFactor >= 75 && !purchaseBlocked ? "ok" : "bad",
+    },
+    {
+      label: "Лимитные уровни",
+      value: spotPower > 0 ? "Можно выставлять" : "Нет свободного лимита",
+      note: plannedUsd !== undefined ? `Уже подготовлено ${fmt$(plannedUsd)}` : "План лимитных уровней не подключён",
+      tone: spotPower > 0 ? "ok" : "warn",
+    },
+  ];
+}
+
+function buildStressRows(health: PortfolioHealth, portfolio: V2Portfolio) {
+  const survival = getHealthComponent(health, "crypto");
+  const scenarios = survival?.meta?.survivalScenarios ?? [];
+  if (scenarios.length === 0) {
+    return [
+      {
+        name: survival?.meta?.survivalWorstScenario ?? "Стресс-сценарий",
+        loss: survival?.meta?.survivalShockLossPct ?? 0,
+        lossUsd: survival?.meta?.survivalLossUsd,
+      },
+    ];
+  }
+
+  return scenarios.slice(0, 4).map((scenario) => ({
+    name: scenario.name,
+    loss: scenario.lossPct,
+    lossUsd: scenario.lossUsd ?? scenario.lossPct * portfolio.totalPortfolioValue,
+  }));
+}
+
+function componentIssues(component: HealthComponent) {
+  const rows: Array<{ label: string; tone: "bad" | "warn"; text: string }> = [];
+  const add = (items: string[] | undefined, tone: "bad" | "warn") => {
+    (items ?? []).forEach((text) => rows.push({ label: component.label, tone, text }));
+  };
+
+  if (component.key === "reserve") {
+    add(component.meta?.reserveBlockers, "bad");
+    add(component.meta?.reserveWarnings, "warn");
+  } else if (component.key === "crypto") {
+    add(component.meta?.survivalBlockers, "bad");
+    add(component.meta?.survivalWarnings, "warn");
+  } else if (component.key === "futures") {
+    add(component.meta?.riskControlBlockers, "bad");
+    add(component.meta?.riskControlWarnings, "warn");
+  } else if (component.key === "concentration") {
+    add(component.meta?.concentrationBlockers, "bad");
+    add(component.meta?.concentrationWarnings, "warn");
+  } else if (component.key === "diversification") {
+    add(component.meta?.diversificationBlockers, "bad");
+    add(component.meta?.diversificationWarnings, "warn");
+  } else if (component.key === "flexibility") {
+    add(component.meta?.disciplineBlockers, "bad");
+    add(component.meta?.disciplineWarnings, "warn");
+  }
+
+  return rows;
+}
+
+function buildIssueRows(health: PortfolioHealth) {
+  const issues = health.components.flatMap(componentIssues);
+  if (issues.length) return issues.slice(0, 7);
+  return [{ label: "Контроль", tone: "ok" as const, text: "Критических блокеров и предупреждений нет" }];
+}
+
+function buildCapitalPowerRows(health: PortfolioHealth, healthInput: HealthInput, portfolio: V2Portfolio) {
+  const reserve = getHealthComponent(health, "reserve");
+  const meta = reserve?.meta;
+  const reserveUsd = meta?.reserveUsd ?? portfolio.stableReserve;
+  const floorUsd = meta?.reserveFloorUsd;
+  const targetUsd = meta?.reserveTargetUsd;
+  const bandMaxUsd = meta?.reserveBandMaxUsd;
+  const idleUsd = meta?.reserveIdleUsd ?? 0;
+  const targetShortfallUsd = meta?.reserveTargetShortfallUsd ?? 0;
+  const spotPower = healthInput.spotDeployableUsd ?? portfolio.spotDeployable ?? portfolio.deployableCapital;
+  const futuresPower = healthInput.futuresDeployableUsd ?? portfolio.futuresDeployable;
+  const plannedUsd = healthInput.plannedLimitOrdersUsd;
+
+  return [
+    {
+      label: "Текущий резерв",
+      value: fmt$(reserveUsd),
+      note: targetUsd && bandMaxUsd ? `рабочий коридор ${fmt$(targetUsd)}-${fmt$(bandMaxUsd)}` : "защитная часть капитала",
+      tone: reserve?.score && reserve.score >= 75 ? "ok" : reserve?.score && reserve.score >= 55 ? "warn" : "bad",
+    },
+    {
+      label: "Неприкосновенная часть",
+      value: floorUsd !== undefined ? fmt$(floorUsd) : "нет данных",
+      note: "ниже этого уровня новые сделки нельзя открывать",
+      tone: reserveUsd >= (floorUsd ?? 0) ? "ok" : "bad",
+    },
+    {
+      label: "Свободно для спота",
+      value: fmt$(spotPower),
+      note: plannedUsd !== undefined ? `лимитные уровни уже занимают ${fmt$(plannedUsd)}` : "уровни не подключены",
+      tone: spotPower > 0 ? "ok" : "warn",
+    },
+    {
+      label: "Свободно для активной торговли",
+      value: fmt$(futuresPower),
+      note: "использовать только после проверки риска",
+      tone: futuresPower > 0 ? "warn" : "bad",
+    },
+    {
+      label: idleUsd > 0 ? "Капитал простаивает" : "Дефицит до цели",
+      value: idleUsd > 0 ? fmt$(idleUsd) : fmt$(targetShortfallUsd),
+      note: idleUsd > 0 ? "часть резерва выше верхнего рабочего коридора" : "сколько не хватает до рабочей цели резерва",
+      tone: idleUsd > 0 || targetShortfallUsd > 0 ? "warn" : "ok",
+    },
+  ];
+}
+
+function buildDisciplineRows(health: PortfolioHealth) {
+  const discipline = getHealthComponent(health, "flexibility");
+  const meta = discipline?.meta;
+  const journal = meta?.disciplineJournalCoverage;
+  return [
+    {
+      label: "Журнал решений",
+      value: journal !== undefined ? pct(journal) : "не подключён",
+      note: `балл ${meta?.disciplineJournalScore ?? "?"}/100`,
+      tone: journal !== undefined && journal >= 0.8 ? "ok" : "warn",
+    },
+    {
+      label: "Нарушения за 30 дней",
+      value: meta?.disciplineViolations30d !== undefined ? String(meta.disciplineViolations30d) : "нет данных",
+      note: `FOMO ${meta?.fomoEvents30d ?? "?"} · revenge ${meta?.revengeTrades30d ?? "?"} · overtrade ${meta?.overtradingDays30d ?? "?"}`,
+      tone: (meta?.disciplineViolations30d ?? 0) > 0 ? "bad" : "ok",
+    },
+    {
+      label: "Дисциплинарная пауза",
+      value: meta?.disciplineCooldownActive ? "активна" : "нет",
+      note: `блокеры ${meta?.disciplineBlockerScore ?? "?"}/100`,
+      tone: meta?.disciplineCooldownActive ? "bad" : "ok",
+    },
+    {
+      label: "План уровней",
+      value: meta?.disciplinePlannedOrdersUsd !== undefined ? fmt$(meta.disciplinePlannedOrdersUsd) : "не подключён",
+      note: `балл плана ${meta?.disciplinePlanScore ?? "?"}/100`,
+      tone: (meta?.disciplinePlannedOrdersUsd ?? 0) > 0 ? "ok" : "warn",
+    },
+  ];
+}
+
+function isCancelledSignal(signal: InterestSignal) {
+  const status = signal.status.trim().toUpperCase();
+  return status === "CANCELLED" || status === "CANCELED";
+}
+
+function buildActiveSignalRows(signals: InterestSignal[]) {
+  return sortBySignalPriority(
+    signals.filter((signal) => isPlannedLimitOrder(signal) && !isCancelledSignal(signal))
+  ).slice(0, 5);
+}
+
 // ── Цвет по score ──────────────────────────────────────────────
 function scoreColor(s: number) {
   if (s >= 75) return "#5AEF8D";
@@ -374,6 +467,7 @@ export function V2HealthPage({
   healthInput,
   strategy = MAIN_INVESTOR_STRATEGY,
   dna = MAIN_INVESTOR_DNA,
+  interestSignals = [],
   onOpenDNA,
 }: Props) {
   const [modal, setModal]   = useState<HealthComponent | null>(null);
@@ -426,140 +520,326 @@ export function V2HealthPage({
   );
   const simDelta = sim.healthFactor - hf;
   const simInterp = interpretation(sim.healthFactor);
+  const scoreLossRows = useMemo(() => buildScoreLossRows(health), [health]);
+  const passportRows = useMemo(
+    () => buildStrategyPassportRows(strategy, health, healthInput, portfolio),
+    [strategy, health, healthInput, portfolio]
+  );
+  const permissionRows = useMemo(
+    () => buildPermissionRows(strategy, health, healthInput, portfolio),
+    [strategy, health, healthInput, portfolio]
+  );
+  const stressRows = useMemo(() => buildStressRows(health, portfolio), [health, portfolio]);
+  const survivalComponent = getHealthComponent(health, "crypto");
+  const survivalMeta = survivalComponent?.meta;
+  const plannedLimitOrdersUsd = survivalMeta?.plannedLimitOrdersUsd ?? healthInput.plannedLimitOrdersUsd;
+  const worstStressLoss = survivalMeta?.survivalShockLossPct ?? 0;
+  const stressPortfolioAfter = survivalMeta?.survivalPortfolioAfterShockUsd;
+  const stressBuyPower = survivalMeta?.survivalBuyPowerAfterShockUsd;
+  const issueRows = useMemo(() => buildIssueRows(health), [health]);
+  const capitalPowerRows = useMemo(
+    () => buildCapitalPowerRows(health, healthInput, portfolio),
+    [health, healthInput, portfolio]
+  );
+  const disciplineRows = useMemo(() => buildDisciplineRows(health), [health]);
+  const activeSignalRows = useMemo(() => buildActiveSignalRows(interestSignals), [interestSignals]);
+  const strategyClassRows = useMemo(() => {
+    const metalLabel = strategy.allowedMetalAssets?.every((asset) => ["GOLD", "XAU", "XAUUSD"].includes(asset))
+      ? "Золото"
+      : "Металлы";
+    return [
+      { label: "Крипта", value: `до ${pct(strategy.cryptoMaxShare)}` },
+      {
+        label: "Резерв",
+        value:
+          strategy.reserveTargetShare === strategy.reserveFloorShare
+            ? `от ${pct(strategy.reserveFloorShare)}`
+            : `${pct(strategy.reserveFloorShare)}-${pct(strategy.reserveTargetShare)}`,
+      },
+      { label: metalLabel, value: `до ${pct(strategy.metalsMaxShare)}` },
+      { label: "Акции", value: `до ${pct(strategy.stocksMaxShare)}` },
+      { label: "Фьючерсы", value: strategy.futuresAllowed ? `до ${pct(strategy.futuresMaxShare)}` : "запрещены" },
+    ];
+  }, [strategy]);
+  const cryptoLimitRows = useMemo(() => strategyCryptoRows(strategy), [strategy]);
+  const dnaRows = useMemo(
+    () => [
+      { label: "Архетип", value: dna.investorType },
+      { label: "Готовность к риску", value: `${dna.riskWillingness.value}/100` },
+      { label: "Способность принимать риск", value: `${dna.riskCapacity.value}/100` },
+    ],
+    [dna]
+  );
+  const topRecommendations = recommendations.slice(0, 3);
+  const topIssues = issueRows.slice(0, 5);
 
   return (
     <div className="v2-hp-page">
 
-      {/* ── Верхний ряд: оценка + диагноз + рекомендации ── */}
-      <div className="v2-hp-top">
-
-        {/* Score */}
-        <div className="v2-hp-score-card">
-          <div className="v2-hp-score-label">ОЦЕНКА ЗДОРОВЬЯ ИНВЕСТОРА</div>
-          <ScoreRing value={hf} />
-          <div className="v2-hp-score-interp" style={{ color: interp.color }}>{interp.text}</div>
-          <div className="v2-hp-score-sub">{interp.sub}</div>
-          {/* Health Simulator — открывается только при наличии данных */}
-          {!isEmpty && (
-            <button
-              className="v2-hp-sim-btn"
-              type="button"
-              onClick={() => { resetLevers(); setSimOpen(true); }}
-              title="Открыть симулятор здоровья портфеля"
-            >
-              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                <circle cx="7" cy="7" r="5.5" />
-                <path d="M5 7h4M7 5v4" strokeLinecap="round" />
-              </svg>
-              Симулятор здоровья
-            </button>
-          )}
-        </div>
-
-        {/* Diagnosis */}
-        <div className="v2-hp-diag-card">
-          <div className="v2-hp-card-title">Диагноз</div>
-
-          {strong.length > 0 && (
-            <div className="v2-hp-diag-group">
-              <div className="v2-hp-diag-group-label v2-hp-diag-group-label--ok">Сильные стороны</div>
-              {strong.map((s, i) => (
-                <div key={i} className="v2-hp-diag-row v2-hp-diag-row--ok">
-                  <span className="v2-hp-diag-icon">✓</span>
-                  <div>
-                    <div className="v2-hp-diag-name">{s.label} <span className="v2-hp-diag-score" style={{ color: "#5AEF8D" }}>{s.score}</span></div>
-                    <div className="v2-hp-diag-why">{s.why}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {weak.length > 0 && (
-            <div className="v2-hp-diag-group">
-              <div className="v2-hp-diag-group-label v2-hp-diag-group-label--warn">Слабые стороны</div>
-              {weak.map((w, i) => (
-                <div key={i} className="v2-hp-diag-row v2-hp-diag-row--warn">
-                  <span className="v2-hp-diag-icon">⚠</span>
-                  <div>
-                    <div className="v2-hp-diag-name">{w.label} <span className="v2-hp-diag-score" style={{ color: "#E6B33A" }}>{w.score}</span></div>
-                    {w.why && <div className="v2-hp-diag-why">{w.why}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {strong.length === 0 && weak.length === 0 && (
-            isEmpty ? (
-              <div className="v2-hp-diag-row">
-                <span className="v2-hp-diag-icon">—</span>
-                <span>Нет данных — подключите кошельки, диагноз появится автоматически</span>
-              </div>
-            ) : (
-              <div className="v2-hp-diag-row v2-hp-diag-row--ok">
-                <span className="v2-hp-diag-icon">✓</span>
-                <span>Все показатели в норме</span>
-              </div>
-            )
-          )}
-        </div>
-
-        {/* Рекомендации */}
-        <div className="v2-hp-rx-card">
-          <div className="v2-hp-card-title">
-            Рекомендации
-            <span className="v2-hp-rx-kicker">Что улучшит здоровье прямо сейчас</span>
+      <section className="v2-hp-command-card" aria-label="Командный диагноз здоровья">
+        <div className="v2-hp-command-grid">
+          <div className="v2-hp-command-score">
+            <div className="v2-hp-score-label">ОЦЕНКА ЗДОРОВЬЯ ИНВЕСТОРА</div>
+            <ScoreRing value={hf} />
+            <div className="v2-hp-score-interp" style={{ color: interp.color }}>{interp.text}</div>
+            <div className="v2-hp-score-sub">{interp.sub}</div>
+            {!isEmpty && (
+              <button
+                className="v2-hp-sim-btn"
+                type="button"
+                onClick={() => { resetLevers(); setSimOpen(true); }}
+                title="Открыть симулятор здоровья портфеля"
+              >
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                  <circle cx="7" cy="7" r="5.5" />
+                  <path d="M5 7h4M7 5v4" strokeLinecap="round" />
+                </svg>
+                Симулятор здоровья
+              </button>
+            )}
           </div>
-          <div className="v2-hp-rx-list">
-            {recommendations.length === 0 ? (
-              isEmpty ? (
-                <div className="v2-hp-rx-row">
-                  <span className="v2-hp-rx-gain" style={{ color: EMPTY_TONE }}>—</span>
-                  <span>Нет данных — подключите источники, рекомендации появятся автоматически</span>
+
+          <div className="v2-hp-command-main">
+            <div className="v2-hp-card-title">
+              Командный диагноз
+              <span className="v2-hp-rx-kicker">что прямо сейчас влияет на решения</span>
+            </div>
+            {isEmpty ? (
+              <div className="v2-hp-empty-note">Нет данных — подключите источники, и страница соберёт оценку здоровья автоматически.</div>
+            ) : (
+              <>
+                <div className="v2-hp-command-verdict" style={{ color: interp.color }}>{interp.text}</div>
+                <div className="v2-hp-command-sub">{interp.sub}</div>
+                <div className="v2-hp-command-list">
+                  {(weak.length ? weak : strong.slice(0, 3)).slice(0, 3).map((item) => (
+                    <div key={item.label} className={`v2-hp-diag-row ${weak.length ? "v2-hp-diag-row--warn" : "v2-hp-diag-row--ok"}`}>
+                      <span className="v2-hp-diag-icon">{weak.length ? "!" : "✓"}</span>
+                      <div>
+                        <div className="v2-hp-diag-name">{item.label} <span className="v2-hp-diag-score">{item.score}</span></div>
+                        <div className="v2-hp-diag-why">{item.why}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="v2-hp-rx-row">
-                  <span className="v2-hp-rx-gain" style={{ color: "#5AEF8D" }}>✓</span>
-                  <span>Портфель в отличной форме — удерживайте структуру</span>
+              </>
+            )}
+          </div>
+
+          <div className="v2-hp-command-side">
+            <div className="v2-hp-card-title">
+              Допуск
+              <span className="v2-hp-rx-kicker">можно ли действовать</span>
+            </div>
+            <div className="v2-hp-permission-list">
+              {permissionRows.map((row) => (
+                <div key={row.label} className={`v2-hp-permission-row is-${row.tone}`}>
+                  <div>
+                    <span>{row.label}</span>
+                    <em>{row.note}</em>
+                  </div>
+                  <strong>{row.value}</strong>
                 </div>
-              )
-            ) : recommendations.map((p, i) => (
-              <div key={i} className="v2-hp-rx-row">
-                <span className="v2-hp-rx-gain">+{p.gain}</span>
-                <div className="v2-hp-rx-text">
-                  <div className="v2-hp-rx-action">{p.action}</div>
-                  <div className="v2-hp-rx-source">{p.source}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="v2-hp-command-recs">
+          {topRecommendations.length === 0 ? (
+            <div className="v2-hp-rx-row">
+              <span className="v2-hp-rx-gain" style={{ color: isEmpty ? EMPTY_TONE : "#5AEF8D" }}>{isEmpty ? "—" : "✓"}</span>
+              <span>{isEmpty ? "Рекомендации появятся после подключения данных." : "Критичных действий нет — удерживайте структуру."}</span>
+            </div>
+          ) : topRecommendations.map((p, i) => (
+            <div key={i} className="v2-hp-rx-row">
+              <span className="v2-hp-rx-gain">+{p.gain}</span>
+              <div className="v2-hp-rx-text">
+                <div className="v2-hp-rx-action">{p.action}</div>
+                <div className="v2-hp-rx-source">{p.source}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="v2-hp-engine-card" aria-label="Механика здоровья">
+        <div className="v2-hp-policy-head">
+          <div>
+            <div className="v2-hp-card-title">Механика здоровья</div>
+            <h2>Почему оценка сейчас {hf}/100</h2>
+          </div>
+          <span className="v2-hp-policy-badge">вес факторов</span>
+        </div>
+        <div className="v2-hp-section-grid v2-hp-section-grid--three">
+          <div className="v2-hp-brows">
+            {sortedComponents.map(c => (
+              <BreakdownRow key={c.key} c={c} empty={isEmpty} onClick={() => setModal(c)} />
+            ))}
+          </div>
+          <div className="v2-hp-loss-list">
+            {scoreLossRows.map((row) => (
+              <div key={row.key} className={`v2-hp-loss-row is-${healthTone(row.score)}`}>
+                <div>
+                  <span>{row.label}</span>
+                  <em>вес {Math.round(row.weight * 100)}% · балл {row.score}/100</em>
                 </div>
+                <strong>{signedScore(row.loss)}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="v2-hp-issue-list">
+            {topIssues.map((row, index) => (
+              <div key={`${row.label}-${row.text}-${index}`} className={`v2-hp-issue-row is-${row.tone}`}>
+                <span>{row.label}</span>
+                <strong>{row.tone === "bad" ? "Стоп" : row.tone === "warn" ? "Внимание" : "ОК"}</strong>
+                <em>{row.text}</em>
               </div>
             ))}
           </div>
         </div>
+        <div className="v2-hp-brow-hint">Нажмите на строку фактора — откроется подробное объяснение и рекомендации.</div>
+      </section>
 
-      </div>
-
-      <div className="v2-hp-capital-goal">
-        <div className="v2-hp-card-title">Цель капитала</div>
-        <V2CapitalLadder portfolio={portfolio} mode="health" strategy={strategy} />
-      </div>
-
-      <StrategyPolicyCard strategy={strategy} health={health} />
-      <InvestorDNAVerdictCard dna={dna} onOpenDNA={onOpenDNA} />
-
-      {/* ── Breakdown ── */}
-      <div className="v2-hp-breakdown-card">
-        <div className="v2-hp-card-title">Разбор здоровья — из чего складывается оценка</div>
-        <div className="v2-hp-brows">
-          {sortedComponents.map(c => (
-            <BreakdownRow key={c.key} c={c} empty={isEmpty} onClick={() => setModal(c)} />
-          ))}
+      <section className="v2-hp-capital-system" aria-label="Капитал и выживаемость">
+        <div className="v2-hp-policy-head">
+          <div>
+            <div className="v2-hp-card-title">Капитал и выживаемость</div>
+            <h2>Резерв, покупательная сила и удар рынка</h2>
+          </div>
+          <span className={`v2-hp-policy-badge is-${healthTone(survivalComponent?.score ?? 0)}`}>
+            {survivalMeta?.survivalStatus ?? "нет данных"}
+          </span>
         </div>
-        <div className="v2-hp-brow-total">
-          <span>Итого</span>
-          <span className="v2-hp-brow-total-num" style={{ color: interp.color }}>{hf} / 100</span>
+        <div className="v2-hp-section-grid">
+          <div className="v2-hp-passport-list">
+            {capitalPowerRows.map((row) => (
+              <div key={row.label} className={`v2-hp-passport-row is-${row.tone}`}>
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+                <em>{row.note}</em>
+              </div>
+            ))}
+          </div>
+          <div className="v2-hp-stress-card">
+            <div className={`v2-hp-stress-status is-${healthTone(survivalComponent?.score ?? 0)}`}>
+              <strong>{survivalMeta?.survivalStatus ?? "Нет данных"}</strong>
+              <span>худший сценарий: {survivalMeta?.survivalWorstScenario ?? "не рассчитан"} · просадка {pct(worstStressLoss)}</span>
+            </div>
+            <div className="v2-hp-stress-list">
+              {stressRows.map((row) => (
+                <div key={row.name} className="v2-hp-stress-row">
+                  <span>{row.name}</span>
+                  <strong>-{pct(row.loss)}</strong>
+                  <em>{row.lossUsd !== undefined ? fmt$(row.lossUsd) : "без $"}</em>
+                </div>
+              ))}
+            </div>
+            <div className="v2-hp-stress-footer">
+              <span>После шока: {stressPortfolioAfter !== undefined ? fmt$(stressPortfolioAfter) : "нет данных"}</span>
+              <span>Покупательная сила: {stressBuyPower !== undefined ? fmt$(stressBuyPower) : "нет данных"}</span>
+              <span>Уровни уже занимают: {plannedLimitOrdersUsd !== undefined ? fmt$(plannedLimitOrdersUsd) : "не подключены"}</span>
+            </div>
+          </div>
         </div>
-        <div className="v2-hp-brow-hint">Нажмите на строку — подробное объяснение и рекомендации</div>
-      </div>
+        <div className="v2-hp-capital-ladder-inline">
+          <V2CapitalLadder portfolio={portfolio} mode="health" strategy={strategy} />
+        </div>
+      </section>
+
+      <section className="v2-hp-strategy-system" aria-label="Стратегия и лимиты">
+        <div className="v2-hp-policy-head">
+          <div>
+            <div className="v2-hp-card-title">Стратегия и лимиты</div>
+            <h2>{strategy.title}</h2>
+          </div>
+          <span className="v2-hp-policy-badge">{strategy.allocationLabel}</span>
+        </div>
+        <div className="v2-hp-section-grid v2-hp-section-grid--three">
+          <div className="v2-hp-passport-list">
+            {passportRows.map((row) => (
+              <div key={row.label} className={`v2-hp-passport-row is-${row.tone}`}>
+                <span>{row.label}</span>
+                <strong>{row.fact}</strong>
+                <em>{row.rule}</em>
+              </div>
+            ))}
+          </div>
+          <div className="v2-hp-policy-rows">
+            {strategyClassRows.map((row) => (
+              <div key={row.label} className="v2-hp-policy-row">
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+              </div>
+            ))}
+            {cryptoLimitRows.slice(0, 6).map((row) => (
+              <div key={row.label} className="v2-hp-policy-row">
+                <span>{row.label}</span>
+                <strong>до {pct(row.value)} внутри крипты</strong>
+              </div>
+            ))}
+          </div>
+          <div>
+            {activeSignalRows.length === 0 ? (
+              <div className="v2-hp-empty-note">Активных лимитных уровней сейчас нет.</div>
+            ) : (
+              <div className="v2-hp-signal-list">
+                {activeSignalRows.slice(0, 4).map((signal) => {
+                  const assessment = assessSignal(signal);
+                  const distance = assessment.distance;
+                  return (
+                    <div key={signal.id} className={`v2-hp-signal-row is-${signalTone(assessment.priority)}`}>
+                      <div>
+                        <span>{signal.asset} · {signal.action}</span>
+                        <em>{fmt$(signal.amountUsd)} при ${signal.triggerPrice.toLocaleString("en-US", { maximumFractionDigits: 6 })}</em>
+                      </div>
+                      <strong>{distance ? signedPctText(distance.pct) : "—"}</strong>
+                      <small>{assessment.text}</small>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="v2-hp-psych-system" aria-label="Психология и дисциплина">
+        <div className="v2-hp-policy-head">
+          <div>
+            <div className="v2-hp-card-title">Психология и дисциплина</div>
+            <h2>{dna.investorType}</h2>
+          </div>
+          <span className="v2-hp-policy-badge">ДНК</span>
+        </div>
+        <div className="v2-hp-section-grid v2-hp-section-grid--three">
+          <div className="v2-hp-psych-verdict">
+            <span>Главное правило</span>
+            <strong>{dna.keyVerdict}</strong>
+            {onOpenDNA && (
+              <button className="v2-hp-sim-btn" type="button" onClick={onOpenDNA}>
+                Открыть ДНК инвестора
+              </button>
+            )}
+          </div>
+          <div className="v2-hp-policy-rows">
+            {dnaRows.map((row) => (
+              <div key={row.label} className="v2-hp-policy-row">
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="v2-hp-passport-list">
+            {disciplineRows.map((row) => (
+              <div key={row.label} className={`v2-hp-passport-row is-${row.tone}`}>
+                <span>{row.label}</span>
+                <strong>{row.value}</strong>
+                <em>{row.note}</em>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ── Health Simulator ── */}
       {simOpen && (
