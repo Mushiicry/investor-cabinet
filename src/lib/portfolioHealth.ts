@@ -793,7 +793,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     disciplineWarnings.push("Журнал заполнен меньше чем на 80%");
   }
   if (disciplinePlannedOrdersUsd !== undefined && disciplinePlannedOrdersUsd <= 0) {
-    disciplineWarnings.push("Лимитные ордера не подготовлены");
+    disciplineWarnings.push("План лимитных покупок не подготовлен");
   }
   if (!hasBehaviorData) {
     disciplineWarnings.push("Поведенческие маркеры не подключены");
@@ -804,7 +804,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     `Журнал решений: ${disciplineJournalScore}/100`,
     `Поведение: ${disciplineBehaviorScore}/100`,
     `Блокеры: ${disciplineBlockerScore}/100`,
-    `План лимитных ордеров: ${disciplinePlanScore}/100`,
+    `План лимитных покупок: ${disciplinePlanScore}/100`,
     `Нарушений за 30 дней: ${disciplineViolations30d ?? "нет данных"}`,
     `Балл дисциплины: ${disciplineScore}/100`,
   ];

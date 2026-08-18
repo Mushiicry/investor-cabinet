@@ -3,7 +3,7 @@ var IC_HL_MAIN_ADDRESS = '0xFEc18D4474826afd65d578ff931F4ff2926ee0c3';
 var IC_HL_CALCULATIONS_SHEET = 'Расчеты';
 var IC_HL_PRICES_SHEET = 'Цены';
 var IC_HL_USDC_HL_ASSET = 'USDC HL';
-var IC_HL_SUPPORTED_POSITION_COINS = ['BTC', 'MNT'];
+var IC_HL_POSITION_COIN_BLOCKLIST = [];
 var IC_HL_EXTRA_DEXES = ['xyz'];
 var IC_HL_LEGACY_FUTURES_ASSETS = {
   BTC: ['BTC SHORT'],
@@ -52,7 +52,7 @@ function syncHyperliquidAccountState() {
 
   IC_HL_ensureHyperliquidFuturesRows_(calculationsSheet);
   IC_HL_syncUsdcHl_(calculationsSheet, usdc.availableAfterMaintenance);
-  IC_HL_syncSupportedFuturesPositions_(calculationsSheet, positions);
+  IC_HL_syncOpenFuturesPositions_(calculationsSheet, positions);
   IC_HL_syncLivePrices_(ss, primaryMids, dexMids);
   IC_HL_refreshPortfolioAccounting_(ss);
 }
@@ -215,18 +215,18 @@ function IC_HL_refreshPortfolioAccounting_(ss, force) {
   overview.getRange('B28').setFormula("='Расчеты'!X17");
   overview.getRange('B29').setFormula("='Расчеты'!X18");
   overview.getRange('C18:C29').setValues([
-    ['Начальная маржа BTC/MNT'],
-    ['Текущая стоимость маржи BTC/MNT'],
-    ['Номинальная экспозиция BTC/MNT'],
-    ['Unrealized PnL BTC/MNT'],
+    ['Начальная маржа фьючерсов'],
+    ['Текущая стоимость маржи фьючерсов'],
+    ['Номинальная экспозиция фьючерсов'],
+    ['Unrealized PnL фьючерсов'],
     ['10% от текущей стоимости портфеля'],
-    ['BTC/MNT current margin + свободный USDC HL'],
-    ['Номинал BTC/MNT / стоимость портфеля'],
+    ['Текущая маржа фьючерсов + свободный USDC HL'],
+    ['Номинал фьючерсов / стоимость портфеля'],
     ['Начальная маржа GOLD'],
     ['Текущий капитал HL включая GOLD'],
     ['То же, сверка'],
-    ['Превышение номинала BTC/MNT над 10%'],
-    ['Статус по номиналу BTC/MNT']
+    ['Превышение номинала фьючерсов над 10%'],
+    ['Статус по номиналу фьючерсов']
   ]);
 
   overview.getRange('N1').setFormula("=SUM('Расчеты'!E2:E100)");
@@ -358,24 +358,27 @@ function IC_HL_normalizePosition_(position) {
   };
 }
 
-function IC_HL_syncSupportedFuturesPositions_(sheet, positions) {
+function IC_HL_syncOpenFuturesPositions_(sheet, positions) {
   var syncedAssets = {};
+  var syncedCoins = {};
 
-  IC_HL_SUPPORTED_POSITION_COINS.forEach(function(coin) {
+  Object.keys(positions || {}).sort().forEach(function(coin) {
     var canonicalCoin = IC_HL_canonicalFuturesCoin_(coin);
-    var position = coin === 'GOLD'
-      ? (positions.GOLD || positions.PAXG || null)
-      : (positions[coin] || null);
+    if (!canonicalCoin || syncedCoins[canonicalCoin]) return;
+    if (IC_HL_POSITION_COIN_BLOCKLIST.indexOf(canonicalCoin) >= 0) return;
 
-    if (!position || !position.sizeAbs) {
-      IC_HL_clearKnownFuturesRows_(sheet, canonicalCoin);
-      return;
-    }
+    var position = canonicalCoin === 'GOLD'
+      ? (positions.GOLD || positions.PAXG || null)
+      : (positions[canonicalCoin] || positions[coin] || null);
+
+    syncedCoins[canonicalCoin] = true;
+    if (!position || !position.sizeAbs) return;
 
     var syncedAsset = IC_HL_syncFuturesCoinPosition_(sheet, canonicalCoin, position);
-    if (syncedAsset) syncedAssets[syncedAsset] = true;
+    if (syncedAsset) syncedAssets[IC_HL_normalizeAsset_(syncedAsset)] = true;
   });
 
+  IC_HL_clearStaleFuturesRows_(sheet, syncedAssets);
   return syncedAssets;
 }
 
@@ -402,6 +405,7 @@ function IC_HL_createFuturesRow_(sheet, asset, category) {
     .copyTo(sheet.getRange(rowIndex, 1, 1, lastColumn), { contentsOnly: false });
 
   IC_HL_setIfColumnExists_(sheet, rowIndex, 'asset', asset);
+  IC_HL_setIfColumnExists_(sheet, rowIndex, 'ticker', IC_HL_tickerFromFuturesAsset_(asset));
   IC_HL_setIfColumnExists_(sheet, rowIndex, 'category', category);
   IC_HL_setIfColumnExists_(sheet, rowIndex, 'quantity', 0);
   IC_HL_setIfColumnExists_(sheet, rowIndex, 'avgEntry', 0);
@@ -436,6 +440,7 @@ function IC_HL_syncFuturesCoinPosition_(sheet, coin, position) {
   }
 
   IC_HL_setIfColumnExists_(sheet, rowIndex, 'asset', asset);
+  IC_HL_setIfColumnExists_(sheet, rowIndex, 'ticker', coin);
   IC_HL_setIfColumnExists_(sheet, rowIndex, 'category', IC_HL_futuresCategory_(coin));
   IC_HL_setIfColumnExists_(sheet, rowIndex, 'quantity', position.sizeAbs);
   IC_HL_setIfColumnExists_(sheet, rowIndex, 'avgEntry', position.entryPx);
@@ -475,6 +480,7 @@ function IC_HL_getColumnIndex_(sheet, field) {
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
   var aliases = {
     asset: ['asset', 'актив'],
+    ticker: ['ticker', 'тикер'],
     category: ['category', 'категория'],
     quantity: ['quantity', 'количество'],
     avgEntry: ['avgentry', 'средняя входа', 'средняя вход'],
@@ -493,6 +499,7 @@ function IC_HL_getColumnIndex_(sheet, field) {
 
   var fallbackColumns = {
     asset: 1,
+    ticker: 0,
     category: 2,
     quantity: 3,
     avgEntry: 4,
@@ -505,6 +512,25 @@ function IC_HL_getColumnIndex_(sheet, field) {
   };
 
   return fallbackColumns[field] || 0;
+}
+
+function IC_HL_clearStaleFuturesRows_(sheet, syncedAssets) {
+  var tableEndRow = IC_HL_getPrimaryTableEndRow_(sheet);
+  if (tableEndRow < 2) return;
+
+  var assetColumn = IC_HL_getColumnIndex_(sheet, 'asset') || 1;
+  var categoryColumn = IC_HL_getColumnIndex_(sheet, 'category') || 2;
+  var values = sheet.getRange(2, 1, tableEndRow - 1, Math.max(sheet.getLastColumn(), 10)).getValues();
+
+  values.forEach(function(row, index) {
+    var asset = IC_HL_normalizeAsset_(row[assetColumn - 1]);
+    var category = String(row[categoryColumn - 1] || '').trim();
+    var looksLikeFutures = /\s(LONG|SHORT)$/.test(asset);
+    var isFuturesRow = category === 'Фьючерсы' || (category === 'Металлы' && looksLikeFutures);
+
+    if (!asset || !isFuturesRow || !looksLikeFutures || syncedAssets[asset]) return;
+    IC_HL_clearFuturesPosition_(sheet, asset);
+  });
 }
 
 function IC_HL_findAssetRow_(sheet, asset) {
@@ -616,6 +642,11 @@ function IC_HL_canonicalFuturesCoin_(coin) {
 
 function IC_HL_futuresAssetName_(coin, direction) {
   return IC_HL_canonicalFuturesCoin_(coin) + ' ' + String(direction || 'LONG').toUpperCase();
+}
+
+function IC_HL_tickerFromFuturesAsset_(asset) {
+  var match = IC_HL_normalizeAsset_(asset).match(/^(.+)\s+(LONG|SHORT)$/);
+  return match ? match[1] : IC_HL_normalizeAsset_(asset);
 }
 
 function IC_HL_futuresCategory_(coin) {

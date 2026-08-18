@@ -568,6 +568,10 @@ export function V2SignalsPage({
               + Выставить уровень
             </button>
           </div>
+          <div className="v2-sig-limit-help">
+            В сумму входят только активные уровни покупки: актив, сумма, цена входа.
+            Продажи, сработавшие и отключённые строки покупательскую способность не занимают.
+          </div>
           {assetGroups.length ? (
             <>
               <div className="v2-sig-coin-grid">

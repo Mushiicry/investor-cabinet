@@ -495,10 +495,11 @@ function getPortfolio(sheet) {
       const currentValue = parseNumber(getPortfolioCell(row, columns.currentValue));
       const pnl = parseNumber(getPortfolioCell(row, columns.pnl));
       const rawStatus = getPortfolioCell(row, columns.status);
+      const ticker = getTickerByAsset(getPortfolioCell(row, columns.ticker) || asset);
 
       return {
         asset: asset,
-        ticker: getPortfolioCell(row, columns.ticker) || getTickerByAsset(asset),
+        ticker: ticker || getTickerByAsset(asset),
         category: category,
 
         quantity: quantity,
@@ -630,6 +631,8 @@ function parseAssetQualityBoolean_(value) {
 
 function getTickerByAsset(asset) {
   const a = String(asset || "").toUpperCase();
+  const futuresMatch = a.match(/^(.+)\s+(LONG|SHORT)$/);
+  if (futuresMatch) return futuresMatch[1];
   if (a.includes("BTC")) return "BTC";
   if (a.includes("ETH")) return "ETH";
   if (a.includes("TON")) return "TON";

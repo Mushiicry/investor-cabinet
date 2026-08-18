@@ -1269,6 +1269,95 @@
    не помещались и обрезались краем карточки. Уменьшаем кегль и разрешаем
    перенос: название фактора должно читаться целиком. */
 @media (max-width: 480px) {
+  .v2-rec-modal-overlay {
+    padding: 12px;
+    align-items: flex-start;
+  }
+
+  .v2-rec-modal {
+    max-height: calc(100vh - 24px);
+    border-radius: 18px;
+  }
+
+  .v2-rec-modal-close {
+    top: 14px;
+    right: 14px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .v2-rec-modal-head {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 22px 58px 18px 18px;
+  }
+
+  .v2-rec-modal-orb {
+    width: 132px;
+    height: 120px;
+  }
+
+  .v2-rec-modal-orb img {
+    width: 150px;
+  }
+
+  .v2-rec-modal-orb-mask {
+    width: 52px;
+    height: 46px;
+  }
+
+  .v2-rec-modal-orb-value {
+    margin-top: -6px;
+    font-size: 24px;
+  }
+
+  .v2-rec-modal-orb-total {
+    top: 67px;
+    font-size: 9px;
+  }
+
+  .v2-rec-modal-title {
+    font-size: 24px;
+    line-height: 1.12;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
+  }
+
+  .v2-rec-modal-kicker {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+
+  .v2-rec-modal-summary {
+    font-size: 14px;
+  }
+
+  .v2-rec-modal-body {
+    padding: 0 14px 20px;
+  }
+
+  .v2-rec-modal-step {
+    padding: 14px 13px;
+  }
+
+  .v2-rec-modal-step h3 {
+    font-size: 17px;
+  }
+
+  .v2-rec-modal-step p {
+    font-size: 14px;
+  }
+
+  .v2-rec-modal-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .v2-rec-modal-row strong {
+    white-space: normal;
+  }
+
   .v2-hdm-header {
     gap: 12px;
     padding: 18px 16px 16px;

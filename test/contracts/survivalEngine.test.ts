@@ -16,7 +16,7 @@ describe("движок выживаемости", () => {
     expect(result.survivalShockLossPct).toBeCloseTo(0.285, 3);
     expect(result.survivalReserveAfterShockShare).toBeCloseTo(0.42, 3);
     expect(result.survivalBuyPowerAfterShockUsd).toBeCloseTo(228.5, 1);
-    expect(result.survivalWarnings).toEqual(["План лимитных ордеров не подключён"]);
+    expect(result.survivalWarnings).toEqual(["План лимитных покупок не подключён"]);
     expect(result.survivalBlockers).toEqual([]);
     expect(result.score).toBe(88);
   });
@@ -59,7 +59,7 @@ describe("движок выживаемости", () => {
     expect(result.score).toBeLessThan(40);
   });
 
-  it("блокирует план лимитных ордеров, если он съедает покупательскую способность", () => {
+  it("блокирует план лимитных покупок, если он больше свободных денег после шока", () => {
     const result = calculateSurvival({
       cryptoShare: 0.2,
       futuresShare: 0,
@@ -71,7 +71,7 @@ describe("движок выживаемости", () => {
     });
 
     expect(result.status).toBe("НЕ ВЫЖИВАЕТ");
-    expect(result.survivalBlockers).toEqual(["Лимитные ордера съедают покупательскую способность"]);
+    expect(result.survivalBlockers).toEqual(["План лимитных покупок больше доступных денег после шока"]);
     expect(result.survivalPlanScore).toBe(20);
   });
 });

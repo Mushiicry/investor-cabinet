@@ -95,13 +95,13 @@ describe("симулятор здоровья", () => {
     expect(after.score).toBe(100);
   });
 
-  it("рычаг выживаемости подключает план лимитных ордеров без превышения покупательной способности", () => {
+  it("рычаг выживаемости подключает план лимитных покупок в пределах свободных денег после шока", () => {
     const afterInput = buildHealthSimulatorInput(base, levers({ survivalPlan: 1 }));
     const after = component(afterInput, "crypto");
 
     expect(after.meta?.plannedLimitOrdersUsd).toBeDefined();
     expect(after.meta?.plannedLimitOrdersUsd).toBeLessThanOrEqual(base.spotDeployableUsd ?? 0);
-    expect(after.meta?.survivalWarnings).not.toContain("План лимитных ордеров не подключён");
+    expect(after.meta?.survivalWarnings).not.toContain("План лимитных покупок не подключён");
   });
 
   it("рычаг дисциплины заполняет журнал, снимает нарушения и паузу", () => {

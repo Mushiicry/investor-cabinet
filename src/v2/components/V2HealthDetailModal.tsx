@@ -37,7 +37,7 @@ const WHAT: Record<HealthComponentKey, string> = {
   reserve:
     "Резерв — главный защитный параметр стратегии MUSHII Invest: на нем строятся мани-менеджмент, риск-менеджмент и право портфеля совершать сделки.\n\nВыше 60% капитал простаивает и получает штраф.\nНиже 30% включается жёсткая проверка перед любой покупкой, а фьючерсы отключаются,\nниже 10% отключаются полностью все сделки.",
   crypto:
-    "Выживаемость — стресс-проверка портфеля. Луч отвечает не за прибыль и не за прогноз рынка, а за вопрос: останется ли капитал живым, если завтра рухнет крипта, просядут акции США, золото сложится вниз или активная торговля получит полный стресс.",
+    "Выживаемость — стресс-проверка портфеля. Луч отвечает не за прибыль и не за прогноз рынка, а за вопрос: останется ли капитал живым, если завтра рухнет рынок.\n\nСистема смотрит на три вещи: сколько потеряет портфель, сколько свободных денег останется после падения и не больше ли план лимитных покупок, чем эта покупательская способность.",
   futures:
     "Контроль риска: контроль фьючерсных позиций, плеча, занятой части лимита и близости к ликвидации. Лимиты: занято не более 10% от вложенного капитала, не выше 2x на альтах, не выше 3x на BTC и золоте, максимум 3 позиции. Золото остаётся категорией «Металлы», но его плечо контролируется по тому же правилу и учитывается в лимите позиций; маржа золота в лимит 10% пока не входит.",
   concentration:
@@ -54,8 +54,9 @@ const HOW: Record<HealthComponentKey, string[]> = {
     "Не допускайте падения ниже 30%",
   ],
   crypto: [
-    "Подготовьте лимитные ордера на падение до входа в стресс-сценарий",
-    "Сохраните покупательскую способность после худшего сценария",
+    "Сначала проверьте свободные деньги после стресс-сценария",
+    "Затем сравните их с суммой активных buy-уровней во вкладке «Сигналы»",
+    "Уменьшите план лимитных покупок, если он больше доступных денег после падения",
     "Не добавляйте новый риск, если после падения система теряет способность покупать и анализировать",
   ],
   futures: [
@@ -75,11 +76,30 @@ const HOW: Record<HealthComponentKey, string[]> = {
     "Балансируйте распределение раз в квартал или при значимом изменении портфеля",
   ],
   flexibility: [
-    "Заполняйте журнал решений до сделки, а не после результата",
+    "Открывайте «Проверка» перед сделкой и сохраняйте решение после заполнения формы",
+    "Заполняйте причину входа, риск, сценарий отмены и план выхода до сделки, а не после результата",
     "Поставьте паузу на новые сделки при страхе упустить рост, сделке-мести или переторговке",
     "Оценивайте качество решения отдельно от прибыли или убытка",
   ],
 };
+
+function howItems(component: HealthComponent): string[] {
+  if (component.key !== "concentration") return HOW[component.key];
+
+  const overLimitAssets = component.meta?.overLimitAssets ?? [];
+  const worstAsset = component.meta?.worstConcentrationAsset;
+  const assets =
+    overLimitAssets.length > 0
+      ? overLimitAssets.join(", ")
+      : worstAsset && worstAsset !== "-"
+        ? worstAsset
+        : "активы сверх лимита";
+
+  return [
+    `Сократите активы, вышедшие за свой лимит: ${assets}`,
+    ...HOW.concentration.slice(1),
+  ];
+}
 
 function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
   const { key, score } = c;
@@ -127,12 +147,22 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     const afterUsd = m?.survivalPortfolioAfterShockUsd;
     const buyPowerUsd = m?.survivalBuyPowerAfterShockUsd;
     const buyPowerPct = Math.round((m?.survivalBuyPowerAfterShockShare ?? 0) * 100);
+    const plannedUsd = m?.plannedLimitOrdersUsd;
+    const orderShortfallUsd =
+      plannedUsd !== undefined && buyPowerUsd !== undefined
+        ? Math.max(0, plannedUsd - buyPowerUsd)
+        : 0;
     const scenario = m?.survivalWorstScenario ?? "худший сценарий";
     const afterText = afterUsd !== undefined ? `останется около ${Math.round(afterUsd)}$` : `останется ${Math.round((m?.survivalPortfolioAfterShockShare ?? 0) * 100)}% портфеля`;
-    const buyPowerText = buyPowerUsd !== undefined ? `покупательская способность около ${Math.round(buyPowerUsd)}$` : `покупательская способность ${buyPowerPct}% портфеля`;
-    if (blocker) return `${blocker}. ${scenario}: просадка около ${lossPct}%, ${afterText}, ${buyPowerText}. Новый риск нельзя добавлять.`;
-    if (warning) return `${warning}. ${scenario}: просадка около ${lossPct}%, ${afterText}, ${buyPowerText}.`;
-    return `Стресс-сценарий выдержан. ${scenario}: просадка около ${lossPct}%, ${afterText}, ${buyPowerText}.`;
+    const buyPowerText = buyPowerUsd !== undefined ? `свободные деньги после шока около ${Math.round(buyPowerUsd)}$` : `покупательская способность ${buyPowerPct}% портфеля`;
+    const planText = plannedUsd !== undefined ? `План активных buy-уровней: ${Math.round(plannedUsd)}$.` : "План buy-уровней не подключён.";
+    const conflictText =
+      orderShortfallUsd > 0
+        ? ` План больше доступных денег на ${Math.round(orderShortfallUsd)}$ — сначала снизить сумму ордеров или увеличить резерв.`
+        : "";
+    if (blocker) return `${blocker}. ${scenario}: просадка около ${lossPct}%, ${afterText}, ${buyPowerText}. ${planText}${conflictText} Новый риск нельзя добавлять.`;
+    if (warning) return `${warning}. ${scenario}: просадка около ${lossPct}%, ${afterText}, ${buyPowerText}. ${planText}`;
+    return `Стресс-сценарий выдержан. ${scenario}: просадка около ${lossPct}%, ${afterText}, ${buyPowerText}. ${planText}`;
   }
   if (key === "futures") {
     const m = c.meta;
@@ -235,6 +265,7 @@ function whyText(c: HealthComponent, portfolio: V2Portfolio): string {
     const blocker = m?.disciplineBlockers?.[0];
     const warning = m?.disciplineWarnings?.[0];
     if (blocker) return `${blocker}. Новые сделки нужно поставить на паузу, пока нарушение не разобрано в журнале.`;
+    if (warning?.includes("Журнал заполнен")) return `${warning}. Если сейчас 0%, это значит, что на этом устройстве ещё нет сохранённых проверок сделки. Путь: «Проверка» → заполнить сделку → сохранить решение → «Отчёты».`;
     if (warning) return `${warning}. Луч не ставит 100, пока дисциплинарный контур не подтверждён данными.`;
     if (score < 40) return "Дисциплина в зоне риска: процесс решений не защищает капитал от повторения ошибок.";
     if (score < 70) return "Дисциплина умеренная: есть пробелы в журнале или поведенческих маркерах.";
@@ -265,7 +296,7 @@ export function V2HealthDetailModal({ component, portfolio, onClose }: Props) {
   const color = usesPremiumLayout ? RESERVE_ACCENT : scoreColor(component.score);
   const label = scoreLabel(component.score);
   const why = whyText(component, portfolio);
-  const how = HOW[component.key];
+  const how = howItems(component);
   const what = component.desc || WHAT[component.key];
   const reserveIdleText = fmtUsd(component.meta?.reserveIdleUsd ?? 0);
   const riskControlBlockers =

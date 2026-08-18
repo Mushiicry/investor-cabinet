@@ -296,7 +296,11 @@ export function V2ReportsPage({
 
             <div className="v2-rep-decision-list">
               {decisionJournal.length === 0 ? (
-                <div className="v2-rep-empty">Пока нет сохранённых решений</div>
+                <div className="v2-rep-empty">
+                  Пока нет сохранённых решений. Чтобы журнал стал выше 0%:
+                  откройте «Проверка», заполните сделку, причину входа, риск,
+                  сценарий отмены и сохраните решение.
+                </div>
               ) : decisionJournal.slice(0, 8).map((entry) => (
                 <div key={entry.id} className={`v2-rep-decision-row ${entry.status === "БЛОКИРОВКА" ? "is-block" : ""}`}>
                   <div className="v2-rep-decision-main">

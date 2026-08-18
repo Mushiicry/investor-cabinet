@@ -1963,6 +1963,13 @@
   padding: 0;
 }
 
+.v2-sig-limit-help {
+  padding: 10px 16px 0;
+  color: rgba(170, 205, 225, 0.62);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .v2-sig-int-bot-badge {
   margin-left: auto;
   font-size: 9px;

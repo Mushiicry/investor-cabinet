@@ -368,7 +368,7 @@ describe("health concentration — per-asset score passthrough", () => {
     expect(s.meta?.survivalReserveAfterShockShare).toBeCloseTo(0.42, 3);
     expect(s.meta?.survivalBuyPowerAfterShockUsd).toBeCloseTo(228.5, 1);
     expect(s.meta?.survivalBlockers).toEqual([]);
-    expect(s.meta?.survivalWarnings).toEqual(["План лимитных ордеров не подключён"]);
+    expect(s.meta?.survivalWarnings).toEqual(["План лимитных покупок не подключён"]);
     expect(s.meta?.survivalFormula).toContain("Балл выживаемости: 88/100");
   });
 
@@ -405,7 +405,7 @@ describe("health concentration — per-asset score passthrough", () => {
       "Журнал решений: 60/100",
       "Поведение: 60/100",
       "Блокеры: 100/100",
-      "План лимитных ордеров: 60/100",
+      "План лимитных покупок: 60/100",
       "Нарушений за 30 дней: нет данных",
       "Балл дисциплины: 70/100",
     ]);

@@ -189,12 +189,34 @@ type CoreRecKind =
   | "survival"
   | "discipline";
 
+export type CoreRecDetailRow = {
+  label: string;
+  value: string;
+  tone?: "ok" | "warn" | "danger";
+};
+
+export type CoreRecDetailStep = {
+  title: string;
+  body: string;
+  rows?: CoreRecDetailRow[];
+  primary?: boolean;
+};
+
+export type CoreRecDetails = {
+  title: string;
+  score: number;
+  summary: string;
+  steps: CoreRecDetailStep[];
+  formula?: CoreRecDetailRow[];
+};
+
 export type CoreRec = {
   action: string;
   gain: number;
   source: string;
   critical?: boolean;
   kind?: CoreRecKind;
+  details?: CoreRecDetails;
 };
 
 export type CoreAchievement = { title: string; detail: string };
@@ -274,6 +296,273 @@ function componentGain(kind: CoreRecKind | undefined, all: HealthComponent[]): n
   const component = findHealthComponentByKey(all, keyByKind[kind]);
   if (!component) return 0;
   return Math.max(0, Math.round((100 - component.score) * component.weight));
+}
+
+const fmtPct = (value: number) => `${Math.round(value * 1000) / 10}%`;
+
+function healthWithPatchedInput(input: HealthInput, patch: Partial<HealthInput>): number {
+  return computePortfolioHealth({ ...input, ...patch }).healthFactor;
+}
+
+function recommendationDetails(
+  rec: CoreRec,
+  healthInput: HealthInput | undefined,
+  all: HealthComponent[],
+  currentHealth: number | undefined,
+): CoreRecDetails | undefined {
+  if (!healthInput || !rec.kind || currentHealth === undefined) return undefined;
+
+  const projectedHealth = healthAfterRecommendation(healthInput, rec.kind);
+
+  if (rec.kind === "risk") {
+    const fm = all.find((component) => component.key === "futures")?.meta;
+    const baseCapital = healthInput.investedCapital ?? healthInput.portfolioValue ?? 0;
+    const futuresUsedUsd = fm?.futuresUsedUsd ?? baseCapital * healthInput.futuresShare;
+    const futuresCapUsd = fm?.futuresCapUsd ?? baseCapital * (healthInput.strategy?.futuresMaxShare ?? 0.1);
+    const futuresBreachUsd = fm?.futuresBreachUsd ?? Math.max(0, futuresUsedUsd - futuresCapUsd);
+    const freeMarginUsd = Math.max(0, healthInput.futuresDeployableUsd ?? 0);
+    const withdrawUsd = Math.min(freeMarginUsd, futuresBreachUsd);
+    const futuresAfterWithdraw = Math.max(0, futuresUsedUsd - withdrawUsd);
+    const nextFuturesShare = baseCapital > 0 ? futuresAfterWithdraw / baseCapital : healthInput.futuresShare;
+    const healthAfterWithdraw = healthWithPatchedInput(healthInput, {
+      futuresShare: nextFuturesShare,
+      futuresDeployableUsd: Math.max(0, freeMarginUsd - withdrawUsd),
+    });
+    const limitShare = baseCapital > 0 && futuresCapUsd > 0 ? futuresCapUsd / baseCapital : (healthInput.strategy?.futuresMaxShare ?? 0.1);
+    const capitalNeeded = limitShare > 0 ? futuresUsedUsd / limitShare : 0;
+    const capitalToAdd = Math.max(0, capitalNeeded - baseCapital);
+
+    return {
+      title: "Контроль фьючерсного риска",
+      score: projectedHealth,
+      summary:
+        `Сейчас активная торговля занимает ${fmtExactUsd(futuresUsedUsd)} при лимите ${fmtExactUsd(futuresCapUsd)}. ` +
+        `Чтобы вернуться в лимит ${fmtPct(limitShare)}, нужно убрать ${fmtExactUsd(futuresBreachUsd)} из HL-кармана или увеличить базу капитала.`,
+      steps: [
+        {
+          title: "Вариант 1 — вывести с HL",
+          body:
+            withdrawUsd > 0
+              ? `Выведите ${fmtExactUsd(withdrawUsd)} со свободной HL-маржи в общий резерв. Тогда активная торговля вернется в лимит без закрытия позиций.`
+              : "Свободной HL-маржи не хватает для мягкого исправления. Нужна частичная фиксация позиции или пополнение капитала.",
+          primary: true,
+          rows: [
+            { label: "Сейчас занято", value: fmtExactUsd(futuresUsedUsd), tone: futuresBreachUsd > 0 ? "danger" : "ok" },
+            { label: "Лимит стратегии", value: fmtExactUsd(futuresCapUsd) },
+            { label: "Убрать с HL", value: fmtExactUsd(futuresBreachUsd), tone: futuresBreachUsd > 0 ? "warn" : "ok" },
+            { label: "После вывода", value: fmtExactUsd(futuresAfterWithdraw), tone: futuresAfterWithdraw <= futuresCapUsd ? "ok" : "warn" },
+            { label: "Health после шага", value: `${healthAfterWithdraw}/100`, tone: healthAfterWithdraw > currentHealth ? "ok" : "warn" },
+          ],
+        },
+        {
+          title: "Вариант 2 — увеличить капитал",
+          body:
+            `Если не сокращать HL-карман, вложенный капитал должен быть не ниже ${fmtExactUsd(capitalNeeded)}. ` +
+            `Тогда текущие ${fmtExactUsd(futuresUsedUsd)} фьючерсов будут ровно ${fmtPct(limitShare)} от базы.`,
+          rows: [
+            { label: "Текущая база", value: fmtExactUsd(baseCapital) },
+            { label: "Нужная база", value: fmtExactUsd(capitalNeeded), tone: "ok" },
+            { label: "Добавить капитал", value: fmtExactUsd(capitalToAdd), tone: capitalToAdd > 0 ? "warn" : "ok" },
+          ],
+        },
+        {
+          title: "До исправления",
+          body: "Не открывать новые фьючерсные сделки: лимит активной торговли уже превышен.",
+        },
+      ],
+      formula: [
+        { label: "Фьючерсный лимит", value: `${fmtPct(limitShare)} от вложенного капитала` },
+        { label: "Превышение", value: `${fmtExactUsd(futuresUsedUsd)} − ${fmtExactUsd(futuresCapUsd)} = ${fmtExactUsd(futuresBreachUsd)}` },
+        { label: "Оценка здоровья", value: `${currentHealth}/100 → ${Math.max(projectedHealth, healthAfterWithdraw)}/100` },
+      ],
+    };
+  }
+
+  if (rec.kind === "reserve") {
+    const rm = all.find((component) => component.key === "reserve")?.meta;
+    const reserveUsd = rm?.reserveUsd ?? (healthInput.reserveShare ?? healthInput.cashShare) * (healthInput.investedCapital ?? healthInput.portfolioValue ?? 0);
+    const targetUsd = rm?.reserveTargetUsd ?? 0;
+    const bandMaxUsd = rm?.reserveBandMaxUsd ?? 0;
+    const idleUsd = rm?.reserveIdleUsd ?? Math.max(0, reserveUsd - bandMaxUsd);
+    const shortfallUsd = rm?.reserveTargetShortfallUsd ?? Math.max(0, targetUsd - reserveUsd);
+
+    return {
+      title: "Резерв и свободные деньги",
+      score: projectedHealth,
+      summary:
+        idleUsd > 0
+          ? `В резерве лишние ${fmtExactUsd(idleUsd)} сверх верхнего коридора. Эти деньги можно вернуть в работу без нарушения подушки.`
+          : `Резерв ниже целевой зоны на ${fmtExactUsd(shortfallUsd)}. Сначала восстановите подушку, потом добавляйте риск.`,
+      steps: [
+        {
+          title: idleUsd > 0 ? "Вернуть лишний резерв в работу" : "Восстановить резерв",
+          body:
+            idleUsd > 0
+              ? `Переведите ${fmtExactUsd(idleUsd)} из резерва в разрешенные покупки по текущим лимитам.`
+              : `Пополните резерв минимум на ${fmtExactUsd(shortfallUsd)} до целевой зоны стратегии.`,
+          primary: true,
+          rows: [
+            { label: "Текущий резерв", value: fmtExactUsd(reserveUsd) },
+            { label: "Цель резерва", value: fmtExactUsd(targetUsd) },
+            { label: "Верх коридора", value: fmtExactUsd(bandMaxUsd) },
+            { label: "Health после шага", value: `${projectedHealth}/100`, tone: "ok" },
+          ],
+        },
+      ],
+    };
+  }
+
+  if (rec.kind === "diversification") {
+    const dm = all.find((component) => component.key === "diversification")?.meta;
+    return {
+      title: "Диверсификация",
+      score: projectedHealth,
+      summary: dm?.missingClassNames?.length
+        ? `В портфеле отсутствует класс: ${dm.missingClassNames.join(" / ")}. Добавление класса снижает зависимость от одного рынка.`
+        : `${dm?.largestClassName ?? "Крупнейший класс"} занимает ${fmtPct(dm?.largestClassShareOfRisk ?? 0)} рисковой части.`,
+      steps: [
+        {
+          title: "Добрать недостающий класс",
+          body: dm?.rebalanceAddUsd
+            ? `Добавьте около ${fmtExactUsd(dm.rebalanceAddUsd)} в ${dm.otherClassNames?.join(" / ").toLowerCase() || "другие классы"}.`
+            : "Добавьте отсутствующий спотовый класс небольшим размером внутри лимитов.",
+          primary: true,
+          rows: [
+            { label: "Крупнейший класс", value: dm?.largestClassName ?? "-" },
+            { label: "Доля риска", value: fmtPct(dm?.largestClassShareOfRisk ?? 0), tone: (dm?.largestClassShareOfRisk ?? 0) > 0.8 ? "danger" : "ok" },
+            { label: "Health после шага", value: `${projectedHealth}/100`, tone: "ok" },
+          ],
+        },
+      ],
+    };
+  }
+
+  if (rec.kind === "concentration") {
+    const cm = all.find((component) => component.key === "concentration")?.meta;
+    const asset = cm?.worstConcentrationAsset ?? "Актив";
+    const limit = cm?.worstConcentrationLimit ?? 0;
+    const share = cm?.worstConcentrationShare ?? 0;
+    const portfolioShare = cm?.worstConcentrationPortfolioShare ?? 0;
+    const portfolioValue = healthInput.portfolioValue ?? healthInput.investedCapital ?? 0;
+    const currentUsd = portfolioValue > 0 && portfolioShare > 0 ? portfolioValue * portfolioShare : 0;
+    const concentrationBaseUsd = currentUsd > 0 && share > 0 ? currentUsd / share : 0;
+    const limitUsd = concentrationBaseUsd * limit;
+    const rotateWithinBaseUsd = Math.max(0, currentUsd - limitUsd);
+    const sellToCashUsd =
+      limit > 0 && limit < 1
+        ? Math.max(0, (currentUsd - limit * concentrationBaseUsd) / (1 - limit))
+        : rotateWithinBaseUsd;
+    const hasReductionMath =
+      currentUsd > 0 && concentrationBaseUsd > 0 && share > limit && limit > 0;
+    const steps: CoreRecDetailStep[] = [
+      {
+        title: `Не докупать ${asset}`,
+        body:
+          `Пауза на добор без долларовой суммы: новые покупки ${asset} усиливают нарушение концентрации. ` +
+          `Сначала нужно вернуть долю к лимиту ${fmtPct(limit)}.`,
+        primary: true,
+        rows: [
+          { label: "Актив", value: asset },
+          { label: "Текущая доля в базе", value: fmtPct(share), tone: share > limit ? "danger" : "ok" },
+          { label: "Лимит", value: fmtPct(limit) },
+          { label: "Доля в портфеле", value: fmtPct(portfolioShare) },
+        ],
+      },
+    ];
+
+    if (hasReductionMath) {
+      steps.push({
+        title: "Если возвращать в лимит",
+        body:
+          `Если переложить часть ${asset} в другой актив той же базы, нужно переложить около ${fmtExactUsd(rotateWithinBaseUsd)}. ` +
+          `Если выводить из этой базы в кэш, нужно продать около ${fmtExactUsd(sellToCashUsd)}.`,
+        rows: [
+          { label: `Стоимость ${asset}`, value: fmtExactUsd(currentUsd) },
+          { label: "База расчета", value: fmtExactUsd(concentrationBaseUsd) },
+          { label: "Лимит в базе", value: fmtExactUsd(limitUsd) },
+          { label: "Переложить внутри базы", value: fmtExactUsd(rotateWithinBaseUsd), tone: "warn" },
+          { label: "Продать в кэш", value: fmtExactUsd(sellToCashUsd), tone: "warn" },
+          { label: "Health после шага", value: `${projectedHealth}/100`, tone: "ok" },
+        ],
+      });
+    }
+
+    return {
+      title: "Концентрация актива",
+      score: projectedHealth,
+      summary:
+        `${asset} занимает ${fmtPct(share)} своей базы при лимите ${fmtPct(limit)}. ` +
+        `Не докупать — это режим паузы; сумма нужна только для отдельного действия сокращения или перекладки.`,
+      steps,
+    };
+  }
+
+  if (rec.kind === "survival") {
+    const sm = all.find((component) => component.key === "crypto")?.meta;
+    const plannedUsd = sm?.plannedLimitOrdersUsd ?? healthInput.plannedLimitOrdersUsd ?? 0;
+    const buyPowerAfterShockUsd = sm?.survivalBuyPowerAfterShockUsd ?? 0;
+    const orderShortfallUsd = Math.max(0, plannedUsd - buyPowerAfterShockUsd);
+    return {
+      title: "Выживаемость",
+      score: projectedHealth,
+      summary:
+        `Стресс-сценарий: ${sm?.survivalWorstScenario ?? "рыночный шок"}. ` +
+        `Проверяем, хватит ли свободных денег после падения на уже подготовленный план покупок.`,
+      steps: [
+        {
+          title: "Проверить план лимитных покупок",
+          body:
+            orderShortfallUsd > 0
+              ? `Сейчас план покупок на падении больше свободных денег после стресс-сценария на ${fmtExactUsd(orderShortfallUsd)}. Уменьшите сумму активных buy-уровней или увеличьте свободный резерв до новых покупок.`
+              : `План покупок на падении помещается в свободные деньги после стресс-сценария. Новый риск все равно проходит обычную проверку сделки.`,
+          primary: true,
+          rows: [
+            { label: "Оценочная просадка", value: fmtPct(sm?.survivalShockLossPct ?? 0), tone: "warn" },
+            { label: "Портфель после шока", value: fmtExactUsd(sm?.survivalPortfolioAfterShockUsd ?? 0) },
+            { label: "Свободно после шока", value: fmtExactUsd(buyPowerAfterShockUsd), tone: buyPowerAfterShockUsd > 0 ? "ok" : "danger" },
+            { label: "План buy-ордеров", value: fmtExactUsd(plannedUsd), tone: plannedUsd > buyPowerAfterShockUsd ? "danger" : "ok" },
+            { label: "Что изменить", value: orderShortfallUsd > 0 ? `снизить план на ${fmtExactUsd(orderShortfallUsd)}` : "не увеличивать риск без проверки", tone: orderShortfallUsd > 0 ? "warn" : "ok" },
+            { label: "Health после шага", value: `${projectedHealth}/100`, tone: "ok" },
+          ],
+        },
+        {
+          title: "Что считается планом",
+          body: "В расчет входят только активные уровни покупки из вкладки «Сигналы»: актив, действие Купить/Buy, сумма в долларах и цена входа. Продажи, сработавшие, отключенные и пустые строки не должны занимать покупательскую способность.",
+        },
+      ],
+      formula: [
+        { label: "1. Стресс-сценарий", value: sm?.survivalWorstScenario ?? "рыночный шок" },
+        { label: "2. Свободно после шока", value: fmtExactUsd(buyPowerAfterShockUsd), tone: buyPowerAfterShockUsd > 0 ? "ok" : "danger" },
+        { label: "3. План buy-ордеров", value: fmtExactUsd(plannedUsd), tone: plannedUsd > buyPowerAfterShockUsd ? "danger" : "ok" },
+        { label: "4. Разница", value: orderShortfallUsd > 0 ? `не хватает ${fmtExactUsd(orderShortfallUsd)}` : "план помещается", tone: orderShortfallUsd > 0 ? "warn" : "ok" },
+      ],
+    };
+  }
+
+  if (rec.kind === "discipline") {
+    const dm = all.find((component) => component.key === "flexibility")?.meta;
+    const coverage = dm?.disciplineJournalCoverage ?? healthInput.disciplineJournalCoverage ?? 0;
+    return {
+      title: "Дисциплина решений",
+      score: projectedHealth,
+      summary: `Журнал решений заполнен на ${fmtPct(coverage)}. Это не PnL и не история сделок, а покрытие новых проверок сделки сохранёнными решениями.`,
+      steps: [
+        {
+          title: "Закрыть журнал решений",
+          body: "Путь простой: открыть «Проверка», ввести актив и сумму, заполнить причину входа, риск, сценарий отмены и план выхода, затем сохранить решение. После этого запись появится в «Отчётах» и начнёт повышать покрытие журнала.",
+          primary: true,
+          rows: [
+            { label: "Текущее покрытие", value: fmtPct(coverage), tone: coverage >= 0.8 ? "ok" : "warn" },
+            { label: "Цель процесса", value: "80%" },
+            { label: "Если сейчас 0%", value: "нет сохранённых проверок сделки" },
+            { label: "Health после шага", value: `${projectedHealth}/100`, tone: "ok" },
+          ],
+        },
+      ],
+    };
+  }
+
+  return undefined;
 }
 
 function coreRecKindForComponent(component: HealthComponent): CoreRecKind {
@@ -382,6 +671,7 @@ function finalizeCoreRecs(recs: CoreRec[], healthInput: HealthInput | undefined,
         ...rec,
         gain,
         source: `${rec.source} → здоровье +${gain}`,
+        details: recommendationDetails({ ...rec, gain }, healthInput, all, currentHealth),
       };
     })
     .filter((rec) => rec.gain > 0)
@@ -408,6 +698,7 @@ export function buildHealthBoardRecs(
     .map((rec) => ({ ...rec, critical: false }));
 
   const seen = new Set<string>();
+  const currentHealth = healthInput ? computePortfolioHealth(healthInput).healthFactor : undefined;
   return [...alertRecs, ...generalRecs]
     .filter((rec) => {
       const key = `${rec.kind ?? ""}:${rec.action}`;
@@ -415,7 +706,11 @@ export function buildHealthBoardRecs(
       seen.add(key);
       return true;
     })
-    .slice(0, 7);
+    .slice(0, 7)
+    .map((rec) => ({
+      ...rec,
+      details: rec.details ?? recommendationDetails(rec, healthInput, all, currentHealth),
+    }));
 }
 
 function isExpansionRecommendation(rec: CoreRec): boolean {

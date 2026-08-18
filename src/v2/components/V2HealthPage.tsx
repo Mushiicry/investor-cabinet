@@ -224,7 +224,7 @@ function buildStrategyPassportRows(strategy: InvestorStrategy, health: Portfolio
       tone: verdictTone((concentration?.meta?.altcoinSlotsFree ?? 1) > 0, true),
     },
     {
-      label: "Покупательная сила",
+      label: "Свободно для покупок",
       fact: fmt$(healthInput.spotDeployableUsd ?? portfolio.spotDeployable ?? portfolio.deployableCapital),
       rule: "доступно для новых уровней без разрушения резерва",
       tone: verdictTone((healthInput.spotDeployableUsd ?? portfolio.spotDeployable ?? 0) > 0, true),
@@ -736,8 +736,8 @@ export function V2HealthPage({
             </div>
             <div className="v2-hp-stress-footer">
               <span>После шока: {stressPortfolioAfter !== undefined ? fmt$(stressPortfolioAfter) : "нет данных"}</span>
-              <span>Покупательная сила: {stressBuyPower !== undefined ? fmt$(stressBuyPower) : "нет данных"}</span>
-              <span>Уровни уже занимают: {plannedLimitOrdersUsd !== undefined ? fmt$(plannedLimitOrdersUsd) : "не подключены"}</span>
+              <span>Свободно после шока: {stressBuyPower !== undefined ? fmt$(stressBuyPower) : "нет данных"}</span>
+              <span>План buy-уровней: {plannedLimitOrdersUsd !== undefined ? fmt$(plannedLimitOrdersUsd) : "не подключен"}</span>
             </div>
           </div>
         </div>
@@ -930,7 +930,7 @@ export function V2HealthPage({
                 </div>
                 <input type="range" min="0" max="1" step="0.05" value={levers.survivalPlan}
                   onChange={e => setLever({ survivalPlan: +e.target.value })} />
-                <div className="v2-hp-sim-lever-hint">Подключить план лимитных ордеров на падение без съедания покупательской способности</div>
+                <div className="v2-hp-sim-lever-hint">Подключить план buy-уровней на падение в пределах свободных денег после шока</div>
               </div>
 
               <div className="v2-hp-sim-lever">

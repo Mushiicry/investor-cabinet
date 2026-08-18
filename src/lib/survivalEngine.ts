@@ -155,11 +155,11 @@ export function calculateSurvival(input: SurvivalInput): SurvivalResult {
     survivalWarnings.push("Покупательская способность после шока ниже цели 15%");
   }
   if (plannedLimitOrdersUsd === undefined) {
-    survivalWarnings.push("План лимитных ордеров не подключён");
+    survivalWarnings.push("План лимитных покупок не подключён");
   } else if (plannedLimitOrdersUsd <= 0) {
-    survivalWarnings.push("Лимитные ордера на падение не подготовлены");
+    survivalWarnings.push("План лимитных покупок на падение не подготовлен");
   } else if (buyPowerAfterShockUsd !== undefined && plannedLimitOrdersUsd > buyPowerAfterShockUsd) {
-    survivalBlockers.push("Лимитные ордера съедают покупательскую способность");
+    survivalBlockers.push("План лимитных покупок больше доступных денег после шока");
   }
 
   let status: SurvivalStatus = "ВЫЖИВАЕТ";
@@ -184,8 +184,8 @@ export function calculateSurvival(input: SurvivalInput): SurvivalResult {
         : `${Math.round(survivalBuyPowerAfterShockShare * 100)}%`
     }`,
     plannedLimitOrdersUsd !== undefined
-      ? `Лимитные ордера: $${Math.round(plannedLimitOrdersUsd)}`
-      : "Лимитные ордера: источник не подключён",
+      ? `План лимитных покупок: $${Math.round(plannedLimitOrdersUsd)}`
+      : "План лимитных покупок: источник не подключён",
     `Балл выживаемости: ${survivalScore}/100`,
   ];
 

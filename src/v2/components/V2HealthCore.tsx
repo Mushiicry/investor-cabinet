@@ -1,5 +1,9 @@
+import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { V2Portfolio, V2Page } from "../InvestorCabinetV2Lab";
 import type { HealthComponent, HealthInput, PortfolioHealth } from "../../lib/portfolioHealth";
+import { useEscapeClose } from "../../hooks/useEscapeClose";
+import reserveScoreOrb from "../../assets/dna/reserve-score-orb.webp";
 import { isEmptyAccount } from "../lib/accountState";
 import {
   CX, CY, RADAR_R, OUTER_R, VB_OFF, VB_SIZE, CHIP_W, CHIP_H, CHIP_R,
@@ -7,6 +11,7 @@ import {
   hexPts, hexPtsAt, chipLayout, scaleValuePts,
   healthInterpretation, diagWhy, buildHealthBoardRecs, isActionableHealthComponent,
 } from "../lib/healthCoreHelpers";
+import type { CoreRec } from "../lib/healthCoreHelpers";
 import type { InvestorStrategy } from "../lib/investorStrategy";
 
 type Props = {
@@ -72,7 +77,78 @@ function diagnosisTone(component: HealthComponent): "ok" | "warn" | "critical" {
   return "ok";
 }
 
+function V2RecommendationDetailModal({ rec, onClose }: { rec: CoreRec; onClose: () => void }) {
+  const details = rec.details;
+  useEscapeClose(Boolean(details), onClose);
+
+  if (!details) return null;
+
+  return createPortal(
+    <div className="v2-rec-modal-overlay" role="dialog" aria-modal="true" onClick={onClose}>
+      <div className="v2-rec-modal" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="v2-rec-modal-close" onClick={onClose} aria-label="Закрыть рекомендацию">
+          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+            <path d="M4.5 4.5l9 9M13.5 4.5l-9 9" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        <div className="v2-rec-modal-head">
+          <div className="v2-rec-modal-orb" aria-label={`${details.score} из 100`}>
+            <img src={reserveScoreOrb} alt="" />
+            <span className="v2-rec-modal-orb-mask" />
+            <span className="v2-rec-modal-orb-value">{details.score}</span>
+            <span className="v2-rec-modal-orb-total">/ 100</span>
+          </div>
+          <div className="v2-rec-modal-title-block">
+            <div className="v2-rec-modal-kicker">Развернутая рекомендация</div>
+            <h2 className="v2-rec-modal-title">{details.title}</h2>
+            <p className="v2-rec-modal-summary">{details.summary}</p>
+          </div>
+        </div>
+
+        <div className="v2-rec-modal-body">
+          {details.steps.map((step) => (
+            <section
+              key={step.title}
+              className={`v2-rec-modal-step${step.primary ? " v2-rec-modal-step--primary" : ""}`}
+            >
+              <h3>{step.title}</h3>
+              <p>{step.body}</p>
+              {step.rows?.length ? (
+                <div className="v2-rec-modal-rows">
+                  {step.rows.map((row) => (
+                    <div key={`${step.title}-${row.label}`} className={`v2-rec-modal-row${row.tone ? ` is-${row.tone}` : ""}`}>
+                      <span>{row.label}</span>
+                      <strong>{row.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+          ))}
+
+          {details.formula?.length ? (
+            <section className="v2-rec-modal-step v2-rec-modal-step--formula">
+              <h3>Формула</h3>
+              <div className="v2-rec-modal-rows">
+                {details.formula.map((row) => (
+                  <div key={`formula-${row.label}`} className={`v2-rec-modal-row${row.tone ? ` is-${row.tone}` : ""}`}>
+                    <span>{row.label}</span>
+                    <strong>{row.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onNavigate }: Props) {
+  const [selectedRec, setSelectedRec] = useState<CoreRec | null>(null);
   const components = health.components;
 
   // Пустой аккаунт (кошельки ещё не подключены): диагноз/рекомендации не про
@@ -108,6 +184,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
   };
 
   return (
+    <>
     <section className="v2-panel v2-health-core v2-health-core--premium" aria-label="Portfolio health factor">
       <div className="v2-hc-layout">
 
@@ -691,13 +768,19 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
               <span>Портфель сбалансирован — удерживайте структуру.</span>
             </div>
           ) : recs.map((rec, i) => (
-            <div key={i} className={`v2-hc-rec-row v2-hc-rec-row--critical${rec.critical ? " is-urgent" : ""}`}>
+            <button
+              key={`${rec.kind ?? "rec"}-${i}`}
+              type="button"
+              className={`v2-hc-rec-row v2-hc-rec-row--critical v2-hc-rec-row--clickable${rec.critical ? " is-urgent" : ""}`}
+              onClick={() => rec.details && setSelectedRec(rec)}
+              aria-label={`Открыть рекомендацию: ${rec.action}`}
+            >
               <span className="v2-hc-rec-gain">+{rec.gain}</span>
               <div className="v2-hc-rec-body">
                 <span className="v2-hc-rec-action">{rec.action}</span>
                 <span className="v2-hc-rec-source">{rec.source}</span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </aside>
@@ -706,5 +789,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
 
       <span className="v2-sr-only">Здоровье портфеля {portfolio.healthFactor}.</span>
     </section>
+    {selectedRec ? <V2RecommendationDetailModal rec={selectedRec} onClose={() => setSelectedRec(null)} /> : null}
+    </>
   );
 }
