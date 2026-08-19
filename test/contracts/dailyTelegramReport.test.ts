@@ -157,6 +157,7 @@ describe("daily telegram report endpoint", () => {
     expect(telegramBody.text).toContain("вложено 699,40 $");
     expect(telegramBody.text).toContain("P&L -31,90 $");
     expect(telegramBody.text).toContain("TON");
+    expect(telegramBody.text).toContain("вес 12,89%");
     expect(telegramBody.text).toContain("Кэш и резерв: 478,77 $");
     expect(telegramBody.text).toContain("Health Factor: 65/100");
     expect(telegramBody.text).toContain("Индекс страха и жадности: 46");
@@ -179,5 +180,23 @@ describe("buildDailyTelegramReport", () => {
       dailyPnlPct: 0.14,
       positionsCount: 3,
     });
+  });
+
+  it("does not print timestamps as the health mode", () => {
+    const report = buildDailyTelegramReport({
+      ...portfolioPayload,
+      overview: {
+        ...portfolioPayload.overview,
+        state: "2026-07-20 22:47:49 MSK",
+      },
+    }, {
+      accountId: "main",
+      now: new Date("2026-08-19T05:30:00.000Z"),
+    });
+
+    expect(report.text).toContain("Health Factor: 65/100.");
+    expect(report.text).not.toContain("режим 2026-07-20");
+    expect(report.text).not.toContain("вес +");
+    expect(report.text).not.toContain("или +");
   });
 });

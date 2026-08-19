@@ -38,6 +38,8 @@ const formatPctValue = (value, digits = 2) => {
   return `${sign}${formatNumber(numeric, digits)}%`;
 };
 
+const formatPctPlain = (value, digits = 2) => `${formatNumber(value, digits)}%`;
+
 const formatPctFraction = (value, digits = 2) => formatPctValue(toNumber(value) * 100, digits);
 
 const moscowDateParts = (date) => {
@@ -146,6 +148,22 @@ const modeLabel = (value) => {
   return labels[normalized] ?? compactText(value);
 };
 
+const healthStatusLabel = (value) => {
+  const normalized = compactText(value).toLowerCase();
+  if (!normalized) return "";
+  const labels = {
+    balance: "Баланс",
+    balanced: "Баланс",
+    normal: "Норма",
+    norm: "Норма",
+    watch: "Наблюдение",
+    warning: "Внимание",
+    risk: "Риск",
+    danger: "Риск",
+  };
+  return labels[normalized] ?? "";
+};
+
 const buildRiskNotes = ({ overview, risk, positions, fearGreed }) => {
   const notes = [];
   const largestPosition = positions.find((position) => !position.isCash);
@@ -160,7 +178,7 @@ const buildRiskNotes = ({ overview, risk, positions, fearGreed }) => {
   }
 
   if (largestPosition?.share >= 10) {
-    notes.push(`Крупнейшая позиция: ${largestPosition.asset}, вес ${formatPctValue(largestPosition.share)}.`);
+    notes.push(`Крупнейшая позиция: ${largestPosition.asset}, вес ${formatPctPlain(largestPosition.share)}.`);
   }
 
   if (reserveShare > 0.6) {
@@ -204,7 +222,7 @@ export function buildDailyTelegramReport(payload, options = {}) {
     mode: modeLabel(fearGreedSource.currentZone || fearGreedSource.currentMode),
   };
   const health = toNumber(overview.health || risk.health);
-  const status = modeLabel(overview.state || risk.state);
+  const status = healthStatusLabel(overview.state || risk.state);
   const riskNotes = buildRiskNotes({ overview, risk, positions, fearGreed });
 
   const lines = [
@@ -218,13 +236,13 @@ export function buildDailyTelegramReport(payload, options = {}) {
     "",
     "2. Инвестиционные позиции:",
     ...investmentPositions.slice(0, MAX_REPORT_POSITIONS).map((position) =>
-      `- ${position.asset} — ${formatUsd(position.currentValue)}, вес ${formatPctValue(position.share)}, P&L ${formatSignedUsd(position.pnl)} (${formatPctValue(position.pnlPct)}).`
+      `- ${position.asset} — ${formatUsd(position.currentValue)}, вес ${formatPctPlain(position.share)}, P&L ${formatSignedUsd(position.pnl)} (${formatPctValue(position.pnlPct)}).`
     ),
     investmentPositions.length > MAX_REPORT_POSITIONS
       ? `- Еще позиций: ${investmentPositions.length - MAX_REPORT_POSITIONS}.`
       : "",
     "",
-    `3. Кэш и резерв: ${formatUsd(reserve)}, или ${formatPctValue(reserveShare * 100)} портфеля. Это не инвестиционная позиция.`,
+    `3. Кэш и резерв: ${formatUsd(reserve)}, или ${formatPctPlain(reserveShare * 100)} портфеля. Это не инвестиционная позиция.`,
     "",
     `4. Health Factor: ${Math.round(health)}/100${status ? `, режим ${status}` : ""}.`,
     fearGreed.index === null
