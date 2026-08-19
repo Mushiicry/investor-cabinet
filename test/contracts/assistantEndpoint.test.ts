@@ -222,6 +222,62 @@ const portfolioStakingClientContext = {
   },
 };
 
+const portfolioReportClientContext = {
+  ...clientContext,
+  currentPage: {
+    id: "portfolio",
+    label: "Портфель",
+    purpose: "Текущие позиции, доли, PnL, статусы активов и соответствие лимитам стратегии.",
+    visibleBlocks: ["Позиции", "Активы", "PnL", "Стейкинг"],
+    facts: {
+      portfolioValue: 667.8,
+      invested: 698.9,
+      pnlUsd: -31.1,
+      pnlPct: -0.0445,
+      reserveUsd: 473.34,
+      reserveShare: 0.709,
+      positionsCount: 9,
+      dailyPnl: {
+        source: "V2PortfolioPage visible P&L 24H formula",
+        isAvailable: true,
+        pnlUsd: 1.2,
+        pnlPct: 0.18,
+        previousSnapshotDate: "2026-08-18T23:48:00.000Z",
+        previousPortfolioValue: 666.6,
+        rule: "Это дневное изменение к предыдущему дневному снимку; не путать с общим P&L.",
+      },
+      fearGreed: {
+        source: "fearGreedStrategy",
+        currentIndex: 31,
+        mode: "observation",
+        currentZone: "Наблюдаем",
+        marketMood: "Осторожный оптимизм",
+      },
+      visibleInvestmentPositions: [
+        { asset: "TON", category: "Крипта", value: 86.25, invested: 105.7, share: 12.92, pnl: -19.44, pnlPct: -18.39 },
+        { asset: "ATOM", category: "Крипта", value: 29.48, invested: 40.5, share: 4.41, pnl: -10.99, pnlPct: -27.16 },
+        { asset: "BNB", category: "Крипта", value: 13.04, invested: 12.54, share: 1.95, pnl: 0.5, pnlPct: 4.02 },
+      ],
+      cashAndReserveRows: [
+        { asset: "USDC", value: 250.1, share: 37.45, role: "резерв/стейбл для спота или общего резерва; не считать инвестиционным активом" },
+        { asset: "USDC HL", value: 90, share: 13.48, role: "свободная HL-маржа для фьючерсов; не считать обычным спот-активом" },
+      ],
+    },
+  },
+  portfolio: {
+    ...clientContext.portfolio,
+    totalPortfolioValue: 667.8,
+    totalInvested: 698.9,
+    pnlUsd: -31.1,
+    pnlPct: -0.0445,
+    stableReserve: 473.34,
+    reserveShare: 0.709,
+    positionsCount: 9,
+    healthFactor: 66,
+    riskLevel: "Баланс",
+  },
+};
+
 const healthPageClientContext = {
   ...clientContext,
   currentPage: {
@@ -480,6 +536,69 @@ describe("assistant serverless endpoint", () => {
     expect(inputText).toContain("Не приплетай статусы позиций");
     expect(inputText).not.toContain('"status": "CLOSED"');
     expect(inputText).not.toContain('"status": "EXITED"');
+  });
+
+  it("builds a precise daily portfolio report context from visible portfolio facts", async () => {
+    setEnv();
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, init });
+
+      if (url === "https://apps-script.example/main?accountId=main") {
+        return Response.json({
+          success: true,
+          overview: {
+            portfolioValue: 667.8,
+            invested: 698.9,
+            pnl: -31.1,
+            pnlPct: -0.0445,
+            reserve: 473.34,
+            health: 66,
+          },
+          risk: {},
+          portfolio: [
+            { asset: "TON", category: "Крипта", invested: 105.7, currentValue: 86.25, pnl: -19.44, pnlPct: -18.39, share: 12.92 },
+            { asset: "USDC", category: "Свободные деньги", invested: 250.1, currentValue: 250.1, pnl: 0, pnlPct: 0, share: 37.45 },
+          ],
+          decisions: [],
+          scenarios: [],
+          signals: {},
+        });
+      }
+
+      if (url === "https://api.openai.com/v1/responses") {
+        return Response.json({ id: "resp_test", output_text: "Краткий отчет построен по dailyReport." });
+      }
+
+      return Response.json({}, { status: 404 });
+    }) as typeof fetch;
+
+    const res = mockRes();
+    await assistantHandler(mockReq({
+      question: "сделай для меня краткий отчет по моему портфелю сегодня, сколько вложил сколько прибыль или убыток, какие позиции есть и сколько весит каждая в минус или плюс и какой сегодня хелс фактор, и какой индекс страха и жадности сегодня",
+      accountId: "main",
+      clientContext: portfolioReportClientContext,
+    }), res);
+
+    expect(res.statusCode).toBe(200);
+    const openAiBody = JSON.parse(String(calls[1].init?.body ?? "{}"));
+    const inputText = openAiBody.input[0].content[0].text as string;
+
+    expect(inputText).toContain('"type": "portfolio_daily_report"');
+    expect(inputText).toContain('"dailyReport"');
+    expect(inputText).toContain('"dailyPnl"');
+    expect(inputText).toContain('"pnlUsd": 1.2');
+    expect(inputText).toContain('"currentIndex": 31');
+    expect(inputText).toContain('"investmentPositions"');
+    expect(inputText).toContain('"asset": "TON"');
+    expect(inputText).toContain('"sharePct": 12.92');
+    expect(inputText).toContain('"cashAndReserveRows"');
+    expect(inputText).toContain('"asset": "USDC HL"');
+    expect(inputText).toContain('"totalPnlIsDaily": false');
+    expect(inputText).toContain("Не называй общий P&L дневным");
+    expect(inputText).toContain("Позиции перечисляй только из dailyReport.investmentPositions");
+    expect(inputText).toContain("Fear & Greed называй только если dataAvailability.hasFearGreed=true");
   });
 
   it("focuses detailed health questions on visible health components", async () => {

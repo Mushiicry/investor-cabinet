@@ -207,6 +207,38 @@ function getDesktopViewport() {
   };
 }
 
+function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function historyDateKey(rawDate: string) {
+  const trimmed = rawDate.trim();
+  const ruDate = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(trimmed);
+  if (ruDate) {
+    const [, day, month, year] = ruDate;
+    return `${year}-${month}-${day}`;
+  }
+
+  const parsed = Date.parse(trimmed);
+  if (!Number.isFinite(parsed)) return "";
+  return localDateKey(new Date(parsed));
+}
+
+function historyTime(rawDate: string) {
+  const key = historyDateKey(rawDate);
+  return key ? Date.parse(`${key}T00:00:00`) : 0;
+}
+
+function findPreviousDailySnapshot(history: V2LabData["history"], todayKey: string) {
+  return [...history]
+    .filter((point) => point.portfolioValue > 0 && historyDateKey(point.date) < todayKey)
+    .sort((a, b) => historyTime(a.date) - historyTime(b.date))
+    .at(-1) ?? null;
+}
+
 function DataStatusBadge({ dataStatus }: { dataStatus: NonNullable<Props["dataStatus"]> }) {
   const { source, status, lastLoadedAt, error, onRefresh } = dataStatus;
   let tone = "is-live";
@@ -271,6 +303,30 @@ function buildAssistantPageContext({
   cosmosStaking?: CosmosStaking | null;
 }): AssistantPageContext {
   const meta = PAGE_META[page];
+  const previousDailySnapshot = findPreviousDailySnapshot(data.history, localDateKey(new Date()));
+  const dailyPnlUsd = previousDailySnapshot
+    ? portfolio.totalPortfolioValue - previousDailySnapshot.portfolioValue
+    : null;
+  const dailyPnlPct =
+    dailyPnlUsd != null && previousDailySnapshot && previousDailySnapshot.portfolioValue > 0
+      ? (dailyPnlUsd / previousDailySnapshot.portfolioValue) * 100
+      : null;
+  const dailyPnl = {
+    source: "V2PortfolioPage visible P&L 24H formula",
+    isAvailable: dailyPnlUsd != null,
+    pnlUsd: dailyPnlUsd,
+    pnlPct: dailyPnlPct,
+    previousSnapshotDate: previousDailySnapshot?.date ?? null,
+    previousPortfolioValue: previousDailySnapshot?.portfolioValue ?? null,
+    rule: "Это дневное изменение к предыдущему дневному снимку; не путать с общим P&L.",
+  };
+  const fearGreed = {
+    source: "fearGreedStrategy",
+    currentIndex: data.fearGreedStrategy.currentIndex,
+    mode: data.fearGreedStrategy.currentMode,
+    currentZone: DCA_MODE_LABELS[data.fearGreedStrategy.currentMode] ?? data.fearGreedStrategy.currentMode,
+    marketMood: data.market.marketMood,
+  };
   const baseFacts = {
     accountStrategy: data.strategy.id,
     healthFactor: Math.round(health.healthFactor),
@@ -282,6 +338,8 @@ function buildAssistantPageContext({
     reserveUsd: portfolio.stableReserve,
     reserveShare: portfolio.reserveShare,
     positionsCount: portfolio.positionsCount,
+    dailyPnl,
+    fearGreed,
   };
   const topPositions = data.positions
     .filter((position) => position.value > 0)
@@ -425,11 +483,7 @@ function buildAssistantPageContext({
         detail: alert.detail,
         action: alert.action,
       })),
-      fearGreed: {
-        currentIndex: data.fearGreedStrategy.currentIndex,
-        mode: data.fearGreedStrategy.currentMode,
-        marketMood: data.market.marketMood,
-      },
+      fearGreed,
     },
     portfolio: {
       ...baseFacts,

@@ -277,6 +277,10 @@ function compactRecommendations(payload, concentrationGuards = []) {
 
 function detectAnswerFocus(question) {
   const normalized = String(question || "").toLowerCase();
+  const asksPortfolioReport = (
+    /(отчет|отчёт|сводк|итог|резюме|summary|report)/i.test(normalized)
+    && /(портфел|позици|влож|прибыл|убыт|p&l|pnl|пнл|cash|кэш|резерв|health|хелс|страх|жадн|fear|greed)/i.test(normalized)
+  );
   const asksRecommendationPanel = (
     /(рекомендац|совет|карточк)/i.test(normalized)
     && /(справа|прав[оы]й|радар|overview|обзор|главн|экран|панел)/i.test(normalized)
@@ -292,6 +296,35 @@ function detectAnswerFocus(question) {
     && asksPageOrTab
     && !asksDetailedHealth
   );
+
+  if (asksPortfolioReport) {
+    return {
+      type: "portfolio_daily_report",
+      instruction: [
+        "Вопрос просит краткий отчет по портфелю за сегодня.",
+        "Главный источник для ответа — context.dailyReport, затем uiSnapshot.currentPage.facts.",
+        "Структура ответа: 1) итог одной строкой; 2) вложено/текущая стоимость/общий P&L; 3) P&L 24H, только если dailyReport.dataAvailability.hasDailyPnl=true; 4) инвестиционные позиции; 5) кэш/резерв отдельно; 6) Health Factor; 7) индекс страха и жадности, только если hasFearGreed=true; 8) главный риск/что проверить.",
+        "Не называй общий P&L дневным результатом. Дневной P&L брать только из dailyReport.dailyPnl.",
+        "Позиции перечисляй только из dailyReport.investmentPositions. Кэш/резерв не смешивай с инвестиционными позициями.",
+        "Для каждой позиции называй asset, value, sharePct, pnl и pnlPct, если эти поля есть.",
+        "Если P&L 24H или Fear & Greed не переданы, коротко скажи, что именно не передано, без догадок.",
+      ],
+      allowedContext: [
+        "dailyReport",
+        "uiSnapshot.currentPage.facts.dailyPnl",
+        "uiSnapshot.currentPage.facts.fearGreed",
+        "uiSnapshot.currentPage.facts.visibleInvestmentPositions",
+        "uiSnapshot.currentPage.facts.cashAndReserveRows",
+        "uiSnapshot.health.components",
+      ],
+      forbiddenContextForThisQuestion: [
+        "recommendations as buy permission",
+        "signals as current holdings",
+        "scenarios as current holdings",
+        "manual daily PnL math outside dailyReport.dailyPnl",
+      ],
+    };
+  }
 
   if (asksRecommendationPanel) {
     return {
@@ -454,6 +487,130 @@ function compactPageContext(pageContext) {
       : [],
     facts: compactAny(isRecord(pageContext.facts) ? pageContext.facts : {}),
   };
+}
+
+function normalizeReportPosition(position) {
+  if (!isRecord(position)) return null;
+  const value = roundOptional(position.value ?? position.currentValue, 2);
+  if (value === undefined || value <= 0) return null;
+
+  return cleanRecord({
+    asset: compactText(position.asset ?? position.ticker),
+    ticker: compactText(position.ticker),
+    category: compactText(position.category),
+    invested: roundOptional(position.invested, 2),
+    value,
+    sharePct: roundOptional(position.share, 2),
+    pnl: roundOptional(position.pnl, 2),
+    pnlPct: roundOptional(position.pnlPct, 2),
+    source: compactText(position.source),
+  });
+}
+
+function normalizeCashRow(row) {
+  if (!isRecord(row)) return null;
+  const value = roundOptional(row.value ?? row.currentValue, 2);
+  if (value === undefined || value <= 0) return null;
+
+  return cleanRecord({
+    asset: compactText(row.asset ?? row.name ?? row.ticker),
+    value,
+    sharePct: roundOptional(row.share, 2),
+    role: compactText(row.role),
+  });
+}
+
+function buildDailyReport({ overview, positions, uiSnapshot }) {
+  const pageFacts = isRecord(uiSnapshot?.currentPage?.facts) ? uiSnapshot.currentPage.facts : {};
+  const portfolio = isRecord(uiSnapshot?.portfolio) ? uiSnapshot.portfolio : {};
+  const health = isRecord(uiSnapshot?.health) ? uiSnapshot.health : {};
+  const visiblePositions = Array.isArray(pageFacts.visibleInvestmentPositions)
+    ? pageFacts.visibleInvestmentPositions
+    : [];
+  const cashRows = Array.isArray(pageFacts.cashAndReserveRows)
+    ? pageFacts.cashAndReserveRows
+    : [];
+  const allocation = Array.isArray(uiSnapshot?.allocation) ? uiSnapshot.allocation : [];
+  const visibleDailyPnl = isRecord(pageFacts.dailyPnl) ? pageFacts.dailyPnl : {};
+  const visibleFearGreed = isRecord(pageFacts.fearGreed) ? pageFacts.fearGreed : {};
+  const fallbackCashRows = allocation.filter((row) => (
+    String(row.name ?? "").toLowerCase().includes("свобод")
+    || String(row.name ?? "").toLowerCase().includes("cash")
+    || String(row.name ?? "").toLowerCase().includes("резерв")
+  ));
+  const reportPositions = (visiblePositions.length > 0 ? visiblePositions : positions)
+    .map(normalizeReportPosition)
+    .filter(Boolean)
+    .filter((position) => !String(position.category).toLowerCase().includes("свобод"))
+    .slice(0, MAX_CONTEXT_POSITIONS);
+  const reportCashRows = (cashRows.length > 0 ? cashRows : fallbackCashRows)
+    .map(normalizeCashRow)
+    .filter(Boolean)
+    .slice(0, 8);
+  const healthComponents = Array.isArray(health.components) ? health.components : [];
+  const weakHealthComponents = healthComponents
+    .filter((component) => roundOptional(component.score, 0) !== undefined)
+    .sort((a, b) => round(a.score, 0) - round(b.score, 0))
+    .slice(0, 3)
+    .map((component) => ({
+      label: compactText(component.label),
+      score: round(component.score, 0),
+      desc: compactText(component.desc),
+      blockers: Array.isArray(component.blockers) ? component.blockers.map(compactText).slice(0, 3) : [],
+      warnings: Array.isArray(component.warnings) ? component.warnings.map(compactText).slice(0, 3) : [],
+    }));
+  const dailyPnlUsd = roundOptional(visibleDailyPnl.pnlUsd, 2);
+  const dailyPnlPct = roundOptional(visibleDailyPnl.pnlPct, 2);
+  const fearGreedIndex = roundOptional(visibleFearGreed.currentIndex, 0);
+
+  return cleanRecord({
+    source: "normalized assistant report facts from visible UI snapshot and /api/investor",
+    totals: cleanRecord({
+      invested: roundOptional(portfolio.totalInvested ?? overview.invested, 2),
+      portfolioValue: roundOptional(portfolio.totalPortfolioValue ?? overview.portfolioValue, 2),
+      totalPnlUsd: roundOptional(portfolio.pnlUsd ?? overview.pnl, 2),
+      totalPnlPct: roundOptional(portfolio.pnlPct ?? overview.pnlPct, 6),
+      reserveUsd: roundOptional(portfolio.stableReserve ?? overview.reserve, 2),
+      reserveShare: roundOptional(portfolio.reserveShare, 4),
+      positionsCount: roundOptional(portfolio.positionsCount ?? overview.positionsCount, 0),
+    }),
+    dailyPnl: cleanRecord({
+      pnlUsd: dailyPnlUsd,
+      pnlPct: dailyPnlPct,
+      previousSnapshotDate: compactText(visibleDailyPnl.previousSnapshotDate),
+      previousPortfolioValue: roundOptional(visibleDailyPnl.previousPortfolioValue, 2),
+      source: compactText(visibleDailyPnl.source),
+      rule: compactText(visibleDailyPnl.rule),
+    }),
+    investmentPositions: reportPositions,
+    cashAndReserveRows: reportCashRows,
+    health: cleanRecord({
+      healthFactor: roundOptional(health.healthFactor ?? portfolio.healthFactor ?? overview.health, 0),
+      status: compactText(health.status),
+      riskLevel: compactText(health.riskLevel ?? portfolio.riskLevel),
+      weakestComponents: weakHealthComponents,
+    }),
+    fearGreed: cleanRecord({
+      currentIndex: fearGreedIndex,
+      currentZone: compactText(visibleFearGreed.currentZone),
+      marketMood: compactText(visibleFearGreed.marketMood),
+      mode: compactText(visibleFearGreed.mode),
+      source: compactText(visibleFearGreed.source),
+    }),
+    dataAvailability: {
+      hasDailyPnl: dailyPnlUsd !== undefined,
+      hasFearGreed: fearGreedIndex !== undefined,
+      positionsSource: visiblePositions.length > 0 ? "uiSnapshot.currentPage.facts.visibleInvestmentPositions" : "/api/investor portfolio",
+      cashSource: cashRows.length > 0 ? "uiSnapshot.currentPage.facts.cashAndReserveRows" : "uiSnapshot.allocation",
+      totalPnlIsDaily: false,
+    },
+    wordingRules: [
+      "Общий P&L = totals.totalPnlUsd; дневной P&L = dailyPnl.pnlUsd.",
+      "Не называй totals.totalPnlUsd результатом за сегодня.",
+      "Кэш/резерв всегда отдельным блоком, не в списке инвестиционных позиций.",
+      "Fear & Greed называй только если dataAvailability.hasFearGreed=true.",
+    ],
+  });
 }
 
 function buildFuturesRiskBudgetBreakdown({ riskControl, healthInput, portfolio }) {
@@ -668,6 +825,11 @@ export async function buildAssistantContext(accountId, clientContext = null, que
   const knowledgeOptions = answerFocus.type === "health_page_overview"
     ? { excludeSections: ["Health Formula"] }
     : {};
+  const overview = compactOverview(payload);
+  const positions = compactPositions(payload);
+  const uiSnapshot = compactClientContext(clientContext);
+  const risk = compactRisk(payload);
+  const dailyReport = buildDailyReport({ overview, positions, uiSnapshot });
 
   return {
     ok: true,
@@ -676,10 +838,11 @@ export async function buildAssistantContext(accountId, clientContext = null, que
       readOnly: true,
       accountId: normalizedAccountId,
       source: normalizedAccountId === "wife" ? "/api/investor-wife" : "/api/investor",
-      overview: compactOverview(payload),
-      positions: compactPositions(payload),
-      risk: compactRisk(payload),
-      uiSnapshot: compactClientContext(clientContext),
+      overview,
+      positions,
+      risk,
+      uiSnapshot,
+      dailyReport,
       answerFocus,
       sourcePriority: [
         "1. uiSnapshot.health.healthFactor / uiSnapshot.portfolio.healthFactor — главное число здоровья, если передано.",
@@ -690,6 +853,7 @@ export async function buildAssistantContext(accountId, clientContext = null, que
         "6. По фьючерсам сначала читать uiSnapshot.futuresFacts.riskBudgetBreakdown, если он есть. Не смешивать health-formula, свободную маржу и биржевую маржу.",
         "7. На вкладке Портфель сначала читать uiSnapshot.currentPage.facts.visibleInvestmentPositions; cashAndReserveRows объяснять отдельно как кэш/резерв, а не как инвестиционные активы.",
         "8. По стейкингу на вкладке Портфель читать только uiSnapshot.currentPage.facts.visibleInvestmentPositions[].staking.",
+        "9. Для краткого отчета по портфелю использовать context.dailyReport как нормализованный источник: totals, dailyPnl, investmentPositions, cashAndReserveRows, health, fearGreed.",
       ],
       answerGuards: [
         "Отвечать строго по теме вопроса. Не добавлять соседние темы только потому, что они есть в контексте.",
@@ -701,6 +865,7 @@ export async function buildAssistantContext(accountId, clientContext = null, que
         "Если answerFocus.type = visible_portfolio_staking, отвечать только по visibleInvestmentPositions[].staking. Если есть staking.isStaked=true, перечислить эти активы и не писать, что данных нет.",
         "Если answerFocus.type = health_page_overview, объяснять вкладку Здоровье как страницу: назначение и видимые разделы. Не делать подробный расчет Health Factor.",
         "Если answerFocus.type = detailed_health_components, сначала разбирать видимые компоненты здоровья и их score; формулы использовать только как пояснение, без собственной математики.",
+        "Если answerFocus.type = portfolio_daily_report, отвечать по context.dailyReport: общий P&L отдельно от P&L 24H, позиции отдельно от кэша/резерва, Fear & Greed только если он передан.",
         "При over-limit нельзя писать 'рекомендация положительная', 'есть накопление', 'можно купить' или 'можно добрать'. Разрешенная формулировка: увеличение заблокировано до возврата в лимит.",
         "Запреты, blockers и фраза 'Не докупать' всегда сильнее recommendations/scenarios/желания пользователя.",
         "Если recommendation выглядит положительной, но тот же актив выше лимита, объясни конфликт и держи risk-first запрет на увеличение позиции.",
@@ -746,6 +911,10 @@ export const ASSISTANT_SYSTEM_PROMPT = [
   "Для вопроса про рекомендации справа от радара: объясни, что это карточки risk-first контроля здоровья; title/action показывают направление проверки, detail объясняет причину, level/gain показывает ожидаемый вклад в здоровье. Не называй это разрешением на сделку.",
   "Если context.answerFocus.type = health_page_overview, объясняй вкладку Здоровье как страницу: для чего она нужна, какие разделы видны и что пользователь может проверить. Не уходи в полный расчет Health Factor.",
   "Если context.answerFocus.type = detailed_health_components, сначала дай Health Factor и видимые компоненты: Резерв, Выживаемость, Контроль риска, Концентрация, Диверсификация, Дисциплина. Используй score/desc/blockers/warnings из uiSnapshot. Формулы упоминай только как переданную расшифровку, не пересчитывай сам.",
+  "Если context.answerFocus.type = portfolio_daily_report, используй context.dailyReport. Дай краткий отчет: итог, вложено, текущая стоимость, общий P&L, P&L 24H при наличии, позиции, кэш/резерв, Health Factor, Fear & Greed при наличии, главный риск.",
+  "В отчете не называй общий P&L дневным. Дневной результат — только context.dailyReport.dailyPnl. Если dailyPnl отсутствует, скажи, что дневной P&L не передан.",
+  "В отчете позиции бери только из context.dailyReport.investmentPositions, а кэш/резерв — из context.dailyReport.cashAndReserveRows отдельным блоком.",
+  "В отчете Fear & Greed называй только если context.dailyReport.dataAvailability.hasFearGreed=true. Не выводи индекс страха и жадности из догадки.",
   "На вкладке Портфель при вопросе 'какие активы есть' сначала перечисляй visibleInvestmentPositions из uiSnapshot.currentPage.facts. cashAndReserveRows называй отдельно как кэш/резерв/маржу, не как активы.",
   "На вкладке Портфель при вопросе про стейкинг используй только visibleInvestmentPositions[].staking. Если есть staking.isStaked=true, назови эти активы. Не говори, что данных нет.",
   "USDC, USDT и USDC HL в 'Свободные деньги' не называй инвестиционными активами; это резерв, кэш или HL-маржа.",
