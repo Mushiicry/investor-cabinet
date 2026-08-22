@@ -98,6 +98,13 @@ export function isPlannedLimitOrder(signal: InterestSignal): boolean {
   return classifySignalAction(signal.action) === "buy";
 }
 
+export function isActiveActionableLimitSignal(signal: InterestSignal): boolean {
+  const status = normalizeStatus(signal.status);
+  if (INACTIVE_LIMIT_ORDER_STATUSES.has(status)) return false;
+  if (!Number.isFinite(signal.amountUsd) || signal.amountUsd <= 0) return false;
+  return classifySignalAction(signal.action) !== "unknown";
+}
+
 export function plannedLimitOrdersSummary(signals: InterestSignal[]) {
   const activeOrders = signals.filter(isPlannedLimitOrder);
   const assets = [...new Set(activeOrders.map((signal) => signal.asset.trim()).filter(Boolean))];
@@ -105,6 +112,21 @@ export function plannedLimitOrdersSummary(signals: InterestSignal[]) {
   return {
     count: activeOrders.length,
     totalUsd: activeOrders.reduce((sum, signal) => sum + signal.amountUsd, 0),
+    assets,
+  };
+}
+
+export function actionableLimitSignalsSummary(signals: InterestSignal[]) {
+  const activeSignals = signals.filter(isActiveActionableLimitSignal);
+  const assets = [...new Set(activeSignals.map((signal) => signal.asset.trim()).filter(Boolean))];
+  const buyCount = activeSignals.filter((signal) => classifySignalAction(signal.action) === "buy").length;
+  const sellCount = activeSignals.filter((signal) => classifySignalAction(signal.action) === "sell").length;
+
+  return {
+    count: activeSignals.length,
+    totalUsd: activeSignals.reduce((sum, signal) => sum + signal.amountUsd, 0),
+    buyCount,
+    sellCount,
     assets,
   };
 }

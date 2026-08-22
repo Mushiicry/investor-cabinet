@@ -219,6 +219,14 @@ export type CoreRec = {
   details?: CoreRecDetails;
 };
 
+export type RecommendationMarketContext = {
+  fearGreedIndex?: number;
+};
+
+function isGreedyMarket(context?: RecommendationMarketContext): boolean {
+  return (context?.fearGreedIndex ?? 0) >= 50;
+}
+
 export type CoreAchievement = { title: string; detail: string };
 
 export function isActionableHealthComponent(c: HealthComponent): boolean {
@@ -309,6 +317,7 @@ function recommendationDetails(
   healthInput: HealthInput | undefined,
   all: HealthComponent[],
   currentHealth: number | undefined,
+  marketContext?: RecommendationMarketContext,
 ): CoreRecDetails | undefined {
   if (!healthInput || !rec.kind || currentHealth === undefined) return undefined;
 
@@ -385,26 +394,32 @@ function recommendationDetails(
     const bandMaxUsd = rm?.reserveBandMaxUsd ?? 0;
     const idleUsd = rm?.reserveIdleUsd ?? Math.max(0, reserveUsd - bandMaxUsd);
     const shortfallUsd = rm?.reserveTargetShortfallUsd ?? Math.max(0, targetUsd - reserveUsd);
+    const greedyMarket = isGreedyMarket(marketContext);
 
     return {
       title: "Резерв и свободные деньги",
       score: projectedHealth,
       summary:
         idleUsd > 0
-          ? `В резерве лишние ${fmtExactUsd(idleUsd)} сверх верхнего коридора. Эти деньги можно вернуть в работу без нарушения подушки.`
+          ? greedyMarket
+            ? `В резерве ${fmtExactUsd(idleUsd)} сверх верхнего коридора, но рынок в жадности. Эти деньги не догоняют рост: они ждут страх, откат или заранее заданные лимитные зоны.`
+            : `В резерве лишние ${fmtExactUsd(idleUsd)} сверх верхнего коридора. Эти деньги можно вернуть в работу без нарушения подушки.`
           : `Резерв ниже целевой зоны на ${fmtExactUsd(shortfallUsd)}. Сначала восстановите подушку, потом добавляйте риск.`,
       steps: [
         {
-          title: idleUsd > 0 ? "Вернуть лишний резерв в работу" : "Восстановить резерв",
+          title: idleUsd > 0 ? greedyMarket ? "Держать резерв до окна покупок" : "Вернуть лишний резерв в работу" : "Восстановить резерв",
           body:
             idleUsd > 0
-              ? `Переведите ${fmtExactUsd(idleUsd)} из резерва в разрешенные покупки по текущим лимитам.`
+              ? greedyMarket
+                ? `Не переводите ${fmtExactUsd(idleUsd)} в рынок на локальных хаях. DCA и обычные лимитные покупки ждут своего времени: страх, откат или подтвержденная зона стратегии.`
+                : `Переведите ${fmtExactUsd(idleUsd)} из резерва в разрешенные покупки по текущим лимитам.`
               : `Пополните резерв минимум на ${fmtExactUsd(shortfallUsd)} до целевой зоны стратегии.`,
           primary: true,
           rows: [
             { label: "Текущий резерв", value: fmtExactUsd(reserveUsd) },
             { label: "Цель резерва", value: fmtExactUsd(targetUsd) },
             { label: "Верх коридора", value: fmtExactUsd(bandMaxUsd) },
+            ...(greedyMarket ? [{ label: "Рынок сейчас", value: `${marketContext?.fearGreedIndex} / 100 · жадность`, tone: "warn" as const }] : []),
             { label: "Health после шага", value: `${projectedHealth}/100`, tone: "ok" },
           ],
         },
@@ -542,15 +557,30 @@ function recommendationDetails(
   if (rec.kind === "discipline") {
     const dm = all.find((component) => component.key === "flexibility")?.meta;
     const coverage = dm?.disciplineJournalCoverage ?? healthInput.disciplineJournalCoverage ?? 0;
+    const plannedUsd = dm?.disciplinePlannedOrdersUsd ?? healthInput.plannedLimitOrdersUsd ?? 0;
+    const limitOrdersConfirmed = dm?.disciplineLimitOrdersConfirmed ?? healthInput.plannedLimitOrdersConfirmed;
+    const needsLimitOrderCheck = limitOrdersConfirmed === false && plannedUsd > 0;
     return {
       title: "Дисциплина решений",
       score: projectedHealth,
-      summary: `Журнал решений заполнен на ${fmtPct(coverage)}. Это не PnL и не история сделок, а покрытие новых проверок сделки сохранёнными решениями.`,
+      summary: needsLimitOrderCheck
+        ? `Журнал решений заполнен на ${fmtPct(coverage)}, а лимитки на ${fmtExactUsd(plannedUsd)} не подтверждены биржей. Дисциплина здесь — сначала выставить уровни вручную, затем раз в неделю проверять, что они всё ещё стоят.`
+        : `Журнал решений заполнен на ${fmtPct(coverage)}. Это не PnL и не история сделок, а покрытие новых проверок сделки сохранёнными решениями.`,
       steps: [
+        ...(needsLimitOrderCheck ? [{
+          title: "Проверить лимитки на бирже",
+          body: "Откройте биржу, выставьте нужные лимитные ордера вручную и заведите еженедельную проверку активных уровней. Сайт и Telegram только напоминают о сценарии, но не подтверждают, что ордер стоит на бирже.",
+          primary: true,
+          rows: [
+            { label: "План уровней", value: fmtExactUsd(plannedUsd), tone: "warn" as const },
+            { label: "Подтверждение биржи", value: "нет", tone: "danger" as const },
+            { label: "Ритм контроля", value: "1 раз в неделю", tone: "warn" as const },
+          ],
+        }] : []),
         {
           title: "Закрыть журнал решений",
           body: "Путь простой: открыть «Проверка», ввести актив и сумму, заполнить причину входа, риск, сценарий отмены и план выхода, затем сохранить решение. После этого запись появится в «Отчётах» и начнёт повышать покрытие журнала.",
-          primary: true,
+          primary: !needsLimitOrderCheck,
           rows: [
             { label: "Текущее покрытие", value: fmtPct(coverage), tone: coverage >= 0.8 ? "ok" : "warn" },
             { label: "Цель процесса", value: "80%" },
@@ -599,14 +629,18 @@ function componentAlerts(component: HealthComponent): string[] {
   }
 }
 
-function recommendationFromAlert(component: HealthComponent, alert: string): string {
+function recommendationFromAlert(component: HealthComponent, alert: string, marketContext?: RecommendationMarketContext): string {
   const lower = alert.toLowerCase();
   const meta = component.meta;
 
   switch (component.key) {
     case "reserve": {
       const idleUsd = meta?.reserveIdleUsd ?? 0;
-      if (lower.includes("капитал простаивает") && idleUsd > 0) return `${fmtExactUsd(idleUsd)} нужно пустить в работу`;
+      if (lower.includes("капитал простаивает") && idleUsd > 0) {
+        return isGreedyMarket(marketContext)
+          ? `Держать ${fmtExactUsd(idleUsd)} в резерве до страха`
+          : `${fmtExactUsd(idleUsd)} нужно пустить в работу`;
+      }
       if (lower.includes("неприкосновенной")) return "Отключить сделки и восстановить неприкосновенную часть";
       if (lower.includes("необходимого остатка")) return "Не добавлять риск до восстановления необходимого остатка";
       return "Вернуть резерв в правила стратегии";
@@ -629,12 +663,19 @@ function recommendationFromAlert(component: HealthComponent, alert: string): str
       if (meta?.missingClassNames?.length) return `Добавить отсутствующий класс: ${meta.missingClassNames.join(" / ").toLowerCase()}`;
       return "Сбалансировать спотовые классы риска";
     case "flexibility":
+      if (
+        (component.meta?.disciplinePlannedOrdersUsd ?? 0) > 0 &&
+        component.meta?.disciplineLimitOrdersConfirmed === false
+      ) {
+        return "Выставить лимитки вручную и заполнить журнал решений";
+      }
       if (lower.includes("журнал")) return "Заполнить журнал решений до новых сделок";
+      if (lower.includes("лимитк")) return "Выставить лимитки вручную и проверять еженедельно";
       return "Поставить сделки на паузу и закрыть нарушение дисциплины";
   }
 }
 
-function buildAlertRecs(all: HealthComponent[]): CoreRec[] {
+function buildAlertRecs(all: HealthComponent[], marketContext?: RecommendationMarketContext): CoreRec[] {
   const seenKinds = new Set<CoreRecKind>();
 
   return all.flatMap((component) => {
@@ -643,18 +684,21 @@ function buildAlertRecs(all: HealthComponent[]): CoreRec[] {
     if (!alert || seenKinds.has(kind)) return [];
     seenKinds.add(kind);
     const gain = Math.max(1, componentGain(kind, all));
+    const source = isGreedyMarket(marketContext) && kind === "reserve"
+      ? `${component.label}: рынок в жадности — резерв ждёт зону страха`
+      : `${component.label}: ${alert}`;
 
     return [{
-      action: recommendationFromAlert(component, alert),
+      action: recommendationFromAlert(component, alert, marketContext),
       gain,
-      source: `${component.label}: ${alert} → здоровье +${gain}`,
+      source: `${source} → здоровье +${gain}`,
       critical: true,
       kind,
     }];
   });
 }
 
-function finalizeCoreRecs(recs: CoreRec[], healthInput: HealthInput | undefined, all: HealthComponent[]): CoreRec[] {
+function finalizeCoreRecs(recs: CoreRec[], healthInput: HealthInput | undefined, all: HealthComponent[], marketContext?: RecommendationMarketContext): CoreRec[] {
   const currentHealth = healthInput ? computePortfolioHealth(healthInput).healthFactor : undefined;
   const seen = new Set<string>();
 
@@ -671,7 +715,7 @@ function finalizeCoreRecs(recs: CoreRec[], healthInput: HealthInput | undefined,
         ...rec,
         gain,
         source: `${rec.source} → здоровье +${gain}`,
-        details: recommendationDetails({ ...rec, gain }, healthInput, all, currentHealth),
+        details: recommendationDetails({ ...rec, gain }, healthInput, all, currentHealth, marketContext),
       };
     })
     .filter((rec) => rec.gain > 0)
@@ -690,10 +734,11 @@ export function buildHealthBoardRecs(
   portfolio: V2Portfolio,
   all: HealthComponent[] = [],
   healthInput?: HealthInput,
+  marketContext?: RecommendationMarketContext,
 ): CoreRec[] {
-  const alertRecs = buildAlertRecs(all);
+  const alertRecs = buildAlertRecs(all, marketContext);
   const usedKinds = new Set(alertRecs.map((rec) => rec.kind));
-  const generalRecs = buildCoreRecs(weak, portfolio, all, healthInput)
+  const generalRecs = buildCoreRecs(weak, portfolio, all, healthInput, marketContext)
     .filter((rec) => !rec.kind || !usedKinds.has(rec.kind))
     .map((rec) => ({ ...rec, critical: false }));
 
@@ -709,7 +754,7 @@ export function buildHealthBoardRecs(
     .slice(0, 7)
     .map((rec) => ({
       ...rec,
-      details: rec.details ?? recommendationDetails(rec, healthInput, all, currentHealth),
+      details: rec.details ?? recommendationDetails(rec, healthInput, all, currentHealth, marketContext),
     }));
 }
 
@@ -726,6 +771,7 @@ export function buildCoreRecs(
   portfolio: V2Portfolio,
   all: HealthComponent[] = [],
   healthInput?: HealthInput,
+  marketContext?: RecommendationMarketContext,
 ): CoreRec[] {
   const result: CoreRec[] = [];
   const reserve = all.find((c) => c.key === "reserve");
@@ -756,9 +802,13 @@ export function buildCoreRecs(
   }
   if (reserveIdleUsd > 0) {
     result.push({
-      action: `${fmtExactUsd(reserveIdleUsd)} нужно пустить в работу`,
+      action: isGreedyMarket(marketContext)
+        ? `Держать ${fmtExactUsd(reserveIdleUsd)} в резерве до страха`
+        : `${fmtExactUsd(reserveIdleUsd)} нужно пустить в работу`,
       gain: 4,
-      source: `Резерв выше ${reserveBandMaxPct}% — капитал простаивает`,
+      source: isGreedyMarket(marketContext)
+        ? `Резерв выше ${reserveBandMaxPct}%, рынок в жадности — резерв ждёт зону страха`
+        : `Резерв выше ${reserveBandMaxPct}% — капитал простаивает`,
       kind: "reserve",
     });
   }
@@ -1018,5 +1068,5 @@ export function buildCoreRecs(
   return finalizeCoreRecs([
     ...result.filter((rec) => rec.critical),
     ...result.filter((rec) => !rec.critical),
-  ].filter((rec) => !hasHardReserveGate || !isExpansionRecommendation(rec)), healthInput, all);
+  ].filter((rec) => !hasHardReserveGate || !isExpansionRecommendation(rec)), healthInput, all, marketContext);
 }

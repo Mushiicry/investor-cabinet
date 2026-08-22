@@ -1156,7 +1156,7 @@
    Блок на всю ширину: боковые колонки шире, радар крупнее по высоте. */
 .v2-hc-layout {
   display: grid;
-  grid-template-columns: minmax(300px, 1.25fr) minmax(0, 2.3fr) minmax(300px, 1.2fr);
+  grid-template-columns: minmax(300px, 1.25fr) minmax(0, 2.3fr) minmax(300px, 1.25fr);
   align-items: stretch;
   gap: 14px;
 }
@@ -1311,6 +1311,8 @@
 
 .v2-hc-side {
   min-width: 0;
+  height: 565px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1362,9 +1364,27 @@
   pointer-events: none;
 }
 
-.v2-hc-side--recommend { text-align: left; margin-right: 36px; align-self: center; }
+.v2-hc-side--recommend {
+  text-align: left;
+  margin-right: 0;
+  align-self: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  overflow: visible;
+}
+.v2-hc-side--recommend::before,
+.v2-hc-side--recommend::after {
+  display: none;
+}
 .v2-hc-side--recommend .v2-hc-side-title {
   text-align: center;
+}
+.v2-hc-side--recommend .v2-hc-side-list {
+  gap: 11px;
 }
 .v2-hc-side--diagnosis {
   justify-content: flex-start;
@@ -1411,8 +1431,8 @@
   min-width: 32px;
 }
 .v2-hc-rec-body { display: flex; flex-direction: column; gap: 2px; }
-.v2-hc-rec-action { font-size: 13px; line-height: 1.4; }
-.v2-hc-rec-source { font-size: 11px; color: rgba(150, 195, 225, 0.5); }
+.v2-hc-rec-action { font-size: 14px; line-height: 1.42; }
+.v2-hc-rec-source { font-size: 12px; line-height: 1.4; color: rgba(150, 195, 225, 0.5); }
 
 /* ── Шкала здоровья портфеля (верх левой колонки) ── */
 .v2-hc-healthbar {
@@ -1570,20 +1590,17 @@
 .v2-hc-rec-row--critical {
   background: rgba(90,239,141,0.07);
   border-radius: 6px;
-  padding: 3px 6px;
-  border-left: 2px solid rgba(90,239,141,0.5);
+  padding: 5px 7px;
+  border: 1px solid rgba(90,239,141,0.5);
 }
 .v2-hc-rec-row--critical .v2-hc-rec-gain {
   color: #5AEF8D;
-  background: rgba(30, 96, 60, 0.32);
+  background: transparent;
 }
 .v2-hc-rec-row--critical .v2-hc-rec-action { color: rgba(200,240,215,0.95); font-weight: 600; }
 .v2-hc-rec-row--critical .v2-hc-rec-source { color: rgba(105, 198, 238, 0.72); }
 .v2-hc-rec-row--clickable {
   width: 100%;
-  border-top: 0;
-  border-right: 0;
-  border-bottom: 0;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
@@ -3525,7 +3542,7 @@
 }
 .v2-hc-rec-row--critical.is-urgent .v2-hc-rec-gain {
   color: #5AEF8D;
-  background: rgba(30, 96, 60, 0.44);
+  background: transparent;
 }
 @keyframes v2-hc-urgent-pulse {
   0%, 100% { box-shadow: 0 0 0 rgba(255, 170, 70, 0); }

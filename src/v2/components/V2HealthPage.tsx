@@ -29,6 +29,7 @@ type Props = {
   strategy?: InvestorStrategy;
   dna?: InvestorDNA;
   interestSignals?: InterestSignal[];
+  fearGreedIndex?: number;
   onOpenDNA?: () => void;
 };
 
@@ -383,6 +384,7 @@ function buildDisciplineRows(health: PortfolioHealth) {
   const discipline = getHealthComponent(health, "flexibility");
   const meta = discipline?.meta;
   const journal = meta?.disciplineJournalCoverage;
+  const planConfirmed = meta?.disciplineLimitOrdersConfirmed;
   return [
     {
       label: "Журнал решений",
@@ -405,8 +407,10 @@ function buildDisciplineRows(health: PortfolioHealth) {
     {
       label: "План уровней",
       value: meta?.disciplinePlannedOrdersUsd !== undefined ? fmt$(meta.disciplinePlannedOrdersUsd) : "не подключён",
-      note: `балл плана ${meta?.disciplinePlanScore ?? "?"}/100`,
-      tone: (meta?.disciplinePlannedOrdersUsd ?? 0) > 0 ? "ok" : "warn",
+      note: planConfirmed === false
+        ? `не подтверждено биржей · балл ${meta?.disciplinePlanScore ?? "?"}/100`
+        : `балл плана ${meta?.disciplinePlanScore ?? "?"}/100`,
+      tone: planConfirmed === false ? "warn" : (meta?.disciplinePlannedOrdersUsd ?? 0) > 0 ? "ok" : "warn",
     },
   ];
 }
@@ -468,6 +472,7 @@ export function V2HealthPage({
   strategy = MAIN_INVESTOR_STRATEGY,
   dna = MAIN_INVESTOR_DNA,
   interestSignals = [],
+  fearGreedIndex,
   onOpenDNA,
 }: Props) {
   const [modal, setModal]   = useState<HealthComponent | null>(null);
@@ -488,7 +493,7 @@ export function V2HealthPage({
   const weakForRecommendations = sortedComponents.filter(isActionableHealthComponent);
   const recommendations = isEmpty
     ? []
-    : buildCoreRecs(weakForRecommendations, portfolio, health.components, healthInput);
+    : buildCoreRecs(weakForRecommendations, portfolio, health.components, healthInput, { fearGreedIndex });
 
   // ── Симулятор: 6 рычагов поверх реальных входов health ──
   const baseReserve = healthInput.reserveShare ?? healthInput.cashShare;

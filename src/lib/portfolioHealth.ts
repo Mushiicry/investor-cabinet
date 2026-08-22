@@ -231,6 +231,7 @@ export type HealthComponentMeta = {
   disciplineBlockerScore?: number;
   disciplinePlanScore?: number;
   disciplinePlannedOrdersUsd?: number;
+  disciplineLimitOrdersConfirmed?: boolean;
   disciplineViolations30d?: number;
   fomoEvents30d?: number;
   revengeTrades30d?: number;
@@ -376,6 +377,8 @@ export type HealthInput = {
   futuresDeployableUsd?: number;
   /** Сумма заранее подготовленных лимитных ордеров. Нет поля = источник ещё не подключён. */
   plannedLimitOrdersUsd?: number;
+  /** Биржа/брокер подтвердил, что лимитные ордера реально выставлены. */
+  plannedLimitOrdersConfirmed?: boolean;
   /** Доля решений/сделок с заполненным журналом за период 0..1. */
   disciplineJournalCoverage?: number;
   disciplineViolations30d?: number;
@@ -757,9 +760,12 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   const disciplineCooldownActive = input.disciplineCooldownActive ?? false;
   const disciplineBlockerScore = disciplineCooldownActive ? 0 : 100;
   const disciplinePlannedOrdersUsd = input.plannedLimitOrdersUsd;
+  const disciplineLimitOrdersConfirmed = input.plannedLimitOrdersConfirmed;
   const disciplinePlanScore =
     disciplinePlannedOrdersUsd === undefined
       ? 60
+      : disciplinePlannedOrdersUsd > 0 && disciplineLimitOrdersConfirmed === false
+        ? 40
       : disciplinePlannedOrdersUsd > 0
         ? 100
         : 50;
@@ -794,6 +800,8 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
   }
   if (disciplinePlannedOrdersUsd !== undefined && disciplinePlannedOrdersUsd <= 0) {
     disciplineWarnings.push("План лимитных покупок не подготовлен");
+  } else if (disciplinePlannedOrdersUsd !== undefined && disciplineLimitOrdersConfirmed === false) {
+    disciplineWarnings.push("Лимитки на бирже не подтверждены — выставить вручную и перепроверять еженедельно");
   }
   if (!hasBehaviorData) {
     disciplineWarnings.push("Поведенческие маркеры не подключены");
@@ -805,6 +813,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
     `Поведение: ${disciplineBehaviorScore}/100`,
     `Блокеры: ${disciplineBlockerScore}/100`,
     `План лимитных покупок: ${disciplinePlanScore}/100`,
+    `Подтверждение биржи: ${disciplineLimitOrdersConfirmed === undefined ? "нет данных" : disciplineLimitOrdersConfirmed ? "есть" : "нет"}`,
     `Нарушений за 30 дней: ${disciplineViolations30d ?? "нет данных"}`,
     `Балл дисциплины: ${disciplineScore}/100`,
   ];
@@ -954,6 +963,7 @@ export function computePortfolioHealth(input: HealthInput): PortfolioHealth {
         disciplineBlockerScore,
         disciplinePlanScore,
         disciplinePlannedOrdersUsd,
+        disciplineLimitOrdersConfirmed,
         disciplineViolations30d,
         fomoEvents30d,
         revengeTrades30d,

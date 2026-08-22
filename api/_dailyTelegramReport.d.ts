@@ -1,6 +1,11 @@
 export function buildDailyTelegramReport(
   payload: unknown,
-  options?: { accountId?: 'main' | 'wife'; now?: Date },
+  options?: {
+    accountId?: 'main' | 'wife'
+    now?: Date
+    computedHealth?: { healthFactor?: number; components?: Record<string, unknown> }
+    hyperliquidRiskByCoin?: Record<string, unknown>
+  },
 ): { text: string; facts: Record<string, unknown> }
 
 export function sendTelegramMessage(input: {

@@ -115,6 +115,56 @@ describe("рекомендации здоровья портфеля", () => {
     );
   });
 
+  it("не зовёт пускать резерв в работу, когда рынок в жадности", () => {
+    const recs = buildCoreRecs([], {
+      ...portfolio,
+      totalInvested: 680.2,
+      stableReserve: 464.62,
+      reserveShare: 0.68,
+    }, [
+      component("reserve", "Резерв", {
+        reserveWarnings: ["Резерв выше 60% — капитал простаивает!"],
+        reserveIdleUsd: 56.5,
+        reserveBaseUsd: 680.2,
+        reserveBandMaxUsd: 408.12,
+        reserveShare: 0.68,
+      }, 79),
+    ], undefined, { fearGreedIndex: 71 });
+
+    expect(recs).toContainEqual(
+      expect.objectContaining({
+        action: "Держать $56.50 в резерве до страха",
+        source: expect.stringContaining("рынок в жадности — резерв ждёт зону страха"),
+      }),
+    );
+    expect(recs.map((rec) => rec.action)).not.toContain("$56.50 нужно пустить в работу");
+    expect(recs.map((rec) => rec.source).join(" ")).not.toContain("капитал простаивает");
+  });
+
+  it("объединяет неподтверждённые лимитки и пустой журнал в одно дисциплинарное действие", () => {
+    const recs = buildHealthBoardRecs(
+      [],
+      portfolio,
+      [
+        component("flexibility", "Дисциплина", {
+          disciplineJournalCoverage: 0,
+          disciplinePlannedOrdersUsd: 120,
+          disciplineLimitOrdersConfirmed: false,
+          disciplineWarnings: [
+            "Журнал заполнен меньше чем на 80%",
+            "Лимитки на бирже не подтверждены — выставить вручную и перепроверять еженедельно",
+          ],
+        }, 65),
+      ],
+    );
+
+    expect(recs).toContainEqual(
+      expect.objectContaining({
+        action: "Выставить лимитки вручную и заполнить журнал решений",
+      }),
+    );
+  });
+
   it("показывает не больше пяти рекомендаций с реальным приростом здоровья", () => {
     const healthInput: HealthInput = {
       cashShare: 0.08,
@@ -324,5 +374,36 @@ describe("рекомендации здоровья портфеля", () => {
         }),
       ]),
     );
+  });
+
+  it("на правой доске при жадности резерв ждёт, а не догоняет рост", () => {
+    const recs = buildHealthBoardRecs(
+      [],
+      {
+        ...portfolio,
+        totalInvested: 680.2,
+        stableReserve: 464.62,
+        reserveShare: 0.68,
+      },
+      [
+        component("reserve", "Резерв", {
+          reserveWarnings: ["Резерв выше 60% — капитал простаивает!"],
+          reserveIdleUsd: 56.5,
+          reserveBaseUsd: 680.2,
+          reserveBandMaxUsd: 408.12,
+          reserveShare: 0.68,
+        }, 79),
+      ],
+      undefined,
+      { fearGreedIndex: 71 },
+    );
+
+    expect(recs[0]).toEqual(
+      expect.objectContaining({
+        action: "Держать $56.50 в резерве до страха",
+        source: expect.stringContaining("рынок в жадности — резерв ждёт зону страха"),
+      }),
+    );
+    expect(recs[0].source).not.toContain("капитал простаивает");
   });
 });

@@ -78,21 +78,21 @@ describe("account strategy wiring", () => {
     const healthPage = read("src/v2/components/V2HealthPage.tsx");
     const styles = read("src/v2/styles/v2-btc-chart.css");
 
-    expect(healthPage).toContain("function StrategyPolicyCard");
-    expect(healthPage).toContain("Инвестиционная стратегия");
+    expect(healthPage).toContain('aria-label="Стратегия и лимиты"');
+    expect(healthPage).toContain("Стратегия и лимиты");
     expect(healthPage).toContain("strategy.cryptoMaxShare");
     expect(healthPage).toContain("strategy.reserveFloorShare");
     expect(healthPage).toContain("strategy.futuresAllowed");
     expect(healthPage).toContain("strategyCryptoRows(strategy)");
     expect(healthPage).toContain("<V2CapitalLadder portfolio={portfolio} mode=\"health\" strategy={strategy}");
-    expect(styles).toContain(".v2-hp-policy-card");
-    expect(styles).toContain(".v2-hp-policy-grid");
+    expect(styles).toContain(".v2-hp-strategy-system");
+    expect(styles).toContain(".v2-hp-section-grid");
   });
 
   it("keeps Polina reports and concentration risk grounded in account strategy data", () => {
     const labData = read("src/v2/lib/v2LabData.ts");
 
-    expect(labData).toContain("history: slot === \"wife\" ? state.history : mergeWithLocalSnapshots(state.history, slot)");
+    expect(labData).toContain("history: mergeWithLocalSnapshots(state.history, slot)");
     expect(labData).toContain("concentration.maxUtilization > 1");
     expect(labData).toContain("concentration.maxUtilization >= 0.85");
   });

@@ -44,6 +44,26 @@ function doGet(e) {
     return IC_PROGRESS_handleSetMaxLevel_(ss, e.parameter.level);
   }
 
+  if (accountId === "wife" && e && e.parameter && e.parameter.action === "syncWifeDailySnapshot") {
+    return IC_WIFE_API_json_(IC_WIFE_API.syncDailySnapshot());
+  }
+
+  if (accountId === "wife" && e && e.parameter && e.parameter.action === "recordWifeDailySnapshot") {
+    return IC_WIFE_API_json_(IC_WIFE_API.recordDailySnapshot(e.parameter));
+  }
+
+  if (accountId === "wife" && e && e.parameter && e.parameter.action === "setupWifeDailySnapshotTrigger") {
+    return IC_WIFE_API_json_(IC_WIFE_API.setupDailySnapshotTrigger());
+  }
+
+  if (accountId === "wife" && e && e.parameter && e.parameter.action === "testWifeMorningTelegram") {
+    return IC_WIFE_API_json_(testWifeMorningTelegram());
+  }
+
+  if (accountId === "wife" && e && e.parameter && e.parameter.action === "setupWifeMorningTelegram") {
+    return IC_WIFE_API_json_(setupWifeMorningTelegram());
+  }
+
   if (accountId === "wife") {
     try {
       return ContentService
@@ -101,6 +121,28 @@ function doGet(e) {
 
   return ContentService
     .createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function syncWifeDailySnapshot() {
+  return IC_WIFE_API.syncDailySnapshot();
+}
+
+function setupWifeDailySnapshotTrigger() {
+  return IC_WIFE_API.setupDailySnapshotTrigger();
+}
+
+function removeWifeDailySnapshotTrigger() {
+  return IC_WIFE_API.removeDailySnapshotTrigger();
+}
+
+function IC_WIFE_API_json_(result) {
+  return ContentService
+    .createTextOutput(JSON.stringify({
+      success: true,
+      snapshot: result,
+      updatedAt: new Date().toISOString()
+    }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 

@@ -88,6 +88,16 @@ function indexLabel(v: number) {
   return "Экстремальная жадность";
 }
 
+function antiFomoCopy(v: number) {
+  if (v < 50) return null;
+  return {
+    label: v >= 75 ? "крайняя жадность" : "жадность",
+    lead: v >= 75
+      ? "Рынок перегрет. Желание догнать рост сейчас — главный риск."
+      : "Зелёный рынок давит на психику. Это не отменяет план.",
+  };
+}
+
 function statusKind(row: FearGreedStrategyRule) {
   if (row.cooldownRemainingHours > 0) return "cooldown";
   if (row.isCurrent && row.isAvailable) return "available";
@@ -192,6 +202,8 @@ function modeColor(mode: FearGreedMode | string): string {
 export function V2DCAStrategy({ portfolio, strategy, onNavigate }: Props) {
   const idx = strategy.currentIndex;
   const idxColor = indexColor(idx);
+  const antiFomo = antiFomoCopy(idx);
+  const freeCash = portfolio.stableReserve || portfolio.deployableCapital || 0;
 
   const invested = portfolio.totalInvested || strategy.portfolioValue || 0;
   const active = buildFearGreedStrategy(idx, invested, strategy.rules ?? []);
@@ -226,6 +238,20 @@ export function V2DCAStrategy({ portfolio, strategy, onNavigate }: Props) {
           </div>
         </div>
       </div>
+
+      {antiFomo && (
+        <div className="v2-dca-fomo-card" role="note" aria-label="Анти-FOMO пауза">
+          <div className="v2-dca-fomo-head">
+            <span className="v2-dca-fomo-kicker">АНТИ-FOMO ПАУЗА</span>
+            <strong>{antiFomo.lead}</strong>
+          </div>
+          <div className="v2-dca-fomo-grid">
+            <span>Индекс: {idx} / 100 · {antiFomo.label}</span>
+            <span>Свободные деньги: {formatMoney(freeCash)} · это право ждать</span>
+            <span>Новая покупка только когда рынок вернётся в страх</span>
+          </div>
+        </div>
+      )}
 
       {/* ── Зоны — карточный вид ── */}
       <div className="v2-dca-zones">

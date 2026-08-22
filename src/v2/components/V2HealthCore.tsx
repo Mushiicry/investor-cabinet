@@ -19,6 +19,7 @@ type Props = {
   health: PortfolioHealth;
   healthInput: HealthInput;
   strategy?: InvestorStrategy;
+  fearGreedIndex?: number;
   onChipSelect?: (c: HealthComponent) => void;
   onNavigate?: (page: V2Page) => void;
 };
@@ -147,7 +148,7 @@ function V2RecommendationDetailModal({ rec, onClose }: { rec: CoreRec; onClose: 
   );
 }
 
-export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onNavigate }: Props) {
+export function V2HealthCore({ portfolio, health, healthInput, fearGreedIndex, onChipSelect, onNavigate }: Props) {
   const [selectedRec, setSelectedRec] = useState<CoreRec | null>(null);
   const components = health.components;
 
@@ -170,7 +171,7 @@ export function V2HealthCore({ portfolio, health, healthInput, onChipSelect, onN
   const actionable = diagnosisComponents.filter(isActionableHealthComponent);
   // Правая доска: сначала предупреждения/блокировки из карточек компонентов,
   // затем общие рекомендации по портфелю без дублей.
-  const recs = isEmpty ? [] : buildHealthBoardRecs(actionable, portfolio, diagnosisComponents, healthInput);
+  const recs = isEmpty ? [] : buildHealthBoardRecs(actionable, portfolio, diagnosisComponents, healthInput, { fearGreedIndex });
   const interp = isEmpty
     ? { text: "Подключите кошельки, чтобы увидеть анализ портфеля", color: "#55C7FF" }
     : healthInterpretation(health.healthFactor);

@@ -182,6 +182,10 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
 
   const fgVal = currentFearGreed != null ? Math.round(currentFearGreed) : null;
   const fgLabel = fgVal != null ? getFearGreedLabel(fgVal) : null;
+  const liveGreedOverride = fgVal != null && fgVal >= 50;
+  const strategyAction = liveGreedOverride
+    ? "Live-индекс в жадности: сценарий наблюдаем, покупку не ускоряем. Резерв держим до зоны страха."
+    : phaseDesc?.action;
 
   if (loading) return (
     <div className="v2-btc-card">
@@ -434,12 +438,12 @@ export function V2BtcDailyChart({ currentFearGreed }: { currentFearGreed?: numbe
         {/* ── PANEL 4: Strategy ── */}
         <div className="v2-bph-strategy-panel">
           <div className="v2-bph-strategy-header">ПОКУПКИ ПО СТРАТЕГИИ</div>
-          {phaseDesc && (
+          {strategyAction && (
             <div
               className="v2-bph-strategy-action"
-              style={{ color: `rgba(${zr},${zg},${zb},0.88)` }}
+              style={{ color: liveGreedOverride ? "rgba(90,239,141,0.90)" : `rgba(${zr},${zg},${zb},0.88)` }}
             >
-              {phaseDesc.action}
+              {strategyAction}
             </div>
           )}
           {daysToWindow > 0 && (

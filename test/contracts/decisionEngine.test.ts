@@ -110,6 +110,49 @@ describe("движок решений", () => {
     );
   });
 
+  it("добор BTC SHORT через Sell/Short не считается продажей больше текущей позиции", () => {
+    const decision = evaluateDecision(
+      { asset: "BTC SHORT", amountUsd: 20, category: "Фьючерсы", buyPrice: 79422, action: "sell" },
+      {
+        ...baseCtx,
+        positions: [
+          ...baseCtx.positions,
+          { asset: "BTC SHORT", category: "Фьючерсы", value: 14, avgEntry: 71018, invested: 15.39 },
+        ],
+        allocation: [
+          ...baseCtx.allocation,
+          { name: "Фьючерсы", value: 14 },
+        ],
+        futuresShare: 0.014,
+        futuresFreeMarginUsd: 62.2,
+        capitalBuckets: {
+          freeCashUsd: 485.32,
+          lockedReserveUsd: 210.24,
+          workCashUsd: 275.08,
+          futuresBudgetUsd: 0,
+          averagingBudgetUsd: 31.54,
+          spotBudgetUsd: 218.1,
+          metalsBudgetUsd: 68.34,
+          stocksBudgetUsd: 58.12,
+          cryptoSpotBudgetUsd: 218.1,
+          currentCryptoBlockUsd: 150,
+          plannedCryptoBlockUsd: 399.64,
+        },
+      },
+    );
+
+    expect(decision.status).toBe("РАЗРЕШЕНО");
+    expect(decision.reasons).not.toContainEqual(
+      expect.objectContaining({
+        text: "Сумма продажи выше текущей стоимости позиции",
+      }),
+    );
+    expect(decision.gate.status).toBe("ok");
+    expect(decision.gate.status !== "idle" && decision.gate.checks.find((check) => check.key === "capital")?.label).toBe("Свободная HL-маржа");
+    expect(decision.gate.status !== "idle" && decision.gate.checks.some((check) => check.label === "Карман фьючерсов")).toBe(false);
+    expect(decision.tradePreview?.averageEntryAfter).toBeGreaterThan(71018);
+  });
+
   it("даёт осторожность, если после покупки выживаемость уходит в предупреждение", () => {
     const decision = evaluateDecision(
       { asset: "ETH", amountUsd: 20, category: "Крипта" },
@@ -207,7 +250,7 @@ describe("движок решений", () => {
       expect.arrayContaining([
         expect.objectContaining({
           kind: "рыночная_психология",
-          text: "Рынок в эйфории — увеличение риска заблокировано до выхода из зоны перегрева.",
+          text: "Не увеличивай риск: рынок в эйфории, новые рисковые сделки заблокированы до выхода из перегрева.",
         }),
       ]),
     );

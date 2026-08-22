@@ -179,6 +179,9 @@
     height: auto;
     overflow: visible;
   }
+  .v2-hc-side {
+    height: auto;
+  }
   /* ГЛАВНАЯ причина «левого края»: у .v2-hero-reactor padding-right:50px
      (на десктопе — место под правый столбец). На мобиле убираем → блок
      здоровья, диагноз и РЕКОМЕНДАЦИИ занимают всю ширину, как распределение. */
@@ -1031,6 +1034,17 @@
 @media (max-width: 480px) {
   /* Карточка зоны в 2 строки: слева заголовок+диапазон, справа столбик
      «сумма над кнопкой» (решение владельца 2026-07-16). */
+  .v2-dca-fomo-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  .v2-dca-fomo-head strong {
+    text-align: left;
+  }
+  .v2-dca-fomo-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .v2-dca-zone { flex-wrap: nowrap; }
   .v2-dca-zone-info { flex: 1 0 auto; }
   .v2-dca-zone-right {
@@ -1214,6 +1228,24 @@
   .v2-rep-row > .v2-rep-type-chip::before,
   .v2-rep-row > .v2-rep-tag::before {
     display: none;
+  }
+  .v2-rep-trader-head {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .v2-rep-trader-head > .v2-rep-cell-date,
+  .v2-rep-trader-head > button {
+    grid-column: 1 / -1;
+  }
+  .v2-rep-trader-form {
+    grid-template-columns: 1fr;
+  }
+  .v2-rep-trader-form label.is-wide,
+  .v2-rep-trader-form-foot {
+    grid-column: auto;
+  }
+  .v2-rep-trader-form-foot {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

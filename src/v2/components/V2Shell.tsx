@@ -41,6 +41,12 @@ import { evaluateBehavior } from "../lib/behaviorEngine";
 import { getMarketPsychology } from "../lib/marketPsychology";
 import { buildTradeCandidateFromSignal, type TradeCandidate } from "../lib/tradeCandidate";
 import { buildCapitalBuckets } from "../lib/capitalBuckets";
+import {
+  readTraderJournal,
+  upsertTraderJournalEntry,
+  type TraderJournalDraft,
+  type TraderJournalEntry,
+} from "../lib/traderJournal";
 
 type Props = {
   data: V2LabData;
@@ -232,9 +238,17 @@ function historyTime(rawDate: string) {
   return key ? Date.parse(`${key}T00:00:00`) : 0;
 }
 
+function previousDateKey(todayKey: string) {
+  const parsed = Date.parse(`${todayKey}T00:00:00`);
+  if (!Number.isFinite(parsed)) return "";
+  const prev = new Date(parsed - 24 * 60 * 60 * 1000);
+  return localDateKey(prev);
+}
+
 function findPreviousDailySnapshot(history: V2LabData["history"], todayKey: string) {
+  const targetKey = previousDateKey(todayKey);
   return [...history]
-    .filter((point) => point.portfolioValue > 0 && historyDateKey(point.date) < todayKey)
+    .filter((point) => point.portfolioValue > 0 && historyDateKey(point.date) === targetKey)
     .sort((a, b) => historyTime(a.date) - historyTime(b.date))
     .at(-1) ?? null;
 }
@@ -436,7 +450,7 @@ function buildAssistantPageContext({
     name: "Стратегия по индексу страха и жадности",
     currentIndex: data.fearGreedStrategy.currentIndex,
     currentZone: DCA_MODE_LABELS[data.fearGreedStrategy.currentMode] ?? data.fearGreedStrategy.currentMode,
-    principle: "Покупаем только в зоне страха, раз в неделю, фиксированным процентом от вложенного капитала. Никакой жадной торговли.",
+    principle: "Покупаем только в зоне страха, раз в неделю, фиксированным процентом от вложенного капитала. При жадности 50-100 включается анти-FOMO пауза: не догонять рост, свободные деньги считать правом ждать, а не ошибкой.",
     rules: data.fearGreedStrategy.rules.map((rule) => ({
       zone: DCA_MODE_LABELS[rule.mode] ?? rule.label,
       indexRange: rule.range,
@@ -447,7 +461,7 @@ function buildAssistantPageContext({
       isCurrent: rule.isCurrent,
       state: DCA_STATE_LABELS[rule.status] ?? "",
     })),
-    wordingRule: "Объясняй DCA по-русски: индекс 20-29 = покупка на 1%, 15-19 = 1.5%, 0-14 = 2%, 30-100 = наблюдаем. Не используй слова cautious, balanced, risk-gate, blockers.",
+    wordingRule: "Объясняй DCA по-русски: индекс 20-29 = покупка на 1%, 15-19 = 1.5%, 0-14 = 2%, 30-100 = наблюдаем. При 50-100 сначала сними FOMO: прибыль уже зафиксирована, резерв дает опциональность, новая покупка только в страхе. Не используй слова cautious, balanced, risk-gate, blockers.",
   };
   const visibleHealthComponents = health.components.map((component) => ({
     key: component.v2Key ?? component.key,
@@ -588,6 +602,9 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
   const [decisionJournal, setDecisionJournal] = useState<DecisionJournalEntry[]>(() =>
     readDecisionJournal(profileKeySuffix),
   );
+  const [traderJournal, setTraderJournal] = useState<TraderJournalEntry[]>(() =>
+    readTraderJournal(profileKeySuffix),
+  );
 
   // При смене аккаунта подгружаем его профиль (или пустой у нового пользователя).
   useEffect(() => {
@@ -595,6 +612,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     setProfileName(localStorage.getItem(nameKey)   ?? "");
     setProfileAvatar(localStorage.getItem(avatarKey) ?? "");
     setDecisionJournal(readDecisionJournal(profileKeySuffix));
+    setTraderJournal(readTraderJournal(profileKeySuffix));
   }, [nameKey, avatarKey, profileKeySuffix]);
   const [selectedChip, setSelectedChip] = useState<HealthComponent | null>(null);
   const [capitalOpen, setCapitalOpen] = useState(false);
@@ -643,6 +661,10 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
 
   function handleDeleteDecision(id: string) {
     setDecisionJournal((current) => removeDecisionJournalEntry(current, id, profileKeySuffix));
+  }
+
+  function handleSaveTradeReview(draft: TraderJournalDraft) {
+    setTraderJournal((current) => upsertTraderJournalEntry(current, draft, profileKeySuffix));
   }
 
   const marketPsychology = useMemo(
@@ -951,9 +973,11 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             positions={data.positions}
             realizedPnlUsd={data.portfolio.realizedPnlUsd}
             decisionJournal={decisionJournal}
+            traderJournal={traderJournal}
             behavior={behavior}
             strategy={data.strategy}
             onDeleteDecision={handleDeleteDecision}
+            onSaveTradeReview={handleSaveTradeReview}
           />
         ) : page === "portfolio" ? (
           <V2PortfolioPage
@@ -976,6 +1000,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             healthInput={behaviorHealthInput}
             strategy={data.strategy}
             dna={data.dna}
+            fearGreedIndex={data.fearGreedStrategy.currentIndex}
             interestSignals={data.signals?.interestList?.length
               ? data.signals.interestList
               : data.signals?.interest
@@ -1026,6 +1051,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
               health={behaviorHealth}
               healthInput={behaviorHealthInput}
               strategy={data.strategy}
+              fearGreedIndex={data.fearGreedStrategy.currentIndex}
               onChipSelect={setSelectedChip}
               onNavigate={onNavigate}
             />

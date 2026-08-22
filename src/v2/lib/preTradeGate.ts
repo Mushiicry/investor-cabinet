@@ -316,6 +316,8 @@ export type GateContext = {
   investorProfile?: InvestorProfile;
   /** Расклад свободных денег по карманам риска. */
   capitalBuckets?: CapitalBuckets;
+  /** Свободная маржа на Hyperliquid, уже доступная для фьючерсной сделки. */
+  futuresFreeMarginUsd?: number;
   /** Поведенческий режим рынка от живого F&G. Не меняет Health, но влияет на допуск сделки. */
   marketPsychology?: Pick<MarketPsychology, "riskMode" | "gate" | "stanceLabel">;
 };
@@ -373,7 +375,10 @@ export type GateVerdict =
 const clampMin0 = (n: number) => (n > 0 ? n : 0);
 const EPS = 1e-6;
 
-function categoryBudget(category: string, buckets?: CapitalBuckets): { label: string; value: number; note?: string } | null {
+function categoryBudget(
+  category: string,
+  buckets?: CapitalBuckets,
+): { label: string; value: number; note?: string } | null {
   if (!buckets) return null;
   if (category === CRYPTO_CATEGORY) {
     return {
@@ -384,7 +389,7 @@ function categoryBudget(category: string, buckets?: CapitalBuckets): { label: st
   }
   if (category === METALS_CATEGORY) return { label: "Карман металлов", value: buckets.metalsBudgetUsd };
   if (category === STOCKS_CATEGORY) return { label: "Карман акций", value: buckets.stocksBudgetUsd };
-  if (category === FUTURES_CATEGORY) return { label: "Карман фьючерсов", value: buckets.futuresBudgetUsd };
+  if (category === FUTURES_CATEGORY) return null;
   return null;
 }
 
@@ -488,6 +493,7 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   const strategy = ctx.investorStrategy ?? MAIN_INVESTOR_STRATEGY;
   const profile = ctx.investorProfile ?? MAIN_INVESTOR_PROFILE;
   const category = resolveCategory(input, ctx);
+  const isFuturesAsset = category === FUTURES_CATEGORY;
   const checks: GateCheck[] = [];
 
   // ── Капитал: единый пул с фазовым полом резерва ───────────────
@@ -496,16 +502,17 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
   // 30% (подушки нет), в агрессивном окне открывается до 10%. Ниже фазового
   // пола — блок. reserveFloorShare приходит из marketPhases (дефолт — 10%).
   const phaseFloor = ctx.reserveFloorShare ?? strategy.reserveFloorShare;
-  const greenMax = clampMin0(ctx.spotDeployable);
+  const futuresFreeMargin = clampMin0(ctx.futuresFreeMarginUsd ?? 0);
+  const greenMax = isFuturesAsset ? futuresFreeMargin : clampMin0(ctx.spotDeployable);
   const phaseFloorMax = clampMin0(ctx.stableReserve - phaseFloor * reserveBase);
-  const hardMax = Math.max(greenMax, phaseFloorMax);
+  const hardMax = isFuturesAsset ? futuresFreeMargin : Math.max(greenMax, phaseFloorMax);
 
   const inGreen = amount <= greenMax + EPS;
   const inCushion = !inGreen && amount <= hardMax + EPS;
 
   checks.push({
     key: "capital",
-    label: "Капитал для добора",
+    label: isFuturesAsset ? "Свободная HL-маржа" : "Капитал для добора",
     ok: inGreen,
     severity: inCushion ? "warn" : "block",
     before: greenMax,
@@ -514,6 +521,8 @@ export function evaluateTrade(input: TradeInput, ctx: GateContext): GateVerdict 
     isShare: false,
     note: inGreen
       ? undefined
+      : isFuturesAsset
+        ? `Для фьючерсной сделки нужна свободная HL-маржа. Сейчас доступно ${Math.round(futuresFreeMargin)}$.`
       : inCushion
         ? `Заходишь в подушку на ${Math.round(amount - greenMax)}$ — резерв опустится ниже цели, но выше пола фазы ${Math.round(phaseFloor * 100)}%.`
         : `Пробивает пол резерва фазы ${Math.round(phaseFloor * 100)}% — так нельзя.`,

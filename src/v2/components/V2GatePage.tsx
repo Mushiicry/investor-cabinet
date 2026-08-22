@@ -117,6 +117,14 @@ export function V2GatePage({
   const [setup, setSetup] = useState(candidate ? "Лимитный ордер" : SETUPS[0]);
   const [emotion, setEmotion] = useState(EMOTIONS[0]);
   const [journalNote, setJournalNote] = useState(candidate ? `${candidate.label}. Источник: лимитный ордер.` : "");
+  const [invalidation, setInvalidation] = useState("");
+  const [exitPlan, setExitPlan] = useState("");
+  const [orderPlan, setOrderPlan] = useState(() => candidate
+    ? `${candidate.asset}: лимит ${price(candidate.price)}, сумма ${usd(candidate.amountUsd)}`
+    : "");
+  const [priceAndAmountChecked, setPriceAndAmountChecked] = useState(false);
+  const [alertIsNotOrderConfirmed, setAlertIsNotOrderConfirmed] = useState(false);
+  const [planNotFomoConfirmed, setPlanNotFomoConfirmed] = useState(false);
   const [savedMarker, setSavedMarker] = useState<{ signature: string; savedAt: string } | null>(null);
   const [executionMarker, setExecutionMarker] = useState<{ signature: string; openedAt: string } | null>(null);
 
@@ -133,6 +141,12 @@ export function V2GatePage({
     setSetup(SETUPS[0]);
     setEmotion(EMOTIONS[0]);
     setJournalNote("");
+    setInvalidation("");
+    setExitPlan("");
+    setOrderPlan("");
+    setPriceAndAmountChecked(false);
+    setAlertIsNotOrderConfirmed(false);
+    setPlanNotFomoConfirmed(false);
     setSavedMarker(null);
     setExecutionMarker(null);
     onClearCandidate?.();
@@ -207,6 +221,7 @@ export function V2GatePage({
       investorStrategy: strategy,
       investorProfile: profile,
       futuresShare,
+      futuresFreeMarginUsd: portfolio.futuresDeployable,
       capitalBuckets,
       marketPsychology,
       assetQuality: activeAssetQuality,
@@ -251,6 +266,10 @@ export function V2GatePage({
 
   const amountNum = Number(amount);
   const buyPriceNum = Number(buyPrice);
+  const isShortIncrease =
+    tradeAction === "sell" &&
+    selectedPosition?.category === FUTURES_CATEGORY &&
+    /\bSHORT\b/i.test(selectedPosition.asset);
 
   const decision = useMemo(
     () =>
@@ -270,13 +289,23 @@ export function V2GatePage({
     setup,
     emotion,
     journalNote,
+    invalidation,
+    exitPlan,
+    orderPlan,
+    priceAndAmountChecked,
+    alertIsNotOrderConfirmed,
+    planNotFomoConfirmed,
     decision.status,
     candidate?.id ?? "",
   ].join("|");
   const journalSaved = savedMarker?.signature === decisionSignature;
   const executionOpened = executionMarker?.signature === decisionSignature;
   const isBlocked = decision.status === "БЛОКИРОВКА" || decision.status === "ЖДАТЬ";
-  const finalActionText = tradeAction === "sell" ? "Перейти к продаже" : "Перейти к покупке";
+  const finalActionText = isShortIncrease
+    ? "Перейти к добору шорта"
+    : tradeAction === "sell"
+      ? "Перейти к продаже"
+      : "Перейти к покупке";
 
   // Капитал под спот: зелёный лимит и потолок до пола стратегии/фазы.
   const greenMax = Math.max(gateSpotDeployable, 0);
@@ -313,7 +342,20 @@ export function V2GatePage({
   const hasDisciplineBlock = decision.reasons.some((reason) => reason.kind === "дисциплина");
   const hasMarketPsychologyBlock = decision.reasons.some((reason) => reason.kind === "рыночная_психология");
   const blockReasons = decision.status === "БЛОКИРОВКА" ? decision.reasons : [];
-  const canSaveDecision = Boolean(onSaveDecision) && decision.status !== "ЖДАТЬ" && Boolean(resolvedAsset);
+  const preparationChecks = [
+    { label: "Указана сумма больше нуля", ok: amountNum > 0 },
+    { label: "Указана цена сделки", ok: buyPriceNum > 0 },
+    { label: "Записан тезис решения", ok: Boolean(journalNote.trim()) },
+    { label: "Записан сценарий отмены", ok: Boolean(invalidation.trim()) },
+    { label: "Записан план выхода", ok: Boolean(exitPlan.trim()) },
+    { label: "Записан план ордера", ok: Boolean(orderPlan.trim()) },
+    { label: "Цена и сумма перепроверены", ok: priceAndAmountChecked },
+    { label: "Алерт не считается ордером", ok: alertIsNotOrderConfirmed },
+    { label: "Решение не продиктовано FOMO", ok: planNotFomoConfirmed },
+  ];
+  const missingPreparation = preparationChecks.filter((item) => !item.ok);
+  const preparationComplete = missingPreparation.length === 0;
+  const canSaveDecision = Boolean(onSaveDecision) && decision.status !== "ЖДАТЬ" && Boolean(resolvedAsset) && preparationComplete;
   const saveDecision = () => {
     if (!onSaveDecision || !canSaveDecision) return;
     onSaveDecision({
@@ -326,6 +368,12 @@ export function V2GatePage({
       setup,
       emotion,
       note: journalNote.trim(),
+      invalidation: invalidation.trim(),
+      exitPlan: exitPlan.trim(),
+      orderPlan: orderPlan.trim(),
+      priceAndAmountChecked,
+      alertIsNotOrderConfirmed,
+      planNotFomoConfirmed,
     });
     setSavedMarker({ signature: decisionSignature, savedAt: new Date().toISOString() });
   };
@@ -333,7 +381,9 @@ export function V2GatePage({
   return (
     <div className="v2-gate-page">
       <div className="v2-gate-header">
-        <span className="v2-gate-title">{tradeAction === "sell" ? "Проверка продажи" : "Проверка покупки"}</span>
+        <span className="v2-gate-title">
+          {isShortIncrease ? "Проверка добора шорта" : tradeAction === "sell" ? "Проверка продажи" : "Проверка покупки"}
+        </span>
         <span className="v2-gate-sub">
           Фаза: {phase.label} · резерв ≥ {pct(effectiveReserveFloorShare)} · крипта ≤{" "}
           {pct(effectiveCryptoMaxShare)}
@@ -454,7 +504,9 @@ export function V2GatePage({
         )}
 
         <label className="v2-gate-field">
-          <span className="v2-gate-label">{tradeAction === "sell" ? "Сумма продажи, $" : "Сумма покупки, $"}</span>
+          <span className="v2-gate-label">
+            {isShortIncrease ? "Сумма добора шорта, $" : tradeAction === "sell" ? "Сумма продажи, $" : "Сумма покупки, $"}
+          </span>
           <input
             className="v2-gate-input"
             type="number"
@@ -466,7 +518,9 @@ export function V2GatePage({
           />
         </label>
         <label className="v2-gate-field">
-          <span className="v2-gate-label">{tradeAction === "sell" ? "Цена продажи" : "Цена покупки"}</span>
+          <span className="v2-gate-label">
+            {isShortIncrease ? "Цена входа шорта" : tradeAction === "sell" ? "Цена продажи" : "Цена покупки"}
+          </span>
           <input
             className="v2-gate-input"
             type="number"
@@ -552,13 +606,13 @@ export function V2GatePage({
               <div className="v2-gate-average">
                 <div className="v2-gate-average-title">Калькулятор усреднения</div>
                 <div className="v2-gate-average-grid">
-                  <span>Средняя сейчас</span>
+                  <span>{isShortIncrease ? "Средняя шорта сейчас" : "Средняя сейчас"}</span>
                   <strong>{price(decision.tradePreview.averageEntryBefore)}</strong>
-                  <span>Цена покупки</span>
+                  <span>{isShortIncrease ? "Цена добора шорта" : "Цена покупки"}</span>
                   <strong>{price(decision.tradePreview.buyPrice)}</strong>
                   <span>Количество добавится</span>
                   <strong>{decision.tradePreview.addedQuantity.toFixed(6)}</strong>
-                  <span>Новая средняя</span>
+                  <span>{isShortIncrease ? "Новая средняя шорта" : "Новая средняя"}</span>
                   <strong>{price(decision.tradePreview.averageEntryAfter)}</strong>
                 </div>
               </div>
@@ -566,7 +620,9 @@ export function V2GatePage({
 
             {!decision.tradePreview && amountNum > 0 && (
               <div className="v2-gate-average is-muted">
-                {tradeAction === "sell"
+                {isShortIncrease
+                  ? "Шорт-добор усредняет среднюю входа по новому notional. Это не закрытие текущей позиции."
+                  : tradeAction === "sell"
                   ? "Продажа не пересчитывает среднюю входа. После сделки учёт должен уменьшить cost basis по старой средней."
                   : "Введите цену покупки — система рассчитает новую среднюю входа."}
               </div>
@@ -689,20 +745,76 @@ export function V2GatePage({
                 </label>
               </div>
               <label className="v2-gate-journal-field is-wide">
-                <span>Заметка</span>
-                <input
+                <span>Тезис решения</span>
+                <textarea
                   value={journalNote}
                   onChange={(event) => setJournalNote(event.target.value)}
-                  placeholder="Почему это решение принимается сейчас"
+                  placeholder="Почему сделка нужна именно сейчас и на каком правиле стратегии основана"
                 />
               </label>
+              <label className="v2-gate-journal-field is-wide">
+                <span>Сценарий отмены</span>
+                <textarea
+                  value={invalidation}
+                  onChange={(event) => setInvalidation(event.target.value)}
+                  placeholder="При каком условии идея перестаёт быть действительной"
+                />
+              </label>
+              <label className="v2-gate-journal-field is-wide">
+                <span>План выхода</span>
+                <textarea
+                  value={exitPlan}
+                  onChange={(event) => setExitPlan(event.target.value)}
+                  placeholder="Тейки, частичное или полное закрытие, действие после выхода"
+                />
+              </label>
+              <label className="v2-gate-journal-field is-wide">
+                <span>План ордера</span>
+                <textarea
+                  value={orderPlan}
+                  onChange={(event) => setOrderPlan(event.target.value)}
+                  placeholder="Биржа, тип ордера, цена и сумма. Алерт сам по себе ордером не является"
+                />
+              </label>
+              <div className="v2-gate-required-checks">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={priceAndAmountChecked}
+                    onChange={(event) => setPriceAndAmountChecked(event.target.checked)}
+                  />
+                  <span>Цена и сумма перепроверены</span>
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={alertIsNotOrderConfirmed}
+                    onChange={(event) => setAlertIsNotOrderConfirmed(event.target.checked)}
+                  />
+                  <span>Понимаю: алерт не означает, что ордер выставлен</span>
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={planNotFomoConfirmed}
+                    onChange={(event) => setPlanNotFomoConfirmed(event.target.checked)}
+                  />
+                  <span>Решение соответствует плану и не принимается из-за FOMO</span>
+                </label>
+              </div>
+              {!preparationComplete && (
+                <div className="v2-gate-required-status">
+                  <strong>Допуск закрыт</strong>
+                  <span>{missingPreparation.map((item) => item.label).join(" · ")}</span>
+                </div>
+              )}
               <button
                 type="button"
                 className="v2-gate-save"
                 disabled={!canSaveDecision}
                 onClick={saveDecision}
               >
-                Сохранить решение
+                {preparationComplete ? "Сохранить решение" : "Заполните обязательный план"}
               </button>
               {savedMarker?.signature === decisionSignature && (
                 <div className="v2-gate-save-note">
@@ -719,7 +831,9 @@ export function V2GatePage({
                     ? "Сделка заблокирована"
                     : journalSaved
                       ? finalActionText
-                      : "Сначала сохранить решение"}
+                      : preparationComplete
+                        ? "Сначала сохранить решение"
+                        : "Сначала заполнить обязательный план"}
                 </button>
                 <span>
                   {isBlocked

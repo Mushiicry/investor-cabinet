@@ -83,6 +83,12 @@ const draft: DecisionJournalDraft = {
   setup: "ДСА добор",
   emotion: "Спокойно",
   note: "Плановая проверка",
+  invalidation: "Сценарий отменяется при сломе поддержки",
+  exitPlan: "Тейки по плану, остаток определяется заранее",
+  orderPlan: "Лимитный ордер $25 по 1516",
+  priceAndAmountChecked: true,
+  alertIsNotOrderConfirmed: true,
+  planNotFomoConfirmed: true,
 };
 
 describe("журнал решений", () => {
@@ -100,6 +106,12 @@ describe("журнал решений", () => {
         status: "РАЗРЕШЕНО",
         setup: "ДСА добор",
         emotion: "Спокойно",
+        invalidation: "Сценарий отменяется при сломе поддержки",
+        exitPlan: "Тейки по плану, остаток определяется заранее",
+        orderPlan: "Лимитный ордер $25 по 1516",
+        priceAndAmountChecked: true,
+        alertIsNotOrderConfirmed: true,
+        planNotFomoConfirmed: true,
         healthBefore: 80,
         healthAfter: 78,
         healthDelta: -2,

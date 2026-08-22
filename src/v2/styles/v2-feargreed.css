@@ -629,6 +629,59 @@
   text-transform: uppercase;
 }
 
+/* ── Anti-FOMO pause ── */
+.v2-dca-fomo-card {
+  margin: 10px 10px 0;
+  padding: 11px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(90, 239, 141, 0.22);
+  background:
+    linear-gradient(135deg, rgba(10, 42, 32, 0.44), rgba(3, 12, 24, 0.72)),
+    radial-gradient(circle at 100% 0%, rgba(90, 239, 141, 0.14), transparent 46%);
+  box-shadow: inset 0 1px 0 rgba(180, 255, 215, 0.07);
+}
+
+.v2-dca-fomo-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v2-dca-fomo-kicker {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: rgba(90, 239, 141, 0.88);
+}
+
+.v2-dca-fomo-head strong {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(232, 248, 255, 0.94);
+  text-align: right;
+}
+
+.v2-dca-fomo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.v2-dca-fomo-grid span {
+  min-width: 0;
+  padding: 6px 7px;
+  border-radius: 7px;
+  border: 1px solid rgba(90, 239, 141, 0.13);
+  background: rgba(2, 10, 20, 0.42);
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: rgba(190, 222, 235, 0.78);
+}
+
 /* ── Zone cards ── */
 .v2-dca-zones {
   display: flex;

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  actionableLimitSignalsSummary,
   assessSignal,
   assessSignalNotification,
   buildSignalNotificationPlan,
   countSignalNotificationsToday,
   getSignalDistance,
+  isActiveActionableLimitSignal,
   groupByAsset,
   isPlannedLimitOrder,
   plannedLimitOrdersSummary,
@@ -167,6 +169,28 @@ describe("лимитные ордера", () => {
     expect(isPlannedLimitOrder(signal({ action: "Сократить позицию", amountUsd: 20 }))).toBe(false);
     expect(isPlannedLimitOrder(signal({ action: "Купить", amountUsd: 0 }))).toBe(false);
     expect(isPlannedLimitOrder(signal({ action: "Купить", amountUsd: 20 }))).toBe(true);
+  });
+
+  it("считает активные buy/sell уровни, которые требуют биржевой лимитки", () => {
+    const summary = actionableLimitSignalsSummary([
+      signal({ id: "eth-buy", asset: "ETH", action: "Купить", amountUsd: 25 }),
+      signal({ id: "btc-short-sell", asset: "BTC SHORT", action: "Продать", amountUsd: 20 }),
+      signal({ id: "btc-done", asset: "BTC", action: "Купить", amountUsd: 100, status: "TRIGGERED" }),
+      signal({ id: "ton-check", asset: "TON", action: "Купить", amountUsd: 40, status: "CHECK" }),
+      signal({ id: "unknown", asset: "GRAM", action: "Ждать", amountUsd: 30 }),
+    ]);
+
+    expect(summary.count).toBe(2);
+    expect(summary.totalUsd).toBe(45);
+    expect(summary.buyCount).toBe(1);
+    expect(summary.sellCount).toBe(1);
+    expect(summary.assets).toEqual(["ETH", "BTC SHORT"]);
+  });
+
+  it("не считает снятый или неизвестный сигнал требованием к биржевой лимитке", () => {
+    expect(isActiveActionableLimitSignal(signal({ action: "Купить", status: "CHECK" }))).toBe(false);
+    expect(isActiveActionableLimitSignal(signal({ action: "Ждать", status: "ARMED" }))).toBe(false);
+    expect(isActiveActionableLimitSignal(signal({ action: "Продать", status: "ARMED" }))).toBe(true);
   });
 });
 

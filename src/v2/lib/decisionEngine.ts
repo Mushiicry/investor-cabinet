@@ -77,6 +77,16 @@ export type DecisionResult = {
   survivalAfter?: SurvivalResult;
 };
 
+function isShortIncrease(input: DecisionTradeInput, ctx: DecisionContext): boolean {
+  if (input.action !== "sell") return false;
+  const position = ctx.positions.find((p) => p.asset.trim().toUpperCase() === input.asset.trim().toUpperCase());
+  return Boolean(
+    position &&
+      position.category === FUTURES_CATEGORY &&
+      /\bSHORT\b/i.test(position.asset),
+  );
+}
+
 export type TradePreview = {
   asset: string;
   amountUsd: number;
@@ -321,7 +331,7 @@ function recommendedAction(
 }
 
 export function evaluateDecision(input: DecisionTradeInput, ctx: DecisionContext): DecisionResult {
-  if (input.action === "sell") {
+  if (input.action === "sell" && !isShortIncrease(input, ctx)) {
     const amountUsd = Number(input.amountUsd);
     const position = ctx.positions.find((p) => p.asset.trim().toUpperCase() === input.asset.trim().toUpperCase());
     if (!input.asset || !Number.isFinite(amountUsd) || amountUsd <= 0) {

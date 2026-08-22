@@ -242,6 +242,62 @@ describe("investor serverless auth proxy", () => {
     );
   });
 
+  it("forwards wife daily snapshot action through the authenticated wife proxy", async () => {
+    setProxyEnv();
+    globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.includes("/auth/v1/user")) {
+        return Response.json({ email: "wife@example.com" });
+      }
+
+      return Response.json({ success: true, snapshot: { date: "20.08.2026" } });
+    }) as typeof fetch;
+    const res = mockRes();
+
+    await proxyInvestorApi(
+      mockReq("Bearer token", "/api/investor-wife?action=syncWifeDailySnapshot"),
+      res,
+      "wife",
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body ?? "{}")).toMatchObject({ success: true });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+    expect(String(vi.mocked(globalThis.fetch).mock.calls[1][0])).toBe(
+      "https://apps-script.example/main?accountId=wife&action=syncWifeDailySnapshot",
+    );
+  });
+
+  it("forwards wife recorded snapshot values through the authenticated wife proxy", async () => {
+    setProxyEnv();
+    globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+
+      if (url.includes("/auth/v1/user")) {
+        return Response.json({ email: "wife@example.com" });
+      }
+
+      return Response.json({ success: true, snapshot: { date: "20.08.2026" } });
+    }) as typeof fetch;
+    const res = mockRes();
+
+    await proxyInvestorApi(
+      mockReq(
+        "Bearer token",
+        "/api/investor-wife?action=recordWifeDailySnapshot&portfolioValue=8703.09&invested=10188.28&pnl=-1485.19&pnlPct=-0.1458&reserve=653.28&positionsCount=6",
+      ),
+      res,
+      "wife",
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body ?? "{}")).toMatchObject({ success: true });
+    expect(String(vi.mocked(globalThis.fetch).mock.calls[1][0])).toBe(
+      "https://apps-script.example/main?accountId=wife&action=recordWifeDailySnapshot&portfolioValue=8703.09&invested=10188.28&pnl=-1485.19&pnlPct=-0.1458&reserve=653.28&positionsCount=6",
+    );
+  });
+
   it("forwards DNA answer POST through the authenticated investor proxy", async () => {
     setProxyEnv();
     globalThis.fetch = vi.fn(async (input: string | URL | Request) => {

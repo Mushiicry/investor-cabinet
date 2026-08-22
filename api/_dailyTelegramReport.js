@@ -5,14 +5,35 @@ const MOSCOW_TIME_ZONE = "Europe/Moscow";
 const MAX_REPORT_POSITIONS = 12;
 const MIN_REPORT_POSITION_VALUE_USD = 1;
 const TELEGRAM_API_BASE = "https://api.telegram.org";
-const RESERVE_TARGET_MAX = 0.6;
-const CRYPTO_POSITION_LIMITS = {
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MAIN_CRYPTO_POSITION_LIMITS = {
   BTC: 0.2,
   ETH: 0.35,
   TON: 0.1,
   SOL: 0.1,
   BNB: 0.1,
   GRAM: 0.1,
+};
+const WIFE_CRYPTO_POSITION_LIMITS = {
+  BTC: 0.1,
+  ETH: 0.75,
+  TON: 0.1,
+  GRAM: 0.1,
+  SOL: 0.05,
+};
+const ACCOUNT_RULES = {
+  main: {
+    cryptoMaxShare: 0.6,
+    reserveFloorShare: 0.1,
+    reserveBandMaxShare: 0.6,
+    cryptoPositionLimits: MAIN_CRYPTO_POSITION_LIMITS,
+  },
+  wife: {
+    cryptoMaxShare: 0.75,
+    reserveFloorShare: 0.1,
+    reserveBandMaxShare: 0.6,
+    cryptoPositionLimits: WIFE_CRYPTO_POSITION_LIMITS,
+  },
 };
 
 const isRecord = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -83,6 +104,15 @@ const moscowDateKey = (date) => {
   return `${parts.year}-${parts.month}-${parts.day}`;
 };
 
+const previousMoscowDateKey = (date) => {
+  const parts = moscowDateParts(date);
+  const prev = new Date(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)) - DAY_MS);
+  const year = prev.getUTCFullYear();
+  const month = String(prev.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(prev.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const parseHistoryDate = (value) => {
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
   const raw = compactText(value);
@@ -102,13 +132,13 @@ const parseHistoryDate = (value) => {
 
 const findPreviousDailySnapshot = (history, now) => {
   if (!Array.isArray(history)) return null;
-  const todayKey = moscowDateKey(now);
+  const targetKey = previousMoscowDateKey(now);
 
   return history
     .map((point) => {
       const date = parseHistoryDate(point?.date);
       const value = toNumber(point?.portfolioValue);
-      if (!date || value <= 0 || moscowDateKey(date) >= todayKey) return null;
+      if (!date || value <= 0 || moscowDateKey(date) !== targetKey) return null;
       return { date, portfolioValue: value };
     })
     .filter(Boolean)
@@ -170,7 +200,14 @@ const isCryptoPosition = (position) => compactText(position?.category).toLowerCa
 
 const assetBaseSymbol = (asset) => compactText(asset).toUpperCase().split(/\s+/)[0];
 
-const resolveReportHealth = ({ overview, computedHealth }) => {
+const resolveReportHealth = ({ overview, computedHealth, preferComputed = false }) => {
+  if (preferComputed && computedHealth?.healthFactor > 0) {
+    return {
+      value: Math.round(computedHealth.healthFactor),
+      line: `4. Health Factor: ${Math.round(computedHealth.healthFactor)}/100.`,
+    };
+  }
+
   const health = toNumber(overview.health);
   if (health > 0 && health <= 100) {
     return {
@@ -192,14 +229,105 @@ const resolveReportHealth = ({ overview, computedHealth }) => {
   };
 };
 
-const buildLargestPositionNote = (positions) => {
+const fearGreedMood = (index) => {
+  if (index === null) return "данные пока не получены";
+  if (index < 25) return "крайний страх";
+  if (index < 45) return "на рынке преобладает страх";
+  if (index <= 55) return "нейтральное настроение";
+  if (index <= 75) return "на рынке преобладает жадность";
+  return "крайняя жадность";
+};
+
+const wifeHealthSummary = (health) => {
+  if (health === null) return "Оценка здоровья временно недоступна.";
+  if (health < 40) return "Портфель требует внимания к резерву и концентрации.";
+  if (health < 70) return "Портфелю нужен контроль риска и постепенное восстановление резерва.";
+  return "Портфель находится в устойчивом состоянии.";
+};
+
+const buildWifeRecommendations = ({ positions, portfolioValue, reserve, risk }) => {
+  const recommendations = [];
+  const rules = ACCOUNT_RULES.wife;
+  const reserveShare = normalizeShareFraction(risk.reserveShare) || (portfolioValue > 0 ? reserve / portfolioValue : 0);
+  const cryptoPositions = positions.filter((position) => !position.isCash && isCryptoPosition(position));
+  const cryptoValue = cryptoPositions.reduce((sum, position) => sum + position.currentValue, 0);
+  const cryptoShare = portfolioValue > 0 ? cryptoValue / portfolioValue : 0;
+  const eth = cryptoPositions.find((position) => assetBaseSymbol(position.asset) === "ETH");
+  const ethCryptoShare = eth && cryptoValue > 0 ? eth.currentValue / cryptoValue : 0;
+
+  if (reserveShare < rules.reserveFloorShare) {
+    recommendations.push(`Восстановить резерв минимум до 10%: сейчас ${formatPctPlain(reserveShare * 100)}.`);
+  }
+  if (cryptoShare > rules.cryptoMaxShare) {
+    recommendations.push(`Не увеличивать долю крипты: сейчас ${formatPctPlain(cryptoShare * 100)} при лимите 75%.`);
+  }
+  if (ethCryptoShare > WIFE_CRYPTO_POSITION_LIMITS.ETH) {
+    recommendations.push(`Обратить внимание на концентрацию ETH: ${formatPctPlain(ethCryptoShare * 100, 1)} крипто-блока при лимите 75%.`);
+  }
+
+  return recommendations.length
+    ? recommendations.slice(0, 3)
+    : ["Сохранять текущий план и не увеличивать риск без отдельного решения."];
+};
+
+const buildWifeMorningReport = ({
+  overview,
+  risk,
+  positions,
+  investmentPositions,
+  portfolioValue,
+  reserve,
+  previousSnapshot,
+  dailyPnlUsd,
+  dailyPnlPct,
+  fearGreed,
+  health,
+}) => {
+  const positionLines = investmentPositions.slice(0, 6).map((position) => {
+    const marker = position.pnl < 0 ? "❤️‍🩹" : "🍀";
+    return `${position.asset}: ${formatPctValue(position.pnlPct)} / ${formatSignedUsd(position.pnl)} ${marker}`;
+  });
+  const recommendations = buildWifeRecommendations({ positions, portfolioValue, reserve, risk });
+
+  const lines = [
+    "Доброе утро, Полина!",
+    "",
+    `Сегодня ваш портфель оценивается в ${formatUsd(portfolioValue)}.`,
+    `Вложено: ${formatUsd(overview.invested)}.`,
+    `Общий результат: ${formatSignedUsd(overview.pnl)} (${formatPctFraction(overview.pnlPct)}).`,
+    previousSnapshot
+      ? `За 24 часа: ${formatSignedUsd(dailyPnlUsd)} (${formatPctValue(dailyPnlPct)}).`
+      : "За 24 часа: ждём снимок прошлого дня.",
+    "",
+    "Позиции:",
+    ...positionLines,
+    "",
+    `Здоровье портфеля: ${health.value === null ? "нет данных" : `${health.value}/100`}.`,
+    wifeHealthSummary(health.value),
+    "",
+    "Настроение рынка:",
+    fearGreed.index === null
+      ? "Индекс страха и жадности: данные пока не получены."
+      : `Индекс страха и жадности: ${fearGreed.index}/100 — ${fearGreedMood(fearGreed.index)}.`,
+    "",
+    "Рекомендации:",
+    ...recommendations.map((recommendation) => `• ${recommendation}`),
+    "",
+    "Хорошего дня!",
+    "By Mushii 💋",
+  ];
+
+  return lines.join("\n");
+};
+
+const buildLargestPositionNote = (positions, accountId) => {
   const largestPosition = positions.find((position) => !position.isCash);
   if (!largestPosition) return "";
 
   const cryptoPositions = positions.filter((position) => !position.isCash && isCryptoPosition(position));
   const cryptoBlockValue = cryptoPositions.reduce((sum, position) => sum + position.currentValue, 0);
   const symbol = assetBaseSymbol(largestPosition.asset);
-  const limit = CRYPTO_POSITION_LIMITS[symbol];
+  const limit = ACCOUNT_RULES[accountId].cryptoPositionLimits[symbol];
 
   if (isCryptoPosition(largestPosition) && cryptoBlockValue > 0 && limit) {
     const blockShare = largestPosition.currentValue / cryptoBlockValue;
@@ -210,36 +338,56 @@ const buildLargestPositionNote = (positions) => {
   return `Крупнейшая позиция: ${largestPosition.asset}, вес ${formatPctPlain(largestPosition.share)}.`;
 };
 
-const buildReserveNote = ({ overview, risk, reserve, portfolioValue }) => {
+const buildReserveNote = ({ overview, risk, reserve, portfolioValue, accountId }) => {
   const invested = toNumber(overview.invested);
+  const rules = ACCOUNT_RULES[accountId];
   const reserveShare = normalizeShareFraction(risk.reserveShare) || (portfolioValue > 0 ? reserve / portfolioValue : 0);
   const reserveLimitBase = invested > 0 ? invested : portfolioValue;
-  const reserveLimitUsd = reserveLimitBase * RESERVE_TARGET_MAX;
+  const reserveLimitUsd = reserveLimitBase * rules.reserveBandMaxShare;
   const idleUsd = Math.max(0, reserve - reserveLimitUsd);
 
-  if (reserveShare > RESERVE_TARGET_MAX) {
+  if (reserveShare > rules.reserveBandMaxShare) {
     return `Резерв выше 60%: простаивает ${formatUsd(idleUsd)} сверх лимита ${formatUsd(reserveLimitUsd)}.`;
   }
 
-  if (reserveShare > 0 && reserveShare < 0.1) {
-    return "Резерв ниже 10%: мало защиты на просадке.";
+  if (reserveShare > 0 && reserveShare < rules.reserveFloorShare) {
+    const floorUsd = portfolioValue * rules.reserveFloorShare;
+    const missingUsd = Math.max(0, floorUsd - reserve);
+    return `Резерв ниже ${formatPctPlain(rules.reserveFloorShare * 100, 0)}: не хватает ${formatUsd(missingUsd)} до минимума ${formatUsd(floorUsd)}.`;
   }
 
   return "";
 };
 
-const buildRiskNotes = ({ overview, risk, positions, fearGreed, reserve, portfolioValue }) => {
-  const notes = [];
-  const health = toNumber(overview.health);
+const buildCryptoAllocationNote = ({ positions, portfolioValue, accountId }) => {
+  const rules = ACCOUNT_RULES[accountId];
+  const cryptoValue = positions
+    .filter((position) => !position.isCash && isCryptoPosition(position))
+    .reduce((sum, position) => sum + position.currentValue, 0);
+  const cryptoShare = portfolioValue > 0 ? cryptoValue / portfolioValue : 0;
 
-  if (health > 0 && health < 70) {
-    notes.push(`Health ниже нормы: ${Math.round(health)}/100.`);
+  if (cryptoShare > rules.cryptoMaxShare) {
+    return `Крипта выше лимита ${formatPctPlain(rules.cryptoMaxShare * 100, 0)}: сейчас ${formatPctPlain(cryptoShare * 100)}, превышение ${formatPp((cryptoShare - rules.cryptoMaxShare) * 100)}`;
   }
 
-  const largestPositionNote = buildLargestPositionNote(positions);
+  return "";
+};
+
+const buildRiskNotes = ({ overview, risk, positions, fearGreed, reserve, portfolioValue, accountId, health }) => {
+  const notes = [];
+  const healthValue = toNumber(health?.value ?? overview.health);
+
+  if (healthValue > 0 && healthValue < 70) {
+    notes.push(`Health ниже нормы: ${Math.round(healthValue)}/100.`);
+  }
+
+  const cryptoAllocationNote = buildCryptoAllocationNote({ positions, portfolioValue, accountId });
+  if (cryptoAllocationNote) notes.push(cryptoAllocationNote);
+
+  const largestPositionNote = buildLargestPositionNote(positions, accountId);
   if (largestPositionNote) notes.push(largestPositionNote);
 
-  const reserveNote = buildReserveNote({ overview, risk, reserve, portfolioValue });
+  const reserveNote = buildReserveNote({ overview, risk, reserve, portfolioValue, accountId });
   if (reserveNote) notes.push(reserveNote);
 
   if (toNumber(risk.futuresShare) > 0.1) {
@@ -279,14 +427,46 @@ export function buildDailyTelegramReport(payload, options = {}) {
   const computedHealth = options.computedHealth ?? computeDailyReportHealth(payload, {
     riskByCoin: options.hyperliquidRiskByCoin,
   });
-  const health = resolveReportHealth({ overview, risk, computedHealth });
-  const riskNotes = buildRiskNotes({ overview, risk, positions, fearGreed, reserve, portfolioValue });
+  const health = resolveReportHealth({ overview, computedHealth, preferComputed: accountId === "wife" });
+  const riskNotes = buildRiskNotes({ overview, risk, positions, fearGreed, reserve, portfolioValue, accountId, health });
   const positionLines = investmentPositions.slice(0, MAX_REPORT_POSITIONS).map((position) =>
     `- ${position.asset} — P&L ${formatSignedUsd(position.pnl)} (${formatPctValue(position.pnlPct)}).`
   );
   const overflowLine = investmentPositions.length > MAX_REPORT_POSITIONS
     ? `- Еще позиций: ${investmentPositions.length - MAX_REPORT_POSITIONS}.`
     : null;
+
+  if (accountId === "wife") {
+    return {
+      text: buildWifeMorningReport({
+        overview,
+        risk,
+        positions,
+        investmentPositions,
+        portfolioValue,
+        reserve,
+        previousSnapshot,
+        dailyPnlUsd,
+        dailyPnlPct,
+        fearGreed,
+        health,
+      }),
+      facts: {
+        portfolioValue: round(portfolioValue, 2),
+        invested: round(overview.invested, 2),
+        pnl: round(overview.pnl, 2),
+        pnlPct: round(overview.pnlPct, 6),
+        reserve: round(reserve, 2),
+        reserveShare: round(reserveShare, 4),
+        positionsCount: investmentPositions.length,
+        health: health.value,
+        healthComponents: computedHealth?.components ?? null,
+        dailyPnlUsd: dailyPnlUsd === null ? null : round(dailyPnlUsd, 2),
+        dailyPnlPct: dailyPnlPct === null ? null : round(dailyPnlPct, 2),
+        fearGreedIndex: fearGreed.index,
+      },
+    };
+  }
 
   const lines = [
     `MUSHII INVEST — утренний отчет ${formatMoscowDate(now)}`,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PortfolioHealth } from "../../src/lib/portfolioHealth";
+import type { InterestSignal } from "../../src/types/portfolio";
 import type { V2Portfolio } from "../../src/v2/InvestorCabinetV2Lab";
 import { buildPortfolioAlerts } from "../../src/v2/lib/portfolioAlerts";
 import { getMarketPsychology } from "../../src/v2/lib/marketPsychology";
@@ -30,6 +31,22 @@ const health: PortfolioHealth = {
   riskLevel: "LOW",
   components: [],
 };
+
+const signal = (patch: Partial<InterestSignal>): InterestSignal => ({
+  id: "X",
+  asset: "BTC SHORT",
+  action: "Продать",
+  amountUsd: 20,
+  triggerPrice: 79422,
+  source: "",
+  currentPrice: 77600,
+  status: "ARMED",
+  lastCheck: "2026-08-21 16:40:00 MSK",
+  triggeredAt: "",
+  telegram: "PENDING",
+  comment: "",
+  ...patch,
+});
 
 describe("единый движок тревог портфеля", () => {
   it("передаёт эйфорию рынка как блокирующую макро-тревогу", () => {
@@ -71,6 +88,25 @@ describe("единый движок тревог портфеля", () => {
     );
   });
 
+  it("передаёт оптимизм рынка прямым запретом покупать без плана", () => {
+    const alerts = buildPortfolioAlerts({
+      portfolio: portfolio(),
+      positions: [],
+      allocation: [],
+      currentFG: 72,
+      health,
+      marketPsychology: getMarketPsychology(72),
+    });
+
+    expect(alerts).toContainEqual(
+      expect.objectContaining({
+        id: "market-psychology-warning",
+        detail: expect.stringContaining("Не покупай просто из-за роста"),
+        action: "Открыть проверку риска",
+      }),
+    );
+  });
+
   it("сохраняет предупреждение по резерву в том же списке тревог", () => {
     const alerts = buildPortfolioAlerts({
       portfolio: portfolio({ stableReserve: 150, reserveShare: 0.15 }),
@@ -90,14 +126,40 @@ describe("единый движок тревог портфеля", () => {
     );
   });
 
+  it("кричит, если активные уровни есть, а биржевые лимитки не подтверждены кабинетом", () => {
+    const alerts = buildPortfolioAlerts({
+      portfolio: portfolio(),
+      positions: [],
+      allocation: [],
+      currentFG: 50,
+      health,
+      interestSignals: [
+        signal({ id: "btc-short-add" }),
+        signal({ id: "eth-buy", asset: "ETH", action: "Купить", amountUsd: 25 }),
+      ],
+      marketPsychology: getMarketPsychology(50),
+    });
+
+    expect(alerts).toContainEqual(
+      expect.objectContaining({
+        id: "exchange-limit-orders-unconfirmed",
+        level: "critical",
+        title: "Лимитки на бирже не подтверждены",
+        detail: expect.stringContaining("Сайт/TG только напоминают"),
+        action: "Поставить лимитки вручную",
+        priority: -10,
+      }),
+    );
+  });
+
   it("переносит простой резерва выше верхней границы в сигналы и общие рекомендации", () => {
     const alerts = buildPortfolioAlerts({
       portfolio: portfolio({ stableReserve: 700, reserveShare: 0.7 }),
       positions: [],
       allocation: [],
-      currentFG: 50,
+      currentFG: 49,
       health,
-      marketPsychology: getMarketPsychology(50),
+      marketPsychology: getMarketPsychology(49),
     });
 
     expect(alerts).toContainEqual(
@@ -107,6 +169,25 @@ describe("единый движок тревог портфеля", () => {
         title: "Резерв выше 60%",
         detail: "$100 сверх $600 простаивает",
         action: "Открыть разбор здоровья",
+      }),
+    );
+  });
+
+  it("при жадности резерв ждёт лимитные зоны, а не считается срочным топливом для покупки", () => {
+    const alerts = buildPortfolioAlerts({
+      portfolio: portfolio({ stableReserve: 700, reserveShare: 0.7 }),
+      positions: [],
+      allocation: [],
+      currentFG: 71,
+      health,
+      marketPsychology: getMarketPsychology(71),
+    });
+
+    expect(alerts).toContainEqual(
+      expect.objectContaining({
+        id: "reserve-idle",
+        detail: "$100 ждёт страх, откат или лимитные зоны",
+        action: "Не догонять рост: открыть разбор здоровья",
       }),
     );
   });

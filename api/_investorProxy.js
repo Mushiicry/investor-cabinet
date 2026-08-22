@@ -486,6 +486,7 @@ export async function proxyInvestorApi(req, res, kind) {
     upstreamUrl.searchParams.set("accountId", kind);
 
     const allowedPostActions = new Set(["saveInvestorDNAAnswers", "createSignalLimitLevel", "deleteSignalLimitLevel"]);
+    const allowedWifeGetActions = new Set(["syncWifeDailySnapshot", "setupWifeDailySnapshotTrigger", "recordWifeDailySnapshot"]);
     if (req.method === "POST" && !allowedPostActions.has(action)) {
       sendJson(res, 405, { success: false, error: "Method not allowed" });
       return;
@@ -501,6 +502,14 @@ export async function proxyInvestorApi(req, res, kind) {
 
     if (allowedPostActions.has(action)) {
       upstreamUrl.searchParams.set("action", action);
+    }
+
+    if (req.method === "GET" && kind === "wife" && allowedWifeGetActions.has(action)) {
+      upstreamUrl.searchParams.set("action", action);
+      ["portfolioValue", "invested", "pnl", "pnlPct", "reserve", "positionsCount"].forEach((key) => {
+        const value = incoming.searchParams.get(key);
+        if (value != null) upstreamUrl.searchParams.set(key, value);
+      });
     }
 
     const { upstream, body, attempt } = await fetchInvestorUpstream(upstreamUrl, req);

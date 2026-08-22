@@ -666,7 +666,8 @@
   color: rgba(120, 165, 200, 0.7);
 }
 .v2-gate-journal-field select,
-.v2-gate-journal-field input {
+.v2-gate-journal-field input,
+.v2-gate-journal-field textarea {
   width: 100%;
   min-width: 0;
   border: 1px solid rgba(80, 140, 190, 0.26);
@@ -676,6 +677,51 @@
   padding: 9px 10px;
   font: inherit;
   font-size: 13px;
+}
+.v2-gate-journal-field textarea {
+  min-height: 68px;
+  resize: vertical;
+  line-height: 1.45;
+}
+.v2-gate-required-checks {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.v2-gate-required-checks label {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 9px;
+  align-items: start;
+  color: rgba(195, 218, 236, 0.86);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.v2-gate-required-checks input {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: #45d995;
+}
+.v2-gate-required-status {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 10px 11px;
+  border: 1px solid rgba(238, 174, 76, 0.3);
+  border-radius: 8px;
+  background: rgba(74, 48, 14, 0.24);
+}
+.v2-gate-required-status strong {
+  color: rgba(244, 204, 140, 0.96);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.v2-gate-required-status span {
+  color: rgba(222, 196, 156, 0.82);
+  font-size: 12px;
+  line-height: 1.45;
 }
 .v2-gate-save {
   margin-top: 12px;

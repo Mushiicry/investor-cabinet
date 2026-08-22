@@ -148,9 +148,17 @@ function historyTime(rawDate: string) {
   return key ? Date.parse(`${key}T00:00:00`) : 0;
 }
 
+function previousDateKey(todayKey: string) {
+  const parsed = Date.parse(`${todayKey}T00:00:00`);
+  if (!Number.isFinite(parsed)) return "";
+  const prev = new Date(parsed - 24 * 60 * 60 * 1000);
+  return localDateKey(prev);
+}
+
 function findPreviousDailySnapshot(history: PortfolioHistoryPoint[], todayKey: string) {
+  const targetKey = previousDateKey(todayKey);
   return [...history]
-    .filter((point) => point.portfolioValue > 0 && historyDateKey(point.date) < todayKey)
+    .filter((point) => point.portfolioValue > 0 && historyDateKey(point.date) === targetKey)
     .sort((a, b) => historyTime(a.date) - historyTime(b.date))
     .at(-1) ?? null;
 }

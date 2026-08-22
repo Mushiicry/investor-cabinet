@@ -11,6 +11,7 @@ import {
 import type { MarketPsychology } from "./marketPsychology";
 import { altcoinSlots, CRYPTO_ALT_LIMIT } from "./preTradeGate";
 import {
+  actionableLimitSignalsSummary,
   assessSignal,
   buildSignalNotificationPlan,
   getSignalDistance,
@@ -100,12 +101,16 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
       detail: `${reservePct.toFixed(0)}% вложенного капитала · цель ${reserveTargetPct.toFixed(0)}%`,
     });
   } else if (reserveBaseUsd > 0 && portfolio.stableReserve / reserveBaseUsd > strategy.reserveBandMaxShare) {
+    const idleUsd = portfolio.stableReserve - reserveBandMaxUsd;
+    const marketIsGreedy = ctx.currentFG >= 50;
     alerts.push({
       id: "reserve-idle",
       level: "warning",
       title: `Резерв выше ${reserveBandMaxPct.toFixed(0)}%`,
-      detail: `${fmtAlertUsd(portfolio.stableReserve - reserveBandMaxUsd)} сверх ${fmtAlertUsd(reserveBandMaxUsd)} простаивает`,
-      action: "Открыть разбор здоровья",
+      detail: marketIsGreedy
+        ? `${fmtAlertUsd(idleUsd)} ждёт страх, откат или лимитные зоны`
+        : `${fmtAlertUsd(idleUsd)} сверх ${fmtAlertUsd(reserveBandMaxUsd)} простаивает`,
+      action: marketIsGreedy ? "Не догонять рост: открыть разбор здоровья" : "Открыть разбор здоровья",
       priority: 12,
     });
   }
@@ -243,6 +248,18 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
 
   // 6. Ценовые точки из листа «Сигналы».
   if (ctx.interestSignals?.length) {
+    const actionableLimitSignals = actionableLimitSignalsSummary(ctx.interestSignals);
+    if (actionableLimitSignals.count > 0) {
+      alerts.push({
+        id: "exchange-limit-orders-unconfirmed",
+        level: "critical",
+        title: "Лимитки на бирже не подтверждены",
+        detail: `Сайт/TG только напоминают. Активных уровней: ${actionableLimitSignals.count} на ${fmtAlertUsd(actionableLimitSignals.totalUsd)}. До новых действий выставь лимитки вручную или пометь сценарий как ручной.`,
+        action: "Поставить лимитки вручную",
+        priority: -10,
+      });
+    }
+
     const now = new Date();
     const ordered = sortBySignalPriority(ctx.interestSignals, now);
     const notificationPlan = buildSignalNotificationPlan(ctx.interestSignals, now, ctx.signalNotification);

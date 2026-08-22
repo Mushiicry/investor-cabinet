@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { V2SourceTag } from "./V2SourceTag";
 import {
   getPortfolioHistorySummary,
@@ -11,6 +11,14 @@ import type { DecisionJournalEntry } from "../lib/decisionJournal";
 import type { BehaviorEngineResult } from "../lib/behaviorEngine";
 import type { InvestorStrategy } from "../lib/investorStrategy";
 import { calculateTransactionRealizedPnl } from "../lib/transactionRealizedPnl";
+import {
+  isTradeReviewComplete,
+  transactionJournalId,
+  type TraderJournalDraft,
+  type TraderJournalEntry,
+  type TradeErrorType,
+  type TradePlanAdherence,
+} from "../lib/traderJournal";
 
 type Props = {
   history: PortfolioHistoryPoint[];
@@ -22,6 +30,8 @@ type Props = {
   behavior?: BehaviorEngineResult;
   strategy?: InvestorStrategy;
   onDeleteDecision?: (id: string) => void;
+  traderJournal?: TraderJournalEntry[];
+  onSaveTradeReview?: (draft: TraderJournalDraft) => void;
 };
 
 const money = new Intl.NumberFormat("ru-RU", {
@@ -133,6 +143,49 @@ function dedupeTrades(list: InvestorTransaction[]): InvestorTransaction[] {
   return out;
 }
 
+function isJournalTrade(transaction: InvestorTransaction) {
+  return /покуп|buy|прод|sell/i.test(transaction.action || "");
+}
+
+function journalAction(transaction: InvestorTransaction): "buy" | "sell" {
+  return /прод|sell/i.test(transaction.action || "") ? "sell" : "buy";
+}
+
+function findPreTradeDecision(transaction: InvestorTransaction, entries: DecisionJournalEntry[]) {
+  const transactionTime = Date.parse(transaction.date);
+  const transactionAmount = Number(transaction.amount || 0);
+  return entries.find((entry) => {
+    if (entry.asset.toUpperCase() !== (transaction.asset || transaction.rawAsset).toUpperCase()) return false;
+    if (entry.action !== journalAction(transaction)) return false;
+    const decisionTime = Date.parse(entry.createdAt);
+    if (Number.isFinite(transactionTime) && Number.isFinite(decisionTime)) {
+      const distance = transactionTime - decisionTime;
+      if (distance < 0 || distance > 14 * 24 * 60 * 60 * 1000) return false;
+    }
+    if (!transactionAmount || !entry.amountUsd) return true;
+    return Math.abs(entry.amountUsd - transactionAmount) <= Math.max(1, transactionAmount * 0.05);
+  });
+}
+
+const ADHERENCE_OPTIONS: Array<{ value: TradePlanAdherence; label: string }> = [
+  { value: "", label: "Выберите" },
+  { value: "yes", label: "Да" },
+  { value: "partial", label: "Частично" },
+  { value: "no", label: "Нет" },
+];
+
+const ERROR_OPTIONS: Array<{ value: TradeErrorType; label: string }> = [
+  { value: "", label: "Выберите" },
+  { value: "none", label: "Ошибки не было" },
+  { value: "missing-limit", label: "Лимитка не была выставлена" },
+  { value: "fomo", label: "FOMO / погоня за ростом" },
+  { value: "no-plan", label: "Сделка без плана" },
+  { value: "early-exit", label: "Ранний или полный выход без правила" },
+  { value: "revenge", label: "Сделка после убытка" },
+  { value: "oversize", label: "Превышен размер позиции" },
+  { value: "other", label: "Другая ошибка" },
+];
+
 function EquityCurve({ points }: { points: PortfolioHistoryPoint[] }) {
   if (points.length < 2) {
     return <div className="v2-rep-empty">Недостаточно точек истории</div>;
@@ -176,8 +229,10 @@ export function V2ReportsPage({
   positions,
   realizedPnlUsd,
   decisionJournal = [],
+  traderJournal = [],
   behavior,
   onDeleteDecision,
+  onSaveTradeReview,
 }: Props) {
   const sortedHistory = useMemo(() => getSortedPortfolioHistory(history), [history]);
   const newestFirst = useMemo(() => [...sortedHistory].reverse(), [sortedHistory]);
@@ -192,6 +247,60 @@ export function V2ReportsPage({
   const first = summary.firstPoint;
   const latest = summary.latestPoint;
   const changeTone = summary.portfolioValueChange >= 0 ? "is-pos" : "is-neg";
+  const journalTrades = useMemo(
+    () => dedupeTrades(transactions.filter((transaction) => !isEmptyRow(transaction) && isJournalTrade(transaction))),
+    [transactions],
+  );
+  const reviewByTransaction = useMemo(
+    () => new Map(traderJournal.map((entry) => [entry.transactionId, entry])),
+    [traderJournal],
+  );
+  const journalTradeResults = useMemo(
+    () => calculateTransactionRealizedPnl(journalTrades),
+    [journalTrades],
+  );
+  const reviewedTrades = journalTrades.filter((transaction) =>
+    isTradeReviewComplete(reviewByTransaction.get(transactionJournalId(transaction))),
+  ).length;
+  const [openReviewId, setOpenReviewId] = useState<string | null>(null);
+  const [reviewDraft, setReviewDraft] = useState<TraderJournalDraft | null>(null);
+
+  const openTradeReview = (transaction: InvestorTransaction) => {
+    const transactionId = transactionJournalId(transaction);
+    const existing = reviewByTransaction.get(transactionId);
+    const decision = findPreTradeDecision(transaction, decisionJournal);
+    setOpenReviewId(transactionId);
+    setReviewDraft(existing
+      ? { ...existing }
+      : {
+          transactionId,
+          thesis: decision?.note ?? "",
+          expectedScenario: decision
+            ? `${decision.setup}. ${decision.orderPlan || `${fmtUSD(decision.amountUsd)} по ${decision.buyPrice ? fmtUSD(decision.buyPrice) : "плановой цене"}`}`
+            : "",
+          invalidation: decision?.invalidation ?? "",
+          executionReview: "",
+          emotion: decision?.emotion ?? "",
+          adherence: "",
+          errorType: decision ? "none" : "",
+          lesson: "",
+          nextRule: "",
+        });
+  };
+
+  const updateReview = <K extends keyof TraderJournalDraft>(key: K, value: TraderJournalDraft[K]) => {
+    setReviewDraft((current) => current ? { ...current, [key]: value } : current);
+  };
+
+  const saveTradeReview = () => {
+    if (!reviewDraft || !onSaveTradeReview) return;
+    onSaveTradeReview(reviewDraft);
+    setOpenReviewId(null);
+    setReviewDraft(null);
+  };
+  const reviewDraftComplete = reviewDraft
+    ? isTradeReviewComplete({ ...reviewDraft, updatedAt: "" })
+    : false;
 
   // Зафиксированная прибыль приходит из блока закрытых позиций «Расчетов» —
   // единственного источника. Прежняя оценка по журналу сделок давала второе,
@@ -288,9 +397,108 @@ export function V2ReportsPage({
             </div>
           </div>
 
+          <div className="v2-panel v2-rep-journal-panel v2-rep-trader-panel">
+            <div className="v2-rep-journal-header">
+              <div>
+                <span className="v2-panel-kicker">Дневник трейдера</span>
+                <span className="v2-rep-trader-coverage">
+                  Полный разбор: {reviewedTrades}/{journalTrades.length}
+                </span>
+              </div>
+              <V2SourceTag source="computed" title="Сделки приходят из API; разбор сохраняется вручную на этом устройстве" />
+            </div>
+
+            <div className="v2-rep-trader-list">
+              {journalTrades.length === 0 ? (
+                <div className="v2-rep-empty">API пока не вернул покупки и продажи для разбора.</div>
+              ) : journalTrades.map((transaction, index) => {
+                const transactionId = transactionJournalId(transaction);
+                const review = reviewByTransaction.get(transactionId);
+                const reviewComplete = isTradeReviewComplete(review);
+                const decision = findPreTradeDecision(transaction, decisionJournal);
+                const tradeResult = journalTradeResults[index];
+                const isOpen = openReviewId === transactionId && reviewDraft?.transactionId === transactionId;
+
+                return (
+                  <div key={transactionId} className={`v2-rep-trader-row ${reviewComplete ? "is-reviewed" : "is-pending"}`}>
+                    <div className="v2-rep-trader-head">
+                      <span className="v2-rep-cell-date">{fmtDate(transaction.date)}</span>
+                      <strong>{transaction.asset || transaction.rawAsset || "—"}</strong>
+                      <span className={`v2-rep-type-chip ${transactionTone(transaction)}`}>{displayAction(transaction)}</span>
+                      <span>{transaction.amount ? fmtUSD(transaction.amount) : "—"}</span>
+                      <span className={`v2-rep-cell-pnl ${tradeResult ? tradeResult.realizedPnl >= 0 ? "is-pos" : "is-neg" : ""}`}>
+                        {tradeResult ? signedMoney(tradeResult.realizedPnl) : "результат —"}
+                      </span>
+                      <span className={`v2-rep-trader-gate ${decision ? "is-linked" : "is-missing"}`}>
+                        {decision ? "Допуск найден" : "Без допуска"}
+                      </span>
+                      <span className={`v2-rep-trader-state ${reviewComplete ? "is-complete" : ""}`}>
+                        {reviewComplete ? "Разобрано" : "Нужен разбор"}
+                      </span>
+                      <button type="button" onClick={() => isOpen ? setOpenReviewId(null) : openTradeReview(transaction)}>
+                        {isOpen ? "Закрыть" : review ? "Изменить" : "Разобрать"}
+                      </button>
+                    </div>
+
+                    {isOpen && reviewDraft && (
+                      <div className="v2-rep-trader-form">
+                        <label>
+                          <span>Тезис сделки</span>
+                          <textarea value={reviewDraft.thesis} onChange={(event) => updateReview("thesis", event.target.value)} />
+                        </label>
+                        <label>
+                          <span>Ожидаемый сценарий и план</span>
+                          <textarea value={reviewDraft.expectedScenario} onChange={(event) => updateReview("expectedScenario", event.target.value)} />
+                        </label>
+                        <label>
+                          <span>Сценарий отмены</span>
+                          <textarea value={reviewDraft.invalidation} onChange={(event) => updateReview("invalidation", event.target.value)} />
+                        </label>
+                        <label>
+                          <span>Что произошло фактически</span>
+                          <textarea value={reviewDraft.executionReview} onChange={(event) => updateReview("executionReview", event.target.value)} />
+                        </label>
+                        <label>
+                          <span>Эмоциональное состояние</span>
+                          <input value={reviewDraft.emotion} onChange={(event) => updateReview("emotion", event.target.value)} />
+                        </label>
+                        <label>
+                          <span>Соблюдён план</span>
+                          <select value={reviewDraft.adherence} onChange={(event) => updateReview("adherence", event.target.value as TradePlanAdherence)}>
+                            {ADHERENCE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                        </label>
+                        <label>
+                          <span>Тип ошибки</span>
+                          <select value={reviewDraft.errorType} onChange={(event) => updateReview("errorType", event.target.value as TradeErrorType)}>
+                            {ERROR_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                        </label>
+                        <label>
+                          <span>Главный урок</span>
+                          <textarea value={reviewDraft.lesson} onChange={(event) => updateReview("lesson", event.target.value)} />
+                        </label>
+                        <label className="is-wide">
+                          <span>Правило на следующую сделку</span>
+                          <textarea value={reviewDraft.nextRule} onChange={(event) => updateReview("nextRule", event.target.value)} />
+                        </label>
+                        <div className="v2-rep-trader-form-foot">
+                          <span>Полным считается разбор, где заполнены все поля.</span>
+                          <button type="button" disabled={!onSaveTradeReview || !reviewDraftComplete} onClick={saveTradeReview}>
+                            {reviewDraftComplete ? "Сохранить разбор" : "Заполните все поля"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="v2-panel v2-rep-journal-panel v2-rep-decision-panel">
             <div className="v2-rep-journal-header">
-              <span className="v2-panel-kicker">Журнал решений</span>
+              <span className="v2-panel-kicker">Журнал допусков</span>
               <V2SourceTag source="manual" title="Снимки проверки сделки, сохранённые вручную на этом устройстве" />
             </div>
 

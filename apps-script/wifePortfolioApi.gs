@@ -19,6 +19,7 @@ var IC_WIFE_API = (function() {
   var MAIN_SS_ID = '1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8';
   var WIFE_SS_ID = '1X8nywasqpGyULEUKu11OJbJqXZUwlFXcDLtQyH6_rqA';
   var PRICE_SS_ID = '1f35sUKkMBzGIF-xG1Fz0zNvrmcrVWo4Sx7I0XHCPhCY';
+  var WIFE_CABINET_LIVE_URL = 'https://investor-cabinet.vercel.app/api/investor-wife';
   var KOSHA_SHEET_NAME = String.fromCharCode(1082, 1086, 1096, 1072);
   var CAT_CRYPTO = String.fromCharCode(1050, 1088, 1080, 1087, 1090, 1072);
   var CAT_STABLE = String.fromCharCode(1050, 1101, 1096, 32, 47, 32, 1057, 1090, 1077, 1081, 1073, 1083, 1099);
@@ -98,10 +99,20 @@ var IC_WIFE_API = (function() {
   function buildWifePortfolioJson(options) {
     options = options || {};
     var useLive = options.useLive === true;
+    var useLivePrices = useLive || options.useLivePrices === true;
+    var useLiveStable = useLive || options.useLiveStable === true;
+    var liveBalances = (useLive || useLiveStable) ? fetchAllBlockchainBalances() : null;
     var blockchain = useLive
-      ? fetchAllBlockchainBalances()
-      : { _errors: { mode: 'site read uses Google Sheets quantities; Vercel adds live prices' } };
-    var priceMap = useLive ? getLivePrices() : getSheetPrices_();
+      ? liveBalances
+      : useLiveStable
+        ? {
+            USDT: liveBalances.USDT,
+            USDT_ARB: liveBalances.USDT_ARB,
+            USDT_TON: liveBalances.USDT_TON,
+            _errors: liveBalances._errors || {}
+          }
+        : { _errors: { mode: 'site read uses Google Sheets quantities; Vercel adds live prices' } };
+    var priceMap = useLivePrices ? getLivePrices() : getSheetPrices_();
 
     var wifeSS    = SpreadsheetApp.openById(WIFE_SS_ID);
     var wifeSheet = wifeSS.getSheets()[0];
@@ -233,7 +244,11 @@ var IC_WIFE_API = (function() {
 
     return {
       success:   true,
-      patch:     useLive ? 'WIFE API v2.1 - blockchain-first' : 'WIFE API v2.4 - sheet-base',
+      patch:     useLive
+        ? 'WIFE API v2.1 - blockchain-first'
+        : useLivePrices
+          ? 'WIFE API v2.6 - live snapshot base'
+          : 'WIFE API v2.4 - sheet-base',
       updatedAt: new Date().toISOString(),
 
       // Debug: raw balances fetched from blockchain
@@ -251,7 +266,7 @@ var IC_WIFE_API = (function() {
         positionsCount: crypto.length,
         health:         health,
         state:          healthLabel(health),
-        signal:         useLive ? TEXT_LIVE_BLOCKCHAIN : 'Google Sheets база + Vercel live prices',
+        signal:         useLive || useLivePrices ? 'Hyperliquid цены + live USDT' : 'Google Sheets база + Vercel live prices',
         action:         TEXT_FOLLOW_STRATEGY,
         categories:     categories,
         bestPosition:   best  ? { asset: best.asset,  pnl: best.pnl  } : null,
@@ -337,11 +352,31 @@ var IC_WIFE_API = (function() {
   }
 
   function syncWifeDailySnapshot() {
-    var wifeJson = buildWifePortfolioJson();
+    var wifeJson = fetchWifeCabinetLiveSnapshot_();
     if (!wifeJson || !wifeJson.success || !wifeJson.overview) {
       throw new Error('Wife portfolio JSON is not available');
     }
 
+    return writeWifeDailySnapshotOverview_(wifeJson.overview, 'Wife portfolio daily snapshot; live valuation from cabinet API');
+  }
+
+  function recordWifeDailySnapshot(params) {
+    var overview = {
+      portfolioValue: toFloat(params && params.portfolioValue),
+      invested: toFloat(params && params.invested),
+      pnl: toFloat(params && params.pnl),
+      pnlPct: toFloat(params && params.pnlPct),
+      reserve: toFloat(params && params.reserve),
+      positionsCount: toFloat(params && params.positionsCount)
+    };
+
+    if (overview.portfolioValue <= 0) throw new Error('Wife portfolio value is empty');
+    if (overview.invested <= 0) throw new Error('Wife invested value is empty');
+
+    return writeWifeDailySnapshotOverview_(overview, 'Wife portfolio daily snapshot; live valuation recorded from cabinet API');
+  }
+
+  function writeWifeDailySnapshotOverview_(overview, comment) {
     var ss = SpreadsheetApp.openById(WIFE_SS_ID);
     var sheet = getOrCreateWifeHistorySheet_(ss);
     var timezone = ss.getSpreadsheetTimeZone() || Session.getScriptTimeZone() || 'Europe/Moscow';
@@ -349,7 +384,6 @@ var IC_WIFE_API = (function() {
     var targetRow = findWifeHistoryDateRow_(sheet, now, timezone);
     if (!targetRow) targetRow = Math.max(sheet.getLastRow() + 1, 3);
 
-    var overview = wifeJson.overview;
     var portfolioValue = r2(toFloat(overview.portfolioValue));
     var invested = r2(toFloat(overview.invested));
     var pnl = r2(toFloat(overview.pnl));
@@ -371,7 +405,7 @@ var IC_WIFE_API = (function() {
       H_AUTO_SNAPSHOT,
       'daily',
       'apps-script',
-      'Wife portfolio daily snapshot; one point per date'
+      comment || 'Wife portfolio daily snapshot; live valuation from cabinet API'
     ]]);
     sheet.getRange(targetRow, 1).setNumberFormat('dd.MM.yyyy');
     sheet.getRange(targetRow, 5).setNumberFormat('0.00%');
@@ -386,6 +420,25 @@ var IC_WIFE_API = (function() {
       reserve: reserve,
       positionsCount: positionsCount
     };
+  }
+
+  function fetchWifeCabinetLiveSnapshot_() {
+    var response = UrlFetchApp.fetch(WIFE_CABINET_LIVE_URL, {
+      method: 'get',
+      muteHttpExceptions: true
+    });
+    var code = response.getResponseCode();
+    var body = response.getContentText();
+    if (code < 200 || code >= 300) {
+      throw new Error('Wife cabinet live API failed: ' + code + ' ' + body.slice(0, 300));
+    }
+
+    var payload = JSON.parse(body);
+    if (!payload || !payload.success || !payload.overview) {
+      throw new Error('Wife cabinet live API returned invalid payload');
+    }
+
+    return payload;
   }
 
   function setupWifeDailySnapshotTrigger() {
@@ -1208,6 +1261,10 @@ var IC_WIFE_API = (function() {
 
 
   return {
-    buildPortfolioJson: buildWifePortfolioJson
+    buildPortfolioJson: buildWifePortfolioJson,
+    syncDailySnapshot: syncWifeDailySnapshot,
+    setupDailySnapshotTrigger: setupWifeDailySnapshotTrigger,
+    removeDailySnapshotTrigger: removeWifeDailySnapshotTrigger,
+    recordDailySnapshot: recordWifeDailySnapshot
   };
 })();

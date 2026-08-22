@@ -559,7 +559,7 @@ export function V2SignalsPage({
             Лимитные ордера
             {interestSignals.length ? (
               <span className="v2-sig-int-bot-badge">
-                {formatSignalTotalMoney(limitOrders.totalUsd)} · {limitOrders.count} орд.
+                {formatSignalTotalMoney(limitOrders.totalUsd)} · {limitOrders.count} покупок
               </span>
             ) : (
               <span className="v2-sig-int-bot-badge">НЕТ ДАННЫХ</span>
@@ -569,8 +569,7 @@ export function V2SignalsPage({
             </button>
           </div>
           <div className="v2-sig-limit-help">
-            В сумму входят только активные уровни покупки: актив, сумма, цена входа.
-            Продажи, сработавшие и отключённые строки покупательскую способность не занимают.
+            Эта сумма — резерв под активные покупки. Сайт/TG только напоминают: лимитку нужно выставить на бирже вручную. Продажи, сработавшие и отключённые уровни покупательскую способность не занимают.
           </div>
           {assetGroups.length ? (
             <>
@@ -711,7 +710,7 @@ export function V2SignalsPage({
                     ) : (
                       <span className="v2-sig-int-hint-label">Нет активных ордеров</span>
                     )}
-                    <span className="v2-sig-int-hint-note">Нажмите актив — покажу его лимитные ордера</span>
+                    <span className="v2-sig-int-hint-note">Нажми актив — покажу его лимитные ордера</span>
                   </div>
                 )}
               </div>
@@ -775,7 +774,7 @@ export function V2SignalsPage({
                 <span className="v2-psy-row-v">{psychology.feels}</span>
               </div>
               <div className="v2-psy-row">
-                <span className="v2-psy-row-k">Дисциплина делает</span>
+                <span className="v2-psy-row-k">Правило дисциплины</span>
                 <span className="v2-psy-row-v">{psychology.disciplined}</span>
               </div>
               <div className="v2-psy-row is-danger">

@@ -4,6 +4,7 @@ var IC_WALLET_SYNC_TRIGGER_HANDLERS = [
   'syncTonWalletImports',
   'syncTonWalletBalances',
   'syncArbitrumWalletBalances',
+  'syncBnbWalletBalances',
   'syncSolanaWalletBalances',
   'syncCosmosWalletBalances',
   'syncHyperliquidAccountState'
@@ -34,6 +35,11 @@ function syncInvestorCabinetWallets() {
   IC_WALLET_runSyncStep_('Hyperliquid account state', function() {
     setupHyperliquidAccountImport();
     syncHyperliquidAccountState();
+  }, errors);
+
+  IC_WALLET_runSyncStep_('BNB wallet balances', function() {
+    setupBnbWalletImport();
+    syncBnbWalletBalances();
   }, errors);
 
   if (errors.length) {

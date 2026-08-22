@@ -756,6 +756,148 @@
   white-space: nowrap;
 }
 
+.v2-rep-trader-panel {
+  gap: 10px;
+}
+
+.v2-rep-trader-coverage {
+  display: block;
+  margin-top: 5px;
+  color: rgba(145, 185, 215, 0.72);
+  font-size: 11px;
+}
+
+.v2-rep-trader-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 760px;
+  overflow-y: auto;
+}
+
+.v2-rep-trader-row {
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(232, 172, 72, 0.28);
+  border-radius: 7px;
+  background: rgba(44, 31, 10, 0.2);
+  padding: 10px 12px;
+}
+
+.v2-rep-trader-row.is-reviewed {
+  border-color: rgba(72, 206, 137, 0.32);
+  background: rgba(14, 54, 39, 0.22);
+}
+
+.v2-rep-trader-head {
+  display: grid;
+  grid-template-columns: 140px 72px 100px 90px 105px 92px 94px 78px;
+  gap: 9px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.v2-rep-trader-head > strong {
+  color: rgba(232, 244, 252, 0.96);
+  font-size: 14px;
+}
+
+.v2-rep-trader-head > button,
+.v2-rep-trader-form-foot button {
+  border: 1px solid rgba(91, 170, 220, 0.32);
+  border-radius: 6px;
+  background: rgba(20, 62, 92, 0.42);
+  color: rgba(210, 234, 248, 0.94);
+  padding: 7px 9px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.v2-rep-trader-form-foot button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.v2-rep-trader-gate,
+.v2-rep-trader-state {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.v2-rep-trader-gate.is-linked,
+.v2-rep-trader-state.is-complete {
+  color: rgba(100, 226, 160, 0.9);
+}
+
+.v2-rep-trader-gate.is-missing,
+.v2-rep-trader-state {
+  color: rgba(244, 180, 92, 0.92);
+}
+
+.v2-rep-trader-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(85, 145, 190, 0.2);
+}
+
+.v2-rep-trader-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.v2-rep-trader-form label.is-wide,
+.v2-rep-trader-form-foot {
+  grid-column: 1 / -1;
+}
+
+.v2-rep-trader-form label > span {
+  color: rgba(125, 170, 204, 0.72);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.v2-rep-trader-form input,
+.v2-rep-trader-form select,
+.v2-rep-trader-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(80, 140, 190, 0.26);
+  border-radius: 6px;
+  background: rgba(5, 17, 30, 0.76);
+  color: rgba(220, 238, 250, 0.94);
+  padding: 8px 9px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.v2-rep-trader-form textarea {
+  min-height: 66px;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.v2-rep-trader-form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.v2-rep-trader-form-foot span {
+  color: rgba(155, 184, 207, 0.72);
+  font-size: 11px;
+}
+
 .v2-rep-decision-panel {
   gap: 10px;
 }

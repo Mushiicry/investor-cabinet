@@ -107,6 +107,44 @@ const hyperliquidRiskByCoin = {
   MNT: { leverage: 2, liquidationPx: 0.2877424788 },
 };
 
+const wifePayload = {
+  success: true,
+  overview: {
+    portfolioValue: 8286.14,
+    invested: 10188.28,
+    pnl: -1902.14,
+    pnlPct: -0.186699,
+    reserve: 653.28,
+    positionsCount: 6,
+    health: 14,
+    state: "Критично",
+  },
+  risk: {
+    reserveShare: 7.88,
+    largestRiskAsset: "ETH",
+    largestRiskShare: 77.26,
+    cryptoShare: 88.64,
+    health: 14,
+  },
+  fearGreedStrategy: {
+    currentIndex: 41,
+    currentZone: "Наблюдаем",
+  },
+  history: [
+    { date: "2026-08-07T20:56:19.860Z", portfolioValue: 9961.17 },
+    { date: "2026-08-08T20:56:17.414Z", portfolioValue: 9961.17 },
+  ],
+  portfolio: [
+    { asset: "ETH", ticker: "ETH", category: "Крипта", currentValue: 6401.69, invested: 7465, share: 77.26, pnl: -1063.31, pnlPct: -14.24 },
+    { asset: "TON", ticker: "TON", category: "Крипта", currentValue: 818.86, invested: 1672, share: 9.88, pnl: -853.14, pnlPct: -51.03 },
+    { asset: "BTC", ticker: "BTC", category: "Крипта", currentValue: 107.11, invested: 130, share: 1.29, pnl: -22.89, pnlPct: -17.61 },
+    { asset: "SOL", ticker: "SOL", category: "Крипта", currentValue: 17.37, invested: 20, share: 0.21, pnl: -2.63, pnlPct: -13.15 },
+    { asset: "USDT", ticker: "USDT", category: "Кэш / Стейблы", currentValue: 653.28, invested: 653.28, share: 7.88, pnl: 0, pnlPct: 0 },
+    { asset: "GOLD", ticker: "GOLD", category: "Металлы", currentValue: 148.67, invested: 133, share: 1.79, pnl: 15.67, pnlPct: 11.78 },
+    { asset: "SpaceX", ticker: "SPACEX", category: "Акции", currentValue: 139.16, invested: 115, share: 1.68, pnl: 24.16, pnlPct: 21.01 },
+  ],
+};
+
 const setEnv = () => {
   process.env.CRON_SECRET = "cron-secret";
   process.env.TELEGRAM_BOT_TOKEN = "test-token";
@@ -223,6 +261,33 @@ describe("buildDailyTelegramReport", () => {
       dailyPnlUsd: 0.9,
       dailyPnlPct: 0.14,
       positionsCount: 4,
+    });
+  });
+
+  it("does not call an old wife history point daily PnL", () => {
+    const report = buildDailyTelegramReport(wifePayload, {
+      accountId: "wife",
+      now: new Date("2026-08-19T05:30:00.000Z"),
+    });
+    const normalizedText = report.text.replace(/\u00a0/g, " ");
+
+    expect(normalizedText).toContain("Доброе утро, Полина!");
+    expect(normalizedText).toContain("За 24 часа: ждём снимок прошлого дня.");
+    expect(normalizedText).not.toContain("-1 675");
+    expect(normalizedText).toContain("Здоровье портфеля: 33/100.");
+    expect(normalizedText).toContain("ETH: -14,24% / -1 063,31 $ ❤️‍🩹");
+    expect(normalizedText).toContain("SpaceX: +21,01% / +24,16 $ 🍀");
+    expect(normalizedText).not.toContain("USDT:");
+    expect(normalizedText).toContain("Рекомендации:");
+    expect(normalizedText).toContain("Не увеличивать долю крипты");
+    expect(normalizedText).toContain("Восстановить резерв минимум до 10%");
+    expect(normalizedText).not.toContain("Фьючерсы и импульсивные сделки");
+    expect(normalizedText).toContain("By Mushii 💋");
+    expect(report.facts).toMatchObject({
+      dailyPnlUsd: null,
+      dailyPnlPct: null,
+      health: 33,
+      positionsCount: 6,
     });
   });
 

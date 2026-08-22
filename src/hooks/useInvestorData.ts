@@ -134,17 +134,16 @@ export function useInvestorData(
           const loadedAt = new Date().toISOString();
           const data = buildInvestorStateFromApi(json, prev.data);
 
-          // Daily auto-snapshot — only main account here; wife snapshot happens
-          // in the V2 shell after Apps Script/API has assembled live portfolio data.
-          if (cacheSlot !== "wife") {
-            maybeRecordSnapshot({
-              portfolioValue: data.overview.portfolioValue,
-              invested: data.overview.invested,
-              reserve: data.overview.reserve,
-              positionsCount: getTrackedPortfolioPositions(data.portfolio).length,
-              slot: "main",
-            });
-          }
+          // Daily auto-snapshot is a local fallback. Apps Script remains the
+          // source for sheet history, but local history keeps 24h UI honest if
+          // the external snapshot trigger pauses.
+          maybeRecordSnapshot({
+            portfolioValue: data.overview.portfolioValue,
+            invested: data.overview.invested,
+            reserve: data.overview.reserve,
+            positionsCount: getTrackedPortfolioPositions(data.portfolio).length,
+            slot: cacheSlot,
+          });
 
           writeCachedInvestorState(data, loadedAt, cacheSlot);
 

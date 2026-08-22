@@ -284,6 +284,8 @@ export const buildLiveV2Data = (
   const plannedLimitOrders = plannedLimitOrdersSummary(interestSignals);
   const plannedLimitOrdersUsd =
     interestSignals.length > 0 ? plannedLimitOrders.totalUsd : undefined;
+  const plannedLimitOrdersConfirmed =
+    plannedLimitOrdersUsd !== undefined && plannedLimitOrdersUsd > 0 ? false : undefined;
 
   const liveHealthInput: HealthInput = {
     cashShare: categoryShare(state, "Свободные деньги"),
@@ -298,6 +300,7 @@ export const buildLiveV2Data = (
     spotDeployableUsd: state.risk.spotDeployableCash,
     futuresDeployableUsd: state.risk.futuresDeployableCash,
     plannedLimitOrdersUsd,
+    plannedLimitOrdersConfirmed,
     strategy,
     concentrationScore: concentration.score,
     maxAssetLimitUtilization: concentration.maxUtilization,
@@ -355,7 +358,7 @@ export const buildLiveV2Data = (
     profile,
     dna,
     fearGreedStrategy: state.fearGreedStrategy,
-    history: slot === "wife" ? state.history : mergeWithLocalSnapshots(state.history, slot),
+    history: mergeWithLocalSnapshots(state.history, slot),
     transactions: state.transactions,
     signals,
     assetQuality: state.assetQuality ?? emptyAssetQuality,

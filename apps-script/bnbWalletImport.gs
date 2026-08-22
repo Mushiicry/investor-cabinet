@@ -20,9 +20,9 @@ var IC_BNB_WALLET_ADDRESS = '0xFEc18D4474826afd65d578ff931F4ff2926ee0c3';
 var IC_BNB_CHAIN_ID = 56;
 
 var IC_BNB_RPC_URLS = [
-  'https://bsc-rpc.publicnode.com',
-  'https://bsc-dataseed.binance.org',
-  'https://bsc.drpc.org'
+  'https://bsc-mainnet.public.blastapi.io',
+  'https://1rpc.io/bnb',
+  'https://rpc-bsc.48.club'
 ];
 
 // ── Отслеживаемые токены ──────────────────────────────────────────
@@ -47,7 +47,7 @@ var IC_BNB_WALLET_ID = 'metamask-bnb-main';
 // локального USDC↓ на BNB-цепи нет — цену для суммы берём из листа «Цены»
 // (его наполняет HL-синк по primaryMids['BNB'], как GRAM/ATOM/GOLD/SPCXB).
 // Приход BNB (сверх газового шума) классифицируем как «Покупка BNB».
-// BNB↓ игнорируем (это газ на транзакции, не продажа).
+// BNB↓ без встречного стейбла считаем газом; BNB↓ + USDC↑ — продажей.
 var IC_BNB_NATIVE_SYMBOL = 'BNB';
 var IC_BNB_NATIVE_MIN_USD = 0.5; // ниже — газовый шум, не сделка
 var IC_BNB_PRICES_SHEET = 'Цены';
@@ -148,6 +148,7 @@ function IC_BNB_readLastBalances_(sheet) {
 // ── Классификация движений кошелька BNB ────────────────────────────
 // USDC↓ + акции↑  → Покупка (усреднение входа + аудит)
 // USDC↑ + акции↓  → Продажа (вход не меняется, аудит)
+// BNB↓  + USDC↑   → Продажа BNB (газ включён в дельту количества)
 // USDT↔USDC       → Обмен (нейтрально)
 // стейбл без пары → Пополнение / Вывод
 function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
@@ -157,7 +158,7 @@ function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
 
   // ── Нативный BNB: приход → «Покупка BNB» по цене из «Цены» (HL) ──
   // Покупка кросс-чейн (USDC ушёл на Arbitrum), локального USDC↓ нет — цену
-  // берём из листа «Цены» (HL-синк). BNB↓ игнорируем (газ, не продажа). Средний
+  // берём из листа «Цены» (HL-синк). Непарный BNB↓ остаётся газом. Средний
   // вход усредняется; строка попадает в отчёты и запускает кулдаун стратегии
   // (сумма совпадёт со ступенью откупа). Не return — стейбл-потоки независимы.
   var bnbDelta = cur.BNB === null ? 0 : (cur.BNB || 0) - (prev.BNB || 0);
@@ -174,6 +175,22 @@ function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
     } else {
       Logger.log('BNB sync: приход BNB ' + bnbDelta + ' — цена недоступна/ниже порога, покупку не пишу');
     }
+  }
+
+  // Продажа нативного BNB за USDC. Требуем неизменную позицию SPCXB, чтобы
+  // газ от продажи акции не был ошибочно принят за продажу BNB. Нижняя и
+  // верхняя границы цены отсекают случайное совпадение газовой дельты с
+  // отдельным пополнением USDC в том же окне синхронизации.
+  var bnbSold = -bnbDelta;
+  var impliedBnbSell = bnbSold > 0 ? usdcDelta / bnbSold : 0;
+  if (usdcDelta > 0.5 && bnbSold > 0.000001 && Math.abs(stockDelta) <= 0.000001 &&
+      impliedBnbSell >= 50 && impliedBnbSell <= 5000) {
+    if (importSheet) IC_LEDGER_appendTradeRow_(importSheet, {
+      action: 'Продажа', asset: IC_BNB_NATIVE_SYMBOL, category: 'Крипта',
+      quantity: bnbSold, price: impliedBnbSell, amount: usdcDelta,
+      pairLabel: 'BNB -> USDC', syncStartedAt: syncStartedAt,
+      chain: 'BNB', walletId: IC_BNB_WALLET_ID });
+    return;
   }
 
   var usdcSpent = -usdcDelta;
@@ -563,4 +580,70 @@ function IC_BNB_hexUnits_(hex, decimals) {
   return value / Math.pow(10, decimals);
 }
 
+// Одноразовое идемпотентное восстановление продажи BNB от 22.08.2026.
+// Первый прогон до добавления классификатора уже применил новые балансы, но
+// записал встречный приход USDC как пополнение. Балансы здесь не меняются:
+// исправляется только существующая audit-строка в «Транзакции_IMPORT».
+function repairBnbSale20260822() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var importSheet = ss.getSheetByName(IC_BNB_IMPORT_SHEET);
+  var balanceSheet = ss.getSheetByName(IC_BNB_BALANCES_SHEET);
+  if (!importSheet || !balanceSheet) throw new Error('BNB repair: required sheet is missing');
 
+  var wrongIdPrefix = 'EVM_STABLE_FLOW:BNB:20260822T230352:ПОПОЛНЕНИЕ:USDC:';
+  var importRows = importSheet.getRange(2, 1, Math.max(0, importSheet.getLastRow() - 1), 19).getValues();
+  var wrongIndex = -1;
+  for (var i = importRows.length - 1; i >= 0; i -= 1) {
+    if (String(importRows[i][0]).indexOf(wrongIdPrefix) === 0) {
+      wrongIndex = i;
+      break;
+    }
+  }
+
+  if (wrongIndex < 0) {
+    var alreadyRepaired = importRows.some(function(row) {
+      return String(row[0]).indexOf('LEDGER_TRADE:BNB:20260822T230352:ПРОДАЖА:BNB:') === 0;
+    });
+    if (alreadyRepaired) return 'already repaired';
+    throw new Error('BNB repair: source USDC flow was not found');
+  }
+
+  var balances = balanceSheet.getRange(2, 1, Math.max(0, balanceSheet.getLastRow() - 1), 2).getValues();
+  var currentBnb = null;
+  var previousBnb = null;
+  for (var j = balances.length - 1; j >= 0; j -= 1) {
+    if (String(balances[j][0]).trim().toUpperCase() !== IC_BNB_NATIVE_SYMBOL) continue;
+    var quantity = Number(balances[j][1]);
+    if (!isFinite(quantity)) continue;
+    if (currentBnb === null) {
+      currentBnb = quantity;
+    } else if (Math.abs(quantity - currentBnb) > 0.000000000001) {
+      previousBnb = quantity;
+      break;
+    }
+  }
+
+  if (currentBnb === null || previousBnb === null || previousBnb <= currentBnb) {
+    throw new Error('BNB repair: previous BNB balance was not found');
+  }
+
+  var sourceRow = importRows[wrongIndex];
+  var amount = Number(sourceRow[8]);
+  var sold = previousBnb - currentBnb;
+  var price = amount / sold;
+  if (!isFinite(amount) || amount <= 0.5 || !isFinite(price) || price < 50 || price > 5000) {
+    throw new Error('BNB repair: unsafe sale values');
+  }
+
+  var roundedSold = IC_LEDGER_round_(sold, 12);
+  var tradeId = ['LEDGER_TRADE', 'BNB', '20260822T230352', 'ПРОДАЖА', 'BNB', roundedSold].join(':');
+  importSheet.getRange(wrongIndex + 2, 1, 1, 19).setValues([[
+    tradeId, sourceRow[1], sourceRow[2], 'BNB', 'Крипта', 'Продажа',
+    sold, price, amount,
+    'Wallet balance delta; учёт уже применён к Расчетам',
+    IC_BNB_WALLET_ID, 'BNB', 'BALANCE_DELTA', '', 'SWAP', '',
+    'BNB -> USDC', roundedSold + ' BNB',
+    'BALANCE_APPLIED audit row at 2026-08-22T23:03:52. Средний вход не менялся.'
+  ]]);
+  return tradeId;
+}

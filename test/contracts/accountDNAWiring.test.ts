@@ -31,7 +31,8 @@ describe("account DNA wiring", () => {
     expect(dnaPage).toContain("dna.fullQuestionGroups.map");
     expect(dnaPage).toContain("dna.ipsOutputs.map");
     expect(dnaPage).toContain("dna.auditSections.join");
-    expect(healthPage).toContain("InvestorDNAVerdictCard");
-    expect(healthPage).toContain("dna.recommendations.slice(0, 3)");
+    expect(healthPage).toContain('aria-label="Психология и дисциплина"');
+    expect(healthPage).toContain("<strong>{dna.keyVerdict}</strong>");
+    expect(healthPage).toContain("Открыть ДНК инвестора");
   });
 });

@@ -406,6 +406,7 @@ describe("health concentration — per-asset score passthrough", () => {
       "Поведение: 60/100",
       "Блокеры: 100/100",
       "План лимитных покупок: 60/100",
+      "Подтверждение биржи: нет данных",
       "Нарушений за 30 дней: нет данных",
       "Балл дисциплины: 70/100",
     ]);
@@ -434,6 +435,25 @@ describe("health concentration — per-asset score passthrough", () => {
     expect(withoutOrders.meta?.disciplinePlanScore).toBe(50);
     expect(withOrders.meta?.disciplinePlanScore).toBe(100);
     expect(withOrders.score).toBeGreaterThan(withoutOrders.score);
+  });
+
+  it("дисциплина: активные уровни сайта не дают 100, если биржа не подтвердила лимитки", () => {
+    const h = computePortfolioHealth({
+      ...base,
+      disciplineJournalCoverage: 0,
+      disciplineViolations30d: 0,
+      fomoEvents30d: 0,
+      revengeTrades30d: 0,
+      overtradingDays30d: 0,
+      plannedLimitOrdersUsd: 120,
+      plannedLimitOrdersConfirmed: false,
+    });
+    const d = discipline(h);
+
+    expect(d.meta?.disciplinePlanScore).toBe(40);
+    expect(d.meta?.disciplineLimitOrdersConfirmed).toBe(false);
+    expect(d.meta?.disciplineWarnings).toContain("Лимитки на бирже не подтверждены — выставить вручную и перепроверять еженедельно");
+    expect(d.meta?.disciplineFormula).toContain("Подтверждение биржи: нет");
   });
 
   it("дисциплина: сделка-месть, переторговка и страх упустить рост включают блокировки", () => {

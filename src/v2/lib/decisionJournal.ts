@@ -15,6 +15,12 @@ export type DecisionJournalEntry = {
   setup: string;
   emotion: string;
   note: string;
+  invalidation: string;
+  exitPlan: string;
+  orderPlan: string;
+  priceAndAmountChecked: boolean;
+  alertIsNotOrderConfirmed: boolean;
+  planNotFomoConfirmed: boolean;
   healthBefore: number | null;
   healthAfter: number | null;
   healthDelta: number | null;
@@ -36,6 +42,12 @@ export type DecisionJournalDraft = {
   setup: string;
   emotion: string;
   note: string;
+  invalidation: string;
+  exitPlan: string;
+  orderPlan: string;
+  priceAndAmountChecked: boolean;
+  alertIsNotOrderConfirmed: boolean;
+  planNotFomoConfirmed: boolean;
 };
 
 const STORAGE_PREFIX = "mushii-decision-journal-v1";
@@ -84,6 +96,12 @@ export function normalizeDecisionJournalEntry(value: unknown): DecisionJournalEn
     setup: toText(value.setup),
     emotion: toText(value.emotion),
     note: toText(value.note),
+    invalidation: toText(value.invalidation),
+    exitPlan: toText(value.exitPlan),
+    orderPlan: toText(value.orderPlan),
+    priceAndAmountChecked: value.priceAndAmountChecked === true,
+    alertIsNotOrderConfirmed: value.alertIsNotOrderConfirmed === true,
+    planNotFomoConfirmed: value.planNotFomoConfirmed === true,
     healthBefore: toNumberOrNull(value.healthBefore),
     healthAfter: toNumberOrNull(value.healthAfter),
     healthDelta: toNumberOrNull(value.healthDelta),
@@ -138,6 +156,12 @@ export function buildDecisionJournalEntry(draft: DecisionJournalDraft): Decision
     setup: draft.setup,
     emotion: draft.emotion,
     note: draft.note,
+    invalidation: draft.invalidation,
+    exitPlan: draft.exitPlan,
+    orderPlan: draft.orderPlan,
+    priceAndAmountChecked: draft.priceAndAmountChecked,
+    alertIsNotOrderConfirmed: draft.alertIsNotOrderConfirmed,
+    planNotFomoConfirmed: draft.planNotFomoConfirmed,
     healthBefore: decision.healthPreview ? Math.round(decision.healthPreview.before.healthFactor) : null,
     healthAfter:
       decision.healthPreview && decision.healthPreview.applicable

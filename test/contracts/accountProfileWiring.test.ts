@@ -18,9 +18,9 @@ describe("account profile wiring", () => {
     const healthPage = read("src/v2/components/V2HealthPage.tsx");
     const dnaPage = read("src/v2/components/V2InvestorDNAPage.tsx");
 
-    expect(healthPage).toContain("function InvestorDNAVerdictCard");
-    expect(healthPage).toContain("Вердикт ДНК Инвестора");
-    expect(healthPage).toContain("Открыть ДНК Инвестора");
+    expect(healthPage).toContain('aria-label="Психология и дисциплина"');
+    expect(healthPage).toContain("<strong>{dna.keyVerdict}</strong>");
+    expect(healthPage).toContain("Открыть ДНК инвестора");
     expect(healthPage).not.toContain("function InvestorProfileCard");
     expect(dnaPage).toContain("ДНК Инвестора");
     expect(dnaPage).toContain("Рекомендации ДНК");

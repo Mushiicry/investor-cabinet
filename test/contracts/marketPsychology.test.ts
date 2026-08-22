@@ -18,6 +18,19 @@ describe("рыночная психология", () => {
     expect(psychology.gate.severity).toBe("warning");
   });
 
+  it("оптимизм 72 даёт прямую рекомендацию пользователю не покупать без плана", () => {
+    const psychology = getMarketPsychology(72);
+
+    expect(psychology.emotion).toBe("Оптимизм и возбуждение");
+    expect(psychology.stanceLabel).toBe("Не покупать без плана");
+    expect(psychology.disciplined).toContain("Не покупай только потому, что рынок растёт");
+    expect(psychology.dangerous).toContain("Не догоняй рост");
+    expect(psychology.disciplined).not.toContain("Фиксирует прибыль");
+    expect(psychology.disciplined).not.toContain("Не покупает");
+    expect(psychology.gate.text).toContain("Не покупай просто из-за роста");
+    expect(psychology.gate.text).toContain("проверки причины, размера и выживаемости");
+  });
+
   it("рост из страха остаётся зоной планового добора", () => {
     const psychology = getMarketPsychology(18, [
       { value: 8 },
