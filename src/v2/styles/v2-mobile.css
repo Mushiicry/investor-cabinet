@@ -938,6 +938,20 @@
   .v2-port-columns-line {
     display: none;
   }
+  .v2-port-market-line {
+    grid-template-columns: minmax(0, 1fr) 120px;
+    gap: 6px;
+  }
+  .v2-port-market-line > .v2-port-row {
+    grid-column: 1 / -1;
+  }
+  .v2-port-chart-slot {
+    min-height: 66px;
+  }
+  .v2-port-chart-link {
+    width: 114px;
+    height: 52px;
+  }
   .v2-port-row {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto;
@@ -975,9 +989,6 @@
 @media (max-width: 480px) {
   .v2-port-metrics {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .v2-port-hero-title h1 {
-    font-size: 24px;
   }
   .v2-port-metric-card {
     min-height: auto;

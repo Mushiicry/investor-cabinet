@@ -9,6 +9,7 @@ import { CryptoLogo } from "../../components/crypto/CryptoLogo";
 import { useEscapeClose } from "../../hooks/useEscapeClose";
 import { V2StakingCard } from "./V2StakingCard";
 import { V2CosmosStakingCard } from "./V2CosmosStakingCard";
+import { V2PortfolioMiniChart } from "./V2PortfolioMiniChart";
 import type { InvestorStrategy } from "../lib/investorStrategy";
 import { isWaitingRebuyStatus } from "../../lib/portfolioSelectors";
 
@@ -86,6 +87,70 @@ const GROUPS = [
   { title: "Металлы", category: "Металлы" },
   { title: "Акции", category: "Акции" },
 ];
+
+const TRADINGVIEW_CHARTS: Record<string, { symbol: string; marketAsset: string; url: string }> = {
+  GRAM: {
+    symbol: "GRAM",
+    marketAsset: "GRAM",
+    url: "https://ru.tradingview.com/chart/?symbol=OKX%3AGRAMUSDT",
+  },
+  // В текущем API позиция GRAM приходит под историческим именем TON.
+  TON: {
+    symbol: "GRAM",
+    marketAsset: "GRAM",
+    url: "https://ru.tradingview.com/chart/?symbol=OKX%3AGRAMUSDT",
+  },
+  ATOM: {
+    symbol: "ATOM",
+    marketAsset: "ATOM",
+    url: "https://ru.tradingview.com/chart/?symbol=BINANCE%3AATOMUSDT",
+  },
+  SOL: {
+    symbol: "SOL",
+    marketAsset: "SOL",
+    url: "https://ru.tradingview.com/chart/?symbol=BINANCE%3ASOLUSDT",
+  },
+  BNB: {
+    symbol: "BNB",
+    marketAsset: "BNB",
+    url: "https://ru.tradingview.com/chart/?symbol=BINANCE%3ABNBUSDT",
+  },
+  BTC: {
+    symbol: "BTC",
+    marketAsset: "BTC",
+    url: "https://ru.tradingview.com/chart/?symbol=BINANCE%3ABTCUSDT",
+  },
+  ETH: {
+    symbol: "ETH",
+    marketAsset: "ETH",
+    url: "https://ru.tradingview.com/chart/?symbol=BINANCE%3AETHUSDT",
+  },
+  APEX: {
+    symbol: "APEX",
+    marketAsset: "APEX",
+    url: "https://ru.tradingview.com/chart/?symbol=BYBIT%3AAPEXUSDT",
+  },
+  MNT: {
+    symbol: "MNT",
+    marketAsset: "MNT",
+    url: "https://ru.tradingview.com/chart/?symbol=BYBIT%3AMNTUSDT",
+  },
+  CAKE: {
+    symbol: "CAKE",
+    marketAsset: "CAKE",
+    url: "https://ru.tradingview.com/chart/?symbol=BINANCE%3ACAKEUSDT",
+  },
+  GOLD: {
+    symbol: "GOLD",
+    marketAsset: "GOLD",
+    url: "https://ru.tradingview.com/chart/?symbol=PEPPERSTONE%3AXAUUSD",
+  },
+  SPCXB: {
+    symbol: "SPCXB",
+    marketAsset: "SPCXB",
+    url: "https://ru.tradingview.com/chart/?symbol=BINANCE%3ASPCXBUSDT",
+  },
+};
 
 function summaryPnlPct(pnlPct: number) {
   const normalized = Math.abs(pnlPct) <= 1 ? pnlPct * 100 : pnlPct;
@@ -206,6 +271,23 @@ function IdentityCard({
     </button>
   ) : (
     <div className="v2-pid">{inner}</div>
+  );
+}
+
+function TradingViewChartLink({ asset }: { asset: string }) {
+  const normalizedAsset = asset.replace(/ (LONG|SHORT)$/, "");
+  const chart = TRADINGVIEW_CHARTS[normalizedAsset];
+
+  return (
+    <div className="v2-port-chart-slot">
+      {chart && (
+        <V2PortfolioMiniChart
+          asset={chart.marketAsset}
+          symbol={chart.symbol}
+          href={chart.url}
+        />
+      )}
+    </div>
   );
 }
 
@@ -338,9 +420,6 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
     <section className="v2-port-page" aria-label="Портфель — все позиции">
       <div className="v2-port-shell">
         <header className="v2-port-hero">
-          <div className="v2-port-hero-title">
-            <h1>Портфель</h1>
-          </div>
           <div className="v2-port-metrics" aria-label="Ключевые метрики портфеля">
             <PortfolioMetricCard
               label="Всего в рынке"
@@ -401,8 +480,9 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
                       </span>
                     </div>
                   </div>
-                  <div className="v2-pline v2-port-columns-line">
-                    <div className="v2-port-column-asset">Актив</div>
+                  <div className="v2-pline v2-port-market-line v2-port-columns-line">
+                    <div aria-hidden="true" />
+                    <div aria-hidden="true" />
                     <div className="v2-port-row v2-port-column-head">
                       <div className="v2-row-block">
                         <span>Ср. вход</span>
@@ -429,7 +509,7 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
                     const isWaitingRebuy = isWaitingRebuyStatus(position.status) && position.value <= 0;
 
                     const row = (
-                      <div className="v2-pline">
+                      <div className="v2-pline v2-port-market-line">
                         <IdentityCard
                           asset={position.asset}
                           card={card}
@@ -438,6 +518,7 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
                           staked={isStaked}
                           onOpen={card ? () => setSelected({ card, position }) : undefined}
                         />
+                        <TradingViewChartLink asset={position.asset} />
                         <div className="v2-port-row">
                           <div className="v2-row-block">
                             <span className="v2-rb-val">{isWaitingRebuy ? "—" : money(position.avgEntry)}</span>
