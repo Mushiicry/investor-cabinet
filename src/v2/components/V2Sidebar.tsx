@@ -29,6 +29,16 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
     ),
   },
   {
+    label: "Сигналы",
+    page: "signals",
+    icon: (
+      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M9 2a4 4 0 00-4 4c0 4-1.6 5-1.6 5h11.2S13 10 13 6a4 4 0 00-4-4z" />
+        <path d="M7.4 14a1.6 1.6 0 003.2 0" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     label: "Здоровье",
     page: "health",
     icon: (
@@ -91,16 +101,6 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <rect x="3" y="2" width="12" height="14" rx="1.6" />
         <path d="M6 6h6M6 9h6M6 12h4" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    label: "Сигналы",
-    page: "signals",
-    icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M9 2a4 4 0 00-4 4c0 4-1.6 5-1.6 5h11.2S13 10 13 6a4 4 0 00-4-4z" />
-        <path d="M7.4 14a1.6 1.6 0 003.2 0" strokeLinecap="round" />
       </svg>
     ),
   },

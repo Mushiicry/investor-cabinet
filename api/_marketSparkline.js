@@ -1,6 +1,6 @@
 const OKX_CANDLES_URL = "https://www.okx.com/api/v5/market/candles";
 const BINANCE_CANDLES_URL = "https://data-api.binance.vision/api/v3/klines";
-const BYBIT_CANDLES_URL = "https://api.bybit.com/v5/market/kline";
+const BYBIT_CANDLES_URL = "https://api.bytick.com/v5/market/kline";
 const ALLOWED_ASSETS = new Map([
   ["GRAM", { source: "okx", market: "GRAM-USDT" }],
   ["ATOM", { source: "binance", market: "ATOMUSDT" }],

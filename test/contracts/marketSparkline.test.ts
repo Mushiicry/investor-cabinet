@@ -106,7 +106,7 @@ describe("market sparkline API", () => {
   it("uses Binance for ETH and Bybit spot for APEX", async () => {
     globalThis.fetch = vi.fn(async (input) => {
       const url = new URL(String(input));
-      if (url.hostname === "api.bybit.com") {
+      if (url.hostname === "api.bytick.com") {
         expect(url.searchParams.get("category")).toBe("spot");
         expect(url.searchParams.get("symbol")).toBe("APEXUSDT");
         expect(url.searchParams.get("interval")).toBe("D");
@@ -130,7 +130,7 @@ describe("market sparkline API", () => {
     globalThis.fetch = vi.fn(async (input) => {
       const url = new URL(String(input));
       requestedMarkets.push(url.searchParams.get("symbol") ?? "");
-      if (url.hostname === "api.bybit.com") {
+      if (url.hostname === "api.bytick.com") {
         return Response.json({
           retCode: 0,
           result: { list: [["100", "0.4", "0.6", "0.3", "0.5"]] },
