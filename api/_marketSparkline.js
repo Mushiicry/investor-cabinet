@@ -1,6 +1,7 @@
 const OKX_CANDLES_URL = "https://www.okx.com/api/v5/market/candles";
 const BINANCE_CANDLES_URL = "https://data-api.binance.vision/api/v3/klines";
 const BYBIT_CANDLES_URL = "https://api.bytick.com/v5/market/kline";
+const COINGECKO_API_URL = "https://api.coingecko.com/api/v3/coins";
 const ALLOWED_ASSETS = new Map([
   ["GRAM", { source: "okx", market: "GRAM-USDT" }],
   ["ATOM", { source: "binance", market: "ATOMUSDT" }],
@@ -8,8 +9,8 @@ const ALLOWED_ASSETS = new Map([
   ["BNB", { source: "binance", market: "BNBUSDT" }],
   ["BTC", { source: "binance", market: "BTCUSDT" }],
   ["ETH", { source: "binance", market: "ETHUSDT" }],
-  ["APEX", { source: "bybit", market: "APEXUSDT" }],
-  ["MNT", { source: "bybit", market: "MNTUSDT" }],
+  ["APEX", { source: "coingecko", market: "apex-token-2" }],
+  ["MNT", { source: "coingecko", market: "mantle" }],
   ["CAKE", { source: "binance", market: "CAKEUSDT" }],
   ["GOLD", { source: "binance", market: "PAXGUSDT" }],
   ["SPCXB", { source: "binance", market: "SPCXBUSDT" }],
@@ -33,13 +34,19 @@ export async function fetchMarketSparkline(asset) {
   const config = ALLOWED_ASSETS.get(String(asset || "").toUpperCase());
   if (!config) throw new Error("Unsupported sparkline asset");
 
-  const endpoint = config.source === "okx"
+  const endpoint = config.source === "coingecko"
+    ? `${COINGECKO_API_URL}/${config.market}/market_chart`
+    : config.source === "okx"
     ? OKX_CANDLES_URL
     : config.source === "bybit"
       ? BYBIT_CANDLES_URL
       : BINANCE_CANDLES_URL;
   const url = new URL(endpoint);
-  if (config.source === "okx") {
+  if (config.source === "coingecko") {
+    url.searchParams.set("vs_currency", "usd");
+    url.searchParams.set("days", "36");
+    url.searchParams.set("interval", "daily");
+  } else if (config.source === "okx") {
     url.searchParams.set("instId", config.market);
     url.searchParams.set("bar", "1D");
   } else if (config.source === "bybit") {
@@ -50,7 +57,7 @@ export async function fetchMarketSparkline(asset) {
     url.searchParams.set("symbol", config.market);
     url.searchParams.set("interval", "1d");
   }
-  url.searchParams.set("limit", "36");
+  if (config.source !== "coingecko") url.searchParams.set("limit", "36");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8_000);
@@ -65,7 +72,9 @@ export async function fetchMarketSparkline(asset) {
     if (!response.ok) throw new Error(`${config.source.toUpperCase()} candles failed: ${response.status}`);
 
     const json = await response.json();
-    const rows = config.source === "okx"
+    const rows = config.source === "coingecko"
+      ? json?.prices
+      : config.source === "okx"
       ? json?.data
       : config.source === "bybit"
         ? json?.result?.list
@@ -77,7 +86,10 @@ export async function fetchMarketSparkline(asset) {
     }
 
     return rows
-      .map((row) => ({ ts: Number(row?.[0]), close: Number(row?.[4]) }))
+      .map((row) => ({
+        ts: Number(row?.[0]),
+        close: Number(row?.[config.source === "coingecko" ? 1 : 4]),
+      }))
       .filter((point) => Number.isFinite(point.ts) && Number.isFinite(point.close))
       .sort((a, b) => a.ts - b.ts);
   } finally {

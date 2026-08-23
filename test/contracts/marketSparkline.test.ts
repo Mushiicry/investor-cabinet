@@ -103,16 +103,16 @@ describe("market sparkline API", () => {
     expect(requestedSymbols).toEqual(["BNBUSDT", "BTCUSDT"]);
   });
 
-  it("uses Binance for ETH and Bybit spot for APEX", async () => {
+  it("uses Binance for ETH and CoinGecko daily prices for APEX", async () => {
     globalThis.fetch = vi.fn(async (input) => {
       const url = new URL(String(input));
-      if (url.hostname === "api.bytick.com") {
-        expect(url.searchParams.get("category")).toBe("spot");
-        expect(url.searchParams.get("symbol")).toBe("APEXUSDT");
-        expect(url.searchParams.get("interval")).toBe("D");
+      if (url.hostname === "api.coingecko.com") {
+        expect(url.pathname).toContain("/coins/apex-token-2/market_chart");
+        expect(url.searchParams.get("vs_currency")).toBe("usd");
+        expect(url.searchParams.get("days")).toBe("36");
+        expect(url.searchParams.get("interval")).toBe("daily");
         return Response.json({
-          retCode: 0,
-          result: { list: [["100", "0.2", "0.3", "0.1", "0.25"]] },
+          prices: [[100, 0.25]],
         });
       }
 
@@ -129,13 +129,11 @@ describe("market sparkline API", () => {
     const requestedMarkets: string[] = [];
     globalThis.fetch = vi.fn(async (input) => {
       const url = new URL(String(input));
-      requestedMarkets.push(url.searchParams.get("symbol") ?? "");
-      if (url.hostname === "api.bytick.com") {
-        return Response.json({
-          retCode: 0,
-          result: { list: [["100", "0.4", "0.6", "0.3", "0.5"]] },
-        });
+      if (url.hostname === "api.coingecko.com") {
+        requestedMarkets.push(url.pathname.split("/").at(-2) ?? "");
+        return Response.json({ prices: [[100, 0.5]] });
       }
+      requestedMarkets.push(url.searchParams.get("symbol") ?? "");
       return Response.json([[100, "1", "2", "0.5", "1.5"]]);
     }) as typeof fetch;
 
@@ -144,7 +142,7 @@ describe("market sparkline API", () => {
     await fetchMarketSparkline("GOLD");
     await fetchMarketSparkline("SPCXB");
 
-    expect(requestedMarkets).toEqual(["MNTUSDT", "CAKEUSDT", "PAXGUSDT", "SPCXBUSDT"]);
+    expect(requestedMarkets).toEqual(["mantle", "CAKEUSDT", "PAXGUSDT", "SPCXBUSDT"]);
   });
 
   it("rejects assets outside the explicit visual-data allowlist", async () => {
