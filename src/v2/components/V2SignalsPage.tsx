@@ -152,7 +152,7 @@ function LimitLevelModal({
   const canSubmit = Boolean(draft.asset.trim()) && triggerPrice > 0 && amountUsd > 0 && !saving;
 
   return createPortal(
-    <div className="v2-sig-limit-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Выставить лимитный уровень">
+    <div className="v2-sig-limit-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Создать лимитное напоминание">
       <div className="v2-sig-limit-modal" onClick={(event) => event.stopPropagation()}>
         <button className="v2-sig-limit-close" type="button" onClick={onClose} aria-label="Закрыть">
           <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -162,8 +162,8 @@ function LimitLevelModal({
 
         <div className="v2-sig-limit-head">
           <span>Лимитный уровень</span>
-          <h2>Выставить напоминание</h2>
-          <p>Строка попадёт в «Сигналы», Telegram подтвердит постановку и отдельно сообщит при касании цены.</p>
+          <h2>Создать напоминание</h2>
+          <p>Кабинет не отправляет ордер на Hyperliquid. После сохранения лимитку нужно вручную выставить на бирже.</p>
         </div>
 
         <div className="v2-sig-limit-form">
@@ -221,7 +221,7 @@ function LimitLevelModal({
             {draft.asset || "Актив"} · {draft.action} {amountUsd ? formatSignalMoney(amountUsd) : "$0"} при{" "}
             {triggerPrice ? formatSignalMoney(triggerPrice) : "$0"}
           </strong>
-          <p>Это не сделка и не приказ бирже. Это Telegram-напоминание для ручной проверки риска.</p>
+          <p>Это не сделка и не приказ бирже. Это сайт/TG-напоминание для ручной проверки риска и ручного действия на Hyperliquid.</p>
         </div>
 
         {message && <div className="v2-sig-limit-message">{message}</div>}
@@ -229,7 +229,7 @@ function LimitLevelModal({
         <div className="v2-sig-limit-actions">
           <button type="button" onClick={onClose}>Отмена</button>
           <button type="button" disabled={!canSubmit} onClick={onSubmit}>
-            {saving ? "Сохраняю" : "Выставить уровень"}
+            {saving ? "Сохраняю" : "Сохранить напоминание"}
           </button>
         </div>
       </div>
@@ -314,7 +314,7 @@ export function V2SignalsPage({
   const candidateButtonLabel = (signal: InterestSignal) => {
     const candidate = buildTradeCandidateFromSignal(signal, positions);
     if (!candidate) return "Проверить";
-    return candidate.action === "sell" ? "Проверить продажу" : "Проверить покупку";
+    return candidate.action === "sell" ? "Риск перед продажей" : "Риск перед покупкой";
   };
   const signalFromAlert = (alert: Alert) => {
     const id = signalIdFromAlert(alert);
@@ -405,7 +405,7 @@ export function V2SignalsPage({
         throw new Error(response.error || "уровень не создан");
       }
 
-      setLimitMessage(`Уровень создан: ${response.id ?? asset}. Ждём Telegram-подтверждение после ближайшей проверки.`);
+      setLimitMessage(`Напоминание создано: ${response.id ?? asset}. Ордер на Hyperliquid не выставлен — его нужно поставить вручную.`);
       onRefreshData?.();
     } catch (error) {
       const reason = error instanceof Error ? error.message : "неизвестная ошибка";
@@ -526,7 +526,7 @@ export function V2SignalsPage({
             </span>
           </div>
           <div className="v2-sig-trigger-detail">
-            Цена коснулась уровня. Сначала изучить график, затем открыть проверку риска.
+            Цена коснулась уровня. Это не биржевой ордер: сначала проверить риск, затем вручную выставить или исполнить сделку на Hyperliquid.
           </div>
           <div className="v2-sig-trigger-actions">
             <button
@@ -556,7 +556,7 @@ export function V2SignalsPage({
         <div className="v2-panel v2-sig-interest">
           <div className="v2-sig-panel-label">
             <span className="v2-sig-dot dot-info" />
-            Лимитные ордера
+            Лимитные уровни
             {interestSignals.length ? (
               <span className="v2-sig-int-bot-badge">
                 {formatSignalTotalMoney(limitOrders.totalUsd)} · {limitOrders.count} покупок
@@ -565,11 +565,15 @@ export function V2SignalsPage({
               <span className="v2-sig-int-bot-badge">НЕТ ДАННЫХ</span>
             )}
             <button className="v2-sig-add-level" type="button" onClick={openLimitModal}>
-              + Выставить уровень
+              + Напоминание
             </button>
           </div>
           <div className="v2-sig-limit-help">
-            Эта сумма — резерв под активные покупки. Сайт/TG только напоминают: лимитку нужно выставить на бирже вручную. Продажи, сработавшие и отключённые уровни покупательскую способность не занимают.
+            Эта сумма — резерв под активные покупки. Сайт/TG только напоминают: реальную лимитку нужно выставить на бирже вручную. Продажи, сработавшие и отключённые уровни покупательскую способность не занимают.
+          </div>
+          <div className="v2-sig-exchange-warning">
+            <strong>Hyperliquid не подключен к исполнению</strong>
+            <span>Уровень в кабинете не подтверждает открытый ордер на бирже. После проверки сделки открой Hyperliquid и поставь лимитку вручную.</span>
           </div>
           {assetGroups.length ? (
             <>

@@ -40,7 +40,8 @@ describe("manual signal limit levels", () => {
     expect(signalScript).toContain("'PENDING'");
     expect(signalScript).toContain("sheet.getRange(sheet.getLastRow() + 1, 1, 1, 12).setValues([row])");
     expect(page).toContain("Это не сделка и не приказ бирже");
-    expect(page).toContain("Выставить уровень");
+    expect(page).toContain("Сохранить напоминание");
+    expect(page).toContain("Кабинет не отправляет ордер на Hyperliquid");
     expect(page).toContain("createSignalLimitLevel");
     expect(page).not.toContain("Выставить и ждать");
   });

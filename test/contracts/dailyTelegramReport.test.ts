@@ -201,6 +201,12 @@ describe("daily telegram report endpoint", () => {
         status: 200,
         headers: { "content-type": "application/json" },
       }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        data: [{ value: "68", value_classification: "Greed", timestamp: "1787961600" }],
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, result: { message_id: 1 } }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -223,14 +229,15 @@ describe("daily telegram report endpoint", () => {
         pnl: -31.9,
         reserve: 478.77,
         health: 65,
-        fearGreedIndex: 46,
+        fearGreedIndex: 68,
       },
     });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls[0][0]).toBe("https://apps-script.example/main?accountId=main");
-    expect(fetchMock.mock.calls[1][0]).toBe("https://api.telegram.org/bottest-token/sendMessage");
+    expect(fetchMock.mock.calls[1][0]).toBe("https://api.alternative.me/fng/?limit=1&format=json");
+    expect(fetchMock.mock.calls[2][0]).toBe("https://api.telegram.org/bottest-token/sendMessage");
 
-    const telegramBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const telegramBody = JSON.parse(fetchMock.mock.calls[2][1].body);
     expect(telegramBody.chat_id).toBe("123456");
     expect(telegramBody.text).toContain("MUSHII INVEST");
     expect(telegramBody.text).toContain("вложено 699,40 $");
@@ -241,9 +248,71 @@ describe("daily telegram report endpoint", () => {
     expect(telegramBody.text).toContain("CAKE LONG");
     expect(telegramBody.text).toContain("Кэш и резерв: 478,77 $");
     expect(telegramBody.text).toContain("Health Factor: 65/100");
-    expect(telegramBody.text).toContain("Индекс страха и жадности: 46");
+    expect(telegramBody.text).toContain("Индекс страха и жадности: 68, зона Жадность");
     expect(telegramBody.text).toContain("простаивает 59,13 $ сверх лимита 419,64 $");
     expect(telegramBody.text).toContain("не является торговым сигналом");
+  });
+
+  it("falls back to CryptoRank when alternative.me is unavailable", async () => {
+    setEnv();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(portfolioPayload), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response("upstream unavailable", { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([
+        { value: 67, timestamp: 1787875200000 },
+        { value: 68, timestamp: 1787961600000 },
+      ]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, result: { message_id: 2 } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const req = mockReq({ authorization: "Bearer cron-secret" });
+    const res = mockRes();
+
+    await dailyTelegramReportHandler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body ?? "{}").facts.fearGreedIndex).toBe(68);
+    expect(fetchMock.mock.calls[2][0]).toBe("https://api.cryptorank.io/v0/global-charts/fear-and-greed-chart");
+    const telegramBody = JSON.parse(fetchMock.mock.calls[3][1].body);
+    expect(telegramBody.text).toContain("Индекс страха и жадности: 68, зона Жадность");
+    expect(telegramBody.text).not.toContain("Индекс страха и жадности: 46");
+  });
+
+  it("keeps sending the report without a stale index when all live sources fail", async () => {
+    setEnv();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(portfolioPayload), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response("Alternative unavailable", { status: 503 }))
+      .mockResolvedValueOnce(new Response("CryptoRank unavailable", { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, result: { message_id: 4 } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const req = mockReq({ authorization: "Bearer cron-secret" });
+    const res = mockRes();
+
+    await dailyTelegramReportHandler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body ?? "{}").facts.fearGreedIndex).toBeNull();
+    const telegramBody = JSON.parse(fetchMock.mock.calls[3][1].body);
+    expect(telegramBody.text).toContain("устаревшее значение не показываем");
   });
 });
 

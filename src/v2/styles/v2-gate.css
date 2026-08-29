@@ -177,6 +177,17 @@
   color: rgba(150, 185, 214, 0.76);
 }
 
+.v2-gate-route-warning {
+  margin-top: 10px;
+  padding: 10px 11px;
+  border: 1px solid rgba(238, 174, 76, 0.34);
+  border-radius: 8px;
+  background: rgba(76, 50, 14, 0.24);
+  color: rgba(225, 199, 158, 0.86);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 /* ── Форма ──────────────────────────────────────────────── */
 .v2-gate-form {
   display: grid;
@@ -801,6 +812,10 @@
 .v2-gate-execution em {
   color: rgba(105, 220, 150, 0.86);
   font-style: normal;
+}
+
+.v2-gate-execution em.v2-gate-exchange-next {
+  color: rgba(244, 204, 140, 0.92);
 }
 
 .v2-gate-foot {

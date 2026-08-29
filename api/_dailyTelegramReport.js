@@ -5,6 +5,9 @@ const MOSCOW_TIME_ZONE = "Europe/Moscow";
 const MAX_REPORT_POSITIONS = 12;
 const MIN_REPORT_POSITION_VALUE_USD = 1;
 const TELEGRAM_API_BASE = "https://api.telegram.org";
+const ALTERNATIVE_FEAR_GREED_URL = "https://api.alternative.me/fng/?limit=1&format=json";
+const CRYPTORANK_FEAR_GREED_URL = "https://api.cryptorank.io/v0/global-charts/fear-and-greed-chart";
+const FEAR_GREED_SOURCE_TIMEOUT_MS = 10_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAIN_CRYPTO_POSITION_LIMITS = {
   BTC: 0.2,
@@ -180,10 +183,12 @@ const modeLabel = (value) => {
   const normalized = compactText(value).toLowerCase();
   if (!normalized) return "";
   const labels = {
+    "extreme fear": "Крайний страх",
     fear: "Страх",
     observation: "Наблюдаем",
     neutral: "Нейтрально",
     greed: "Жадность",
+    "extreme greed": "Крайняя жадность",
     balance: "Баланс",
     balanced: "Баланс",
   };
@@ -237,6 +242,94 @@ const fearGreedMood = (index) => {
   if (index <= 75) return "на рынке преобладает жадность";
   return "крайняя жадность";
 };
+
+const fetchFearGreedJson = async (url, headers = {}) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FEAR_GREED_SOURCE_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { accept: "application/json", ...headers },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    const body = await response.text();
+
+    if (!response.ok) {
+      throw new Error(`Fear & Greed source failed: HTTP ${response.status}`);
+    }
+
+    return JSON.parse(body);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+const normalizeLiveFearGreed = (value, currentZone, source) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0 || numeric > 100) {
+    throw new Error(`${source} Fear & Greed returned invalid data`);
+  }
+
+  return {
+    currentIndex: Math.round(numeric),
+    currentZone: compactText(currentZone),
+    source,
+  };
+};
+
+const fearGreedClassification = (value) => {
+  if (value <= 24) return "Extreme Fear";
+  if (value <= 44) return "Fear";
+  if (value <= 54) return "Neutral";
+  if (value <= 74) return "Greed";
+  return "Extreme Greed";
+};
+
+const fetchAlternativeFearGreed = async () => {
+  const payload = await fetchFearGreedJson(ALTERNATIVE_FEAR_GREED_URL);
+  const point = Array.isArray(payload?.data) ? payload.data[0] : null;
+  return normalizeLiveFearGreed(
+    point?.value,
+    point?.value_classification,
+    "alternative.me",
+  );
+};
+
+const fetchCryptoRankFearGreed = async () => {
+  const payload = await fetchFearGreedJson(CRYPTORANK_FEAR_GREED_URL, {
+    origin: "https://cryptorank.io",
+    referer: "https://cryptorank.io/",
+  });
+  const points = Array.isArray(payload) ? payload : [];
+  const latest = points
+    .filter((point) => Number.isFinite(Number(point?.timestamp)))
+    .sort((a, b) => Number(b.timestamp) - Number(a.timestamp))[0];
+  return normalizeLiveFearGreed(
+    latest?.value,
+    fearGreedClassification(Number(latest?.value)),
+    "cryptorank",
+  );
+};
+
+export async function fetchDailyReportFearGreed() {
+  const sources = [
+    fetchAlternativeFearGreed,
+    fetchCryptoRankFearGreed,
+  ];
+  let lastError = null;
+
+  for (const fetchSource of sources) {
+    try {
+      return await fetchSource();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError ?? new Error("Fear & Greed live sources are unavailable");
+}
 
 const wifeHealthSummary = (health) => {
   if (health === null) return "Оценка здоровья временно недоступна.";
@@ -418,7 +511,13 @@ export function buildDailyTelegramReport(payload, options = {}) {
   const dailyPnlPct = previousSnapshot && previousSnapshot.portfolioValue > 0
     ? (dailyPnlUsd / previousSnapshot.portfolioValue) * 100
     : null;
-  const fearGreedSource = isRecord(payload?.fearGreedStrategy) ? payload.fearGreedStrategy : {};
+  const fearGreedSource = options.liveFearGreed === null
+    ? {}
+    : isRecord(options.liveFearGreed)
+      ? options.liveFearGreed
+      : isRecord(payload?.fearGreedStrategy)
+        ? payload.fearGreedStrategy
+        : {};
   const rawFearGreedIndex = fearGreedSource.currentIndex === undefined ? null : Math.round(toNumber(fearGreedSource.currentIndex));
   const fearGreed = {
     index: rawFearGreedIndex === null || !Number.isFinite(rawFearGreedIndex) ? null : rawFearGreedIndex,
@@ -485,7 +584,7 @@ export function buildDailyTelegramReport(payload, options = {}) {
     "",
     health.line,
     fearGreed.index === null
-      ? "5. Индекс страха и жадности: не передан в данных."
+      ? "5. Индекс страха и жадности: временно недоступен; устаревшее значение не показываем."
       : `5. Индекс страха и жадности: ${fearGreed.index}${fearGreed.mode ? `, зона ${fearGreed.mode}` : ""}.`,
     "",
     "6. Что проверить дальше:",
@@ -553,7 +652,14 @@ export async function runDailyTelegramReport({ accountId = "main", botToken, cha
     hyperliquidRiskByCoin = {};
   }
 
-  const report = buildDailyTelegramReport(payload, { accountId, now, hyperliquidRiskByCoin });
+  let liveFearGreed = null;
+  try {
+    liveFearGreed = await fetchDailyReportFearGreed();
+  } catch {
+    liveFearGreed = null;
+  }
+
+  const report = buildDailyTelegramReport(payload, { accountId, now, hyperliquidRiskByCoin, liveFearGreed });
   await sendTelegramMessage({ botToken, chatId, text: report.text });
   return report;
 }

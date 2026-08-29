@@ -40,7 +40,8 @@ type Props = {
 
 const NEW_ASSET = "__new__";
 const CATEGORIES = [CRYPTO_CATEGORY, METALS_CATEGORY, STOCKS_CATEGORY, FUTURES_CATEGORY];
-const SETUPS = ["Плановый добор", "Лимитный ордер", "ДСА добор", "Ребаланс", "Защитное действие", "Учебная сделка"];
+const SIGNAL_LIMIT_SETUP = "Сигнал / ручной лимит";
+const SETUPS = ["Плановый добор", SIGNAL_LIMIT_SETUP, "Лимитный ордер", "ДСА добор", "Ребаланс", "Защитное действие", "Учебная сделка"];
 const EMOTIONS = ["Спокойно", "Сомнение", "Страх упустить рост", "Спешка", "После убытка"];
 
 const pct = (share: number) => `${(share * 100).toFixed(1)}%`;
@@ -114,13 +115,13 @@ export function V2GatePage({
         ? String(positions[0].currentPrice)
         : "",
   );
-  const [setup, setSetup] = useState(candidate ? "Лимитный ордер" : SETUPS[0]);
+  const [setup, setSetup] = useState(candidate ? SIGNAL_LIMIT_SETUP : SETUPS[0]);
   const [emotion, setEmotion] = useState(EMOTIONS[0]);
-  const [journalNote, setJournalNote] = useState(candidate ? `${candidate.label}. Источник: лимитный ордер.` : "");
+  const [journalNote, setJournalNote] = useState(candidate ? `${candidate.label}. Источник: лимитный уровень в кабинете, не биржевой ордер.` : "");
   const [invalidation, setInvalidation] = useState("");
   const [exitPlan, setExitPlan] = useState("");
   const [orderPlan, setOrderPlan] = useState(() => candidate
-    ? `${candidate.asset}: лимит ${price(candidate.price)}, сумма ${usd(candidate.amountUsd)}`
+    ? `${candidate.asset}: вручную выставить на Hyperliquid лимит ${price(candidate.price)}, сумма ${usd(candidate.amountUsd)}`
     : "");
   const [priceAndAmountChecked, setPriceAndAmountChecked] = useState(false);
   const [alertIsNotOrderConfirmed, setAlertIsNotOrderConfirmed] = useState(false);
@@ -302,10 +303,10 @@ export function V2GatePage({
   const executionOpened = executionMarker?.signature === decisionSignature;
   const isBlocked = decision.status === "БЛОКИРОВКА" || decision.status === "ЖДАТЬ";
   const finalActionText = isShortIncrease
-    ? "Перейти к добору шорта"
+    ? "Зафиксировать допуск к ручному добору шорта"
     : tradeAction === "sell"
-      ? "Перейти к продаже"
-      : "Перейти к покупке";
+      ? "Зафиксировать допуск к ручной продаже"
+      : "Зафиксировать допуск к ручной покупке";
 
   // Капитал под спот: зелёный лимит и потолок до пола стратегии/фазы.
   const greenMax = Math.max(gateSpotDeployable, 0);
@@ -397,15 +398,18 @@ export function V2GatePage({
               <button type="button" onClick={clearToManualInput}>Ручной ввод</button>
             </div>
           <div className="v2-gate-route-steps">
-            <span className="is-done">Лимитный ордер</span>
+            <span className="is-done">Сайт/TG уровень</span>
             <span className="is-active">Проверка риска</span>
             <span className={journalSaved ? "is-done" : ""}>Журнал решения</span>
             <span className={journalSaved && !isBlocked ? "is-active" : ""}>
-              {tradeAction === "sell" ? "Продажа" : "Покупка"}
+              Hyperliquid вручную
             </span>
           </div>
           <div className="v2-gate-route-source">
             {candidate.label} · цена {price(candidate.price)} · статус {candidateStatusLabel(candidate.status)}
+          </div>
+          <div className="v2-gate-route-warning">
+            Кабинет проверяет риск и пишет допуск в журнал, но не выставляет ордер на Hyperliquid. Биржевую лимитку нужно поставить вручную.
           </div>
         </div>
       )}
@@ -839,12 +843,12 @@ export function V2GatePage({
                   {isBlocked
                     ? "Жёсткий запрет не даёт перейти к действию."
                     : journalSaved
-                      ? "Допуск открыт. Система не исполняет сделку — действие выполняется вручную на бирже."
+                      ? "Допуск открыт только внутри кабинета. Следующий шаг — вручную выставить лимитку или исполнить сделку на Hyperliquid."
                       : "Финальная кнопка включится только после записи в журнал."}
                 </span>
                 {executionMarker && executionOpened && (
-                  <em>
-                    Допуск открыт: {new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(executionMarker.openedAt))}
+                  <em className="v2-gate-exchange-next">
+                    Допуск открыт: {new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(new Date(executionMarker.openedAt))}. Ордер на Hyperliquid ещё не подтверждён кабинетом.
                   </em>
                 )}
               </div>
