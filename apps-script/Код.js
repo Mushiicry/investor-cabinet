@@ -44,6 +44,11 @@ function doGet(e) {
     return IC_PROGRESS_handleSetMaxLevel_(ss, e.parameter.level);
   }
 
+  if (e && e.parameter && e.parameter.action === "listTradeCases") {
+    const ss = SpreadsheetApp.openById("1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8");
+    return IC_TRADE_CASE_handleList_(ss, accountId);
+  }
+
   if (accountId === "wife" && e && e.parameter && e.parameter.action === "syncWifeDailySnapshot") {
     return IC_WIFE_API_json_(IC_WIFE_API.syncDailySnapshot());
   }
@@ -149,6 +154,7 @@ function IC_WIFE_API_json_(result) {
 function doPost(e) {
   const ss = SpreadsheetApp.openById("1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8");
   const action = e && e.parameter && e.parameter.action;
+  const accountId = e && e.parameter && e.parameter.accountId === "wife" ? "wife" : "main";
 
   if (action === "saveInvestorDNAAnswers") {
     return IC_DNA_handleSaveAnswers_(ss, e);
@@ -160,6 +166,10 @@ function doPost(e) {
 
   if (action === "deleteSignalLimitLevel") {
     return IC_SIGNAL_ALERT_handleDeleteLimitLevel_(ss, e);
+  }
+
+  if (action === "upsertTradeCases") {
+    return IC_TRADE_CASE_handleUpsert_(ss, e, accountId);
   }
 
   return ContentService

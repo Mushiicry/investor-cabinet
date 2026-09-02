@@ -20,6 +20,8 @@ import { getMarketPsychology } from "../lib/marketPsychology";
 import type { TradeCandidate } from "../lib/tradeCandidate";
 import type { InvestorStrategy } from "../lib/investorStrategy";
 import type { InvestorProfile } from "../lib/investorProfile";
+import type { TradingDataTrust } from "../lib/dataTrust";
+import { V2DataTrustPanel } from "./V2DataTrustPanel";
 
 type Props = {
   portfolio: V2LabData["portfolio"];
@@ -36,6 +38,7 @@ type Props = {
   onClearCandidate?: () => void;
   disciplineBlockers?: string[];
   disciplineWarnings?: string[];
+  dataTrust?: TradingDataTrust;
 };
 
 const NEW_ASSET = "__new__";
@@ -95,6 +98,7 @@ export function V2GatePage({
   onClearCandidate,
   disciplineBlockers = [],
   disciplineWarnings = [],
+  dataTrust,
 }: Props) {
   const empty = isEmptyAccount(portfolio);
   const candidatePosition = candidate
@@ -301,7 +305,8 @@ export function V2GatePage({
   ].join("|");
   const journalSaved = savedMarker?.signature === decisionSignature;
   const executionOpened = executionMarker?.signature === decisionSignature;
-  const isBlocked = decision.status === "БЛОКИРОВКА" || decision.status === "ЖДАТЬ";
+  const dataTrustBlocked = dataTrust?.canCreateDecision !== true;
+  const isBlocked = decision.status === "БЛОКИРОВКА" || decision.status === "ЖДАТЬ" || dataTrustBlocked;
   const finalActionText = isShortIncrease
     ? "Зафиксировать допуск к ручному добору шорта"
     : tradeAction === "sell"
@@ -330,7 +335,9 @@ export function V2GatePage({
   }
 
   const statusClass =
-    decision.status === "РАЗРЕШЕНО"
+    dataTrustBlocked
+      ? "is-block"
+      : decision.status === "РАЗРЕШЕНО"
       ? "is-ok"
       : decision.status === "ОСТОРОЖНО" || decision.status === "РАЗРЕШЕНО_С_ЛИМИТОМ"
         ? "is-caution"
@@ -338,12 +345,13 @@ export function V2GatePage({
           ? "is-block"
           : "is-idle";
 
-  const badgeText = decision.status;
+  const badgeText = dataTrustBlocked ? "ДАННЫЕ НЕ ПОДТВЕРЖДЕНЫ" : decision.status;
   const hasAssetQualityBlock = decision.reasons.some((reason) => reason.kind === "качество_актива");
   const hasDisciplineBlock = decision.reasons.some((reason) => reason.kind === "дисциплина");
   const hasMarketPsychologyBlock = decision.reasons.some((reason) => reason.kind === "рыночная_психология");
   const blockReasons = decision.status === "БЛОКИРОВКА" ? decision.reasons : [];
   const preparationChecks = [
+    { label: "Данные портфеля, цены и сигнала подтверждены", ok: !dataTrustBlocked },
     { label: "Указана сумма больше нуля", ok: amountNum > 0 },
     { label: "Указана цена сделки", ok: buyPriceNum > 0 },
     { label: "Записан тезис решения", ok: Boolean(journalNote.trim()) },
@@ -356,7 +364,7 @@ export function V2GatePage({
   ];
   const missingPreparation = preparationChecks.filter((item) => !item.ok);
   const preparationComplete = missingPreparation.length === 0;
-  const canSaveDecision = Boolean(onSaveDecision) && decision.status !== "ЖДАТЬ" && Boolean(resolvedAsset) && preparationComplete;
+  const canSaveDecision = Boolean(onSaveDecision) && !dataTrustBlocked && decision.status !== "ЖДАТЬ" && Boolean(resolvedAsset) && preparationComplete;
   const saveDecision = () => {
     if (!onSaveDecision || !canSaveDecision) return;
     onSaveDecision({
@@ -390,6 +398,8 @@ export function V2GatePage({
           {pct(effectiveCryptoMaxShare)}
         </span>
       </div>
+
+      {dataTrust && <V2DataTrustPanel dataTrust={dataTrust} compact />}
 
       {candidate && (
           <div className="v2-gate-route v2-panel">
@@ -818,7 +828,11 @@ export function V2GatePage({
                 disabled={!canSaveDecision}
                 onClick={saveDecision}
               >
-                {preparationComplete ? "Сохранить решение" : "Заполните обязательный план"}
+                {dataTrustBlocked
+                  ? "Решение заблокировано данными"
+                  : preparationComplete
+                    ? "Сохранить решение"
+                    : "Заполните обязательный план"}
               </button>
               {savedMarker?.signature === decisionSignature && (
                 <div className="v2-gate-save-note">
@@ -832,7 +846,7 @@ export function V2GatePage({
                   onClick={() => setExecutionMarker({ signature: decisionSignature, openedAt: new Date().toISOString() })}
                 >
                   {isBlocked
-                    ? "Сделка заблокирована"
+                    ? dataTrustBlocked ? "Сделка заблокирована данными" : "Сделка заблокирована"
                     : journalSaved
                       ? finalActionText
                       : preparationComplete
@@ -841,7 +855,9 @@ export function V2GatePage({
                 </button>
                 <span>
                   {isBlocked
-                    ? "Жёсткий запрет не даёт перейти к действию."
+                    ? dataTrustBlocked
+                      ? "Сначала получите свежие данные портфеля и цены; fallback, кэш и устаревший сигнал не открывают допуск."
+                      : "Жёсткий запрет не даёт перейти к действию."
                     : journalSaved
                       ? "Допуск открыт только внутри кабинета. Следующий шаг — вручную выставить лимитку или исполнить сделку на Hyperliquid."
                       : "Финальная кнопка включится только после записи в журнал."}

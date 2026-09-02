@@ -12,6 +12,7 @@ import type { InvestorDNA, InvestorDNAQuestion, InvestorDNARecommendation } from
 type Props = {
   dna: InvestorDNA;
   onNavigate?: (page: "health" | "gate") => void;
+  embedded?: boolean;
 };
 
 const priorityLabel: Record<InvestorDNARecommendation["priority"], string> = {
@@ -402,7 +403,7 @@ function DnaAuditResultPanel({
   );
 }
 
-export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
+export function V2InvestorDNAPage({ dna, onNavigate, embedded = false }: Props) {
   const [openAudit, setOpenAudit] = useState<DnaPanelKind | null>(null);
   const [openRecommendationId, setOpenRecommendationId] = useState<string | null>(null);
   const [openResult, setOpenResult] = useState<AuditKind | null>(null);
@@ -558,7 +559,10 @@ export function V2InvestorDNAPage({ dna, onNavigate }: Props) {
   }
 
   return (
-    <div className="v2-hp-page v2-dna-page" aria-label="ДНК Инвестора">
+    <div
+      className={`v2-hp-page v2-dna-page${embedded ? " v2-dna-page--embedded" : ""}`}
+      aria-label={embedded ? "Полная ДНК инвестора" : "ДНК Инвестора"}
+    >
       <section className="v2-hp-policy-card v2-dna-audit-card-section">
         <div className="v2-hp-policy-head">
           <div>

@@ -250,4 +250,29 @@ describe("единый движок тревог портфеля", () => {
     expect(alerts.find((alert) => alert.id === "position-limit-BNB")).toBeUndefined();
     expect(alerts.find((alert) => alert.id === "position-over-BNB")).toBeUndefined();
   });
+
+  it("не занимает альткоин-место полностью закрытой нулевой позицией", () => {
+    const alerts = buildPortfolioAlerts({
+      portfolio: portfolio(),
+      positions: [
+        { asset: "ATOM", category: "Крипта", value: 31.17 },
+        { asset: "APEX", category: "Крипта", value: 0 },
+        { asset: "SOL", category: "Крипта", value: 1.27 },
+        { asset: "ETH", category: "Крипта", value: 0.01 },
+        { asset: "BTC", category: "Крипта", value: 0 },
+      ],
+      allocation: [{ name: "Крипта", share: 0.04, value: 32.45 }],
+      currentFG: 50,
+      health,
+    });
+
+    expect(alerts).toContainEqual(
+      expect.objectContaining({
+        id: "altcoins-slots",
+        title: "Альткоины: свободно 2 из 3",
+        detail: expect.stringContaining("Занято: ATOM."),
+      }),
+    );
+    expect(alerts.find((alert) => alert.id === "altcoins-slots")?.detail).not.toContain("APEX");
+  });
 });

@@ -1,9 +1,7 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
-import type { PortfolioHealth } from "../../lib/portfolioHealth";
+import type { V2LabData } from "../InvestorCabinetV2Lab";
 import { createSignalLimitLevel, deleteSignalLimitLevel } from "../../api/signalLimitLevels";
-import { isEmptyAccount } from "../lib/accountState";
 import { getMarketPsychology } from "../lib/marketPsychology";
 import type { InterestSignal } from "../../types/portfolio";
 import {
@@ -16,12 +14,6 @@ import {
   type SignalDistance,
 } from "../lib/interestSignals";
 import { CryptoLogo } from "../../components/crypto/CryptoLogo";
-import {
-  buildPortfolioAlerts,
-  topAlerts,
-  type Alert,
-  type AlertLevel,
-} from "../lib/portfolioAlerts";
 import { buildTradeCandidateFromSignal, type TradeCandidate } from "../lib/tradeCandidate";
 import type { InvestorStrategy } from "../lib/investorStrategy";
 
@@ -29,21 +21,11 @@ type Props = {
   portfolio: V2LabData["portfolio"];
   positions: V2LabData["positions"];
   risk: V2LabData["risk"];
-  health: PortfolioHealth;
   fearGreedStrategy: V2LabData["fearGreedStrategy"];
-  allocation: V2LabData["allocation"];
   interestSignals: InterestSignal[];
   strategy?: InvestorStrategy;
-  disciplineCooldownActive?: boolean;
   onOpenTradeCandidate?: (candidate: TradeCandidate) => void;
-  onNavigate?: (page: V2Page) => void;
   onRefreshData?: () => void;
-};
-
-const LEVEL_LABEL: Record<AlertLevel, string> = {
-  critical: "ТРЕВОГА",
-  warning: "ВНИМАНИЕ",
-  info: "СИГНАЛ",
 };
 
 // Точность триггера — часть решения: 0.3068 нельзя показывать как 0,31.
@@ -122,12 +104,6 @@ const readAcknowledgedSignalIds = () => {
 const writeAcknowledgedSignalIds = (ids: Set<string>) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(ACKNOWLEDGED_SIGNAL_STORAGE_KEY, JSON.stringify([...ids]));
-};
-
-const signalIdFromAlert = (alert: Alert) => {
-  const prefixes = ["signal-triggered-", "signal-near-", "signal-сломано-", "signal-устарел-"];
-  const prefix = prefixes.find((item) => alert.id.startsWith(item));
-  return prefix ? alert.id.slice(prefix.length) : null;
 };
 
 function LimitLevelModal({
@@ -242,14 +218,10 @@ export function V2SignalsPage({
   portfolio,
   positions,
   risk,
-  health,
   fearGreedStrategy,
-  allocation,
   interestSignals,
   strategy,
-  disciplineCooldownActive = false,
   onOpenTradeCandidate,
-  onNavigate,
   onRefreshData,
 }: Props) {
   const [openAsset, setOpenAsset] = useState<string | null>(null);
@@ -316,49 +288,6 @@ export function V2SignalsPage({
     if (!candidate) return "Проверить";
     return candidate.action === "sell" ? "Риск перед продажей" : "Риск перед покупкой";
   };
-  const signalFromAlert = (alert: Alert) => {
-    const id = signalIdFromAlert(alert);
-    if (!id) return null;
-    return interestSignals.find((signal) => signal.id === id) ?? null;
-  };
-  const handleAlertAction = (alert: Alert) => {
-    if (alert.action === "Открыть проверку риска") {
-      const signal = signalFromAlert(alert) ?? primaryTriggered;
-      if (signal) {
-        openCandidate(signal, true);
-      } else {
-        onNavigate?.("gate");
-      }
-      return;
-    }
-
-    if (alert.action === "Открыть разбор здоровья") {
-      onNavigate?.("health");
-      return;
-    }
-
-    if (alert.action === "Открыть стратегию") {
-      onNavigate?.("signals");
-      return;
-    }
-
-    if (alert.action === "Пополнить резерв" || alert.action === "Срочно пополнить") {
-      onNavigate?.("overview");
-      return;
-    }
-
-    if (alert.action === "Новый альт — только вместо старого") {
-      onNavigate?.("gate");
-    }
-  };
-  const canRunAlertAction = (alert: Alert) =>
-    alert.action === "Открыть проверку риска" ||
-    alert.action === "Открыть разбор здоровья" ||
-    alert.action === "Открыть стратегию" ||
-    alert.action === "Пополнить резерв" ||
-    alert.action === "Срочно пополнить" ||
-    alert.action === "Новый альт — только вместо старого";
-
   const openLimitModal = () => {
     const fallbackAsset = openAsset ?? primaryTriggered?.asset ?? nearestSignals[0]?.asset ?? assetOptions[0] ?? "APEX";
     setLimitDraft((current) => ({
@@ -437,20 +366,6 @@ export function V2SignalsPage({
     }
   };
 
-  const alerts = topAlerts(
-    buildPortfolioAlerts({
-      portfolio,
-      positions,
-      allocation,
-      currentFG,
-      health,
-      interestSignals: alertSignals,
-      marketPsychology: psychology,
-      signalNotification: { disciplineCooldownActive },
-      strategy,
-    }),
-  );
-  const criticalCount = alerts.filter((a) => a.level === "critical").length;
   const marketRows = [
     { label: "Здоровье портфеля", value: `${portfolio.healthFactor}/100`, tone: portfolio.healthFactor >= 60 ? "green" : portfolio.healthFactor >= 40 ? "amber" : "red" },
     { label: "Статус", value: portfolio.healthStatus === "CONTROL" ? "Контроль" : portfolio.healthStatus === "BALANCED" ? "Баланс" : "Риск", tone: portfolio.healthStatus === "CONTROL" ? "green" : portfolio.healthStatus === "BALANCED" ? "amber" : "red" },
@@ -462,58 +377,6 @@ export function V2SignalsPage({
 
   return (
     <div className="v2-signals-page">
-
-      {/* ── Шапка ─────────────────────────────────────────── */}
-      <div className="v2-sig-header">
-        <div className="v2-sig-header-title">
-          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
-            <path d="M9 2a4 4 0 00-4 4c0 4-1.6 5-1.6 5h11.2S13 10 13 6a4 4 0 00-4-4z" />
-            <path d="M7.4 14a1.6 1.6 0 003.2 0" strokeLinecap="round" />
-          </svg>
-          Сигналы портфеля
-          {criticalCount > 0 && (
-            <span className="v2-sig-badge badge-critical">{criticalCount} ТРЕВОГ</span>
-          )}
-        </div>
-      </div>
-
-      {/* ── Тревоги ───────────────────────────────────────── */}
-      <div className="v2-alerts-row">
-        {isEmptyAccount(portfolio) ? (
-          <div className="v2-alert-card level-info">
-            <div className="v2-alert-level">НЕТ ДАННЫХ</div>
-            <div className="v2-alert-title">Кошельки не подключены</div>
-            <div className="v2-alert-detail">Подключите источники данных — сигналы появятся автоматически</div>
-          </div>
-        ) : alerts.length === 0 ? (
-          <div className="v2-alert-card level-ok">
-            <div className="v2-alert-level">ВСЁ В НОРМЕ</div>
-            <div className="v2-alert-title">Нет активных тревог</div>
-            <div className="v2-alert-detail">Портфель в допустимых параметрах</div>
-          </div>
-        ) : (
-          alerts.map((alert) => (
-            <div key={alert.id} className={`v2-alert-card level-${alert.level}`}>
-              <div className="v2-alert-level">{LEVEL_LABEL[alert.level]}</div>
-              <div className="v2-alert-title">{alert.title}</div>
-              <div className="v2-alert-detail">{alert.detail}</div>
-              {alert.action && (
-                canRunAlertAction(alert) ? (
-                  <button
-                    type="button"
-                    className="v2-alert-action"
-                    onClick={() => handleAlertAction(alert)}
-                  >
-                    → {alert.action}
-                  </button>
-                ) : (
-                  <span className="v2-alert-action is-static">{alert.action}</span>
-                )
-              )}
-            </div>
-          ))
-        )}
-      </div>
 
       {primaryTriggered ? (
         <div className="v2-sig-trigger-focus">
@@ -803,24 +666,6 @@ export function V2SignalsPage({
             ))}
           </div>
         </div>
-      </div>
-
-      {/* ── Факторы здоровья ──────────────────────────────── */}
-      <div className="v2-sig-health-strip">
-        {health.components.map((comp) => {
-          const tone = comp.score >= 60 ? "green" : comp.score >= 35 ? "amber" : "red";
-          return (
-            <div key={comp.key} className={`v2-sig-hbar tone-${tone}`}>
-              <div className="v2-sig-hbar-top">
-                <span className="v2-sig-hbar-label">{comp.label}</span>
-                <span className="v2-sig-hbar-score">{comp.score}</span>
-              </div>
-              <div className="v2-sig-hbar-track">
-                <div className="v2-sig-hbar-fill" style={{ width: `${comp.score}%` }} />
-              </div>
-            </div>
-          );
-        })}
       </div>
 
       {limitModalOpen && (

@@ -27,6 +27,9 @@ const MAIN_CRYPTO_ASSET_LIMITS = {
   WBNB: 0.1,
 };
 
+const INACTIVE_LIMIT_ORDER_STATUSES = new Set(["CHECK", "ERROR", "TRIGGERED"]);
+const BUY_ACTION_MARKERS = ["куп", "докуп", "добор", "добав", "набор", "вход", "откуп", "buy", "dca"];
+
 const toNumber = (value) => {
   const parsed = Number(String(value ?? "").replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -61,6 +64,22 @@ const normalizePositions = (payload) =>
       currentPrice: toNumber(position?.currentPrice),
     }))
     .filter((position) => position.asset && position.currentValue >= 0);
+
+const plannedLimitOrdersUsdFromPayload = (payload) => {
+  const signals = Array.isArray(payload?.signals?.interestList)
+    ? payload.signals.interestList.filter((signal) => String(signal?.asset || "").trim())
+    : [];
+  if (signals.length === 0) return undefined;
+
+  return signals.reduce((sum, signal) => {
+    const status = String(signal?.status || "").trim().toUpperCase();
+    const action = String(signal?.action || "").trim().toLowerCase();
+    const amountUsd = toNumber(signal?.amountUsd);
+    const isBuy = BUY_ACTION_MARKERS.some((marker) => action.includes(marker));
+    if (INACTIVE_LIMIT_ORDER_STATUSES.has(status) || !isBuy || amountUsd <= 0) return sum;
+    return sum + amountUsd;
+  }, 0);
+};
 
 function computeReserveScore(reserveShare) {
   if (reserveShare <= 0) return 0;
@@ -204,11 +223,34 @@ function computeRiskControlScore({ positions, futuresShare, investedCapital, ris
   return Math.max(0, Math.round(100 - marginPenalty - leveragePenalty - positionPenalty - liquidationPenalty(worstLiqDistance)));
 }
 
-function computeDisciplineScore({ plannedLimitOrdersUsd }) {
-  const journalScore = 0;
-  const behaviorScore = 100;
-  const blockerScore = 100;
-  const planScore = plannedLimitOrdersUsd === undefined ? 60 : plannedLimitOrdersUsd > 0 ? 100 : 50;
+function computeDisciplineScore({
+  plannedLimitOrdersUsd,
+  plannedLimitOrdersConfirmed,
+  journalCoverage = 0,
+  disciplineViolations30d = 0,
+  fomoEvents30d = 0,
+  revengeTrades30d = 0,
+  overtradingDays30d = 0,
+  cooldownActive = false,
+}) {
+  const journalScore = score(journalCoverage / 0.8);
+  const behaviorScore = Math.max(
+    0,
+    100 - (
+      disciplineViolations30d * 15
+      + fomoEvents30d * 10
+      + revengeTrades30d * 25
+      + overtradingDays30d * 15
+    ),
+  );
+  const blockerScore = cooldownActive ? 0 : 100;
+  const planScore = plannedLimitOrdersUsd === undefined
+    ? 60
+    : plannedLimitOrdersUsd > 0 && plannedLimitOrdersConfirmed === false
+      ? 40
+      : plannedLimitOrdersUsd > 0
+        ? 100
+        : 50;
   return Math.round(journalScore * 0.35 + behaviorScore * 0.3 + blockerScore * 0.25 + planScore * 0.1);
 }
 
@@ -234,7 +276,11 @@ export function computeDailyReportHealth(payload, options = {}) {
     .filter((position) => position.category === "Свободные деньги" && !isFuturesCash(position))
     .reduce((sum, position) => sum + position.currentValue, 0);
   const spotDeployableUsd = Math.max(0, spotReserveUsd - portfolioValue * SPOT_RESERVE_FLOOR_SHARE);
-  const plannedLimitOrdersUsd = options.plannedLimitOrdersUsd;
+  const plannedLimitOrdersUsd = options.plannedLimitOrdersUsd
+    ?? plannedLimitOrdersUsdFromPayload(payload);
+  const plannedLimitOrdersConfirmed = options.plannedLimitOrdersConfirmed
+    ?? (plannedLimitOrdersUsd !== undefined && plannedLimitOrdersUsd > 0 ? false : undefined);
+  const behavior = options.behavior ?? {};
 
   const components = {
     reserve: computeReserveScore(reserveShare),
@@ -256,7 +302,16 @@ export function computeDailyReportHealth(payload, options = {}) {
     }),
     concentration: computeConcentrationScore(positions, portfolioValue),
     diversification: computeDiversificationScore([cryptoShare, metalsShare, stocksShare]),
-    discipline: computeDisciplineScore({ plannedLimitOrdersUsd }),
+    discipline: computeDisciplineScore({
+      plannedLimitOrdersUsd,
+      plannedLimitOrdersConfirmed,
+      journalCoverage: toNumber(behavior.disciplineJournalCoverage),
+      disciplineViolations30d: toNumber(behavior.disciplineViolations30d),
+      fomoEvents30d: toNumber(behavior.fomoEvents30d),
+      revengeTrades30d: toNumber(behavior.revengeTrades30d),
+      overtradingDays30d: toNumber(behavior.overtradingDays30d),
+      cooldownActive: Boolean(behavior.disciplineCooldownActive),
+    }),
   };
 
   const healthFactor = Math.round(

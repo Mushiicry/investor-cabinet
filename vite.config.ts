@@ -5,6 +5,7 @@ import assistantHandler from './api/assistant.js'
 import { proxyInvestorApi } from './api/_investorProxy.js'
 import { handleBtcDailyApi } from './api/_btcDaily.js'
 import { handleMarketSparklineApi } from './api/_marketSparkline.js'
+import fearGreedCryptoRankHandler from './api/fear-greed-cryptorank.js'
 
 const BINANCE_SYMBOL_LIST_URL =
   'https://www.binance.com/bapi/composite/v1/public/marketing/symbol/list'
@@ -110,6 +111,10 @@ function investorDevApiPlugin(): Plugin {
 
       server.middlewares.use('/api/market-sparkline', (req, res) => {
         void handleMarketSparklineApi(req, res)
+      })
+
+      server.middlewares.use('/api/fear-greed-cryptorank', (req, res) => {
+        void fearGreedCryptoRankHandler(req, res)
       })
 
       server.middlewares.use('/api/assistant', (req, res) => {

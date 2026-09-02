@@ -4,10 +4,8 @@ import type { V2LabData, V2Page } from "../InvestorCabinetV2Lab";
 import { computePortfolioHealth, type HealthComponent, type PortfolioHealth } from "../../lib/portfolioHealth";
 import { V2HealthDetailModal } from "./V2HealthDetailModal";
 import { V2ReportsPage } from "./V2ReportsPage";
-import { V2SignalsPage } from "./V2SignalsPage";
-import { V2GatePage } from "./V2GatePage";
-import { V2RiskEnginePage } from "./V2RiskEnginePage";
-import { V2ScenariosPage } from "./V2ScenariosPage";
+import { V2TradingPage, type TradeCaseSyncState } from "./V2TradingPage";
+import { V2ScenariosHubPage } from "./V2ScenariosHubPage";
 import { V2DeployableCapital } from "./V2DeployableCapital";
 import { V2CapitalLadder } from "./V2CapitalLadder";
 import { V2DCAStrategy } from "./V2DCAStrategy";
@@ -21,7 +19,6 @@ import { V2PortfolioPage } from "./V2PortfolioPage";
 import type { TonStaking } from "../../hooks/useTonStaking";
 import type { CosmosStaking } from "../../hooks/useCosmosStaking";
 import { V2HealthPage } from "./V2HealthPage";
-import { V2InvestorDNAPage } from "./V2InvestorDNAPage";
 import { V2EducationPage } from "./V2EducationPage";
 import { V2AssistantWidget, type AssistantPageContext } from "./V2AssistantWidget";
 import { V2NotificationsPanel } from "./V2NotificationsPanel";
@@ -47,6 +44,20 @@ import {
   type TraderJournalDraft,
   type TraderJournalEntry,
 } from "../lib/traderJournal";
+import {
+  mergeTradeCaseStores,
+  readTradeCaseStore,
+  tradeCandidateFromTradeCase,
+  tradeCaseStoresEqual,
+  tradingStepForTradeCase,
+  updateTradeCase,
+  upsertTradeCaseStore,
+  writeTradeCaseStore,
+  type TradeCase,
+} from "../lib/tradeCase";
+import { readCloudTradeCaseStore, upsertCloudTradeCaseStore } from "../../api/tradeCases";
+import { buildTradingDataTrust } from "../lib/dataTrust";
+import type { DataSyncStatus } from "../../types/dataStatus";
 
 type Props = {
   data: V2LabData;
@@ -58,7 +69,7 @@ type Props = {
   cosmosStaking?: CosmosStaking | null;
   dataStatus?: {
     source: "cache" | "fallback" | "live";
-    status: string;
+    status: DataSyncStatus;
     lastLoadedAt: string | null;
     error: string | null;
     onRefresh: () => void;
@@ -85,15 +96,20 @@ const PAGE_META: Record<V2Page, { label: string; purpose: string; visibleBlocks:
     purpose: "Текущие позиции, доли, PnL, статусы активов и соответствие лимитам стратегии.",
     visibleBlocks: ["Позиции", "Активы", "PnL", "Статусы", "Стейкинг"],
   },
+  trading: {
+    label: "Торговля",
+    purpose: "Единый последовательный торговый цикл: идея, проверка риска, наблюдение за ценой, решение, дневник и ожидание результата без автоматического исполнения.",
+    visibleBlocks: ["Идея", "Проверка", "Наблюдение", "Решение", "Дневник", "Ожидание"],
+  },
   scenarios: {
     label: "Сценарии",
-    purpose: "Плейбук активов: базовый, бычий, медвежий сценарий, зона действия и условия пересмотра.",
-    visibleBlocks: ["Сценарии активов", "Action zone", "Invalidation", "Позиции"],
+    purpose: "Единый экран плана действий: сценарии активов, условия пересмотра, лимиты и ограничения портфеля.",
+    visibleBlocks: ["Сценарии активов", "Action zone", "Invalidation", "Risk engine", "Лимиты"],
   },
   risk: {
-    label: "Risk",
-    purpose: "Экран лимитов и запретов: что портфелю разрешено, что заблокировано и где главный риск.",
-    visibleBlocks: ["Risk engine", "Лимиты", "Health", "Распределение", "Концентрация"],
+    label: "Сценарии · Риск",
+    purpose: "Совместимый вход в раздел риска внутри вкладки «Сценарии»: лимиты, запреты и концентрация портфеля.",
+    visibleBlocks: ["Сценарии активов", "Risk engine", "Лимиты", "Health", "Концентрация"],
   },
   reports: {
     label: "Отчёты",
@@ -101,8 +117,8 @@ const PAGE_META: Record<V2Page, { label: string; purpose: string; visibleBlocks:
     visibleBlocks: ["Сводка периода", "История портфеля", "Журнал решений", "История сделок", "Поведение"],
   },
   signals: {
-    label: "Сигналы",
-    purpose: "Сигналы, алерты и проверки перед возможным действием, без автоматического исполнения.",
+    label: "Торговля · Наблюдение",
+    purpose: "Совместимый вход в сигналы и ценовые алерты внутри последовательного торгового цикла.",
     visibleBlocks: ["Сигналы", "Алерты", "Risk checks", "Кандидаты сделок"],
   },
   settings: {
@@ -112,18 +128,18 @@ const PAGE_META: Record<V2Page, { label: string; purpose: string; visibleBlocks:
   },
   health: {
     label: "Здоровье",
-    purpose: "Подробная расшифровка здоровья портфеля: общий показатель, компоненты, веса, блокировки, предупреждения и правила стратегии.",
-    visibleBlocks: ["Показатель здоровья", "Компоненты здоровья", "Формулы", "Блокировки", "Предупреждения"],
+    purpose: "Подробная расшифровка здоровья портфеля и ДНК инвестора: общий показатель, компоненты, правила стратегии, личный профиль, анкеты и ограничения.",
+    visibleBlocks: ["Показатель здоровья", "Компоненты здоровья", "Правила стратегии", "ДНК инвестора", "Анкеты", "Ограничения"],
   },
   gate: {
-    label: "Проверка",
-    purpose: "Pre-trade risk gate: проверка идеи, лимитов, резерва, профиля и дисциплины до действия.",
+    label: "Торговля · Проверка",
+    purpose: "Совместимый вход в pre-trade risk gate внутри последовательного торгового цикла.",
     visibleBlocks: ["Проверка сделки", "Risk gate", "Журнал решения", "Блокировки"],
   },
   dna: {
-    label: "ДНК",
-    purpose: "Портрет инвестора: что подходит человеку, его профиль риска, горизонт и ограничения.",
-    visibleBlocks: ["Портрет инвестора", "Ответы ДНК", "Профиль риска", "Рекомендации"],
+    label: "Здоровье · ДНК",
+    purpose: "Внутренний совместимый маршрут к раскрытому разделу ДНК во вкладке «Здоровье».",
+    visibleBlocks: ["Здоровье портфеля", "Портрет инвестора", "Ответы ДНК", "Профиль риска", "Рекомендации"],
   },
   education: {
     label: "Обучение",
@@ -605,6 +621,15 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
   const [traderJournal, setTraderJournal] = useState<TraderJournalEntry[]>(() =>
     readTraderJournal(profileKeySuffix),
   );
+  const [tradeCaseStore, setTradeCaseStore] = useState(() =>
+    readTradeCaseStore(profileKeySuffix),
+  );
+  const tradeCaseStoreRef = useRef(tradeCaseStore);
+  const tradeCaseSyncRequestRef = useRef(0);
+  const [tradeCaseSyncState, setTradeCaseSyncState] = useState<TradeCaseSyncState>(
+    user ? "syncing" : "local",
+  );
+  const [tradeCandidate, setTradeCandidate] = useState<TradeCandidate | null>(null);
 
   // При смене аккаунта подгружаем его профиль (или пустой у нового пользователя).
   useEffect(() => {
@@ -613,13 +638,91 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     setProfileAvatar(localStorage.getItem(avatarKey) ?? "");
     setDecisionJournal(readDecisionJournal(profileKeySuffix));
     setTraderJournal(readTraderJournal(profileKeySuffix));
-  }, [nameKey, avatarKey, profileKeySuffix]);
+    const localTradeCaseStore = readTradeCaseStore(profileKeySuffix);
+    tradeCaseStoreRef.current = localTradeCaseStore;
+    setTradeCaseStore(localTradeCaseStore);
+    setTradeCaseSyncState(user ? "syncing" : "local");
+    setTradeCandidate(null);
+  }, [nameKey, avatarKey, profileKeySuffix, user]);
   const [selectedChip, setSelectedChip] = useState<HealthComponent | null>(null);
   const [capitalOpen, setCapitalOpen] = useState(false);
   const [desktopViewport, setDesktopViewport] = useState(getDesktopViewport);
   const labRef = useRef<HTMLDivElement | null>(null);
   const [canvasContentHeight, setCanvasContentHeight] = useState(DESKTOP_DESIGN_HEIGHT);
-  const [tradeCandidate, setTradeCandidate] = useState<TradeCandidate | null>(null);
+  const activeTradeCase = useMemo(
+    () => tradeCaseStore.cases.find((item) => item.tradeCaseId === tradeCaseStore.activeTradeCaseId) ?? null,
+    [tradeCaseStore],
+  );
+  const effectiveTradeCandidate = useMemo(
+    () => tradeCandidate ?? (activeTradeCase ? tradeCandidateFromTradeCase(activeTradeCase) : null),
+    [tradeCandidate, activeTradeCase],
+  );
+  const activeSignal = useMemo(() => {
+    const sourceId = effectiveTradeCandidate?.sourceId;
+    if (!sourceId) return null;
+    return data.signals.interestList.find((signal) => signal.id === sourceId)
+      ?? (data.signals.interest?.id === sourceId ? data.signals.interest : null);
+  }, [data.signals.interest, data.signals.interestList, effectiveTradeCandidate?.sourceId]);
+  const tradingDataTrust = useMemo(
+    () => buildTradingDataTrust({
+      accountId: data.strategy.id,
+      portfolioStatus: dataStatus
+        ? {
+            source: dataStatus.source,
+            status: dataStatus.status,
+            lastLoadedAt: dataStatus.lastLoadedAt,
+            error: dataStatus.error,
+          }
+        : null,
+      portfolioUpdatedAt: data.updatedAt,
+      signal: activeSignal,
+      expectsSignal: effectiveTradeCandidate?.source === "limit_order",
+    }),
+    [activeSignal, data.strategy.id, data.updatedAt, dataStatus, effectiveTradeCandidate?.source],
+  );
+  const tradeCaseIdByTransaction = useMemo(
+    () => Object.fromEntries(
+      tradeCaseStore.cases
+        .filter((item) => item.transactionId)
+        .map((item) => [item.transactionId as string, item.tradeCaseId]),
+    ),
+    [tradeCaseStore.cases],
+  );
+
+  useEffect(() => {
+    if (!user) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const requestId = ++tradeCaseSyncRequestRef.current;
+
+    void readCloudTradeCaseStore(data.strategy.id)
+      .then(async (cloudStore) => {
+        if (cancelled || requestId !== tradeCaseSyncRequestRef.current) return;
+        const latestLocal = readTradeCaseStore(profileKeySuffix);
+        const merged = mergeTradeCaseStores(cloudStore, latestLocal);
+        const synchronized = tradeCaseStoresEqual(merged, cloudStore)
+          ? cloudStore
+          : await upsertCloudTradeCaseStore(data.strategy.id, merged);
+        if (cancelled || requestId !== tradeCaseSyncRequestRef.current) return;
+        const persisted = writeTradeCaseStore(synchronized, profileKeySuffix);
+        tradeCaseStoreRef.current = persisted;
+        setTradeCaseStore(persisted);
+        const active = persisted.cases.find((item) => item.tradeCaseId === persisted.activeTradeCaseId) ?? null;
+        setTradeCandidate(active ? tradeCandidateFromTradeCase(active) : null);
+        setTradeCaseSyncState("synced");
+      })
+      .catch(() => {
+        if (!cancelled && requestId === tradeCaseSyncRequestRef.current) {
+          setTradeCaseSyncState("error");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data.strategy.id, profileKeySuffix, user]);
 
   useEffect(() => {
     const updateViewport = () => {
@@ -656,7 +759,46 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
 
   function handleOpenTradeCandidate(candidate: TradeCandidate) {
     setTradeCandidate(candidate);
-    onNavigate("gate");
+  }
+
+  function queueTradeCaseCloudSync(store: ReturnType<typeof writeTradeCaseStore>) {
+    if (!user) {
+      setTradeCaseSyncState("local");
+      return;
+    }
+
+    const requestId = ++tradeCaseSyncRequestRef.current;
+    setTradeCaseSyncState("syncing");
+    void upsertCloudTradeCaseStore(data.strategy.id, store)
+      .then((cloudStore) => {
+        if (requestId !== tradeCaseSyncRequestRef.current) return;
+        const latestLocal = readTradeCaseStore(profileKeySuffix);
+        const merged = mergeTradeCaseStores(cloudStore, latestLocal);
+        const persisted = writeTradeCaseStore(merged, profileKeySuffix);
+        tradeCaseStoreRef.current = persisted;
+        setTradeCaseStore(persisted);
+        setTradeCaseSyncState("synced");
+      })
+      .catch(() => {
+        if (requestId === tradeCaseSyncRequestRef.current) {
+          setTradeCaseSyncState("error");
+        }
+      });
+  }
+
+  function persistTradeCaseStore(store: ReturnType<typeof writeTradeCaseStore>) {
+    const persisted = writeTradeCaseStore(store, profileKeySuffix);
+    tradeCaseStoreRef.current = persisted;
+    setTradeCaseStore(persisted);
+    queueTradeCaseCloudSync(persisted);
+    return persisted;
+  }
+
+  function handleSaveTradeCase(tradeCase: TradeCase, activate = true) {
+    if (activate) setTradeCandidate(tradeCandidateFromTradeCase(tradeCase));
+    persistTradeCaseStore(
+      upsertTradeCaseStore(tradeCaseStoreRef.current, tradeCase, activate),
+    );
   }
 
   function handleDeleteDecision(id: string) {
@@ -665,6 +807,17 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
 
   function handleSaveTradeReview(draft: TraderJournalDraft) {
     setTraderJournal((current) => upsertTraderJournalEntry(current, draft, profileKeySuffix));
+    if (draft.tradeCaseId) {
+      const current = tradeCaseStoreRef.current;
+      const tradeCase = current.cases.find((item) => item.tradeCaseId === draft.tradeCaseId);
+      if (!tradeCase) return;
+      const reviewed = updateTradeCase(tradeCase, {
+        status: "REVIEWED",
+        reviewedAt: new Date().toISOString(),
+        transactionId: draft.transactionId,
+      });
+      persistTradeCaseStore(upsertTradeCaseStore(current, reviewed, true));
+    }
   }
 
   const marketPsychology = useMemo(
@@ -754,7 +907,7 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
     }
   }, [healthKey, behaviorHealth.healthFactor]);
 
-  // Тревоги считаются тем же движком, что и на странице «Сигналы»,
+  // Тревоги считаются тем же движком, что и на странице «Здоровье»,
   // иначе счётчик на колокольчике расходился бы со списком.
   const alerts = useMemo(
     () =>
@@ -812,25 +965,34 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
       const candidate = signal ? buildTradeCandidateFromSignal(signal, data.positions) : null;
       if (candidate) {
         handleOpenTradeCandidate(candidate);
-      } else {
-        handleNavigate("gate");
       }
+      handleNavigate("gate");
       return;
     }
 
-    if (alert.action === "Открыть разбор здоровья") {
+    if (alert.action?.toLocaleLowerCase("ru-RU").includes("открыть разбор здоровья")) {
       handleNavigate("health");
       return;
     }
 
     if (alert.action === "Открыть стратегию") {
-      handleNavigate("signals");
+      handleNavigate("health");
       return;
     }
 
     if (alert.action === "Пополнить резерв" || alert.action === "Срочно пополнить") {
       setCapitalOpen(true);
       handleNavigate("overview");
+      return;
+    }
+
+    if (alert.action === "Поставить лимитки вручную") {
+      handleNavigate("trading");
+      return;
+    }
+
+    if (alert.action === "Сократить позицию") {
+      handleNavigate("portfolio");
       return;
     }
 
@@ -841,10 +1003,12 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
 
   const canHandleAlertAction = (alert: Alert) =>
     alert.action === "Открыть проверку риска" ||
-    alert.action === "Открыть разбор здоровья" ||
+    Boolean(alert.action?.toLocaleLowerCase("ru-RU").includes("открыть разбор здоровья")) ||
     alert.action === "Открыть стратегию" ||
     alert.action === "Пополнить резерв" ||
     alert.action === "Срочно пополнить" ||
+    alert.action === "Поставить лимитки вручную" ||
+    alert.action === "Сократить позицию" ||
     alert.action === "Новый альт — только вместо старого";
 
   // Центр зазора между сайдбаром и контентом в координатах ЭКРАНА.
@@ -929,42 +1093,65 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             initialAvatar={profileAvatar}
             onSave={handleSaveProfile}
           />
-        ) : page === "signals" ? (
-          <V2SignalsPage
-            portfolio={behaviorPortfolio}
-            positions={data.positions}
-            risk={data.risk}
-            health={behaviorHealth}
-            fearGreedStrategy={data.fearGreedStrategy}
-            allocation={data.allocation}
-            interestSignals={data.signals?.interestList?.length
-              ? data.signals.interestList
-              : data.signals?.interest
-                ? [data.signals.interest]
-                : []}
-            strategy={data.strategy}
-            disciplineCooldownActive={behavior.healthInputs.disciplineCooldownActive}
-            onOpenTradeCandidate={handleOpenTradeCandidate}
-            onNavigate={handleNavigate}
-            onRefreshData={dataStatus?.onRefresh}
-          />
-        ) : page === "gate" ? (
-          <V2GatePage
-            key={tradeCandidate?.id ?? "manual-gate"}
-            portfolio={behaviorPortfolio}
-            positions={data.positions}
-            allocation={data.allocation}
-            fearGreedStrategy={data.fearGreedStrategy}
-            assetQuality={data.assetQuality}
-            healthInput={behaviorHealthInput}
-            strategy={data.strategy}
-            profile={data.profile}
-            futuresShare={data.risk.futuresShare}
-            onSaveDecision={handleSaveDecision}
-            candidate={tradeCandidate}
-            onClearCandidate={() => setTradeCandidate(null)}
-            disciplineBlockers={behavior.blockers}
-            disciplineWarnings={behavior.warnings}
+        ) : page === "trading" || page === "signals" || page === "gate" ? (
+          <V2TradingPage
+            key={page}
+            initialStep={page === "gate"
+              ? "check"
+              : page === "signals"
+                ? "observe"
+                : activeTradeCase
+                  ? tradingStepForTradeCase(activeTradeCase.status)
+                  : "idea"}
+            candidate={effectiveTradeCandidate}
+            tradeCases={tradeCaseStore.cases}
+            activeTradeCaseId={tradeCaseStore.activeTradeCaseId}
+            syncState={tradeCaseSyncState}
+            dataTrust={tradingDataTrust}
+            onSaveTradeCase={handleSaveTradeCase}
+            signalsProps={{
+              portfolio: behaviorPortfolio,
+              positions: data.positions,
+              risk: data.risk,
+              fearGreedStrategy: data.fearGreedStrategy,
+              interestSignals: data.signals?.interestList?.length
+                ? data.signals.interestList
+                : data.signals?.interest
+                  ? [data.signals.interest]
+                  : [],
+              strategy: data.strategy,
+              onOpenTradeCandidate: handleOpenTradeCandidate,
+              onRefreshData: dataStatus?.onRefresh,
+            }}
+            gateProps={{
+              portfolio: behaviorPortfolio,
+              positions: data.positions,
+              allocation: data.allocation,
+              fearGreedStrategy: data.fearGreedStrategy,
+              assetQuality: data.assetQuality,
+              healthInput: behaviorHealthInput,
+              strategy: data.strategy,
+              profile: data.profile,
+              futuresShare: data.risk.futuresShare,
+              onSaveDecision: handleSaveDecision,
+              candidate: effectiveTradeCandidate,
+              onClearCandidate: () => setTradeCandidate(null),
+              disciplineBlockers: behavior.blockers,
+              disciplineWarnings: behavior.warnings,
+            }}
+            reportsProps={{
+              history: data.history,
+              transactions: data.transactions,
+              positions: data.positions,
+              realizedPnlUsd: data.portfolio.realizedPnlUsd,
+              decisionJournal,
+              traderJournal,
+              behavior,
+              strategy: data.strategy,
+              onDeleteDecision: handleDeleteDecision,
+              onSaveTradeReview: handleSaveTradeReview,
+              tradeCaseIdByTransaction,
+            }}
           />
         ) : page === "reports" ? (
           <V2ReportsPage
@@ -972,12 +1159,8 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             transactions={data.transactions}
             positions={data.positions}
             realizedPnlUsd={data.portfolio.realizedPnlUsd}
-            decisionJournal={decisionJournal}
-            traderJournal={traderJournal}
             behavior={behavior}
             strategy={data.strategy}
-            onDeleteDecision={handleDeleteDecision}
-            onSaveTradeReview={handleSaveTradeReview}
           />
         ) : page === "portfolio" ? (
           <V2PortfolioPage
@@ -991,38 +1174,36 @@ export function V2Shell({ data, page, onNavigate, locked = false, onOpenAuth, st
             realizedPnlPct={data.portfolio.realizedPnlPct}
             strategy={data.strategy}
           />
-        ) : page === "scenarios" ? (
-          <V2ScenariosPage playbook={data.playbook} positions={data.positions} />
-        ) : page === "health" ? (
+        ) : page === "scenarios" || page === "risk" ? (
+          <V2ScenariosHubPage
+            key={page}
+            initialSection={page === "risk" ? "risk" : "playbook"}
+            playbook={data.playbook}
+            positions={data.positions}
+            portfolio={behaviorPortfolio}
+            health={behaviorHealth}
+            risk={data.risk}
+            allocation={data.allocation}
+            strategy={data.strategy}
+            marketPsychology={marketPsychology}
+          />
+        ) : page === "health" || page === "dna" ? (
           <V2HealthPage
+            key={page}
             portfolio={behaviorPortfolio}
             health={behaviorHealth}
             healthInput={behaviorHealthInput}
             strategy={data.strategy}
             dna={data.dna}
             fearGreedIndex={data.fearGreedStrategy.currentIndex}
-            interestSignals={data.signals?.interestList?.length
-              ? data.signals.interestList
-              : data.signals?.interest
-                ? [data.signals.interest]
-                : []}
-            onOpenDNA={() => handleNavigate("dna")}
-          />
-        ) : page === "dna" ? (
-          <V2InvestorDNAPage
-            dna={data.dna}
-            onNavigate={handleNavigate}
+            onOpenGate={() => handleNavigate("gate")}
+            initialDNAExpanded={page === "dna"}
+            portfolioAlerts={alerts}
+            onPortfolioAlertAction={handleAlertAction}
+            canRunPortfolioAlertAction={canHandleAlertAction}
           />
         ) : page === "education" ? (
           <V2EducationPage />
-        ) : page === "risk" ? (
-          <V2RiskEnginePage
-            portfolio={behaviorPortfolio}
-            health={behaviorHealth}
-            risk={data.risk}
-            allocation={data.allocation}
-            strategy={data.strategy}
-          />
         ) : (
         <section className="v2-command-grid" aria-label="Investor Cabinet V2 overview">
           <V2TopMetrics

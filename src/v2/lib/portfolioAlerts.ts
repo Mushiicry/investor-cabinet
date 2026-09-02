@@ -61,7 +61,7 @@ const fmtAlertUsd = (value: number) =>
   })}`;
 
 /**
- * Единый источник тревог портфеля: и страница «Сигналы», и панель уведомлений
+ * Единый источник тревог портфеля: и страница «Здоровье», и панель уведомлений
  * считают по нему, чтобы счётчик на колокольчике и список на странице
  * не расходились.
  */
@@ -242,6 +242,7 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
           level: "warning",
           title: `${component.label}: ${Math.round(component.score)}`,
           detail: "Компонент здоровья в зоне риска",
+          action: "Открыть разбор здоровья",
         });
       });
   }
@@ -254,7 +255,7 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
         id: "exchange-limit-orders-unconfirmed",
         level: "critical",
         title: "Лимитки на бирже не подтверждены",
-        detail: `Сайт/TG только напоминают. Активных уровней: ${actionableLimitSignals.count} на ${fmtAlertUsd(actionableLimitSignals.totalUsd)}. До новых действий выставь лимитки вручную или пометь сценарий как ручной.`,
+        detail: `${actionableLimitSignals.count} уровней на ${fmtAlertUsd(actionableLimitSignals.totalUsd)} не подтверждены на бирже. Сайт/TG только напоминают: до новых действий выставь лимитки вручную или пометь сценарий как ручной.`,
         action: "Поставить лимитки вручную",
         priority: -10,
       });
@@ -349,9 +350,9 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
   }
 
   // 9. Альткоин-места. Мажоры (BTC/ETH/SOL/TON/BNB) занимают 85% крипто-блока,
-  // на альткоины по 5% остаётся 3 места. Напоминаем, сколько свободно.
+  // на альткоины по 5% остаётся 3 места. Закрытые нулевые строки не занимают место.
   const cryptoAssets = positions
-    .filter((p) => CRYPTO_CATEGORIES.has(p.category))
+    .filter((p) => CRYPTO_CATEGORIES.has(p.category) && p.value > 0)
     .map((p) => p.asset);
   const slots = altcoinSlots(cryptoAssets);
   if (slots.used > 0 || slots.free < slots.total) {
@@ -369,6 +370,7 @@ export function buildPortfolioAlerts(ctx: AlertContext): Alert[] {
         level: "info",
         title: `Альткоины: свободно ${slots.free} из ${slots.total}`,
         detail: `Занято: ${slots.altcoins.join(", ") || "—"}. Мажоры (BTC/ETH/SOL/TON/BNB) — вне счёта.`,
+        action: "Открыть проверку риска",
       });
     }
   }

@@ -13,10 +13,12 @@ describe("account strategy wiring", () => {
     expect(lab).toContain("const { accessToken, configured, loading: authLoading, user } = useAuth()");
     expect(lab).toContain("accessToken,");
     expect(lab).toContain("useInvestorData(");
-    expect(shell).toContain("<V2SignalsPage");
+    expect(shell).toContain("<V2TradingPage");
+    expect(read("src/v2/components/V2TradingPage.tsx")).toContain("<V2SignalsPage");
     expect(shell).toContain("strategy={data.strategy}");
-    expect(shell).toContain("<V2GatePage");
-    expect(shell).toContain("<V2RiskEnginePage");
+    expect(read("src/v2/components/V2TradingPage.tsx")).toContain("<V2GatePage");
+    expect(shell).toContain("<V2ScenariosHubPage");
+    expect(read("src/v2/components/V2ScenariosHubPage.tsx")).toContain("<V2RiskEnginePage");
     expect(shell).toContain("<V2PortfolioAllocationCard");
     expect(shell).toContain("investorStrategy={data.strategy}");
     expect(shell).toContain("<V2CapitalLadder portfolio={behaviorPortfolio} strategy={data.strategy}");
@@ -84,7 +86,8 @@ describe("account strategy wiring", () => {
     expect(healthPage).toContain("strategy.reserveFloorShare");
     expect(healthPage).toContain("strategy.futuresAllowed");
     expect(healthPage).toContain("strategyCryptoRows(strategy)");
-    expect(healthPage).toContain("<V2CapitalLadder portfolio={portfolio} mode=\"health\" strategy={strategy}");
+    expect(healthPage).not.toContain("<V2CapitalLadder");
+    expect(read("src/v2/components/V2Shell.tsx")).toContain("<V2CapitalLadder portfolio={behaviorPortfolio} strategy={data.strategy}");
     expect(styles).toContain(".v2-hp-strategy-system");
     expect(styles).toContain(".v2-hp-section-grid");
   });

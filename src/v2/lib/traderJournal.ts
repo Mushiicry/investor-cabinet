@@ -15,6 +15,7 @@ export type TradeErrorType =
 
 export type TraderJournalEntry = {
   transactionId: string;
+  tradeCaseId?: string | null;
   updatedAt: string;
   thesis: string;
   expectedScenario: string;
@@ -75,6 +76,7 @@ export function normalizeTraderJournalEntry(value: unknown): TraderJournalEntry 
 
   return {
     transactionId,
+    tradeCaseId: toText(value.tradeCaseId) || null,
     updatedAt: toText(value.updatedAt),
     thesis: toText(value.thesis),
     expectedScenario: toText(value.expectedScenario),

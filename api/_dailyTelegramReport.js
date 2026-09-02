@@ -297,7 +297,7 @@ const fetchAlternativeFearGreed = async () => {
   );
 };
 
-const fetchCryptoRankFearGreed = async () => {
+export const fetchCryptoRankFearGreed = async () => {
   const payload = await fetchFearGreedJson(CRYPTORANK_FEAR_GREED_URL, {
     origin: "https://cryptorank.io",
     referer: "https://cryptorank.io/",

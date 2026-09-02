@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import dailyTelegramReportHandler from "../../api/daily-telegram-report.js";
 import { buildDailyTelegramReport } from "../../api/_dailyTelegramReport.js";
 import { computeDailyReportHealth } from "../../api/_dailyReportHealth.js";
+import { computePortfolioHealth } from "../../src/lib/portfolioHealth";
 
 type MockResponse = ServerResponse & {
   body?: string;
@@ -105,6 +106,36 @@ const hyperliquidRiskByCoin = {
   BTC: { leverage: 3, liquidationPx: 85502.46 },
   CAKE: { leverage: 2, liquidationPx: 0.8845537059 },
   MNT: { leverage: 2, liquidationPx: 0.2877424788 },
+};
+
+const currentHealthPayload = {
+  overview: {
+    portfolioValue: 689.5,
+    invested: 721.5,
+    reserve: 524.2,
+    health: 0,
+  },
+  portfolio: [
+    { asset: "SOL", category: "Крипта", currentValue: 1.18, invested: 0.93 },
+    { asset: "TON", category: "Крипта", currentValue: 86.42, invested: 105.69 },
+    { asset: "ATOM", category: "Крипта", currentValue: 30.34, invested: 40.47 },
+    { asset: "BNB", category: "Крипта", currentValue: 0.68, invested: 0.58 },
+    { asset: "SPCXB", category: "Акции", currentValue: 10.7, invested: 9.94 },
+    { asset: "BTC SHORT", category: "Фьючерсы", currentValue: 36.18, invested: 39.7, currentPrice: 76_509 },
+    { asset: "USDC HL", category: "Свободные деньги", currentValue: 54.02, invested: 54.02 },
+    { asset: "USDC", category: "Свободные деньги", currentValue: 355.28, invested: 355.28 },
+    { asset: "USDT ARB", category: "Свободные деньги", currentValue: 90.52, invested: 90.52 },
+    { asset: "USDC BNB", category: "Свободные деньги", currentValue: 24.38, invested: 24.38 },
+  ],
+  signals: {
+    interestList: [
+      { asset: "ETH", action: "Купить", amountUsd: 457.2, status: "ARMED" },
+    ],
+  },
+};
+
+const currentHealthRiskByCoin = {
+  BTC: { leverage: 3, liquidationPx: 97_000 },
 };
 
 const wifePayload = {
@@ -416,5 +447,58 @@ describe("buildDailyTelegramReport", () => {
     });
     expect(report.text).toContain("Health Factor: 65/100");
     expect(report.text).not.toContain("Health Factor: 79/100");
+  });
+
+  it("keeps Telegram Health equal to the canonical website Health", () => {
+    const reportHealth = computeDailyReportHealth(currentHealthPayload, {
+      riskByCoin: currentHealthRiskByCoin,
+    });
+    const canonicalHealth = computePortfolioHealth({
+      cashShare: 524.2 / 689.5,
+      cryptoShare: (1.18 + 86.42 + 30.34 + 0.68) / 689.5,
+      futuresShare: (39.7 + 54.02) / 721.5,
+      largestShare: 86.42 / 689.5,
+      riskCategoryShares: [
+        (1.18 + 86.42 + 30.34 + 0.68) / 689.5,
+        0,
+        10.7 / 689.5,
+      ],
+      reserveShare: 524.2 / 689.5,
+      futuresLegs: [{
+        asset: "BTC SHORT",
+        leverage: 3,
+        liqDistance: (97_000 - 76_509) / 76_509,
+      }],
+      portfolioValue: 689.5,
+      investedCapital: 721.5,
+      spotDeployableUsd: 470.18 - 689.5 * 0.3,
+      plannedLimitOrdersUsd: 457.2,
+      plannedLimitOrdersConfirmed: false,
+      concentrationScore: 84,
+      disciplineJournalCoverage: 0,
+      disciplineViolations30d: 0,
+      fomoEvents30d: 0,
+      overtradingDays30d: 0,
+      disciplineCooldownActive: false,
+    });
+    const report = buildDailyTelegramReport(currentHealthPayload, {
+      accountId: "main",
+      now: new Date("2026-09-02T06:05:00.000Z"),
+      hyperliquidRiskByCoin: currentHealthRiskByCoin,
+    });
+
+    expect(reportHealth.components).toEqual({
+      reserve: 68,
+      survival: 84,
+      riskControl: 65,
+      concentration: 84,
+      diversification: 30,
+      discipline: 59,
+    });
+    expect(canonicalHealth.healthFactor).toBe(66);
+    expect(reportHealth.healthFactor).toBe(canonicalHealth.healthFactor);
+    expect(report.facts.health).toBe(canonicalHealth.healthFactor);
+    expect(report.text).toContain("Health Factor: 66/100");
+    expect(report.text).not.toContain("Health Factor: 68/100");
   });
 });

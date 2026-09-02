@@ -68,7 +68,7 @@ describe("manual signal limit levels", () => {
     expect(page).toContain("ACKNOWLEDGED_SIGNAL_STORAGE_KEY");
     expect(page).toContain("acknowledgeSignal(primaryTriggered.id)");
     expect(page).toContain("openCandidate(primaryTriggered, true)");
-    expect(page).toContain("interestSignals: alertSignals");
+    expect(page).toContain("sortBySignalPriority(alertSignals)");
     expect(page).toContain("✓ Принято");
   });
 });

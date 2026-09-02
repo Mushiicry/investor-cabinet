@@ -160,6 +160,18 @@
   display: none;
 }
 
+.v2-nav-separated {
+  margin-top: 10px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(92, 231, 245, 0.12);
+}
+
+.v2-nav-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* ── Nav glow pulse (active) ── */
 @keyframes v2-nav-glow-pulse {
   0%, 100% { box-shadow: 0 0 18px -4px rgba(0, 200, 255, 0.35), inset 0 0 16px rgba(0, 200, 255, 0.04); }

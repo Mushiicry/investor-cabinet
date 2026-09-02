@@ -21,6 +21,7 @@ import {
 } from "../lib/traderJournal";
 
 type Props = {
+  mode?: "reports" | "trading";
   history: PortfolioHistoryPoint[];
   transactions: InvestorTransaction[];
   positions: V2Position[];
@@ -32,6 +33,7 @@ type Props = {
   onDeleteDecision?: (id: string) => void;
   traderJournal?: TraderJournalEntry[];
   onSaveTradeReview?: (draft: TraderJournalDraft) => void;
+  tradeCaseIdByTransaction?: Record<string, string>;
 };
 
 const money = new Intl.NumberFormat("ru-RU", {
@@ -151,7 +153,15 @@ function journalAction(transaction: InvestorTransaction): "buy" | "sell" {
   return /прод|sell/i.test(transaction.action || "") ? "sell" : "buy";
 }
 
-function findPreTradeDecision(transaction: InvestorTransaction, entries: DecisionJournalEntry[]) {
+function findPreTradeDecision(
+  transaction: InvestorTransaction,
+  entries: DecisionJournalEntry[],
+  tradeCaseId?: string | null,
+) {
+  if (tradeCaseId) {
+    const exact = entries.find((entry) => entry.tradeCaseId === tradeCaseId);
+    if (exact) return exact;
+  }
   const transactionTime = Date.parse(transaction.date);
   const transactionAmount = Number(transaction.amount || 0);
   return entries.find((entry) => {
@@ -224,6 +234,7 @@ function EquityCurve({ points }: { points: PortfolioHistoryPoint[] }) {
 }
 
 export function V2ReportsPage({
+  mode = "reports",
   history,
   transactions,
   positions,
@@ -233,7 +244,9 @@ export function V2ReportsPage({
   behavior,
   onDeleteDecision,
   onSaveTradeReview,
+  tradeCaseIdByTransaction = {},
 }: Props) {
+  const editable = mode === "trading";
   const sortedHistory = useMemo(() => getSortedPortfolioHistory(history), [history]);
   const newestFirst = useMemo(() => [...sortedHistory].reverse(), [sortedHistory]);
   const summary = useMemo(() => getPortfolioHistorySummary(sortedHistory), [sortedHistory]);
@@ -248,8 +261,10 @@ export function V2ReportsPage({
   const latest = summary.latestPoint;
   const changeTone = summary.portfolioValueChange >= 0 ? "is-pos" : "is-neg";
   const journalTrades = useMemo(
-    () => dedupeTrades(transactions.filter((transaction) => !isEmptyRow(transaction) && isJournalTrade(transaction))),
-    [transactions],
+    () => editable
+      ? dedupeTrades(transactions.filter((transaction) => !isEmptyRow(transaction) && isJournalTrade(transaction)))
+      : [],
+    [editable, transactions],
   );
   const reviewByTransaction = useMemo(
     () => new Map(traderJournal.map((entry) => [entry.transactionId, entry])),
@@ -266,14 +281,17 @@ export function V2ReportsPage({
   const [reviewDraft, setReviewDraft] = useState<TraderJournalDraft | null>(null);
 
   const openTradeReview = (transaction: InvestorTransaction) => {
+    if (!editable) return;
     const transactionId = transactionJournalId(transaction);
     const existing = reviewByTransaction.get(transactionId);
-    const decision = findPreTradeDecision(transaction, decisionJournal);
+    const linkedTradeCaseId = existing?.tradeCaseId ?? tradeCaseIdByTransaction[transactionId] ?? null;
+    const decision = findPreTradeDecision(transaction, decisionJournal, linkedTradeCaseId);
     setOpenReviewId(transactionId);
     setReviewDraft(existing
       ? { ...existing }
       : {
           transactionId,
+          tradeCaseId: linkedTradeCaseId,
           thesis: decision?.note ?? "",
           expectedScenario: decision
             ? `${decision.setup}. ${decision.orderPlan || `${fmtUSD(decision.amountUsd)} по ${decision.buyPrice ? fmtUSD(decision.buyPrice) : "плановой цене"}`}`
@@ -293,7 +311,7 @@ export function V2ReportsPage({
   };
 
   const saveTradeReview = () => {
-    if (!reviewDraft || !onSaveTradeReview) return;
+    if (!editable || !reviewDraft || !onSaveTradeReview) return;
     onSaveTradeReview(reviewDraft);
     setOpenReviewId(null);
     setReviewDraft(null);
@@ -307,7 +325,10 @@ export function V2ReportsPage({
   // другое число рядом и путала: какое из них правда.
 
   return (
-    <section className="v2-reports-page" aria-label="Отчёты">
+    <section
+      className={`v2-reports-page ${mode === "trading" ? "is-trading-workspace" : ""}`}
+      aria-label={mode === "trading" ? "Дневник торгового цикла" : "Отчёты"}
+    >
       <div className="v2-rep-kpi-row">
         <div className="v2-rep-kpi">
           <span className="v2-rep-kpi-label">Точек истории</span>
@@ -397,6 +418,7 @@ export function V2ReportsPage({
             </div>
           </div>
 
+          {editable && (
           <div className="v2-panel v2-rep-journal-panel v2-rep-trader-panel">
             <div className="v2-rep-journal-header">
               <div>
@@ -415,9 +437,16 @@ export function V2ReportsPage({
                 const transactionId = transactionJournalId(transaction);
                 const review = reviewByTransaction.get(transactionId);
                 const reviewComplete = isTradeReviewComplete(review);
-                const decision = findPreTradeDecision(transaction, decisionJournal);
+                const linkedTradeCaseId = review?.tradeCaseId ?? tradeCaseIdByTransaction[transactionId] ?? null;
+                const decision = findPreTradeDecision(transaction, decisionJournal, linkedTradeCaseId);
+                const linkedByTradeCaseId = Boolean(linkedTradeCaseId && decision?.tradeCaseId === linkedTradeCaseId);
                 const tradeResult = journalTradeResults[index];
                 const isOpen = openReviewId === transactionId && reviewDraft?.transactionId === transactionId;
+                const gateLinkClass = linkedByTradeCaseId
+                  ? "is-linked"
+                  : decision
+                    ? "is-approximate"
+                    : "is-missing";
 
                 return (
                   <div key={transactionId} className={`v2-rep-trader-row ${reviewComplete ? "is-reviewed" : "is-pending"}`}>
@@ -429,8 +458,8 @@ export function V2ReportsPage({
                       <span className={`v2-rep-cell-pnl ${tradeResult ? tradeResult.realizedPnl >= 0 ? "is-pos" : "is-neg" : ""}`}>
                         {tradeResult ? signedMoney(tradeResult.realizedPnl) : "результат —"}
                       </span>
-                      <span className={`v2-rep-trader-gate ${decision ? "is-linked" : "is-missing"}`}>
-                        {decision ? "Допуск найден" : "Без допуска"}
+                      <span className={`v2-rep-trader-gate ${gateLinkClass}`}>
+                        {linkedByTradeCaseId ? "Связан по ID" : decision ? "Приблизительное совпадение" : "Без допуска"}
                       </span>
                       <span className={`v2-rep-trader-state ${reviewComplete ? "is-complete" : ""}`}>
                         {reviewComplete ? "Разобрано" : "Нужен разбор"}
@@ -440,7 +469,7 @@ export function V2ReportsPage({
                       </button>
                     </div>
 
-                    {isOpen && reviewDraft && (
+                    {editable && isOpen && reviewDraft && (
                       <div className="v2-rep-trader-form">
                         <label>
                           <span>Тезис сделки</span>
@@ -495,7 +524,9 @@ export function V2ReportsPage({
               })}
             </div>
           </div>
+          )}
 
+          {editable && (
           <div className="v2-panel v2-rep-journal-panel v2-rep-decision-panel">
             <div className="v2-rep-journal-header">
               <span className="v2-panel-kicker">Журнал допусков</span>
@@ -519,12 +550,15 @@ export function V2ReportsPage({
                       <span className={`v2-rep-decision-status ${entry.status === "БЛОКИРОВКА" ? "is-block" : "is-ok"}`}>
                         {entry.status}
                       </span>
-                      {onDeleteDecision && (
+                      {editable && onDeleteDecision && (
                         <button type="button" onClick={() => onDeleteDecision(entry.id)}>
                           Удалить
                         </button>
                       )}
                     </div>
+                  </div>
+                  <div className="v2-rep-decision-link">
+                    {entry.tradeCaseId ? `TradeCase · ${entry.tradeCaseId}` : "Legacy запись · приблизительная связь"}
                   </div>
                   <div className="v2-rep-decision-grid">
                     <span>Сумма</span>
@@ -554,6 +588,7 @@ export function V2ReportsPage({
               ))}
             </div>
           </div>
+          )}
 
           <div className="v2-panel v2-rep-journal-panel">
             <div className="v2-rep-journal-header">

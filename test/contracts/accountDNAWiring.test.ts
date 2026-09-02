@@ -4,22 +4,23 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("account DNA wiring", () => {
-  it("adds DNA as a first-class V2 page and data model", () => {
+  it("keeps DNA as an internal Health route and data model", () => {
     const lab = read("src/v2/InvestorCabinetV2Lab.tsx");
     const labData = read("src/v2/lib/v2LabData.ts");
     const shell = read("src/v2/components/V2Shell.tsx");
-    const sidebar = read("src/v2/components/V2Sidebar.tsx");
+    const healthPage = read("src/v2/components/V2HealthPage.tsx");
 
     expect(lab).toContain("dna: InvestorDNA");
     expect(lab).toContain("\"dna\"");
     expect(labData).toContain("dnaForSlot(slot)");
-    expect(shell).toContain("<V2InvestorDNAPage");
     expect(shell).toContain("dna={data.dna}");
-    expect(sidebar).toContain("label: \"ДНК\"");
-    expect(sidebar).toContain("page: \"dna\"");
+    expect(shell).toContain('page === "health" || page === "dna"');
+    expect(shell).toContain('initialDNAExpanded={page === "dna"}');
+    expect(healthPage).toContain("<V2InvestorDNAPage");
+    expect(healthPage).toContain("embedded");
   });
 
-  it("keeps full DNA details on the DNA page and only verdict on Health", () => {
+  it("exposes the full DNA inside Health without duplicating its implementation", () => {
     const healthPage = read("src/v2/components/V2HealthPage.tsx");
     const dnaPage = read("src/v2/components/V2InvestorDNAPage.tsx");
 
@@ -34,5 +35,9 @@ describe("account DNA wiring", () => {
     expect(healthPage).toContain('aria-label="Психология и дисциплина"');
     expect(healthPage).toContain("<strong>{dna.keyVerdict}</strong>");
     expect(healthPage).toContain("Открыть ДНК инвестора");
+    expect(healthPage).toContain('aria-controls="investor-dna-content"');
+    expect(healthPage).toContain('id="investor-dna-content"');
+    expect(dnaPage).toContain("embedded?: boolean");
+    expect(dnaPage).toContain("saveInvestorDNAAudit(");
   });
 });

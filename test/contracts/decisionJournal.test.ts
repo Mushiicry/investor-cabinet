@@ -129,6 +129,16 @@ describe("журнал решений", () => {
     expect(readDecisionJournal(":test")[0].action).toBe("sell");
   });
 
+  it("сохраняет tradeCaseId и читает старые записи без него", () => {
+    const entries = appendDecisionJournalEntry([], { ...draft, tradeCaseId: "trade-case-1" }, ":test");
+    expect(entries[0].tradeCaseId).toBe("trade-case-1");
+
+    const legacy = { ...entries[0] } as Record<string, unknown>;
+    delete legacy.tradeCaseId;
+    store["mushii-decision-journal-v1:test"] = JSON.stringify([legacy]);
+    expect(readDecisionJournal(":test")[0].tradeCaseId).toBeNull();
+  });
+
   it("не ломается на испорченном хранилище", () => {
     store["mushii-decision-journal-v1:test"] = "{bad json";
 

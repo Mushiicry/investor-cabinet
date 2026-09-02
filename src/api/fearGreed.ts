@@ -1,6 +1,8 @@
 import {
   FEAR_GREED_API_TIMEOUT_MS,
   FEAR_GREED_API_URL,
+  FEAR_GREED_BACKUP_API_URL,
+  FEAR_GREED_PRIMARY_TIMEOUT_MS,
 } from "../config/constants";
 import { fetchJsonWithTimeout } from "../services/http";
 import type { FearGreedHistoryPoint } from "../types/portfolio";
@@ -18,13 +20,7 @@ export type FearGreedApiData = {
   history: FearGreedHistoryPoint[];
 };
 
-export async function fetchFearGreedData(): Promise<FearGreedApiData | null> {
-  const json = await fetchJsonWithTimeout(FEAR_GREED_API_URL, {
-    method: "GET",
-    cache: "no-store",
-    timeoutMs: FEAR_GREED_API_TIMEOUT_MS,
-  });
-
+function normalizeFearGreedPayload(json: unknown, fallbackSource: string): FearGreedApiData | null {
   const rawData = json && typeof json === "object" && "data" in json && Array.isArray(json.data)
     ? json.data as Array<Record<string, unknown>>
     : [];
@@ -33,6 +29,10 @@ export async function fetchFearGreedData(): Promise<FearGreedApiData | null> {
 
   const currentValue = Number(rawData[0]?.value);
   if (!Number.isFinite(currentValue)) return null;
+
+  const source = json && typeof json === "object" && "source" in json && typeof json.source === "string"
+    ? json.source
+    : fallbackSource;
 
   // Build history from all 30 returned points
   const history: FearGreedHistoryPoint[] = rawData
@@ -46,7 +46,7 @@ export async function fetchFearGreedData(): Promise<FearGreedApiData | null> {
         date: dateStr,
         value: Math.max(0, Math.min(100, Math.round(val))),
         label: String(item.value_classification ?? fearGreedLabel(val)),
-        source: "alternative.me",
+        source,
       };
     })
     .filter((p): p is FearGreedHistoryPoint => p !== null)
@@ -56,6 +56,39 @@ export async function fetchFearGreedData(): Promise<FearGreedApiData | null> {
     current: Math.max(0, Math.min(100, Math.round(currentValue))),
     history,
   };
+}
+
+async function fetchFearGreedSource(
+  url: string,
+  timeoutMs: number,
+  source: string,
+): Promise<FearGreedApiData | null> {
+  const json = await fetchJsonWithTimeout(url, {
+    method: "GET",
+    cache: "no-store",
+    timeoutMs,
+  });
+
+  return normalizeFearGreedPayload(json, source);
+}
+
+export async function fetchFearGreedData(): Promise<FearGreedApiData | null> {
+  try {
+    const primary = await fetchFearGreedSource(
+      FEAR_GREED_API_URL,
+      FEAR_GREED_PRIMARY_TIMEOUT_MS,
+      "alternative.me",
+    );
+    if (primary) return primary;
+  } catch {
+    // The same-origin CryptoRank endpoint below is the only website fallback.
+  }
+
+  return fetchFearGreedSource(
+    FEAR_GREED_BACKUP_API_URL,
+    FEAR_GREED_API_TIMEOUT_MS,
+    "cryptorank",
+  );
 }
 
 // Backward-compatible single-value fetch (still used elsewhere)

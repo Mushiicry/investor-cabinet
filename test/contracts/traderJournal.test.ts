@@ -54,4 +54,10 @@ describe("дневник трейдера", () => {
     const transaction = { hash: "BALANCE_DELTA", id: "tx-bnb-sale" } as InvestorTransaction;
     expect(transactionJournalId(transaction)).toBe("tx-bnb-sale");
   });
+
+  it("сохраняет необязательную связь с торговым кейсом", () => {
+    const entries = upsertTraderJournalEntry([], { ...draft, tradeCaseId: "trade-case-1" }, ":test");
+    expect(entries[0].tradeCaseId).toBe("trade-case-1");
+    expect(readTraderJournal(":test")[0].tradeCaseId).toBe("trade-case-1");
+  });
 });

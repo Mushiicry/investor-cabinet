@@ -15,6 +15,12 @@ export function fetchDailyReportFearGreed(): Promise<{
   source: 'alternative.me' | 'cryptorank'
 }>
 
+export function fetchCryptoRankFearGreed(): Promise<{
+  currentIndex: number
+  currentZone: string
+  source: 'cryptorank'
+}>
+
 export function sendTelegramMessage(input: {
   botToken: string
   chatId: string

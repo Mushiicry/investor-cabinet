@@ -12,6 +12,7 @@ import { V2CosmosStakingCard } from "./V2CosmosStakingCard";
 import { V2PortfolioMiniChart } from "./V2PortfolioMiniChart";
 import type { InvestorStrategy } from "../lib/investorStrategy";
 import { isWaitingRebuyStatus } from "../../lib/portfolioSelectors";
+import { isObservationPortfolioPosition, isVisiblePortfolioPosition } from "../lib/portfolioVisibility";
 
 type Props = {
   positions: V2Position[];
@@ -241,6 +242,7 @@ function IdentityCard({
   pnlPct,
   pnl,
   staked,
+  observing,
   onOpen,
 }: {
   asset: string;
@@ -248,6 +250,7 @@ function IdentityCard({
   pnlPct: number;
   pnl: number;
   staked?: boolean;
+  observing?: boolean;
   onOpen?: () => void;
 }) {
   const tone = pnlTone(pnl);
@@ -256,6 +259,7 @@ function IdentityCard({
       <CryptoLogo asset={asset} className="v2-pid-logo" />
       <span className="v2-pid-name-stack">
         <span className="v2-pid-name">{fullName(asset)}</span>
+        {observing && <span className="v2-pid-observation" title="Наблюдение · вложено меньше $1">Наблюдение</span>}
         {staked && <span className="v2-pid-staked" title="В стейке">🔒 в стейке</span>}
       </span>
       <span className={`v2-pid-pnl ${tone}`}>
@@ -291,7 +295,7 @@ function TradingViewChartLink({ asset }: { asset: string }) {
   );
 }
 
-function StableCard({ asset, meta }: { asset: string; meta: { network: string; net: string } }) {
+function StableCard({ asset, meta, observing }: { asset: string; meta: { network: string; net: string }; observing: boolean }) {
   const logoAsset = asset.replace(" BNB", "").replace(" HL", "").replace(" ARB", "");
   return (
     <div className="v2-pid v2-pid-stable">
@@ -299,6 +303,7 @@ function StableCard({ asset, meta }: { asset: string; meta: { network: string; n
       <div className="v2-pid-stable-info">
         <span className="v2-pid-name">{fullName(asset)}</span>
         <span className={`v2-pid-net-tag ${meta.net}`}>{meta.network}</span>
+        {observing && <span className="v2-pid-observation" title="Наблюдение · вложено меньше $1">Наблюдение</span>}
       </div>
     </div>
   );
@@ -455,6 +460,7 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
             {visibleGroups.map((group) => {
               const rows = positions
                 .filter((position) => position.category === group.category)
+                .filter((position) => isVisiblePortfolioPosition(position, strategy))
                 .sort((a, b) => b.invested - a.invested);
               if (!rows.length) return null;
 
@@ -507,15 +513,17 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
                     const dailyUsd = tonStaked ? staking!.dailyUsd : atomStaked ? cosmosStaking!.dailyUsd : 0;
                     const isOpen = openStake === position.asset;
                     const isWaitingRebuy = isWaitingRebuyStatus(position.status) && position.value <= 0;
+                    const isObserving = isObservationPortfolioPosition(position);
 
                     const row = (
-                      <div className="v2-pline v2-port-market-line">
+                      <div className={`v2-pline v2-port-market-line${isObserving ? " is-observing" : ""}`}>
                         <IdentityCard
                           asset={position.asset}
                           card={card}
                           pnlPct={position.pnlPct}
                           pnl={position.pnl}
                           staked={isStaked}
+                          observing={isObserving}
                           onOpen={card ? () => setSelected({ card, position }) : undefined}
                         />
                         <TradingViewChartLink asset={position.asset} />
@@ -580,9 +588,10 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
 
               {stables.map((position) => {
                 const meta = STABLE_META[position.asset] ?? { network: "—", purpose: "—", net: "" };
+                const isObserving = isObservationPortfolioPosition(position);
                 return (
-                  <div className="v2-pline" key={position.asset}>
-                    <StableCard asset={position.asset} meta={meta} />
+                  <div className={`v2-pline${isObserving ? " is-observing" : ""}`} key={position.asset}>
+                    <StableCard asset={position.asset} meta={meta} observing={isObserving} />
                     <div className="v2-port-srow">
                       <span className="v2-port-purpose">{meta.purpose}</span>
                       <strong>{money(position.value)}</strong>

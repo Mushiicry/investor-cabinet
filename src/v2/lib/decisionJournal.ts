@@ -2,6 +2,7 @@ import type { DecisionResult, DecisionStatus } from "./decisionEngine";
 
 export type DecisionJournalEntry = {
   id: string;
+  tradeCaseId: string | null;
   createdAt: string;
   asset: string;
   category: string;
@@ -33,6 +34,7 @@ export type DecisionJournalEntry = {
 };
 
 export type DecisionJournalDraft = {
+  tradeCaseId?: string | null;
   asset: string;
   category: string;
   action?: "buy" | "sell";
@@ -83,6 +85,7 @@ export function normalizeDecisionJournalEntry(value: unknown): DecisionJournalEn
 
   return {
     id,
+    tradeCaseId: toText(value.tradeCaseId) || null,
     createdAt,
     asset,
     category,
@@ -143,6 +146,7 @@ export function buildDecisionJournalEntry(draft: DecisionJournalDraft): Decision
   const { decision } = draft;
   return {
     id: `decision-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    tradeCaseId: draft.tradeCaseId ?? null,
     createdAt: new Date().toISOString(),
     asset: draft.asset,
     category: draft.category,

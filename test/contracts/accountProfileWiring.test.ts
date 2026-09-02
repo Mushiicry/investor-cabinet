@@ -8,19 +8,23 @@ describe("account profile wiring", () => {
     const labData = read("src/v2/lib/v2LabData.ts");
     const lab = read("src/v2/InvestorCabinetV2Lab.tsx");
     const shell = read("src/v2/components/V2Shell.tsx");
+    const trading = read("src/v2/components/V2TradingPage.tsx");
 
     expect(lab).toContain("profile: InvestorProfile");
     expect(labData).toContain("profileForSlot(slot)");
-    expect(shell).toContain("profile={data.profile}");
+    expect(shell).toContain("profile: data.profile");
+    expect(trading).toContain("<V2GatePage");
   });
 
-  it("moves the full investor portrait to the DNA page and keeps health compact", () => {
+  it("embeds the full investor portrait inside Health", () => {
     const healthPage = read("src/v2/components/V2HealthPage.tsx");
     const dnaPage = read("src/v2/components/V2InvestorDNAPage.tsx");
 
     expect(healthPage).toContain('aria-label="Психология и дисциплина"');
     expect(healthPage).toContain("<strong>{dna.keyVerdict}</strong>");
     expect(healthPage).toContain("Открыть ДНК инвестора");
+    expect(healthPage).toContain("<V2InvestorDNAPage");
+    expect(healthPage).toContain("embedded");
     expect(healthPage).not.toContain("function InvestorProfileCard");
     expect(dnaPage).toContain("ДНК Инвестора");
     expect(dnaPage).toContain("Рекомендации ДНК");

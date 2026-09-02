@@ -291,11 +291,18 @@ export function V2RiskEnginePage({
                   <div className="v2-re-mini-bar-wrap">
                     <div
                       className="v2-re-mini-bar-fill"
-                      style={{ width: `${m.value}%`, background: toneColor(m.value) }}
+                      style={{
+                        width: `${m.value ?? 0}%`,
+                        background: m.value === null ? EMPTY_TONE : toneColor(m.value),
+                      }}
                     />
                   </div>
-                  <span className="v2-re-radar-val" style={{ color: toneColor(m.value) }}>
-                    {m.value}
+                  <span
+                    className="v2-re-radar-val"
+                    style={{ color: m.value === null ? EMPTY_TONE : toneColor(m.value) }}
+                    title={m.value === null ? "Метрика не рассчитывается: нет подтверждённого источника" : undefined}
+                  >
+                    {m.value === null ? "нет данных" : m.value}
                   </span>
                 </div>
               ))}

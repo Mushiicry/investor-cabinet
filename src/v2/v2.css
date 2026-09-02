@@ -7,6 +7,7 @@
 @import "./styles/v2-portfolio.css";
 @import "./styles/v2-playbook.css";
 @import "./styles/v2-risk-cards.css";
+@import "./styles/v2-scenarios-hub.css";
 @import "./styles/v2-btc-chart.css";
 @import "./styles/v2-alloc-card.css";
 @import "./styles/v2-auth.css";
@@ -15,3 +16,4 @@
 @import "./styles/v2-education.css";
 @import "./styles/v2-assistant.css";
 @import "./styles/v2-mobile.css";
+@import "./styles/v2-trading-workflow.css";

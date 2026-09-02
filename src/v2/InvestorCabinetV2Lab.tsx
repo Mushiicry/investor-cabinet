@@ -62,7 +62,7 @@ export type V2Risk = {
   leverage: number;
   futuresShare: number;
   diversification: number;
-  volatility: number;
+  volatility: number | null;
   concentration: "LOW" | "MEDIUM" | "HIGH";
   futuresPressure: "LOW" | "MEDIUM" | "HIGH";
 };
@@ -94,6 +94,7 @@ export type V2Scenario = {
 };
 
 export type V2LabData = {
+  updatedAt: string;
   strategy: InvestorStrategy;
   profile: InvestorProfile;
   dna: InvestorDNA;
@@ -116,7 +117,7 @@ export type V2LabData = {
 };
 
 
-export type V2Page = "overview" | "portfolio" | "scenarios" | "risk" | "reports" | "signals" | "settings" | "health" | "gate" | "dna" | "education";
+export type V2Page = "overview" | "portfolio" | "health" | "trading" | "scenarios" | "reports" | "settings" | "education" | "signals" | "gate" | "risk" | "dna";
 
 export default function InvestorCabinetV2Lab() {
   const { accessToken, configured, loading: authLoading, user } = useAuth();

@@ -36,6 +36,7 @@ const mockHealthInput: HealthInput = {
 };
 
 const mockData: V2LabData = {
+  updatedAt: "",
   strategy: strategyForSlot("main"),
   profile: profileForSlot("main"),
   dna: dnaForSlot("main"),
@@ -198,7 +199,7 @@ export function buildZeroedV2Data(): V2LabData {
       leverage: 0,
       futuresShare: 0,
       diversification: 0,
-      volatility: 0,
+      volatility: null,
       concentration: "LOW",
       futuresPressure: "LOW",
     },
@@ -354,6 +355,7 @@ export const buildLiveV2Data = (
 
   return {
     ...mockData,
+    updatedAt: state.updatedAt,
     strategy,
     profile,
     dna,
@@ -388,7 +390,7 @@ export const buildLiveV2Data = (
       leverage: Math.round(futuresShare * 100),
       futuresShare,
       diversification,
-      volatility: 0,
+      volatility: null,
       concentration:
         concentration.maxUtilization > 1
           ? "HIGH"

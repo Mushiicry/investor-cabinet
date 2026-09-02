@@ -5,7 +5,14 @@ import type { V2Page, V2Portfolio, V2Position } from "../InvestorCabinetV2Lab";
 import { V2InvestorModal, computeLevel, getLevelTitle } from "./V2InvestorModal";
 import { useAuth } from "../../hooks/useAuth";
 
-const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
+type NavItem = {
+  label: string;
+  icon: ReactNode;
+  page: V2Page;
+  activePages?: V2Page[];
+};
+
+const mainNavItems: NavItem[] = [
   {
     label: "Обзор",
     page: "overview",
@@ -29,18 +36,9 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
     ),
   },
   {
-    label: "Сигналы",
-    page: "signals",
-    icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M9 2a4 4 0 00-4 4c0 4-1.6 5-1.6 5h11.2S13 10 13 6a4 4 0 00-4-4z" />
-        <path d="M7.4 14a1.6 1.6 0 003.2 0" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
     label: "Здоровье",
     page: "health",
+    activePages: ["health", "dna"],
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <path d="M9 15.5C5 13.5 2 10.8 2 7.5a4 4 0 016-3.46A4 4 0 0116 7.5c0 3.3-3 6-7 8z" />
@@ -49,29 +47,21 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
     ),
   },
   {
-    label: "ДНК",
-    page: "dna",
+    label: "Торговля",
+    page: "trading",
+    activePages: ["trading", "signals", "gate"],
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M5 2c5 3 3 11 8 14M13 2C8 5 10 13 5 16" strokeLinecap="round" />
-        <path d="M6.3 5h5.4M6.3 13h5.4M7.2 9h3.6" strokeLinecap="round" opacity=".55" />
-      </svg>
-    ),
-  },
-  {
-    label: "Обучение",
-    page: "education",
-    icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M3 3.5h4.6c1 0 1.4.4 1.4 1.4v10c0-1-.4-1.4-1.4-1.4H3V3.5z" strokeLinejoin="round" />
-        <path d="M15 3.5h-4.6C9.4 3.5 9 3.9 9 4.9v10c0-1 .4-1.4 1.4-1.4H15V3.5z" strokeLinejoin="round" />
-        <path d="M5 6.5h2M11 6.5h2M11 9.5h2" strokeLinecap="round" opacity=".55" />
+        <path d="M5 2v14M13 2v14" strokeLinecap="round" />
+        <rect x="3" y="5" width="4" height="6" rx="1" />
+        <rect x="11" y="7" width="4" height="5" rx="1" />
       </svg>
     ),
   },
   {
     label: "Сценарии",
     page: "scenarios",
+    activePages: ["scenarios", "risk"],
     icon: (
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
         <circle cx="4" cy="9" r="1.6" />
@@ -83,18 +73,9 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
       </svg>
     ),
   },
-  {
-    label: "Риск",
-    page: "risk",
-    icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M9 1.8l6 2.6v4.2c0 3.6-2.5 6.3-6 7.6-3.5-1.3-6-4-6-7.6V4.4L9 1.8z" />
-        <path d="M9 6v3.4" strokeLinecap="round" />
-        <circle cx="9" cy="12" r=".8" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
+];
+
+const reportsItem: NavItem = {
     label: "Отчёты",
     page: "reports",
     icon: (
@@ -103,18 +84,9 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
         <path d="M6 6h6M6 9h6M6 12h4" strokeLinecap="round" />
       </svg>
     ),
-  },
-  {
-    label: "Проверка",
-    page: "gate",
-    icon: (
-      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
-        <path d="M9 1.8l6 2.6v4.2c0 3.6-2.5 6.3-6 7.6-3.5-1.3-6-4-6-7.6V4.4L9 1.8z" />
-        <path d="M6.4 9l1.8 1.9L11.8 7" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
+};
+
+const settingsItem: NavItem = {
     label: "Настройки",
     page: "settings",
     icon: (
@@ -123,8 +95,19 @@ const navItems: { label: string; icon: ReactNode; page?: V2Page }[] = [
         <path d="M9 2v2.2M9 13.8V16M2 9h2.2M13.8 9H16M4 4l1.6 1.6M12.4 12.4L14 14M14 4l-1.6 1.6M5.6 12.4L4 14" strokeLinecap="round" />
       </svg>
     ),
-  },
-];
+};
+
+const educationItem: NavItem = {
+    label: "Обучение",
+    page: "education",
+    icon: (
+      <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M3 3.5h4.6c1 0 1.4.4 1.4 1.4v10c0-1-.4-1.4-1.4-1.4H3V3.5z" strokeLinejoin="round" />
+        <path d="M15 3.5h-4.6C9.4 3.5 9 3.9 9 4.9v10c0-1 .4-1.4 1.4-1.4H15V3.5z" strokeLinejoin="round" />
+        <path d="M5 6.5h2M11 6.5h2M11 9.5h2" strokeLinecap="round" opacity=".55" />
+      </svg>
+    ),
+};
 
 type Props = {
   activePage: V2Page;
@@ -149,9 +132,6 @@ type Props = {
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
 };
-
-const mainNavItems = navItems.filter(i => i.label !== "Настройки");
-const settingsItem  = navItems.find(i => i.label === "Настройки")!;
 
 function sidebarDataStatus(dataStatus: NonNullable<Props["dataStatus"]>) {
   const { source, status, lastLoadedAt, error } = dataStatus;
@@ -193,15 +173,14 @@ export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, 
   const { level } = computeLevel(healthFactor);
   const levelTitle = getLevelTitle(level);
   const dataStatusView = dataStatus ? sidebarDataStatus(dataStatus) : null;
-  const renderItem = (item: typeof navItems[0]) => {
-    const isActive = item.page === activePage;
+  const renderItem = (item: NavItem) => {
+    const isActive = item.page === activePage || item.activePages?.includes(activePage);
     return (
       <button
         className={isActive ? "v2-nav-item is-active" : "v2-nav-item"}
         key={item.label}
         type="button"
-        disabled={!item.page}
-        onClick={() => item.page && onNavigate(item.page)}
+        onClick={() => onNavigate(item.page)}
       >
         <span className="v2-nav-icon">{item.icon}</span>
         <span className="v2-nav-label">{item.label}</span>
@@ -268,6 +247,9 @@ export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, 
 
       <nav className="v2-nav" aria-label="V2 Lab navigation">
         {mainNavItems.map(renderItem)}
+        <div className="v2-nav-separated">
+          {renderItem(reportsItem)}
+        </div>
       </nav>
 
       <div className="v2-sidebar-profile">
@@ -285,6 +267,7 @@ export function V2Sidebar({ activePage, onNavigate, healthFactor, healthStatus, 
 
       <div className="v2-nav-bottom">
         {renderItem(settingsItem)}
+        {renderItem(educationItem)}
 
         {configured && (
           user ? (

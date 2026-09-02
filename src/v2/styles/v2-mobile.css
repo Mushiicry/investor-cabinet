@@ -352,6 +352,42 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .v2-hp-command-grid {
+    grid-template-areas:
+      "score"
+      "status"
+      "permission";
+  }
+
+  .v2-hp-factor-grid,
+  .v2-hp-discipline-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .v2-hp-dna-summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .v2-hp-dna-copy,
+  .v2-hp-dna-copy.is-right {
+    align-items: center;
+    text-align: center;
+  }
+
+  .v2-hp-dna-figure {
+    grid-row: 2;
+  }
+
+  .v2-hp-dna-theses {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-hp-simulator-entry {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .v2-hp-policy-head {
     flex-direction: column;
     gap: 10px;
@@ -823,9 +859,36 @@
     white-space: normal;
   }
 
-  .v2-alerts-row,
   .v2-sig-main-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-alert-group.level-critical .v2-alert-group-grid,
+  .v2-alert-group.level-warning .v2-alert-group-grid,
+  .v2-alert-group.level-info .v2-alert-group-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .v2-hp-alert-system .v2-alert-card {
+    grid-template-columns: 32px minmax(0, 1fr) 10px;
+  }
+
+  .v2-alert-glyph {
+    width: 32px;
+    height: 32px;
+  }
+
+  .v2-alert-detail-overlay {
+    padding: 12px;
+  }
+
+  .v2-alert-detail-modal {
+    width: 100%;
+    padding: 24px 18px 20px;
+  }
+
+  .v2-alert-detail-modal h2 {
+    font-size: 20px;
   }
 
   .v2-sig-panel-label {
@@ -868,36 +931,6 @@
   .v2-sig-limit-actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* Полоса факторов здоровья: 6 баров в ряд не влезают и раздували всю
-     страницу до 650px (min-content). В трёх колонках карточка выходила
-     101px, и «Диверсификация» вылезала за её край на 33px — двух колонок
-     хватает, чтобы названия факторов помещались целиком. */
-  .v2-sig-health-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  /* «СОПРО…», «КОНЦЕН…», «ДИВЕРС…» — от подписи оставался огрызок.
-     Пускаем в две строки: название фактора важнее одной ровной строки. */
-  /* Подпись и балл стояли в одной строке шириной 75px, и на название
-     фактора оставалось 38px — любое слово рвалось в столбик по слогам.
-     Ставим их друг под другом: подпись получает всю ширину карточки. */
-  .v2-sig-hbar-top {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-  }
-  .v2-sig-hbar-label {
-    /* Без width:100% flex-элемент берёт ширину по max-content и вылезает
-       за карточку, вместо того чтобы переносить текст. */
-    width: 100%;
-    min-width: 0;
-    white-space: normal;
-    /* break-word рвёт слово только когда оно реально не помещается,
-       в отличие от anywhere — тот дробил «Сопротивление» на четыре строки. */
-    overflow-wrap: break-word;
-    line-height: 1.2;
-    letter-spacing: 0.04em;
   }
 
   /* ── Настройки: карточки в столбец (3 фикс-колонки не влезают) ── */
