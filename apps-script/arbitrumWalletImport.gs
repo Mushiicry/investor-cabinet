@@ -645,7 +645,16 @@ function IC_EVM_setCalculationQuantity_(sheet, asset, quantity) {
   var rowIndex = IC_EVM_findAssetRow_(sheet, asset);
   if (!rowIndex) return;
 
-  sheet.getRange(rowIndex, 3).setValue(quantity);
+  var currentQuantity = IC_EVM_toNumber_(sheet.getRange(rowIndex, 3).getValue());
+  var currentAvgEntry = IC_EVM_toNumber_(sheet.getRange(rowIndex, 4).getValue());
+  var currentInvested = currentQuantity * currentAvgEntry;
+  var nextQuantity = Math.max(0, IC_EVM_toNumber_(quantity));
+  var nextAvgEntry = nextQuantity ? currentInvested / nextQuantity : 0;
+
+  // Входящий перевод из другого кошелька не является BUY. Синхронизируем
+  // количество, сохраняя существующий cost basis позиции.
+  sheet.getRange(rowIndex, 3).setValue(nextQuantity);
+  sheet.getRange(rowIndex, 4).setValue(nextAvgEntry);
   sheet.getRange(rowIndex, 5).setFormula('=C' + rowIndex + '*D' + rowIndex);
 }
 

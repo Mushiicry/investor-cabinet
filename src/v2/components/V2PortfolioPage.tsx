@@ -409,6 +409,9 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
   const marketValue = positions
     .filter((position) => position.category !== "Свободные деньги")
     .reduce((sum, position) => sum + position.value, 0);
+  const marketInvested = positions
+    .filter((position) => position.category !== "Свободные деньги")
+    .reduce((sum, position) => sum + position.invested, 0);
   const totalInvested =
     portfolio?.totalInvested ?? positions.reduce((sum, position) => sum + position.invested, 0);
   const totalPnl = portfolio?.pnlUsd ?? positions.reduce((sum, position) => sum + position.pnl, 0);
@@ -429,7 +432,12 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
             <PortfolioMetricCard
               label="Всего в рынке"
               value={money(marketValue)}
-              note={`Вложено ${money(totalInvested)}`}
+              note="Без свободных денег"
+            />
+            <PortfolioMetricCard
+              label="Вложено итого"
+              value={money(totalInvested)}
+              note={`Из них в активы ${money(marketInvested)}`}
             />
             <PortfolioMetricCard
               label="P&L всего"
@@ -465,6 +473,7 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
               if (!rows.length) return null;
 
               const groupValue = rows.reduce((sum, position) => sum + position.value, 0);
+              const groupInvested = rows.reduce((sum, position) => sum + position.invested, 0);
               const groupPnl = rows.reduce((sum, position) => sum + position.pnl, 0);
               const groupTone = pnlTone(groupPnl);
 
@@ -477,6 +486,9 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
                     <div className="v2-port-row v2-port-group-head">
                       <span>
                         Стоимость <strong>{money(groupValue)}</strong>
+                      </span>
+                      <span>
+                        Вложено <strong>{money(groupInvested)}</strong>
                       </span>
                       <span>
                         P&L{" "}

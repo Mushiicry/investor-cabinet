@@ -145,6 +145,40 @@ describe("portfolio position visibility", () => {
     expect(positions).toHaveLength(5);
   });
 
+  it("shows total invested capital separately from market value and cash", () => {
+    const positions = [
+      position({ asset: "BTC", category: "Крипта", invested: 35, value: 47.65, pnl: 12.65 }),
+      position({ asset: "USDC", category: "Свободные деньги", invested: 373.68, value: 373.68 }),
+    ];
+    const html = renderToStaticMarkup(createElement(V2PortfolioPage, {
+      positions,
+      playbook: [],
+      portfolio: {
+        totalPortfolioValue: 421.33,
+        totalInvested: 408.68,
+        pnlUsd: 12.65,
+        pnlPct: 0.03095,
+        stableReserve: 373.68,
+        positionsCount: 1,
+        healthFactor: 80,
+        healthStatus: "CONTROL",
+        riskLevel: "Низкий",
+        deployableCapital: 0,
+        spotDeployable: 0,
+        futuresDeployable: 0,
+        reserveShare: 0.887,
+        exposureMode: "Контроль",
+        exposureSignal: "",
+      },
+    }));
+
+    expect(html).toContain("Вложено итого");
+    expect(html).toContain("408,7");
+    expect(html).toContain("Из них в активы");
+    expect(html).toContain("35,0");
+    expect(html).toContain("Без свободных денег");
+  });
+
   it("automatically shows a repurchased altcoin and applies the account strategy in the page", () => {
     const closed = position({ asset: "APEX", category: "Крипта" });
     const render = (row: V2Position, strategy = MAIN_INVESTOR_STRATEGY) =>
