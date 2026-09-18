@@ -19,17 +19,18 @@ export async function fetchInvestorData(
   const request = () =>
     fetchJsonWithTimeout(apiUrl, {
       method: "GET",
-      cache: "no-store",
       headers: accessToken ? { authorization: `Bearer ${accessToken}` } : undefined,
       timeoutMs: INVESTOR_API_TIMEOUT_MS,
     });
 
+  const startedAt = Date.now();
   try {
     return await request();
   } catch (error) {
     // Одна повторная попытка на серверную ошибку: сеть моргнула — данные
     // портфеля не должны из-за этого проваливаться в кэш или fallback.
-    if (!isTransientServerError(error)) throw error;
+    // После долгого ожидания 502 ретрай лишь удваивал время статуса «ДЕМО».
+    if (!isTransientServerError(error) || Date.now() - startedAt > 10_000) throw error;
     await new Promise((resolve) => setTimeout(resolve, 800));
     return request();
   }

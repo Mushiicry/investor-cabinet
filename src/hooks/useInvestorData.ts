@@ -158,20 +158,19 @@ export function useInvestorData(
           };
         });
       } catch (error) {
-        // Отмена запроса — штатное событие (размонтирование, повторная загрузка,
-        // таймаут перед ретраем). Логировать её как ошибку значит зашумлять
-        // консоль и маскировать настоящие сбои.
+        // После размонтирования отмена штатна. Но AbortError при активном хуке
+        // означает таймаут API: его нельзя молча оставлять в initial-loading,
+        // иначе индикатор навсегда зависает в состоянии «ДЕМО».
         const aborted = error instanceof DOMException && error.name === "AbortError";
         if (!aborted) console.error("INVESTOR DATA LOAD ERROR", error);
         if (!isMounted) return;
-        if (aborted) return;
 
         setState((prev) => ({
           ...prev,
           isLoading: false,
           isRefreshing: false,
           status: prev.source === "fallback" ? "error" : "stale",
-          error: getErrorMessage(error),
+          error: aborted ? "Investor API request timed out" : getErrorMessage(error),
         }));
       } finally {
         isLoading = false;

@@ -72,6 +72,8 @@ describe("investor serverless auth proxy", () => {
 
     expect(res.statusCode).toBe(200);
     expect(JSON.parse(res.body ?? "{}")).toMatchObject({ success: true });
+    expect(res.headers["cdn-cache-control"]).toBe("public, s-maxage=30, stale-while-revalidate=60");
+    expect(res.headers["cache-control"]).toContain("s-maxage=30");
     expect(globalThis.fetch).toHaveBeenCalledOnce();
     expect(String(vi.mocked(globalThis.fetch).mock.calls[0][0])).toBe("https://apps-script.example/main?accountId=main");
   });
@@ -185,6 +187,17 @@ describe("investor serverless auth proxy", () => {
       overview: { portfolioValue: 588.3 },
     });
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not cache a JSON payload that reports an unsuccessful read", async () => {
+    setProxyEnv();
+    globalThis.fetch = vi.fn(async () => Response.json({ success: false, error: "Sheet unavailable" })) as typeof fetch;
+    const res = mockRes();
+
+    await proxyInvestorApi(mockReq(), res, "main");
+
+    expect(res.headers["cache-control"]).toBe("no-store");
+    expect(res.headers["cdn-cache-control"]).toBeUndefined();
   });
 
   it("returns controlled JSON when Apps Script keeps returning HTML for public GET", async () => {

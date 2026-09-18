@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════════════════
-// BNB Chain (BSC) wallet import — токенизированные акции + USDT-резерв.
+// BNB Chain (BSC) wallet import — токенизированные акции, золото и резервы.
 //
 // Отслеживает кошелёк на BNB Chain и синхронизирует КОЛИЧЕСТВА в «Расчеты»:
 //   • USDT (BSC)  → строка 'USDT BNB'  (резерв · неприкосновенный)
 //   • Токен акций → строка тикера (категория «Акции»)
+//   • XAUT          → строка 'GOLD' (категория «Металлы»)
 //
 // Принципы безопасности (после инцидентов с прошлыми импортами):
 //   1. Только количество (колонка C). Средний вход (D) НЕ трогаем — его
@@ -34,6 +35,12 @@ var IC_BNB_STOCK_SYMBOL = 'SPCXB';   // тикер = имя строки в «Р
 var IC_BNB_STOCK_CONTRACT = '0xbe9D156892E55e7154BcD3cB0FEA677F9D3103E1';
 var IC_BNB_STOCK_DECIMALS = 18;
 
+// Tether Gold (XAUT) в сети BNB Chain. В портфеле остаётся каноническое имя
+// GOLD, чтобы цена, риск и UI продолжали использовать существующий контракт.
+var IC_BNB_GOLD_SYMBOL = 'GOLD';
+var IC_BNB_GOLD_CONTRACT = '0x21caef8a43163eea865baee23b9c2e327696a3bf';
+var IC_BNB_GOLD_DECIMALS = 6;
+
 // USDC (Binance-Peg, BEP-20) — ВНИМАНИЕ: 18 знаков, не 6 как в других сетях.
 // Нужен для детекта покупок акций за USDC, пополнений и обменов (кейс
 // 2026-07-17: мост Arbitrum->BNB + покупка SPCXB на Uniswap прошли мимо учёта).
@@ -53,7 +60,13 @@ var IC_BNB_NATIVE_MIN_USD = 0.5; // ниже — газовый шум, не с�
 var IC_BNB_PRICES_SHEET = 'Цены';
 
 // Максимально правдоподобные количества — защита от мусорного ответа RPC.
-var IC_BNB_SANE_LIMITS = { 'USDT BNB': 100000, 'USDC BNB': 100000, STOCK: 1000000, BNB: 100000 };
+var IC_BNB_SANE_LIMITS = {
+  'USDT BNB': 100000,
+  'USDC BNB': 100000,
+  STOCK: 1000000,
+  GOLD: 1000,
+  BNB: 100000
+};
 
 function setupBnbWalletImport() {
   IC_BNB_getOrCreateBalancesSheet_(SpreadsheetApp.getActiveSpreadsheet());
@@ -102,6 +115,20 @@ function syncBnbWalletBalances() {
     }
   }
 
+  // Tether Gold (XAUT) → каноническая строка GOLD.
+  var gold = IC_BNB_fetchErc20Balance_(
+    IC_BNB_WALLET_ADDRESS,
+    IC_BNB_GOLD_CONTRACT,
+    IC_BNB_GOLD_DECIMALS,
+    blockTag
+  );
+  if (gold !== null) {
+    IC_BNB_assertSane_(IC_BNB_GOLD_SYMBOL, gold, IC_BNB_SANE_LIMITS.GOLD);
+    IC_BNB_appendBalanceRow_(balances, IC_BNB_GOLD_SYMBOL, gold, IC_BNB_GOLD_CONTRACT, syncAt);
+  } else {
+    Logger.log('BNB sync: XAUT RPC не ответил — скип (позицию GOLD не трогаем)');
+  }
+
   // Нативный BNB (газовый токен = крипто-позиция)
   var bnb = IC_BNB_fetchNativeBalance_(IC_BNB_WALLET_ADDRESS, blockTag);
   if (bnb !== null) {
@@ -115,7 +142,7 @@ function syncBnbWalletBalances() {
   var hasPrev = prev && Object.keys(prev).length > 0;
   if (hasPrev) {
     IC_BNB_classifyDeltas_(calculations, importSheet, prev, {
-      'USDT BNB': usdt, 'USDC BNB': usdc, STOCK: stock, BNB: bnb
+      'USDT BNB': usdt, 'USDC BNB': usdc, STOCK: stock, GOLD: gold, BNB: bnb
     }, syncStartedAt);
   }
 
@@ -126,6 +153,7 @@ function syncBnbWalletBalances() {
     if (IC_BNB_setQuantity_(calculations, IC_BNB_USDC_CALC_ASSET, usdc)) updated.push('USDC BNB=' + usdc);
   }
   if (stock !== null && IC_BNB_setQuantity_(calculations, IC_BNB_STOCK_SYMBOL, stock)) updated.push(IC_BNB_STOCK_SYMBOL + '=' + stock);
+  if (gold !== null && IC_BNB_setQuantity_(calculations, IC_BNB_GOLD_SYMBOL, gold)) updated.push(IC_BNB_GOLD_SYMBOL + '=' + gold);
   if (bnb !== null && IC_BNB_setQuantity_(calculations, IC_BNB_NATIVE_SYMBOL, bnb)) updated.push('BNB=' + bnb);
 
   Logger.log('BNB sync: ' + (updated.length ? updated.join(', ') : 'изменений нет'));
@@ -146,8 +174,8 @@ function IC_BNB_readLastBalances_(sheet) {
 }
 
 // ── Классификация движений кошелька BNB ────────────────────────────
-// USDC↓ + акции↑  → Покупка (усреднение входа + аудит)
-// USDC↑ + акции↓  → Продажа (вход не меняется, аудит)
+// Стейбл↓ + актив↑ → Покупка (усреднение входа + аудит)
+// Стейбл↑ + актив↓ → Продажа (вход не меняется, аудит)
 // BNB↓  + USDC↑   → Продажа BNB (газ включён в дельту количества)
 // USDT↔USDC       → Обмен (нейтрально)
 // стейбл без пары → Пополнение / Вывод
@@ -155,6 +183,9 @@ function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
   var usdcDelta = cur['USDC BNB'] === null ? 0 : (cur['USDC BNB'] || 0) - (prev['USDC BNB'] || 0);
   var usdtDelta = cur['USDT BNB'] === null ? 0 : (cur['USDT BNB'] || 0) - (prev['USDT BNB'] || 0);
   var stockDelta = cur.STOCK === null ? 0 : (cur.STOCK || 0) - (prev[IC_BNB_STOCK_SYMBOL] || 0);
+  var goldDelta = cur.GOLD === null ? 0 : (cur.GOLD || 0) - (prev[IC_BNB_GOLD_SYMBOL] || 0);
+  var stableSpent = Math.max(0, -usdcDelta) + Math.max(0, -usdtDelta);
+  var stableReceived = Math.max(0, usdcDelta) + Math.max(0, usdtDelta);
 
   // ── Нативный BNB: приход → «Покупка BNB» по цене из «Цены» (HL) ──
   // Покупка кросс-чейн (USDC ушёл на Arbitrum), локального USDC↓ нет — цену
@@ -184,6 +215,7 @@ function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
   var bnbSold = -bnbDelta;
   var impliedBnbSell = bnbSold > 0 ? usdcDelta / bnbSold : 0;
   if (usdcDelta > 0.5 && bnbSold > 0.000001 && Math.abs(stockDelta) <= 0.000001 &&
+      Math.abs(goldDelta) <= 0.000001 &&
       impliedBnbSell >= 50 && impliedBnbSell <= 5000) {
     if (importSheet) IC_LEDGER_appendTradeRow_(importSheet, {
       action: 'Продажа', asset: IC_BNB_NATIVE_SYMBOL, category: 'Крипта',
@@ -193,9 +225,35 @@ function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
     return;
   }
 
+  // XAUT учитывается как GOLD. Требуем, чтобы в том же окне не менялась
+  // позиция SPCXB: иначе два независимых свопа нельзя надёжно разделить.
+  var impliedGoldBuy = goldDelta > 0 ? stableSpent / goldDelta : 0;
+  if (stableSpent > 0.5 && goldDelta > 0.0000001 && Math.abs(stockDelta) <= 0.000001 &&
+      impliedGoldBuy >= 1000 && impliedGoldBuy <= 10000) {
+    IC_LEDGER_averageInPurchase_(calc, IC_BNB_GOLD_SYMBOL, goldDelta, stableSpent);
+    if (importSheet) IC_LEDGER_appendTradeRow_(importSheet, {
+      action: 'Покупка', asset: IC_BNB_GOLD_SYMBOL, category: 'Металлы',
+      quantity: goldDelta, price: impliedGoldBuy, amount: stableSpent,
+      pairLabel: (usdcDelta < -0.5 ? 'USDC' : 'USDT') + ' -> XAUT',
+      syncStartedAt: syncStartedAt, chain: 'BNB', walletId: IC_BNB_WALLET_ID });
+    return;
+  }
+
+  var impliedGoldSell = goldDelta < 0 ? stableReceived / -goldDelta : 0;
+  if (stableReceived > 0.5 && goldDelta < -0.0000001 && Math.abs(stockDelta) <= 0.000001 &&
+      impliedGoldSell >= 1000 && impliedGoldSell <= 10000) {
+    if (importSheet) IC_LEDGER_appendTradeRow_(importSheet, {
+      action: 'Продажа', asset: IC_BNB_GOLD_SYMBOL, category: 'Металлы',
+      quantity: -goldDelta, price: impliedGoldSell, amount: stableReceived,
+      pairLabel: 'XAUT -> ' + (usdcDelta > 0.5 ? 'USDC' : 'USDT'),
+      syncStartedAt: syncStartedAt, chain: 'BNB', walletId: IC_BNB_WALLET_ID });
+    return;
+  }
+
   var usdcSpent = -usdcDelta;
   var impliedBuy = stockDelta > 0 ? usdcSpent / stockDelta : 0;
-  if (usdcSpent > 0.5 && stockDelta > 0.000001 && impliedBuy >= 1 && impliedBuy <= 100000) {
+  if (usdcSpent > 0.5 && stockDelta > 0.000001 && Math.abs(goldDelta) <= 0.000001 &&
+      impliedBuy >= 1 && impliedBuy <= 100000) {
     IC_LEDGER_averageInPurchase_(calc, IC_BNB_STOCK_SYMBOL, stockDelta, usdcSpent);
     if (importSheet) IC_LEDGER_appendTradeRow_(importSheet, {
       action: 'Покупка', asset: IC_BNB_STOCK_SYMBOL, category: 'Акции',
@@ -206,7 +264,8 @@ function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
   }
 
   var impliedSell = stockDelta < 0 ? usdcDelta / -stockDelta : 0;
-  if (usdcDelta > 0.5 && stockDelta < -0.000001 && impliedSell >= 1 && impliedSell <= 100000) {
+  if (usdcDelta > 0.5 && stockDelta < -0.000001 && Math.abs(goldDelta) <= 0.000001 &&
+      impliedSell >= 1 && impliedSell <= 100000) {
     if (importSheet) IC_LEDGER_appendTradeRow_(importSheet, {
       action: 'Продажа', asset: IC_BNB_STOCK_SYMBOL, category: 'Акции',
       quantity: -stockDelta, price: impliedSell, amount: usdcDelta,
@@ -459,7 +518,7 @@ function installBnbWalletBalanceTrigger() {
   Logger.log('Триггер syncBnbWalletBalances установлен — каждые 30 минут');
 }
 
-// ── «Расчеты»: только количество, avgEntry не трогаем ─────────────
+// ── «Расчеты»: количество; средний вход сделок обновляет ledger ──
 function IC_BNB_setQuantity_(sheet, asset, quantity) {
   var rowIndex = IC_BNB_findAssetRow_(sheet, asset);
   if (!rowIndex) {
@@ -468,6 +527,9 @@ function IC_BNB_setQuantity_(sheet, asset, quantity) {
   }
   sheet.getRange(rowIndex, 3).setValue(quantity);
   sheet.getRange(rowIndex, 5).setFormula('=C' + rowIndex + '*D' + rowIndex);
+  if (asset === IC_BNB_GOLD_SYMBOL && quantity > 0) {
+    sheet.getRange(rowIndex, 11).setValue('Hedge');
+  }
   return true;
 }
 

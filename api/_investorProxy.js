@@ -4,6 +4,7 @@ const MAIN_APPS_SCRIPT_URL =
 const CAPITAL_LADDER_LEVELS = 7;
 const READ_RETRY_ATTEMPTS = 3;
 const READ_RETRY_DELAY_MS = 700;
+const READ_UPSTREAM_TIMEOUT_MS = 45_000;
 const WIFE_PRICE_TIMEOUT_MS = 8_000;
 const WIFE_EVM_ADDRESS = "0x06F03b067b34f3d6E569De9aB7839c988Bf6BAEE";
 const WIFE_TON_ADDRESS = "UQCMRrWTgMBqBMr6yUw04ZYz398fyIhDlaJyaqoQTchVNm74";
@@ -124,14 +125,23 @@ async function fetchInvestorUpstream(upstreamUrl, req) {
   let lastResult = null;
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const upstream = await fetch(upstreamUrl.toString(), {
-      method: req.method,
-      headers: { accept: "application/json" },
-      body: req.method === "POST" ? req : undefined,
-      duplex: req.method === "POST" ? "half" : undefined,
-      redirect: "follow",
-    });
-    const body = await upstream.text();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), READ_UPSTREAM_TIMEOUT_MS);
+    let upstream;
+    let body;
+    try {
+      upstream = await fetch(upstreamUrl.toString(), {
+        method: req.method,
+        headers: { accept: "application/json" },
+        body: req.method === "POST" ? req : undefined,
+        duplex: req.method === "POST" ? "half" : undefined,
+        redirect: "follow",
+        signal: controller.signal,
+      });
+      body = await upstream.text();
+    } finally {
+      clearTimeout(timeoutId);
+    }
     lastResult = { upstream, body, attempt };
 
     if (!isReadOnly || !isRetryableReadFailure(upstream, body)) {
@@ -540,7 +550,23 @@ export async function proxyInvestorApi(req, res, kind) {
 
     res.statusCode = upstream.status;
     res.setHeader("content-type", upstream.headers.get("content-type") ?? "application/json; charset=utf-8");
-    res.setHeader("cache-control", "no-store");
+    let cacheableRead = false;
+    if (kind === "main" && req.method === "GET" && !action) {
+      try {
+        cacheableRead = JSON.parse(body)?.success === true;
+      } catch {
+        cacheableRead = false;
+      }
+    }
+    if (cacheableRead) {
+      // Основной read-only payload одинаков для всех клиентов. Короткий CDN
+      // кэш убирает повторные 15–60-секундные прогревы Apps Script, а stale
+      // позволяет Vercel отдать последние успешные данные во время нового sync.
+      res.setHeader("cache-control", "public, max-age=0, s-maxage=30, stale-while-revalidate=60");
+      res.setHeader("cdn-cache-control", "public, s-maxage=30, stale-while-revalidate=60");
+    } else {
+      res.setHeader("cache-control", "no-store");
+    }
     res.end(body);
   } catch (error) {
     sendJson(res, 502, {

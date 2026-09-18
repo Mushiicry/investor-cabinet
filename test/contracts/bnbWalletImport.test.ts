@@ -18,10 +18,11 @@ type ScriptContext = Record<string, unknown> & {
 function bnbContext() {
   const appendTrade = vi.fn();
   const appendStableFlow = vi.fn();
+  const averageInPurchase = vi.fn();
   const context = vm.createContext({
     console,
     Logger: { log: vi.fn() },
-    IC_LEDGER_averageInPurchase_: vi.fn(),
+    IC_LEDGER_averageInPurchase_: averageInPurchase,
     IC_LEDGER_appendTradeRow_: appendTrade,
     IC_LEDGER_appendStableFlowRow_: appendStableFlow,
     IC_LEDGER_ensureStableRow_: vi.fn(),
@@ -29,7 +30,7 @@ function bnbContext() {
   }) as ScriptContext;
 
   vm.runInContext(read("apps-script/bnbWalletImport.gs"), context);
-  return { context, appendTrade, appendStableFlow };
+  return { context, appendTrade, appendStableFlow, averageInPurchase };
 }
 
 describe("BNB wallet import", () => {
@@ -49,6 +50,38 @@ describe("BNB wallet import", () => {
     expect(importer).toContain("https://1rpc.io/bnb");
     expect(importer).toContain("https://rpc-bsc.48.club");
     expect(importer).not.toContain("bsc-dataseed.binance.org");
+  });
+
+  it("tracks Tether Gold on BNB Chain as the existing GOLD portfolio asset", () => {
+    const importer = read("apps-script/bnbWalletImport.gs");
+
+    expect(importer).toContain("0x21caef8a43163eea865baee23b9c2e327696a3bf");
+    expect(importer).toContain("var IC_BNB_GOLD_DECIMALS = 6");
+    expect(importer).toContain("var IC_BNB_GOLD_SYMBOL = 'GOLD'");
+    expect(importer).toContain("IC_BNB_setQuantity_(calculations, IC_BNB_GOLD_SYMBOL, gold)");
+  });
+
+  it("classifies a stable-to-XAUT swap as a GOLD purchase", () => {
+    const { context, appendTrade, appendStableFlow, averageInPurchase } = bnbContext();
+
+    context.IC_BNB_classifyDeltas_(
+      {},
+      {},
+      { "USDC BNB": 20, "USDT BNB": 0, SPCXB: 0.06644548, GOLD: 0, BNB: 0.01 },
+      { "USDC BNB": 0, "USDT BNB": 0, STOCK: 0.06644548, GOLD: 0.005686, BNB: 0.00999 },
+      new Date("2026-09-17T08:05:28.000Z"),
+    );
+
+    expect(averageInPurchase).toHaveBeenCalledWith({}, "GOLD", 0.005686, 20);
+    expect(appendTrade).toHaveBeenCalledTimes(1);
+    expect(appendTrade.mock.calls[0][1]).toEqual(expect.objectContaining({
+      action: "Покупка",
+      asset: "GOLD",
+      category: "Металлы",
+      amount: 20,
+      pairLabel: "USDC -> XAUT",
+    }));
+    expect(appendStableFlow).not.toHaveBeenCalled();
   });
 
   it("classifies paired BNB decrease and USDC increase as a BNB sale", () => {

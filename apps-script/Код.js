@@ -533,16 +533,24 @@ function getPortfolio(sheet) {
   const headers = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0];
   const rows = sheet.getRange(2, 1, lastRow - 1, lastColumn).getDisplayValues();
   const columns = getPortfolioColumns(headers);
+  // Отображаемое количество может округляться форматом ячейки (для XAUT
+  // 0.005686 выглядело как 0.00569). Количество в API берём без округления.
+  const exactQuantities = columns.quantity >= 0
+    ? sheet.getRange(2, columns.quantity + 1, lastRow - 1, 1).getValues()
+    : [];
 
   return rows
-    .filter(row => row[columns.asset])
-    .map(row => {
+    .map((row, index) => {
+      if (!row[columns.asset]) return null;
       const asset = row[columns.asset];
       const category = normalizePortfolioCategoryForApi(
         getPortfolioCell(row, columns.category),
         asset
       );
-      const quantity = parseNumber(getPortfolioCell(row, columns.quantity));
+      const exactQuantity = exactQuantities[index] && exactQuantities[index][0];
+      const quantity = typeof exactQuantity === 'number'
+        ? exactQuantity
+        : parseNumber(getPortfolioCell(row, columns.quantity));
       const invested = parseNumber(getPortfolioCell(row, columns.invested));
       const currentValue = parseNumber(getPortfolioCell(row, columns.currentValue));
       const pnl = parseNumber(getPortfolioCell(row, columns.pnl));
@@ -564,7 +572,8 @@ function getPortfolio(sheet) {
         share: parseNumber(getPortfolioCell(row, columns.share)),
         status: normalizePortfolioStatus(asset, category, rawStatus, quantity, invested, currentValue)
       };
-    });
+    })
+    .filter(Boolean);
 }
 
 function getPortfolioColumns(headers) {
@@ -580,7 +589,9 @@ function getPortfolioColumns(headers) {
     pnl: findPortfolioColumn(headers, ["pnl", "pnl $"], 8),
     pnlPct: findPortfolioColumn(headers, ["pnlpct", "pnl %"], 9),
     share: findPortfolioColumn(headers, ["share", "доля", "доля %"], 10),
-    status: findPortfolioColumn(headers, ["status", "статус", "столбец1", "столбец 1"], -1)
+    // K «Метка» относится к позициям. P «status» — отдельный служебный
+    // реестр закрытых сделок и не должен задавать статус строки портфеля.
+    status: findPortfolioColumn(headers, ["метка", "status", "статус", "столбец1", "столбец 1"], -1)
   };
 }
 
