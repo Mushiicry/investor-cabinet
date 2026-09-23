@@ -239,6 +239,15 @@ function IC_BNB_classifyDeltas_(calc, importSheet, prev, cur, syncStartedAt) {
     return;
   }
 
+  // Мост и DEX-своп могут целиком пройти между двумя пятиминутными снимками:
+  // USDT в обоих снимках равен нулю. Источник средств неясен (новая покупка
+  // или обмен старого резерва), поэтому оставляем PENDING для ручной проверки.
+  if (goldDelta > 0.0000001 && stableSpent <= 0.5 &&
+      Math.abs(stockDelta) <= 0.000001) {
+    if (importSheet) IC_BNB_appendUnpairedGoldReview_(importSheet, goldDelta, syncStartedAt);
+    return;
+  }
+
   var impliedGoldSell = goldDelta < 0 ? stableReceived / -goldDelta : 0;
   if (stableReceived > 0.5 && goldDelta < -0.0000001 && Math.abs(stockDelta) <= 0.000001 &&
       impliedGoldSell >= 1000 && impliedGoldSell <= 10000) {
@@ -309,6 +318,120 @@ function IC_BNB_ensureStableRowExists_(sheet, asset) {
 
 function IC_BNB_round_(value, digits) {
   return IC_LEDGER_round_(value, digits);
+}
+
+var IC_BNB_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+
+function IC_BNB_parseGoldSwapReceipt_(receipt, hash) {
+  if (!receipt || receipt.status !== '0x1' || !Array.isArray(receipt.logs)) return null;
+  var wallet = IC_BNB_WALLET_ADDRESS.slice(2).toLowerCase();
+  var goldIn = 0, goldOut = 0, usdtOut = 0, usdcOut = 0, stableIn = 0;
+
+  receipt.logs.forEach(function(log) {
+    if (!log.topics || log.topics.length < 3 ||
+        String(log.topics[0]).toLowerCase() !== IC_BNB_TRANSFER_TOPIC) return;
+    var from = String(log.topics[1]).slice(-40).toLowerCase();
+    var to = String(log.topics[2]).slice(-40).toLowerCase();
+    var contract = String(log.address || '').toLowerCase();
+    if (contract === IC_BNB_GOLD_CONTRACT.toLowerCase()) {
+      if (to === wallet) goldIn += IC_BNB_hexUnits_(log.data, IC_BNB_GOLD_DECIMALS);
+      if (from === wallet) goldOut += IC_BNB_hexUnits_(log.data, IC_BNB_GOLD_DECIMALS);
+    } else if (contract === IC_BNB_USDT_CONTRACT.toLowerCase() ||
+               contract === IC_BNB_USDC_CONTRACT.toLowerCase()) {
+      var amount = IC_BNB_hexUnits_(log.data, 18);
+      if (to === wallet) stableIn += amount;
+      if (from === wallet && contract === IC_BNB_USDT_CONTRACT.toLowerCase()) usdtOut += amount;
+      if (from === wallet && contract === IC_BNB_USDC_CONTRACT.toLowerCase()) usdcOut += amount;
+    }
+  });
+
+  var spent = IC_LEDGER_round_(usdtOut + usdcOut, 6);
+  var quantity = IC_LEDGER_round_(goldIn, IC_BNB_GOLD_DECIMALS);
+  var price = quantity > 0 ? spent / quantity : 0;
+  if (goldOut || stableIn || (usdtOut && usdcOut) ||
+      spent <= 0.5 || price < 1000 || price > 10000) return null;
+  return { hash: hash, stable: usdtOut ? 'USDT' : 'USDC', amount: spent, quantity: quantity };
+}
+
+function IC_BNB_appendUnpairedGoldReview_(sheet, goldDelta, syncStartedAt) {
+  var tz = Session.getScriptTimeZone();
+  var syncId = Utilities.formatDate(syncStartedAt, tz, "yyyyMMdd'T'HHmmss");
+  var importId = ['BNB_GOLD_REVIEW', syncId, IC_LEDGER_round_(goldDelta, 6)].join(':');
+  if (IC_LEDGER_readExistingImportIds_(sheet)[importId]) return;
+  IC_LEDGER_appendRows_(sheet, [[
+    importId, 'PENDING', Utilities.formatDate(syncStartedAt, tz, 'dd.MM.yyyy'),
+    IC_BNB_GOLD_SYMBOL, 'Металлы', 'Перевод', goldDelta, '', '',
+    'XAUT вырос между снимками; покупка или перевод требует проверки tx',
+    IC_BNB_WALLET_ID, 'BNB', 'BALANCE_DELTA', '', 'UNKNOWN', '',
+    'Непарный приход XAUT', IC_LEDGER_round_(goldDelta, 6) + ' XAUT',
+    'Стоимость входа не изменена. Проверьте on-chain USDT/USDC Transfer в том же tx.'
+  ]]);
+}
+
+// Разовый ремонт пропущенного swap 23.09.2026. Баланс GOLD уже синхронизирован:
+// функция меняет только средний вход и добавляет одну audit-строку по tx hash.
+function repairGoldSwap20260923() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var hash = '0x886a3fb12e5664b2844fcc76cfd9245d660e71b699f6747cd8f0fb2a738f5636';
+    var acquired = 0.006943;
+    var spent = 30.101368;
+    var beforeQty = 0.005686;
+    var beforeBasis = 20;
+    var totalQty = beforeQty + acquired;
+    var targetAvg = (beforeBasis + spent) / totalQty;
+    var oldAvg = beforeBasis / beforeQty;
+    var receipt = IC_BNB_rpcCall_('eth_getTransactionReceipt', [hash]);
+    var swap = IC_BNB_parseGoldSwapReceipt_(receipt, hash);
+    if (!swap || Math.abs(swap.quantity - acquired) > 0.0000001 ||
+        Math.abs(swap.amount - spent) > 0.000001 || swap.stable !== 'USDT') {
+      throw new Error('GOLD repair: on-chain receipt does not match the verified swap');
+    }
+
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var calc = ss.getSheetByName(IC_BNB_CALCULATIONS_SHEET);
+    var imports = ss.getSheetByName(IC_BNB_IMPORT_SHEET);
+    if (!calc || !imports) throw new Error('GOLD repair: required sheet is missing');
+    var goldRow = IC_BNB_findAssetRow_(calc, IC_BNB_GOLD_SYMBOL);
+    if (!goldRow) throw new Error('GOLD repair: GOLD row is missing');
+    var quantity = Number(calc.getRange(goldRow, 3).getValue());
+    var avg = Number(calc.getRange(goldRow, 4).getValue());
+    if (Math.abs(quantity - totalQty) > 0.0000001 ||
+        (Math.abs(avg - oldAvg) > 0.0001 && Math.abs(avg - targetAvg) > 0.0001)) {
+      throw new Error('GOLD repair: position changed; manual review required');
+    }
+
+    var importId = 'LEDGER_TRADE:BNB:20260923T095337:ПОКУПКА:GOLD:0.006943';
+    var rows = imports.getLastRow() > 1
+      ? imports.getRange(2, 1, imports.getLastRow() - 1, 14).getValues() : [];
+    var existing = rows.some(function(row) {
+      return String(row[0]) === importId || String(row[13]).toLowerCase() === hash;
+    });
+
+    if (Math.abs(avg - targetAvg) > 0.0001) {
+      calc.getRange(goldRow, 4).setValue(targetAvg);
+      calc.getRange(goldRow, 5).setFormula('=C' + goldRow + '*D' + goldRow);
+    }
+    if (!existing) {
+      imports.appendRow([
+        importId, 'PENDING', new Date('2026-09-23T06:53:37Z'),
+        IC_BNB_GOLD_SYMBOL, 'Металлы', 'Покупка', acquired, spent / acquired, spent,
+        'On-chain USDT -> XAUT; cost basis applied to GOLD',
+        IC_BNB_WALLET_ID, 'BNB', 'BALANCE_DELTA', hash, 'SWAP', '',
+        'USDT -> XAUT', '30.101368 USDT -> 0.006943 XAUT',
+        'BALANCE_APPLIED audit row at 2026-09-23T09:53:37. ' +
+        'On-chain: two USDT and two XAUT Transfer events in one tx. ' +
+        'GOLD cost basis is 50.101368 USD; quantity was already synced.'
+      ]);
+      imports.getRange(imports.getLastRow(), 3).setNumberFormat('dd.MM.yyyy');
+    }
+    SpreadsheetApp.flush();
+    return existing ? 'GOLD cost basis checked; audit row already exists' :
+      'GOLD cost basis corrected; one audit row added';
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ── Одноразово: создать строку SPCXB в «Расчетах» ──────────────────

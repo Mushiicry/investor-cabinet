@@ -84,6 +84,90 @@ describe("BNB wallet import", () => {
     expect(appendStableFlow).not.toHaveBeenCalled();
   });
 
+  it("verifies both USDT and XAUT transfers in the confirmed swap receipt", () => {
+    const { context } = bnbContext();
+    const hash = "0x886a3fb12e5664b2844fcc76cfd9245d660e71b699f6747cd8f0fb2a738f5636";
+    const wallet = "fec18d4474826afd65d578ff931f4ff2926ee0c3";
+    const other = "e860b8f6eb2bd11367a8232b3bdbcc6fd1ec99a9";
+    const transfer = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+    const topic = (address: string) => `0x${address.padStart(64, "0")}`;
+    const log = (address: string, from: string, to: string, amount: bigint) => ({
+      address,
+      topics: [transfer, topic(from), topic(to)],
+      data: `0x${amount.toString(16)}`,
+      transactionHash: hash,
+    });
+    const xaut = "0x21caef8a43163eea865baee23b9c2e327696a3bf";
+    const usdt = "0x55d398326f99059ff775485246999027b3197955";
+    const receipt = { status: "0x1", logs: [
+      log(xaut, other, wallet, 1736n),
+      log(usdt, wallet, other, 7525342000000000000n),
+      log(usdt, wallet, other, 22576026000000000000n),
+      log(xaut, other, wallet, 5207n),
+    ] };
+    const parse = context.IC_BNB_parseGoldSwapReceipt_ as (receipt: unknown, hash: string) => unknown;
+    expect(parse(receipt, hash)).toEqual(expect.objectContaining({
+      hash, stable: "USDT", amount: 30.101368,
+      quantity: expect.closeTo(0.006943, 8),
+    }));
+  });
+
+  it("flags an unpaired XAUT increase without inventing cost basis", () => {
+    const { context, appendTrade, averageInPurchase } = bnbContext();
+    const review = vi.fn();
+    context.IC_BNB_appendUnpairedGoldReview_ = review;
+
+    context.IC_BNB_classifyDeltas_(
+      {}, {},
+      { "USDT BNB": 0, "USDC BNB": 0, SPCXB: 0.075726, GOLD: 0.005686, BNB: 0.001 },
+      { "USDT BNB": 0, "USDC BNB": 0, STOCK: 0.075726, GOLD: 0.012629, BNB: 0.001 },
+      new Date("2026-09-23T06:54:12.000Z"),
+    );
+
+    expect(review).toHaveBeenCalledTimes(1);
+    expect(averageInPurchase).not.toHaveBeenCalled();
+    expect(appendTrade).not.toHaveBeenCalled();
+  });
+
+  it("repairs the confirmed GOLD swap once without changing on-chain quantity", () => {
+    const { context } = bnbContext();
+    let avg = 20 / 0.005686;
+    const importRows: unknown[][] = [];
+    const appendRow = vi.fn((row: unknown[]) => { importRows.push(row); });
+    const setQuantity = vi.fn();
+    const calc = { getRange: (_row: number, column: number) => ({
+      getValue: () => column === 3 ? 0.012629 : avg,
+      setValue: (value: number) => { if (column === 3) setQuantity(value); else avg = value; },
+      setFormula: vi.fn(),
+    }) };
+    const imports = {
+      getLastRow: () => importRows.length + 1,
+      getRange: () => ({ getValues: () => importRows, setNumberFormat: vi.fn() }),
+      appendRow,
+    };
+    context.IC_BNB_rpcCall_ = vi.fn(() => ({}));
+    context.IC_BNB_parseGoldSwapReceipt_ = vi.fn(() => ({
+      quantity: 0.006943, amount: 30.101368, stable: "USDT",
+    }));
+    context.IC_BNB_findAssetRow_ = vi.fn(() => 11);
+    context.LockService = { getScriptLock: () => ({ waitLock: vi.fn(), releaseLock: vi.fn() }) };
+    context.SpreadsheetApp = {
+      getActiveSpreadsheet: () => ({ getSheetByName: (name: string) =>
+        name === "Расчеты" ? calc : imports }),
+      flush: vi.fn(),
+    };
+
+    const repair = context.repairGoldSwap20260923 as () => string;
+    expect(repair()).toContain("one audit row added");
+    expect(repair()).toContain("already exists");
+    expect(avg).toBeCloseTo(50.101368 / 0.012629, 9);
+    expect(appendRow).toHaveBeenCalledTimes(1);
+    expect(appendRow.mock.calls[0][0][13]).toBe(
+      "0x886a3fb12e5664b2844fcc76cfd9245d660e71b699f6747cd8f0fb2a738f5636",
+    );
+    expect(setQuantity).not.toHaveBeenCalled();
+  });
+
   it("classifies paired BNB decrease and USDC increase as a BNB sale", () => {
     const { context, appendTrade, appendStableFlow } = bnbContext();
     const previousBnb = 0.0108;

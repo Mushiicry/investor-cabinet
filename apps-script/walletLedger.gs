@@ -57,6 +57,8 @@ function IC_LEDGER_readExistingImportIds_(sheet) {
 
 function IC_LEDGER_appendRows_(sheet, rows) {
   var startRow = sheet.getLastRow() + 1;
+  var missingRows = startRow + rows.length - 1 - sheet.getMaxRows();
+  if (missingRows > 0) sheet.insertRowsAfter(sheet.getMaxRows(), missingRows);
   sheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
 }
 
