@@ -405,20 +405,29 @@ function repairGoldSwap20260923() {
     var importId = 'LEDGER_TRADE:BNB:20260923T095337:ПОКУПКА:GOLD:0.006943';
     var rows = imports.getLastRow() > 1
       ? imports.getRange(2, 1, imports.getLastRow() - 1, 14).getValues() : [];
-    var existing = rows.some(function(row) {
-      return String(row[0]) === importId || String(row[13]).toLowerCase() === hash;
+    var existingIndex = rows.findIndex(function(row) {
+      return String(row[0]) === importId ||
+        String(row[12]).toLowerCase() === hash || String(row[13]).toLowerCase() === hash;
     });
+    var existing = existingIndex >= 0;
 
     if (Math.abs(avg - targetAvg) > 0.0001) {
       calc.getRange(goldRow, 4).setValue(targetAvg);
       calc.getRange(goldRow, 5).setFormula('=C' + goldRow + '*D' + goldRow);
+    }
+    if (existing && String(rows[existingIndex][13]).toLowerCase() === hash &&
+        String(rows[existingIndex][12]) === 'BALANCE_DELTA') {
+      // Первая версия разового ремонта записала hash в N (LT), а API читает M (Hash).
+      imports.getRange(existingIndex + 2, 13, 1, 2).setValues([[hash, '']]);
+    } else if (existing && String(rows[existingIndex][12]).toLowerCase() !== hash) {
+      throw new Error('GOLD repair: existing audit row has a different hash');
     }
     if (!existing) {
       imports.appendRow([
         importId, 'PENDING', new Date('2026-09-23T06:53:37Z'),
         IC_BNB_GOLD_SYMBOL, 'Металлы', 'Покупка', acquired, spent / acquired, spent,
         'On-chain USDT -> XAUT; cost basis applied to GOLD',
-        IC_BNB_WALLET_ID, 'BNB', 'BALANCE_DELTA', hash, 'SWAP', '',
+        IC_BNB_WALLET_ID, 'BNB', hash, '', 'SWAP', '',
         'USDT -> XAUT', '30.101368 USDT -> 0.006943 XAUT',
         'BALANCE_APPLIED audit row at 2026-09-23T09:53:37. ' +
         'On-chain: two USDT and two XAUT Transfer events in one tx. ' +

@@ -134,6 +134,9 @@ describe("BNB wallet import", () => {
     let avg = 20 / 0.005686;
     const importRows: unknown[][] = [];
     const appendRow = vi.fn((row: unknown[]) => { importRows.push(row); });
+    const setImportValues = vi.fn((row: number, column: number, values: unknown[][]) => {
+      values[0].forEach((value, index) => { importRows[row - 2][column - 1 + index] = value; });
+    });
     const setQuantity = vi.fn();
     const calc = { getRange: (_row: number, column: number) => ({
       getValue: () => column === 3 ? 0.012629 : avg,
@@ -142,7 +145,11 @@ describe("BNB wallet import", () => {
     }) };
     const imports = {
       getLastRow: () => importRows.length + 1,
-      getRange: () => ({ getValues: () => importRows, setNumberFormat: vi.fn() }),
+      getRange: (row: number, column: number) => ({
+        getValues: () => importRows,
+        setNumberFormat: vi.fn(),
+        setValues: (values: unknown[][]) => setImportValues(row, column, values),
+      }),
       appendRow,
     };
     context.IC_BNB_rpcCall_ = vi.fn(() => ({}));
@@ -159,12 +166,20 @@ describe("BNB wallet import", () => {
 
     const repair = context.repairGoldSwap20260923 as () => string;
     expect(repair()).toContain("one audit row added");
-    expect(repair()).toContain("already exists");
     expect(avg).toBeCloseTo(50.101368 / 0.012629, 9);
     expect(appendRow).toHaveBeenCalledTimes(1);
-    expect(appendRow.mock.calls[0][0][13]).toBe(
+    expect(appendRow.mock.calls[0][0][12]).toBe(
       "0x886a3fb12e5664b2844fcc76cfd9245d660e71b699f6747cd8f0fb2a738f5636",
     );
+    expect(appendRow.mock.calls[0][0][13]).toBe("");
+    importRows[0][13] = importRows[0][12];
+    importRows[0][12] = "BALANCE_DELTA";
+    expect(repair()).toContain("already exists");
+    expect(importRows[0][12]).toBe(appendRow.mock.calls[0][0][12]);
+    expect(importRows[0][13]).toBe("");
+    expect(setImportValues).toHaveBeenCalledTimes(1);
+    expect(repair()).toContain("already exists");
+    expect(setImportValues).toHaveBeenCalledTimes(1);
     expect(setQuantity).not.toHaveBeenCalled();
   });
 
