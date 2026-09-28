@@ -10,9 +10,10 @@ var IC_BTC_API_URLS = ['https://blockstream.info/api', 'https://mempool.space/ap
 
 function setupBitcoinWalletImport() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var wallets = ss.getSheetByName(IC_BTC_WALLETS_SHEET);
-  if (!wallets) {
-    wallets = ss.insertSheet(IC_BTC_WALLETS_SHEET);
+  var wallets = ss.getSheetByName(IC_BTC_WALLETS_SHEET) || ss.insertSheet(IC_BTC_WALLETS_SHEET);
+  // Sheet creation and header writes are separate Google operations. A timeout
+  // can leave an empty tab; the next run must finish setup without duplicating it.
+  if (!wallets.getLastRow()) {
     wallets.getRange(1, 1, 2, 6).setValues([
       ['Wallet ID', 'Receiving Address', 'Verified Change Addresses', 'Status', 'Last Sync At', 'Comment'],
       ['metamask-bitcoin-main', 'bc1q0u2ch352h0mjz9609z799pefufen42n9vhy28e',
@@ -21,8 +22,8 @@ function setupBitcoinWalletImport() {
     ]);
     wallets.setFrozenRows(1);
   }
-  if (!ss.getSheetByName(IC_BTC_BALANCES_SHEET)) {
-    var balances = ss.insertSheet(IC_BTC_BALANCES_SHEET);
+  var balances = ss.getSheetByName(IC_BTC_BALANCES_SHEET) || ss.insertSheet(IC_BTC_BALANCES_SHEET);
+  if (!balances.getLastRow()) {
     balances.getRange(1, 1, 1, 7).setValues([[
       'Wallet ID', 'Asset', 'Confirmed Quantity', 'Status', 'Last Sync At', 'Block Height', 'Comment'
     ]]);
@@ -63,11 +64,13 @@ function syncBitcoinWalletImports() {
     return { status: plan.status, quantity: plan.nextSats / 1e8, transactions: plan.rows.length };
   } catch (error) {
     // An API error is never a valid zero. Keep the last successful quantity.
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(IC_BTC_BALANCES_SHEET);
-    if (sheet && sheet.getLastRow() >= 2) {
-      sheet.getRange(2, 4).setValue('ERROR');
-      sheet.getRange(2, 7).setValue(String(error.message || error));
-    }
+    try {
+      var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(IC_BTC_BALANCES_SHEET);
+      if (sheet && sheet.getLastRow() >= 2) {
+        sheet.getRange(2, 4).setValue('ERROR');
+        sheet.getRange(2, 7).setValue(String(error.message || error));
+      }
+    } catch (notificationError) { Logger.log('BTC sync error status write failed: ' + notificationError); }
     throw error;
   } finally {
     lock.releaseLock();

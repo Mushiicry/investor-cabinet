@@ -49,6 +49,7 @@ function sheet(initial: Row[], maxRows = 200) {
       getDataValidation: () => null,
     }),
     writes: () => writes,
+    setFrozenRows: (_count: number) => {},
   };
   return target;
 }
@@ -72,7 +73,7 @@ function harness() {
   const requests: string[] = [];
   const replies = new Map<string, unknown>();
   const context = vm.createContext({
-    Date, console,
+    Date, console, Logger: { log: () => {} },
     SpreadsheetApp: { getActiveSpreadsheet: () => ss, flush: () => {} },
     PropertiesService: { getScriptProperties: () => props },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
@@ -301,5 +302,16 @@ describe("native Bitcoin address import", () => {
     };
     expect(h.api.IC_BTC_readSnapshot_(config.addresses, state).sats).toBe(31719);
     expect(h.requests.some(url => url.includes("mempool.space"))).toBe(true);
+  });
+
+  it("finishes setup after Google created a tab but timed out before writing its headers", () => {
+    const h = harness();
+    h.balances.rows.splice(0);
+    const configBefore = [...h.wallets.rows[1]];
+    h.network();
+    expect(h.api.syncBitcoinWalletImports().status).toBe("READY");
+    expect(h.balances.rows[0][0]).toBe("Wallet ID");
+    expect(h.balances.rows[0][2]).toBe("Confirmed Quantity");
+    expect(h.wallets.rows[1].slice(0, 4)).toEqual(configBefore.slice(0, 4));
   });
 });
