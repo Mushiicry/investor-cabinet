@@ -1,13 +1,13 @@
 # BTC → USDC через Bitcoin → Arbitrum, 28.09.2026
 
-Статус: `PRODUCTION_VERIFIED`. Владелец явно разрешил интеграцию, production и будущий BTC-импорт 28.09.2026. Коррекция данных применена атомарно и проверена повторным чтением; код импорта объединён в main и опубликован в существующий main Apps Script deployment `@93`. Живой sync и повторные запуски проверены; выбранный address-only режим сохраняет ограничения HD discovery.
+Статус: `PRODUCTION_VERIFIED`. Владелец явно разрешил интеграцию, production и будущий BTC-импорт 28.09.2026. Коррекция данных применена атомарно и проверена повторным чтением; код импорта объединён в main и опубликован в существующий main Apps Script deployment `@94`. Живой sync и повторные запуски проверены; выбранный address-only режим сохраняет ограничения HD discovery.
 
 ## Проверенные факты
 
 - BTC tx: `45a1be5b9073d7b8749bd2a0867d5337ffbf0c3e7f776e1718525e70d86b9b4c`. Blockstream API подтвердил блок `969009`, время `2026-09-28T14:49:56Z` / 17:49:56 МСК, один input `62000` sat, outputs `30000` и `31719` sat, network fee `281` sat.
 - Output `31719` sat находится на `bc1q39rzjxhdqyj8c5q599c6fh4g8ulv3g5l7w7z59`; адрес имеет один подтверждённый приход, расходов и mempool-операций при проверке нет. Остаток `0.00031719 BTC` согласуется с показанным пользователем балансом MetaMask `0.000317 BTC`.
 - Скриншот MetaMask связывает отправку `0.0003 BTC` с получением `24.588692 USDC` в Arbitrum. Получение USDC независимо подтверждается строкой 197 таблицы. Arbitrum receipt отдельно не получен: прямой RPC ответил HTTP 403. Связь двух сторон обмена основана на подтверждённой операции MetaMask пользователя, а не на предположении по дельтам.
-- В `Кабинет инвестора` (`1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8`) До коррекции `Расчеты!C9` было `0.00062`, `D9 = 56451.6129032258`, `E9 = C9*D9 = 35`.
+- В `Кабинет инвестора` (`1bk_Ex8Kl6jSlcxDNV0BIBio0CRTFK_jyRdB5-06Mpm8`) до коррекции `Расчеты!C9` было `0.00062`, `D9 = 56451.6129032258`, `E9 = C9*D9 = 35`.
 - До коррекции `Транзакции_IMPORT!A197:S197` содержала `EVM_STABLE_FLOW:ARBITRUM:20260928T175329:ПОПОЛНЕНИЕ:USDC:24.588692`, `PENDING`, действие «Пополнение», сумму `24.58869199999998`, `BALANCE_APPLIED`. Production UI показывает эту строку как «Пополнение USDC», 17:53. USDC уже начислены в «Расчеты».
 - Общий main-синхронизатор `walletSync.gs` не обслуживает Bitcoin. Arbitrum-код классифицирует непарный приход USDC как пополнение. BTC-код внутри `IC_WIFE_API` обслуживает другой аккаунт и другой адрес; подключать его к main нельзя.
 - `clasp list-deployments` подтвердил существующий main deployment `@90`; read-only clone именно версии 90 совпал с локальными `walletSync`, `arbitrumWalletImport`, `walletLedger` и `Код`. Отсутствие main Bitcoin sync подтверждено опубликованным кодом, а не только текущей веткой.
@@ -54,7 +54,7 @@
 
 ### Локальная верификация
 
-- `npm test`: 58 файлов, 431 tests PASS, включая 19 новых BTC-сценариев.
+- `npm test`: 58 файлов, 432 tests PASS, включая 20 новых BTC-сценариев.
 - `npm run lint`: PASS.
 - `npm run build`: PASS, существующее предупреждение о frontend chunk >500 kB; frontend не менялся.
 - `git diff --check`: PASS.
@@ -63,14 +63,15 @@
 ### Production acceptance
 
 - Code commits: `464e1b0` (import + integration), `ab54a04` и `5233c25` (восстановление прерванного Google Sheets setup). Перед первой публикацией новый read-only `clasp pull` совпал с baseline `302751e` по всем 20 исходным Apps Script файлам: чужого remote drift не было.
-- Apps Script main deployment `AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA` опубликован как `@93`, URL сохранён. HEAD также обновлён, поэтому существующий time trigger видит новый импорт.
+- Apps Script main deployment `AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA` опубликован как `@94`, URL сохранён. HEAD также обновлён, поэтому существующий time trigger видит новый импорт. Remote clone опубликованной версии `@93` совпал с локальным кодом по всем 21 файлу до добавления ручного smoke-run helper.
 - В Apps Script UI подтверждён существующий `syncInvestorCabinetWallets` trigger **раз в 5 минут**. Новых trigger не создано. BTC самостоятельно соблюдает 15-minute cooldown.
 - Первый ручной run 18:58:01–18:58:12 завершился Google Sheets timeout при setup. Подтверждён частичный результат: BTC config записан, balance tab создан пустым. Следующий unified trigger 18:58:25 записал успешный snapshot под пустым header. Восстановление исправлено и покрыто двумя tests: теперь проверяется сам header, сохраняется существующий snapshot; ошибка уведомления не маскирует исходное исключение.
 - Повторные ручные `syncBitcoinWalletImports` в Apps Script UI: 19:00:39–19:00:42 и 19:03:39–19:03:41, оба **Выполнение завершено**. Execution API через `clasp run` не разрешил вызов; запуск проведён через существующий owner UI без изменения permissions.
+- После публикации `@94` ручной `syncBitcoinWalletImportsNow` в Apps Script UI 19:18:05–19:18:09 вернул `{"status":"READY","quantity":0.00031719,"transactions":0}`. Этот запуск обходит только 15-minute cooldown для диагностики; использует тот же lock, сеть, checkpoint и правила учёта. На Sheet подтверждены новый block `969022`, обновлённый Last Sync At, прежний BTC `0.00031719` и ровно один исходный hash в import. Это живое чтение истории после baseline, без повторного списания.
 - Финальный Sheet readback: `BTC_WALLETS` содержит ровно main receiving + подтверждённую сдачу; `BTC_WALLET_BALANCES!A1:G2` имеет правильные headers, quantity `0.00031719`, `READY`, block `969020`, last successful sync 18:58:30 МСК. Повторные запуски в cooldown snapshot и количество не меняют. `Транзакции_IMPORT!M2:M200` содержит исходный BTC hash ровно **один раз**.
 - `Расчеты!C9:E9`: `0.00031719`, `56451.6129032258`, `17.905887096774194`. USDC C13: `312.6761159999999`; повторного начисления нет. Сохранены исходные формулы.
 - Production `/exec?accountId=main`: `success:true`, portfolio BTC quantity `0.00031719`, invested `17.91`; единственная BTC sale transaction quantity `0.0003`, amount `24.588692`, full hash, date `2026-09-28T14:49:56Z`, realizedPnL note `7.6532081290322616`.
-- Production UI: «Продажа BTC» 28.09.26 17:49, `0.0003`, `24.59 $`, `+7.65 $`, полный hash в title. В портфеле BTC invested `17.9 $`, value около `26.4 $` (рыночная цена меняется). При проверке также наблюдались отдельные API timeouts; успешный прямой production API read получен после них.
+- Production UI: «Продажа BTC» 28.09.26 17:49, `0.0003`, `24.59 $`, `+7.65 $`, полный hash в title. В портфеле BTC invested `17.9 $`, value зависит от рынка. Финальная проверка UI показала `Источник: live · ready` на портфеле и отчётах. В ходе работы наблюдались отдельные кратковременные API `502`/timeout; после них повторное чтение было успешным без изменения BTC-учёта.
 - Vercel auto deployment после первого main push `464e1b0` подтверждён через GitHub deployment `6714436493`, status `success`, environment `Production`; frontend source не менялся.
 
 Новых live BTC-операций после baseline пока нет: реальное последующее пополнение/вывод не воспроизводилось переводом денег. Будущие сценарии проверены контракт-тестами, текущий production baseline — живыми Sheet/API/UI чтениями. Unknown change/output и классификация следующего cross-chain swap остаются ручной проверкой в выбранном address-only режиме.
