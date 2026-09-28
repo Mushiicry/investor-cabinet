@@ -77,7 +77,7 @@
 
 ## 4. Открытые задачи — Codex
 
-- [ ] **BTC → USDC bridge и native Bitcoin import 28.09.2026** — `DATA_REPAIRED / IMPORT_VALIDATED_DEPLOY_PENDING`: по явному разрешению владельца corrected C9 = 0.00031719 и audit row 197; USDC не начислены повторно. BTC importer по receiving + подтверждённой сдаче подключён к unified sync, unknown outputs → review, API errors → сохранение учёта. 429 tests, lint/build PASS. Детали и ограничения address-only: `BTC_BRIDGE_INCIDENT_2026-09-28.md`.
+- [x] **BTC → USDC bridge и native Bitcoin import 28.09.2026** — `PRODUCTION_VERIFIED`: corrected C9 = 0.00031719 и audit row 197; USDC повторно не начислены. Address-only BTC importer (receiving + подтверждённая сдача) в unified trigger, Apps Script `@93`, живой snapshot `READY`, hash ровно один, Sheet/API/UI проверены. 431 tests, lint/build PASS. Новая неизвестная HD-сдача / cross-chain sale → manual review. Детали: `BTC_BRIDGE_INCIDENT_2026-09-28.md`.
 - [x] **Этап 0 — базовая точка риска и здоровья** — создан манифест, дорожная карта
       внедрения и аудит этапа 0 только на чтение; исполняемый код, программный
       интерфейс, скрипты таблиц, таблицы и интерфейс не менялись.

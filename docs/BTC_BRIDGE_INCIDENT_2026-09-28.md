@@ -1,6 +1,6 @@
 # BTC → USDC через Bitcoin → Arbitrum, 28.09.2026
 
-Статус: `DATA_REPAIRED / IMPORT_VALIDATED_DEPLOY_PENDING`. Владелец явно разрешил интеграцию, production и будущий BTC-импорт 28.09.2026. Коррекция данных применена атомарно и проверена повторным чтением; код импорта пока прошёл локальные проверки и ожидает публикации.
+Статус: `PRODUCTION_VERIFIED`. Владелец явно разрешил интеграцию, production и будущий BTC-импорт 28.09.2026. Коррекция данных применена атомарно и проверена повторным чтением; код импорта объединён в main и опубликован в существующий main Apps Script deployment `@93`. Живой sync и повторные запуски проверены; выбранный address-only режим сохраняет ограничения HD discovery.
 
 ## Проверенные факты
 
@@ -54,13 +54,29 @@
 
 ### Локальная верификация
 
-- `npm test`: 58 файлов, 429 tests PASS, включая 17 новых BTC-сценариев.
+- `npm test`: 58 файлов, 431 tests PASS, включая 19 новых BTC-сценариев.
 - `npm run lint`: PASS.
 - `npm run build`: PASS, существующее предупреждение о frontend chunk >500 kB; frontend не менялся.
 - `git diff --check`: PASS.
-- Проверены baseline без повторной продажи/USDC, точная комиссия, входящий transfer cost basis, неизвестная сдача, смешанные inputs, whole-batch hold, mempool, pagination, hash dedup, reorg, fallback API, повреждённые API-данные и outage, interrupted write до/после quantity, конфликт ручного учёта и сохранение остальных сетевых sync steps.
+- Проверены baseline без повторной продажи/USDC, точная комиссия, входящий transfer cost basis, неизвестная сдача, смешанные inputs, whole-batch hold, mempool, pagination, hash dedup, reorg, fallback API, повреждённые API-данные и outage, interrupted write до/после quantity, конфликт ручного учёта и сохранение остальных сетевых sync steps. Два дополнительных сценария проверяют восстановление setup после timeout: пустой лист и существующий snapshot под пустыми заголовками.
 
 ### Production acceptance
 
-Ожидается публикация в существующий Apps Script deployment, первичный live BTC sync, повторный запуск без дублей, readback Sheet/API/UI. URL main `/exec` должен оставаться тем же; версия отката — `@90`. При откате также требуется вернуть Apps Script HEAD (trigger исполняет HEAD), одного version redeploy недостаточно. Данные восстановленной продажи откатывать не требуется.
+- Code commits: `464e1b0` (import + integration), `ab54a04` и `5233c25` (восстановление прерванного Google Sheets setup). Перед первой публикацией новый read-only `clasp pull` совпал с baseline `302751e` по всем 20 исходным Apps Script файлам: чужого remote drift не было.
+- Apps Script main deployment `AKfycbwBtbI9LmbZGyr4gi35oXym56i1py5J_oy0shp_gDotJBmsRnG2UmVVvmPFBigoE3uLeA` опубликован как `@93`, URL сохранён. HEAD также обновлён, поэтому существующий time trigger видит новый импорт.
+- В Apps Script UI подтверждён существующий `syncInvestorCabinetWallets` trigger **раз в 5 минут**. Новых trigger не создано. BTC самостоятельно соблюдает 15-minute cooldown.
+- Первый ручной run 18:58:01–18:58:12 завершился Google Sheets timeout при setup. Подтверждён частичный результат: BTC config записан, balance tab создан пустым. Следующий unified trigger 18:58:25 записал успешный snapshot под пустым header. Восстановление исправлено и покрыто двумя tests: теперь проверяется сам header, сохраняется существующий snapshot; ошибка уведомления не маскирует исходное исключение.
+- Повторные ручные `syncBitcoinWalletImports` в Apps Script UI: 19:00:39–19:00:42 и 19:03:39–19:03:41, оба **Выполнение завершено**. Execution API через `clasp run` не разрешил вызов; запуск проведён через существующий owner UI без изменения permissions.
+- Финальный Sheet readback: `BTC_WALLETS` содержит ровно main receiving + подтверждённую сдачу; `BTC_WALLET_BALANCES!A1:G2` имеет правильные headers, quantity `0.00031719`, `READY`, block `969020`, last successful sync 18:58:30 МСК. Повторные запуски в cooldown snapshot и количество не меняют. `Транзакции_IMPORT!M2:M200` содержит исходный BTC hash ровно **один раз**.
+- `Расчеты!C9:E9`: `0.00031719`, `56451.6129032258`, `17.905887096774194`. USDC C13: `312.6761159999999`; повторного начисления нет. Сохранены исходные формулы.
+- Production `/exec?accountId=main`: `success:true`, portfolio BTC quantity `0.00031719`, invested `17.91`; единственная BTC sale transaction quantity `0.0003`, amount `24.588692`, full hash, date `2026-09-28T14:49:56Z`, realizedPnL note `7.6532081290322616`.
+- Production UI: «Продажа BTC» 28.09.26 17:49, `0.0003`, `24.59 $`, `+7.65 $`, полный hash в title. В портфеле BTC invested `17.9 $`, value около `26.4 $` (рыночная цена меняется). При проверке также наблюдались отдельные API timeouts; успешный прямой production API read получен после них.
+- Vercel auto deployment после первого main push `464e1b0` подтверждён через GitHub deployment `6714436493`, status `success`, environment `Production`; frontend source не менялся.
+
+Новых live BTC-операций после baseline пока нет: реальное последующее пополнение/вывод не воспроизводилось переводом денег. Будущие сценарии проверены контракт-тестами, текущий production baseline — живыми Sheet/API/UI чтениями. Unknown change/output и классификация следующего cross-chain swap остаются ручной проверкой в выбранном address-only режиме.
+
+### Rollback
+
+Версия web app до работы — `@90`; при откате требуется также вернуть Apps Script HEAD к `302751e` (`clasp push` из отдельного проверенного checkout), потому что trigger исполняет HEAD. Затем redeploy того же deployment ID на `@90`. Для временной остановки только BTC importer можно изменить его `BTC_WALLETS` Status на `INACTIVE`; остальные сети продолжат работу. Pending plan нельзя удалять без сверки незавершённой записи. Восстановленная продажа и корректный BTC-баланс остаются валидными и отдельного отката данных не требуют. Не удалять пользовательские табы/операции ради rollback.
+
 
