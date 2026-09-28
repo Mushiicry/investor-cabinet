@@ -35,7 +35,15 @@ function setupBitcoinWalletImport() {
   if (balances.getRange(1, 1, 1, 1).getValues()[0][0] !== 'Wallet ID') throw new Error('Unexpected BTC balance sheet header');
 }
 
-function syncBitcoinWalletImports() {
+// Owner-operated manual run: bypass the schedule pause, retain all accounting,
+// lock, provider and address-ownership checks. The editor displays this result.
+function syncBitcoinWalletImportsNow() {
+  var result = syncBitcoinWalletImports(true);
+  Logger.log('Bitcoin manual sync: ' + JSON.stringify(result));
+  return result;
+}
+
+function syncBitcoinWalletImports(force) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return { skipped: 'locked' };
   try {
@@ -46,7 +54,7 @@ function syncBitcoinWalletImports() {
     var pending = props.getProperty(IC_BTC_PENDING_PROPERTY);
     if (pending) IC_BTC_commitPlan_(ss, props, JSON.parse(pending));
     var state = JSON.parse(props.getProperty(IC_BTC_STATE_PROPERTY) || 'null');
-    if (state && Date.now() - state.syncedAt < IC_BTC_SYNC_INTERVAL_MS) return { skipped: 'cooldown' };
+    if (force !== true && state && Date.now() - state.syncedAt < IC_BTC_SYNC_INTERVAL_MS) return { skipped: 'cooldown' };
     var config = IC_BTC_readConfig_(ss.getSheetByName(IC_BTC_WALLETS_SHEET));
     if (!config) return { skipped: 'inactive' };
     var calculations = ss.getSheetByName('Расчеты');

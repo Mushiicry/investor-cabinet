@@ -19,6 +19,7 @@ type ScriptContext = Record<string, unknown> & {
   IC_BTC_orderTransactions_: (...args: unknown[]) => ReturnType<typeof tx>[];
   IC_BTC_sats_: (value: unknown) => number;
   syncBitcoinWalletImports: () => Record<string, unknown>;
+  syncBitcoinWalletImportsNow: () => Record<string, unknown>;
   syncInvestorCabinetWallets: () => void;
 };
 
@@ -322,5 +323,16 @@ describe("native Bitcoin address import", () => {
     (h.api.setupBitcoinWalletImport as () => void)();
     expect(h.balances.rows[0][0]).toBe("Wallet ID");
     expect(h.balances.rows[1]).toEqual(previous);
+  });
+
+  it("allows an owner manual run to read history during cooldown while preserving normal scheduled throttling", () => {
+    const h = harness();
+    h.props.setProperty("IC_BTC_IMPORT_STATE", JSON.stringify({ ...state, syncedAt: Date.now() }));
+    h.network();
+    expect(h.api.syncBitcoinWalletImports()).toEqual({ skipped: "cooldown" });
+    expect(h.requests).toHaveLength(0);
+    expect(h.api.syncBitcoinWalletImportsNow().status).toBe("READY");
+    expect(h.requests.some(url => url.includes("/txs/chain"))).toBe(true);
+    expect(h.calculations.rows[1][2]).toBe(0.00031719);
   });
 });
