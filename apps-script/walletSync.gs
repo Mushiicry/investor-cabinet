@@ -4,6 +4,7 @@ var IC_WALLET_TON_RATE_LIMIT_COOLDOWN_MINUTES = 30;
 var IC_WALLET_TON_NEXT_SYNC_PROPERTY = 'IC_WALLET_TON_NEXT_SYNC_AT';
 var IC_WALLET_SYNC_TRIGGER_HANDLERS = [
   'syncInvestorCabinetWallets',
+  'syncBitcoinWalletImports',
   'syncTonWalletImports',
   'syncTonWalletBalances',
   'syncArbitrumWalletBalances',
@@ -15,6 +16,10 @@ var IC_WALLET_SYNC_TRIGGER_HANDLERS = [
 
 function syncInvestorCabinetWallets() {
   var errors = [];
+
+  IC_WALLET_runSyncStep_('Bitcoin wallet import', function() {
+    syncBitcoinWalletImports();
+  }, errors);
 
   IC_WALLET_runSyncStep_('TON wallet import', function() {
     IC_WALLET_syncTonWithRateLimitGuard_();
