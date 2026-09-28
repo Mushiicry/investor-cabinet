@@ -49,7 +49,7 @@ function sheet(initial: Row[], maxRows = 200) {
       getDataValidation: () => null,
     }),
     writes: () => writes,
-    setFrozenRows: (_count: number) => {},
+    setFrozenRows: () => {},
   };
   return target;
 }
@@ -63,7 +63,7 @@ function harness() {
   };
   const calculations = sheet([["Asset"], ["BTC", "Крипта", 0.00031719, 56451.6129032258, "=C2*D2"]]);
   const imports = sheet([Array(19).fill("header")]);
-  const balances = sheet([["Wallet ID"]]);
+  const balances = sheet([["Wallet ID", "Asset", "Confirmed Quantity", "Status", "Last Sync At", "Block Height", "Comment"]]);
   const wallets = sheet([["Wallet ID"], ["main", address, change, "ACTIVE", "", ""]]);
   const sheets: Record<string, ReturnType<typeof sheet>> = {
     "Расчеты": calculations, "Транзакции_IMPORT": imports,
@@ -313,5 +313,14 @@ describe("native Bitcoin address import", () => {
     expect(h.balances.rows[0][0]).toBe("Wallet ID");
     expect(h.balances.rows[0][2]).toBe("Confirmed Quantity");
     expect(h.wallets.rows[1].slice(0, 4)).toEqual(configBefore.slice(0, 4));
+  });
+
+  it("restores empty headers even when an older trigger wrote a snapshot below them", () => {
+    const h = harness();
+    const previous = ["main", "BTC", 0.00031719, "READY", "previous", 102, "confirmed"];
+    h.balances.rows.splice(0, h.balances.rows.length, [], previous);
+    (h.api.setupBitcoinWalletImport as () => void)();
+    expect(h.balances.rows[0][0]).toBe("Wallet ID");
+    expect(h.balances.rows[1]).toEqual(previous);
   });
 });

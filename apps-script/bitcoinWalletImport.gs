@@ -23,12 +23,16 @@ function setupBitcoinWalletImport() {
     wallets.setFrozenRows(1);
   }
   var balances = ss.getSheetByName(IC_BTC_BALANCES_SHEET) || ss.insertSheet(IC_BTC_BALANCES_SHEET);
-  if (!balances.getLastRow()) {
+  // A previous HEAD may already have written the snapshot below an empty header.
+  // Test the header itself, not getLastRow(), so recovery preserves that snapshot.
+  var balanceHeader = balances.getRange(1, 1, 1, 7).getValues()[0];
+  if (balanceHeader.every(function(value) { return value === ''; })) {
     balances.getRange(1, 1, 1, 7).setValues([[
       'Wallet ID', 'Asset', 'Confirmed Quantity', 'Status', 'Last Sync At', 'Block Height', 'Comment'
     ]]);
     balances.setFrozenRows(1);
   }
+  if (balances.getRange(1, 1, 1, 1).getValues()[0][0] !== 'Wallet ID') throw new Error('Unexpected BTC balance sheet header');
 }
 
 function syncBitcoinWalletImports() {
