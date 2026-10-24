@@ -61,6 +61,38 @@ describe("BNB wallet import", () => {
     expect(importer).toContain("IC_BNB_setQuantity_(calculations, IC_BNB_GOLD_SYMBOL, gold)");
   });
 
+  it("clears an existing USDC BNB row when the on-chain balance reaches zero", () => {
+    const { context } = bnbContext();
+    const calculations = {};
+    const setQuantity = vi.fn(() => true);
+    const ensureStableRow = vi.fn();
+    const findAssetRow = vi.fn(() => 15);
+
+    context.SpreadsheetApp = { getActiveSpreadsheet: () => ({ getSheetByName: () => calculations }) };
+    context.Session = { getScriptTimeZone: () => "Europe/Moscow" };
+    context.Utilities = { formatDate: () => "2026-10-24T11:00:00" };
+    context.IC_BNB_readLastBalances_ = vi.fn(() => ({}));
+    context.IC_BNB_fetchBlockTag_ = vi.fn(() => "latest");
+    context.IC_BNB_fetchErc20Balance_ = vi.fn(() => 0);
+    context.IC_BNB_fetchNativeBalance_ = vi.fn(() => 0);
+    context.IC_BNB_assertSane_ = vi.fn();
+    context.IC_BNB_appendBalanceRow_ = vi.fn();
+    context.IC_BNB_findAssetRow_ = findAssetRow;
+    context.IC_BNB_ensureStableRowExists_ = ensureStableRow;
+    context.IC_BNB_setQuantity_ = setQuantity;
+
+    const sync = context.syncBnbWalletBalances as () => number;
+    sync();
+    expect(setQuantity).toHaveBeenCalledWith(calculations, "USDC BNB", 0);
+    expect(ensureStableRow).not.toHaveBeenCalled();
+
+    findAssetRow.mockReturnValue(0);
+    setQuantity.mockClear();
+    sync();
+    expect(setQuantity).not.toHaveBeenCalledWith(calculations, "USDC BNB", 0);
+    expect(ensureStableRow).not.toHaveBeenCalled();
+  });
+
   it("classifies a stable-to-XAUT swap as a GOLD purchase", () => {
     const { context, appendTrade, appendStableFlow, averageInPurchase } = bnbContext();
 

@@ -148,9 +148,15 @@ function syncBnbWalletBalances() {
 
   // ── Количества в «Расчеты» (истина остаётся он-чейн) ──
   if (usdt !== null && IC_BNB_setQuantity_(calculations, 'USDT BNB', usdt)) updated.push('USDT BNB=' + usdt);
-  if (usdc !== null && usdc > 0.005) {
-    IC_BNB_ensureStableRowExists_(calculations, IC_BNB_USDC_CALC_ASSET);
-    if (IC_BNB_setQuantity_(calculations, IC_BNB_USDC_CALC_ASSET, usdc)) updated.push('USDC BNB=' + usdc);
+  if (usdc !== null) {
+    var hasUsdcRow = !!IC_BNB_findAssetRow_(calculations, IC_BNB_USDC_CALC_ASSET);
+    if (!hasUsdcRow && usdc > 0.005) {
+      IC_BNB_ensureStableRowExists_(calculations, IC_BNB_USDC_CALC_ASSET);
+      hasUsdcRow = true;
+    }
+    if (hasUsdcRow && IC_BNB_setQuantity_(calculations, IC_BNB_USDC_CALC_ASSET, usdc)) {
+      updated.push('USDC BNB=' + usdc);
+    }
   }
   if (stock !== null && IC_BNB_setQuantity_(calculations, IC_BNB_STOCK_SYMBOL, stock)) updated.push(IC_BNB_STOCK_SYMBOL + '=' + stock);
   if (gold !== null && IC_BNB_setQuantity_(calculations, IC_BNB_GOLD_SYMBOL, gold)) updated.push(IC_BNB_GOLD_SYMBOL + '=' + gold);
