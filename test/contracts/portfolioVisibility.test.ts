@@ -31,7 +31,7 @@ describe("portfolio position visibility", () => {
       for (const invested of [0, 0.01, 0.999, 1, 1.001, 40]) {
         for (const value of [0, 0.5, 1, 100]) {
           const row = position({ asset: "NEW_ASSET", category, value, invested, currentPrice: 1000 });
-          expect(isObservationPortfolioPosition(row)).toBe(invested < 1 || value < 1);
+          expect(isObservationPortfolioPosition(row)).toBe(invested < 1 || (category !== "Фьючерсы" && value < 1));
         }
       }
     },
@@ -74,6 +74,7 @@ describe("portfolio position visibility", () => {
     expect(render({ ...eth, asset: "SOL", value: 1.24, invested: 0.93 })).toContain("is-observing");
     expect(render({ ...eth, asset: "SOL", value: 0.09, invested: 8.44, pnl: -8.35 })).toContain("is-observing");
     expect(render({ ...eth, asset: "ATOM", invested: 40.47, value: 0.5 })).toContain("is-observing");
+    expect(render({ ...eth, asset: "BTC SHORT", category: "Фьючерсы", invested: 40.47, value: 0.5 })).not.toContain("is-observing");
   });
 
   it("keeps unbought gold visible in observation and restores its normal appearance from one dollar", () => {
