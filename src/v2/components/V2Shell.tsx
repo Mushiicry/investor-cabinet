@@ -342,13 +342,13 @@ function buildAssistantPageContext({
       ? (dailyPnlUsd / previousDailySnapshot.portfolioValue) * 100
       : null;
   const dailyPnl = {
-    source: "V2PortfolioPage visible P&L 24H formula",
+    source: "V2PortfolioPage visible capital change since previous daily snapshot",
     isAvailable: dailyPnlUsd != null,
     pnlUsd: dailyPnlUsd,
     pnlPct: dailyPnlPct,
     previousSnapshotDate: previousDailySnapshot?.date ?? null,
     previousPortfolioValue: previousDailySnapshot?.portfolioValue ?? null,
-    rule: "Это дневное изменение к предыдущему дневному снимку; не путать с общим P&L.",
+    rule: "Это изменение стоимости портфеля с предыдущего дневного снимка, включая ввод/вывод и исправления учёта. Не называй его прибылью или убытком от торговли.",
   };
   const fearGreed = {
     source: "fearGreedStrategy",

@@ -446,14 +446,13 @@ export function V2PortfolioPage({ positions, playbook, staking, cosmosStaking, p
               tone={pnlTone(totalPnl)}
             />
             <PortfolioMetricCard
-              label="P&L 24H"
+              label="Изменение капитала"
               value={dailyPnlUsd != null ? signedMoney(dailyPnlUsd) : "—"}
               note={
                 dailyPnlPct != null && previousDailySnapshot
-                  ? `${fmtPct(dailyPnlPct)} к ${formatSnapshotDate(previousDailySnapshot.date)}`
+                  ? `${fmtPct(dailyPnlPct)} к ${formatSnapshotDate(previousDailySnapshot.date)} · ввод/вывод`
                   : "Ждём снимок прошлого дня"
               }
-              tone={dailyPnlUsd != null ? pnlTone(dailyPnlUsd) : ""}
             />
             <PortfolioMetricCard
               label="Cash"

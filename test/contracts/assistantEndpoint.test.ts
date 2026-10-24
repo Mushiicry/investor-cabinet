@@ -238,13 +238,13 @@ const portfolioReportClientContext = {
       reserveShare: 0.709,
       positionsCount: 9,
       dailyPnl: {
-        source: "V2PortfolioPage visible P&L 24H formula",
+        source: "V2PortfolioPage visible capital change since previous daily snapshot",
         isAvailable: true,
         pnlUsd: 1.2,
         pnlPct: 0.18,
         previousSnapshotDate: "2026-08-18T23:48:00.000Z",
         previousPortfolioValue: 666.6,
-        rule: "Это дневное изменение к предыдущему дневному снимку; не путать с общим P&L.",
+        rule: "Это изменение стоимости портфеля с предыдущего дневного снимка, включая ввод/вывод и исправления учёта. Не называй его прибылью или убытком от торговли.",
       },
       fearGreed: {
         source: "fearGreedStrategy",
