@@ -259,7 +259,7 @@ function IdentityCard({
       <CryptoLogo asset={asset} className="v2-pid-logo" />
       <span className="v2-pid-name-stack">
         <span className="v2-pid-name">{fullName(asset)}</span>
-        {observing && <span className="v2-pid-observation" title="Наблюдение · вложено меньше $1">Наблюдение</span>}
+        {observing && <span className="v2-pid-observation" title="Наблюдение · вложено или остаток меньше $1">Наблюдение</span>}
         {staked && <span className="v2-pid-staked" title="В стейке">🔒 в стейке</span>}
       </span>
       <span className={`v2-pid-pnl ${tone}`}>
@@ -303,7 +303,7 @@ function StableCard({ asset, meta, observing }: { asset: string; meta: { network
       <div className="v2-pid-stable-info">
         <span className="v2-pid-name">{fullName(asset)}</span>
         <span className={`v2-pid-net-tag ${meta.net}`}>{meta.network}</span>
-        {observing && <span className="v2-pid-observation" title="Наблюдение · вложено меньше $1">Наблюдение</span>}
+        {observing && <span className="v2-pid-observation" title="Наблюдение · вложено или остаток меньше $1">Наблюдение</span>}
       </div>
     </div>
   );

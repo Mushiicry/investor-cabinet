@@ -16,22 +16,22 @@ describe("portfolio position visibility", () => {
   it("marks invested amounts below one dollar as observation regardless of API status", () => {
     for (const status of ["CLOSED", "EXITED", "FIXED", "WATCH", " wait_rebuy ", "WAIT_ENTRY", "Speculation", "OPEN", ""]) {
       for (const invested of [0, 0.01, 0.99]) {
-        expect(isObservationPortfolioPosition(position({ category: "Крипта", status, invested }))).toBe(true);
+        expect(isObservationPortfolioPosition(position({ category: "Крипта", status, invested, value: 100 }))).toBe(true);
       }
     }
-    expect(isObservationPortfolioPosition(position({ category: "Crypto", invested: 0.01 }))).toBe(true);
+    expect(isObservationPortfolioPosition(position({ category: "Crypto", invested: 0.01, value: 100 }))).toBe(true);
     for (const invested of [1, 31, -0.01, NaN, Infinity]) {
-      expect(isObservationPortfolioPosition(position({ category: "Крипта", invested }))).toBe(false);
+      expect(isObservationPortfolioPosition(position({ category: "Крипта", invested, value: 100 }))).toBe(false);
     }
   });
 
   it.each(["Крипта", "Crypto", "Металлы", "Акции", "Фьючерсы", "Свободные деньги", "Новая категория"])(
-    "uses the same invested threshold for %s regardless of asset or market value",
+    "uses invested or market value below one dollar for %s",
     (category) => {
       for (const invested of [0, 0.01, 0.999, 1, 1.001, 40]) {
         for (const value of [0, 0.5, 1, 100]) {
           const row = position({ asset: "NEW_ASSET", category, value, invested, currentPrice: 1000 });
-          expect(isObservationPortfolioPosition(row)).toBe(invested < 1);
+          expect(isObservationPortfolioPosition(row)).toBe(invested < 1 || value < 1);
         }
       }
     },
@@ -47,9 +47,9 @@ describe("portfolio position visibility", () => {
       expect(html).toContain("is-observing");
       expect(html).toContain("Наблюдение");
       expect(html).toContain("0,50");
-      expect(html).toContain("вложено меньше $1");
-      expect(render({ ...row, invested: 1 })).not.toContain("is-observing");
-      expect(render({ ...row, invested: 1 })).not.toContain("Наблюдение");
+      expect(html).toContain("вложено или остаток меньше $1");
+      expect(render({ ...row, invested: 1, value: 1 })).not.toContain("is-observing");
+      expect(render({ ...row, invested: 1, value: 1 })).not.toContain("Наблюдение");
       expect(render({ ...row, value: 100 })).toContain("is-observing");
       expect(row.value).toBe(0.5);
       expect(row.invested).toBe(0.25);
@@ -64,7 +64,7 @@ describe("portfolio position visibility", () => {
     expect(html).toContain("Наблюдение");
     expect(html).toContain("Ethereum");
     expect(html).toContain("0,01");
-    expect(render({ ...eth, invested: 1 })).not.toContain("is-observing");
+    expect(render({ ...eth, invested: 1, value: 1 })).not.toContain("is-observing");
     const bnbHtml = render({ ...eth, asset: "BNB", invested: 0.58, value: 0.68, status: "Speculation" });
     expect(bnbHtml).toContain("is-observing");
     expect(bnbHtml).toContain("Наблюдение");
@@ -72,7 +72,8 @@ describe("portfolio position visibility", () => {
     expect(render({ ...eth, asset: "ATOM", invested: 40.47, value: 31 })).not.toContain("is-observing");
     expect(render(position({ asset: "BTC SHORT", value: 0.01 }))).toContain("is-observing");
     expect(render({ ...eth, asset: "SOL", value: 1.24, invested: 0.93 })).toContain("is-observing");
-    expect(render({ ...eth, asset: "ATOM", invested: 40.47, value: 0.5 })).not.toContain("is-observing");
+    expect(render({ ...eth, asset: "SOL", value: 0.09, invested: 8.44, pnl: -8.35 })).toContain("is-observing");
+    expect(render({ ...eth, asset: "ATOM", invested: 40.47, value: 0.5 })).toContain("is-observing");
   });
 
   it("keeps unbought gold visible in observation and restores its normal appearance from one dollar", () => {

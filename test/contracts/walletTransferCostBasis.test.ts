@@ -49,6 +49,18 @@ describe("wallet transfer cost basis", () => {
     expect(sheet.formulas.get("2:5")).toBe("=C2*D2");
   });
 
+  it("reduces SOL invested capital pro rata when an unpaired wallet withdrawal leaves dust", () => {
+    const sheet = calculationSheet(0.11853117, 8.43845238678188 / 0.11853117);
+    const context = loadImporter("apps-script/solanaWalletImport.gs", "IC_SOLANA_findAssetRow_");
+
+    context.IC_SOLANA_setCalculationQuantity_(sheet, "SOL", 0.000890946);
+
+    expect(sheet.values.get("2:3")).toBe(0.000890946);
+    expect(sheet.values.get("2:4")).toBeCloseTo(71.19184250675902, 10);
+    expect(sheet.values.get("2:4")! * sheet.values.get("2:3")!).toBeCloseTo(0.06342808731402691, 10);
+    expect(sheet.formulas.get("2:5")).toBe("=C2*D2");
+  });
+
   it("keeps ETH invested capital unchanged when an unpaired transfer arrives", () => {
     const sheet = calculationSheet(0.015, 35 / 0.015);
     const context = loadImporter("apps-script/arbitrumWalletImport.gs", "IC_EVM_findAssetRow_");

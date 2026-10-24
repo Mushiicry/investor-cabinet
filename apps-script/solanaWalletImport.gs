@@ -616,11 +616,13 @@ function IC_SOLANA_setCalculationQuantity_(sheet, asset, quantity) {
   var currentAvgEntry = IC_SOLANA_toNumber_(sheet.getRange(rowIndex, 4).getValue());
   var currentInvested = currentQuantity * currentAvgEntry;
   var nextQuantity = Math.max(0, IC_SOLANA_toNumber_(quantity));
-  var nextAvgEntry = nextQuantity ? currentInvested / nextQuantity : 0;
+  var nextAvgEntry = nextQuantity
+    ? (nextQuantity < currentQuantity ? currentAvgEntry : currentInvested / nextQuantity)
+    : 0;
 
-  // Синхронизация кошелька меняет фактическое количество, но сама по себе не
-  // является BUY. Сохраняем cost basis; для перенесённых монет меняется только
-  // техническая средняя цена, чтобы E = quantity × avgEntry осталось истинным.
+  // При выводе без встречного USDC списываем себестоимость пропорционально
+  // количеству. При пополнении без подтверждённой покупки сохраняем известную
+  // себестоимость, не приписывая поступившим монетам выдуманную цену.
   sheet.getRange(rowIndex, 3).setValue(nextQuantity);
   sheet.getRange(rowIndex, 4).setValue(nextAvgEntry);
   sheet.getRange(rowIndex, 5).setFormula('=C' + rowIndex + '*D' + rowIndex);
